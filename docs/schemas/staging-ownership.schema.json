@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mallok.dev/schemas/staging-ownership-v1.json",
+  "title": "Mallok staging ownership manifest v1",
+  "description": "The runner exclusive-creates this manifest with an empty resources array before its first remote read or mutation. Zero, one or two resources are valid so every partial-create state remains schema-valid.",
+  "x-mallok-runtimeConstraints": {
+    "authorizationBinding": "authorizationSha256 must equal SHA-256 of the exact authorization.json bytes re-read immediately before every remote action.",
+    "resourceIdentityUnique": "Across resources, type, id and name values must each be unique. The standard schema enforces at most one resource of each type; runtime additionally enforces unique id and unique name.",
+    "appendOnlyPartialState": "Before cleanup, resources is append-only and each successful create result must be durably recorded before another remote mutation starts."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "runId", "candidateSha", "environment", "accountIdHash", "authorizationSha256", "resources"],
+  "properties": {
+    "schemaVersion": {"const": "1"},
+    "runId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "candidateSha": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
+    "environment": {"const": "staging"},
+    "accountIdHash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "authorizationSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "SHA-256 of the exact authorization marker bytes used to initialize this manifest."
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "id", "name", "action", "observedAt"],
+        "properties": {
+          "type": {"enum": ["worker", "d1"]},
+          "id": {"type": "string", "minLength": 1, "maxLength": 128},
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 63,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "action": {"const": "created"},
+          "observedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {"type": {"const": "worker"}}
+          },
+          "minContains": 0,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {"type": {"const": "d1"}}
+          },
+          "minContains": 0,
+          "maxContains": 1
+        }
+      ],
+      "description": "The empty initialized state and one-resource partial state are valid. Runtime additionally requires unique id and name values."
+    }
+  }
+}

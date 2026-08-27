@@ -1,0 +1,715 @@
+openapi: 3.1.0
+info:
+  title: Mallok Admin API
+  version: 1.0.0
+  description: >-
+    Normative machine-readable surface for /__mallok/api/v1. Detailed parsing,
+    state-machine, idempotency, cache, and security behavior is defined by
+    docs/HTTP_API.md and docs/DATABASE.md.
+servers:
+  - url: https://{site}/__mallok/api/v1
+    variables:
+      site:
+        default: example.com
+security:
+  - bearerAuth: []
+tags:
+  - name: Documents
+  - name: Health
+paths:
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [Documents]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - $ref: '#/components/parameters/DocumentStatus'
+      responses:
+        '200':
+          description: Paginated document state.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+            X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DocumentListResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '406': {$ref: '#/components/responses/NotAcceptable'}
+        '500': {$ref: '#/components/responses/Internal'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /documents/{id}:
+    get:
+      operationId: getDocument
+      tags: [Documents]
+      x-mallok-runtimeConstraints:
+        requestPathIdentity: response body document.id must equal path id
+        responseCorrelation: >-
+          On 200, response ETag must equal body.document.etag. On 304, ETag
+          is the exact current document ETag and the response has no body.
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/RequestId'
+        - name: If-None-Match
+          in: header
+          required: false
+          schema: {$ref: '#/components/schemas/DocumentEtagValue'}
+          description: Exact strong Mallok document ETag.
+      responses:
+        '200':
+          description: Current document state without source Markdown or HTML.
+          headers:
+            ETag: {$ref: '#/components/headers/DocumentEtag'}
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+            X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DocumentResponse'}
+        '304':
+          description: If-None-Match matched; no body.
+          headers:
+            ETag: {$ref: '#/components/headers/DocumentEtag'}
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+            X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '406': {$ref: '#/components/responses/NotAcceptable'}
+        '500': {$ref: '#/components/responses/Internal'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /documents/{id}/publish:
+    post:
+      operationId: publishDocument
+      tags: [Documents]
+      x-mallok-runtimeConstraints:
+        preconditionHeaders: >-
+          Exactly one of If-Match and If-None-Match must be present.
+          If-None-Match is accepted only as the exact string * for an absent
+          document; If-Match must be the exact current strong document ETag.
+        requestIdentity: request body id must equal path id
+        responseCorrelation: >-
+          For 200/201, ETag equals body.document.etag, Location equals
+          /__mallok/api/v1/documents/{path-id}, X-Mallok-Revision equals
+          body.revision.id and X-Mallok-Artifact equals
+          body.revision.artifactHash.
+      description: >-
+        Send If-None-Match: * when the document is absent, otherwise send one
+        exact strong If-Match document ETag. Exactly one precondition form is
+        allowed. The uncompressed request body hard limit is 2,097,152 bytes.
+        bodyMarkdown is additionally limited at runtime to 262,144 UTF-8 bytes;
+        compiled HTML and the D1 revision row have separate byte budgets defined
+        by docs/DATABASE.md.
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatch'
+        - $ref: '#/components/parameters/IfNoneMatchCreate'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ContentInput'}
+      responses:
+        '200':
+          description: updated, republished, or unchanged.
+          x-mallok-runtimeConstraints:
+            - headers.ETag == body.document.etag
+            - headers.Location == "/__mallok/api/v1/documents/" + path.id
+            - headers.X-Mallok-Revision == body.revision.id
+            - headers.X-Mallok-Artifact == body.revision.artifactHash
+          headers:
+            ETag: {$ref: '#/components/headers/DocumentEtag'}
+            Location: {$ref: '#/components/headers/DocumentLocation'}
+            X-Mallok-Revision: {$ref: '#/components/headers/RevisionId'}
+            X-Mallok-Artifact: {$ref: '#/components/headers/ArtifactHash'}
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+            X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+            Idempotency-Replayed: {$ref: '#/components/headers/IdempotencyReplayed'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublishExistingResponse'}
+        '201':
+          description: created.
+          x-mallok-runtimeConstraints:
+            - headers.ETag == body.document.etag
+            - headers.Location == "/__mallok/api/v1/documents/" + path.id
+            - headers.X-Mallok-Revision == body.revision.id
+            - headers.X-Mallok-Artifact == body.revision.artifactHash
+          headers:
+            ETag: {$ref: '#/components/headers/DocumentEtag'}
+            Location: {$ref: '#/components/headers/DocumentLocation'}
+            X-Mallok-Revision: {$ref: '#/components/headers/RevisionId'}
+            X-Mallok-Artifact: {$ref: '#/components/headers/ArtifactHash'}
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+            X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+            Idempotency-Replayed: {$ref: '#/components/headers/IdempotencyReplayed'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublishCreatedResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '406': {$ref: '#/components/responses/NotAcceptable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '422': {$ref: '#/components/responses/Unprocessable'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+        '500': {$ref: '#/components/responses/Internal'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+        '507': {$ref: '#/components/responses/InsufficientStorage'}
+  /documents/{id}/unpublish:
+    post:
+      operationId: unpublishDocument
+      tags: [Documents]
+      x-mallok-runtimeConstraints:
+        requestIdentity: the path id identifies the document being unpublished
+        responseCorrelation: response ETag must equal body.document.etag and body.document.id must equal path id
+      description: Requires an empty body and the exact current If-Match ETag.
+      parameters:
+        - $ref: '#/components/parameters/DocumentId'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/IfMatchRequired'
+      responses:
+        '200':
+          description: unpublished or unchanged.
+          headers:
+            ETag: {$ref: '#/components/headers/DocumentEtag'}
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+            X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+            Idempotency-Replayed: {$ref: '#/components/headers/IdempotencyReplayed'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/UnpublishResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '406': {$ref: '#/components/responses/NotAcceptable'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '413': {$ref: '#/components/responses/TooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMedia'}
+        '428': {$ref: '#/components/responses/PreconditionRequired'}
+        '500': {$ref: '#/components/responses/Internal'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /health:
+    get:
+      operationId: getHealth
+      tags: [Health]
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Runtime, D1, migration and codec are compatible.
+          headers:
+            Cache-Control: {$ref: '#/components/headers/NoStore'}
+            Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+            X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+            X-Request-Id: {$ref: '#/components/headers/RequestId'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/HealthResponse'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '406': {$ref: '#/components/responses/NotAcceptable'}
+        '500': {$ref: '#/components/responses/Internal'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: MallokToken
+      description: >-
+        MALLOK_ADMIN_TOKEN in canonical hex: or b64u: form. After decoding it
+        must contain 32 to 128 raw bytes; exact parsing rules are normative in
+        docs/HTTP_API.md section 5.
+  parameters:
+    DocumentId:
+      name: id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Uuid'}
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: {$ref: '#/components/schemas/RequestIdValue'}
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: {type: integer, minimum: 1, maximum: 100, default: 20}
+    Offset:
+      name: offset
+      in: query
+      required: false
+      schema: {type: integer, minimum: 0, default: 0}
+    DocumentStatus:
+      name: status
+      in: query
+      required: false
+      schema: {type: string, enum: [all, published, unpublished], default: all}
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 200
+        pattern: '^[A-Za-z0-9._:-]+$'
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      schema: {$ref: '#/components/schemas/DocumentEtagValue'}
+      description: Required for existing documents; forbidden for first create.
+    IfMatchRequired:
+      name: If-Match
+      in: header
+      required: true
+      schema: {$ref: '#/components/schemas/DocumentEtagValue'}
+      description: Exact current strong Mallok document ETag.
+    IfNoneMatchCreate:
+      name: If-None-Match
+      in: header
+      required: false
+      schema: {type: string, const: '*'}
+      description: Required for first create; forbidden for an existing document update.
+  headers:
+    NoStore:
+      schema: {type: string, const: no-store}
+    PragmaNoCache:
+      schema: {type: string, const: no-cache}
+    NoSniff:
+      schema: {type: string, const: nosniff}
+    RequestId:
+      schema: {$ref: '#/components/schemas/RequestIdValue'}
+    IdempotencyReplayed:
+      description: Present with the string value true only when a stored response is replayed.
+      schema: {type: string, const: 'true'}
+    RetryAfter:
+      description: >-
+        `5` for a temporarily unavailable database; `60` for an active
+        preflight deployment lease. Omitted for an indefinite external barrier.
+      schema: {type: string, enum: ['5', '60']}
+    DocumentEtag:
+      schema: {$ref: '#/components/schemas/DocumentEtagValue'}
+    DocumentLocation:
+      schema: {$ref: '#/components/schemas/DocumentLocationValue'}
+    RevisionId:
+      schema: {$ref: '#/components/schemas/Uuid'}
+    ArtifactHash:
+      schema: {$ref: '#/components/schemas/Hash'}
+  responses:
+    BadRequest:
+      description: Invalid path, query, JSON, body, or idempotency key.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Unauthorized:
+      description: Missing, malformed, or incorrect Bearer token.
+      headers:
+        WWW-Authenticate: {schema: {type: string, const: 'Bearer realm="mallok-admin"'}}
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    NotFound:
+      description: Document or management route not found.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    NotAcceptable:
+      description: Client explicitly excludes application/json.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Conflict:
+      description: Slug or idempotency conflict.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    PreconditionFailed:
+      description: Current document ETag does not satisfy the supplied condition.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    TooLarge:
+      description: Request body exceeds 2,097,152 bytes.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    UnsupportedMedia:
+      description: Unsupported Content-Type or Content-Encoding.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Unprocessable:
+      description: Content is invalid, unsafe, draft, or references an undeployed asset.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    PreconditionRequired:
+      description: Required conditional or idempotency header is absent/conflicting.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Internal:
+      description: Unclassified internal failure with no exposed cause.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    Unavailable:
+      description: Admin disabled, D1 unavailable, deploy lease active, or schema/revision incompatible.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+        Retry-After: {$ref: '#/components/headers/RetryAfter'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+    InsufficientStorage:
+      description: Mallok D1 revision payload ledger is exhausted.
+      headers:
+        Cache-Control: {$ref: '#/components/headers/NoStore'}
+        Pragma: {$ref: '#/components/headers/PragmaNoCache'}
+        X-Content-Type-Options: {$ref: '#/components/headers/NoSniff'}
+        X-Request-Id: {$ref: '#/components/headers/RequestId'}
+      content: {application/json: {schema: {$ref: '#/components/schemas/ErrorResponse'}}}
+  schemas:
+    Uuid:
+      type: string
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    Hash:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+    Slug:
+      type: string
+      maxLength: 100
+      pattern: '^(?!(?:con|prn|aux|nul|com[1-9]|lpt[1-9])$)[a-z0-9]+(?:-[a-z0-9]+)*$'
+    DocumentEtagValue:
+      type: string
+      pattern: '^"mallok-doc-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}-v[1-9][0-9]*"$'
+    RequestIdValue:
+      type: string
+      minLength: 8
+      maxLength: 128
+      pattern: '^[A-Za-z0-9._:-]{8,128}$'
+    XmlSafeText:
+      type: string
+      pattern: '^[\u0009\u000a\u000d\u0020-\ud7ff\ue000-\ufffd\u{10000}-\u{10ffff}]*$'
+      description: >-
+        XML 1.0-safe well-formed Unicode scalar text. Runtime additionally
+        rejects lone surrogates and applies field-specific trim/code-point
+        length before compilation and persistence.
+    DocumentLocationValue:
+      type: string
+      pattern: '^/__mallok/api/v1/documents/[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+    ArticleUrlValue:
+      type: string
+      format: uri
+      pattern: '^https://[^@/?#\s]+/articles/(?!(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:/|$))[a-z0-9]+(?:-[a-z0-9]+)*/$'
+      description: >-
+        Runtime parses the URL and requires its canonical origin to equal the
+        configured Cloudflare site origin exactly; userinfo is forbidden,
+        explicit ports must be 1..65535 and a default 443 port is omitted.
+      x-mallok-runtimeConstraints:
+        - new URL(value).origin == canonicalCloudflareSiteOrigin
+        - new URL(value).username == "" && new URL(value).password == ""
+    CacheBustedArticleUrlValue:
+      type: string
+      format: uri
+      pattern: '^https://[^@/?#\s]+/articles/(?!(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:/|$))[a-z0-9]+(?:-[a-z0-9]+)*/\?__mallok_rev=[0-9a-f]{64}$'
+      description: >-
+        Runtime applies ArticleUrlValue's canonical-origin and userinfo rules
+        before accepting the single cache-bust query parameter.
+    InputDateTime:
+      type: string
+      format: date-time
+      description: RFC 3339 with an explicit numeric offset or Z; normalized by the server.
+    CanonicalUtcDateTime:
+      type: string
+      format: date-time
+      pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$'
+      description: Canonical Mallok response and persistence timestamp in UTC.
+    JsonValue:
+      oneOf:
+        - type: 'null'
+        - type: boolean
+        - type: number
+        - type: string
+        - type: array
+          items: {$ref: '#/components/schemas/JsonValue'}
+        - type: object
+          additionalProperties: {$ref: '#/components/schemas/JsonValue'}
+    ContentInput:
+      type: object
+      additionalProperties: false
+      required: [id, slug, title, bodyMarkdown]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        slug: {$ref: '#/components/schemas/Slug'}
+        title:
+          allOf: [{$ref: '#/components/schemas/XmlSafeText'}]
+          minLength: 1
+          maxLength: 200
+        description:
+          allOf: [{$ref: '#/components/schemas/XmlSafeText'}]
+          maxLength: 500
+        bodyMarkdown:
+          type: string
+          minLength: 1
+          description: >-
+            Runtime authority is a 262,144 UTF-8 byte limit. Standard JSON Schema
+            string length counts characters and therefore cannot encode this
+            byte limit without rejecting valid ASCII input.
+          x-mallok-maxUtf8Bytes: 262144
+        draft: {type: boolean, const: false, default: false}
+        publishedAt: {$ref: '#/components/schemas/InputDateTime'}
+        updatedAt: {$ref: '#/components/schemas/InputDateTime'}
+        tags:
+          type: array
+          maxItems: 20
+          items:
+            allOf: [{$ref: '#/components/schemas/XmlSafeText'}]
+            minLength: 1
+            maxLength: 50
+        template: {type: string, pattern: '^[a-z][a-z0-9-]{0,63}$', default: article}
+        data:
+          type: object
+          additionalProperties: {$ref: '#/components/schemas/JsonValue'}
+          description: >-
+            Runtime additionally enforces depth 8, 100 total object keys and
+            32 KiB canonical JSON; standard JSON Schema cannot express the
+            aggregate byte/key limits exactly.
+          x-mallok-maxDepth: 8
+          x-mallok-maxTotalKeys: 100
+          x-mallok-maxCanonicalUtf8Bytes: 32768
+    PublishedRevisionSummary:
+      type: object
+      additionalProperties: false
+      x-mallok-runtimeConstraints:
+        - publicUrl.slug == slug
+      required: [revisionId, revisionNumber, slug, artifactHash, activatedAt, publicUrl]
+      properties:
+        revisionId: {$ref: '#/components/schemas/Uuid'}
+        revisionNumber: {type: integer, minimum: 1}
+        slug: {$ref: '#/components/schemas/Slug'}
+        artifactHash: {$ref: '#/components/schemas/Hash'}
+        contentPublishedAt: {$ref: '#/components/schemas/CanonicalUtcDateTime'}
+        activatedAt: {$ref: '#/components/schemas/CanonicalUtcDateTime'}
+        publicUrl: {$ref: '#/components/schemas/ArticleUrlValue'}
+    LatestRevisionSummary:
+      type: object
+      additionalProperties: false
+      required: [revisionId, revisionNumber, slug, sourceHash, artifactHash, createdAt]
+      properties:
+        revisionId: {$ref: '#/components/schemas/Uuid'}
+        revisionNumber: {type: integer, minimum: 1}
+        slug: {$ref: '#/components/schemas/Slug'}
+        sourceHash: {$ref: '#/components/schemas/Hash'}
+        artifactHash: {$ref: '#/components/schemas/Hash'}
+        createdAt: {$ref: '#/components/schemas/CanonicalUtcDateTime'}
+    DocumentState:
+      type: object
+      additionalProperties: false
+      x-mallok-runtimeConstraints:
+        - etag == strongDocumentEtag(id, version)
+        - published.revisionId, when present, identifies this document current pointer
+        - latestRevision identifies this document highest revisionNumber
+      required: [id, type, version, etag, createdAt, updatedAt, published, latestRevision]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        type: {type: string, const: article}
+        version: {type: integer, minimum: 1}
+        etag: {$ref: '#/components/schemas/DocumentEtagValue'}
+        createdAt: {$ref: '#/components/schemas/CanonicalUtcDateTime'}
+        updatedAt: {$ref: '#/components/schemas/CanonicalUtcDateTime'}
+        published:
+          oneOf:
+            - {$ref: '#/components/schemas/PublishedRevisionSummary'}
+            - type: 'null'
+        latestRevision: {$ref: '#/components/schemas/LatestRevisionSummary'}
+    DocumentListResponse:
+      type: object
+      additionalProperties: false
+      required: [apiVersion, items, page]
+      properties:
+        apiVersion: {type: string, const: v1}
+        items: {type: array, items: {$ref: '#/components/schemas/DocumentState'}}
+        page:
+          type: object
+          additionalProperties: false
+          required: [limit, offset, nextOffset]
+          properties:
+            limit: {type: integer, minimum: 1, maximum: 100}
+            offset: {type: integer, minimum: 0}
+            nextOffset:
+              oneOf: [{type: integer, minimum: 0}, {type: 'null'}]
+    DocumentResponse:
+      type: object
+      additionalProperties: false
+      required: [apiVersion, document]
+      properties:
+        apiVersion: {type: string, const: v1}
+        document: {$ref: '#/components/schemas/DocumentState'}
+    PublishResponse:
+      type: object
+      additionalProperties: false
+      description: >-
+        Runtime requires document.id to equal the path id, both URL slugs to
+        equal revision.slug, and the cache-bust value to equal
+        revision.artifactHash; these cross-field equalities are not expressible
+        in standard OpenAPI Schema.
+      x-mallok-runtimeConstraints:
+        - document.id == path.id
+        - document.etag == strongDocumentEtag(document.id, document.version)
+        - publicUrl.slug == revision.slug
+        - cacheBustedUrl.slug == revision.slug
+        - cacheBustedUrl.__mallok_rev == revision.artifactHash
+      required: [apiVersion, outcome, document, revision, published, publicUrl, cacheBustedUrl]
+      properties:
+        apiVersion: {type: string, const: v1}
+        outcome: {type: string, enum: [created, updated, republished, unchanged]}
+        document:
+          type: object
+          additionalProperties: false
+          required: [id, version, etag]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            version: {type: integer, minimum: 1}
+            etag: {$ref: '#/components/schemas/DocumentEtagValue'}
+        revision:
+          type: object
+          additionalProperties: false
+          required: [id, number, slug, sourceHash, artifactHash, compilerVersion, schemaVersion, compileProfileId]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            number: {type: integer, minimum: 1}
+            slug: {$ref: '#/components/schemas/Slug'}
+            sourceHash: {$ref: '#/components/schemas/Hash'}
+            artifactHash: {$ref: '#/components/schemas/Hash'}
+            compilerVersion: {type: string, const: '1'}
+            schemaVersion: {type: string, const: '1'}
+            compileProfileId: {type: string, const: mallok-default-v1}
+        published: {type: boolean, const: true}
+        publicUrl: {$ref: '#/components/schemas/ArticleUrlValue'}
+        cacheBustedUrl: {$ref: '#/components/schemas/CacheBustedArticleUrlValue'}
+    PublishCreatedResponse:
+      allOf:
+        - {$ref: '#/components/schemas/PublishResponse'}
+        - type: object
+          properties:
+            outcome: {type: string, const: created}
+    PublishExistingResponse:
+      allOf:
+        - {$ref: '#/components/schemas/PublishResponse'}
+        - type: object
+          properties:
+            outcome: {type: string, enum: [updated, republished, unchanged]}
+    UnpublishResponse:
+      type: object
+      additionalProperties: false
+      description: >-
+        Runtime requires document.id to equal the path id and document.etag to
+        equal strongDocumentEtag(document.id, document.version). These
+        cross-field equalities are not expressible in standard OpenAPI Schema.
+      x-mallok-runtimeConstraints:
+        - document.id == path.id
+        - document.etag == strongDocumentEtag(document.id, document.version)
+      required: [apiVersion, outcome, document, published]
+      properties:
+        apiVersion: {type: string, const: v1}
+        outcome: {type: string, enum: [unpublished, unchanged]}
+        document:
+          type: object
+          additionalProperties: false
+          required: [id, version, etag]
+          properties:
+            id: {$ref: '#/components/schemas/Uuid'}
+            version: {type: integer, minimum: 1}
+            etag: {$ref: '#/components/schemas/DocumentEtagValue'}
+        published: {type: boolean, const: false}
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [apiVersion, status, versions]
+      properties:
+        apiVersion: {type: string, const: v1}
+        status: {type: string, const: ok}
+        versions:
+          type: object
+          additionalProperties: false
+          required: [databaseSchema, artifactFormat, compiler, contentSchema, compileProfile]
+          properties:
+            databaseSchema: {type: integer, const: 1}
+            artifactFormat: {type: integer, const: 1}
+            compiler: {type: string, const: '1'}
+            contentSchema: {type: string, const: '1'}
+            compileProfile: {type: string, const: mallok-default-v1}
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      x-mallok-runtimeConstraints:
+        - error.requestId == response.headers.X-Request-Id
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, requestId]
+          properties:
+            code: {type: string, pattern: '^[A-Z][A-Z0-9_]+$'}
+            message: {type: string, minLength: 1, maxLength: 500}
+            hint: {type: string, minLength: 1, maxLength: 500}
+            requestId: {$ref: '#/components/schemas/RequestIdValue'}
+            details: {type: object, additionalProperties: true}

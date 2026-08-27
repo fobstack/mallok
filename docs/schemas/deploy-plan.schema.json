@@ -1,0 +1,362 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mallok.dev/schemas/deploy-plan-v1.json",
+  "title": "Mallok provision/deploy plan v1",
+  "x-mallok-runtimeConstraints": {
+    "actionOrder": "actions[*].order values must be unique and actions must be serialized in strictly ascending order. JSON Schema cannot compare adjacent array-item properties.",
+    "hasRemoteWrites": "hasRemoteWrites must equal actions.some(action => action.remoteWrite); the standard-schema conditional below enforces this invariant and the runtime validator must assert it again after parsing.",
+    "hasLocalWrites": "hasLocalWrites must equal actions.some(action => action.localWrite); only localState/persist may set localWrite=true.",
+    "estimatedRemoteMutations": "estimatedRemoteMutations must equal the number of actions whose remoteWrite is true; every action represents at most one discrete remote mutation.",
+    "accountIdentity": "For a verified account, idDigestPrefix is the first 12 lowercase hex characters of SHA-256 over the exact raw account id bytes. Unknown accounts must omit idDigestPrefix.",
+    "recoveryStrategy": "The strategy must match the command kind and action set according to T-011: a read-only no-op plan uses none; a provision plan that writes/reconstructs local state uses local-state; a deploy plan with remote mutations and all migration/recover/repair/rollback plans use d1-fence; T-013 cleanup uses staging-ownership.",
+    "requiredResourceCoverage": "The standard-schema conditionals require the minimum resource types for every plan kind. A runtime validator must additionally reject duplicate semantic actions for one logical resource and prove that every planned provider or local-state call has exactly one action.",
+    "actionSemantics": "The standard-schema conditionals below enforce the closed kind/resource/action matrix. inspect/reuse/verify/blocked are read-only; create/acquire/transition/resolve/apply/uploadVersion/activateVersion/delete are remote mutations; only localState/persist is a local write. Worker upload and activation are always separate actions; no monolithic deploy action exists. Every remote mutation requires confirmation and every remotely mutating plan contains at least one durable localState/persist recovery checkpoint. delete is cleanup-only.",
+    "dependencyOrder": "After sorting by the already-required unique ascending order, runtime enforces: account inspection/verification precedes provider-resource reads; provider identity/ownership reads precede create/adopt/delete; candidate/assets verification precedes deployment-fence acquire; the pre-external evidence persist checkpoint precedes the fence transition to external; migration precedes version upload; version upload precedes exact-version activation; activation precedes health; successful health precedes the final local state persist; final persist precedes fence resolve. Provision adopt/create must place localState/persist after account and D1 verification/create. Cleanup must persist ownership/request evidence before every delete and terminal result before the next delete. Blocked actions terminate the executable suffix. T-011 runtime tests reject every adjacent inversion."
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "kind", "environment", "target", "account", "estimatedRemoteMutations", "recoveryStrategy", "actions", "hasRemoteWrites", "hasLocalWrites"],
+  "properties": {
+    "schemaVersion": {"const": "1"},
+    "kind": {"enum": ["provision", "deploy", "migration", "recover", "rollback", "repair", "cleanup"]},
+    "environment": {"type": "string", "pattern": "^[a-z][a-z0-9-]{0,31}$"},
+    "target": {"const": "cloudflare"},
+    "account": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["displayName", "verification"],
+      "properties": {
+        "displayName": {"type": "string", "minLength": 1, "maxLength": 128},
+        "verification": {"enum": ["verified", "unknown"]},
+        "idDigestPrefix": {"type": "string", "pattern": "^[0-9a-f]{12}$"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"verification": {"const": "verified"}}, "required": ["verification"]},
+          "then": {"required": ["idDigestPrefix"]},
+          "else": {"not": {"required": ["idDigestPrefix"]}}
+        }
+      ]
+    },
+    "estimatedRemoteMutations": {"type": "integer", "minimum": 0, "maximum": 100},
+    "recoveryStrategy": {"enum": ["none", "local-state", "d1-fence", "staging-ownership"]},
+    "hasRemoteWrites": {"type": "boolean"},
+    "hasLocalWrites": {"type": "boolean"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "description": "Actions are emitted in execution order. Runtime additionally requires unique order values and strict ascending order.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "resourceType", "logicalName", "action", "remoteWrite", "localWrite", "reversible", "requiresConfirmation"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "resourceType": {"enum": ["account", "d1", "migration", "deploymentFence", "worker", "assets", "health", "localState"]},
+          "logicalName": {"type": "string", "minLength": 1, "maxLength": 128},
+          "action": {"enum": ["inspect", "create", "reuse", "acquire", "transition", "resolve", "apply", "uploadVersion", "activateVersion", "delete", "persist", "verify", "blocked"]},
+          "remoteWrite": {"type": "boolean"},
+          "localWrite": {"type": "boolean"},
+          "reversible": {"type": "boolean"},
+          "requiresConfirmation": {"type": "boolean"},
+          "reason": {"type": "string", "maxLength": 500}
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "action": {"enum": ["inspect", "reuse", "verify", "blocked"]}
+              },
+              "required": ["action"]
+            },
+            "then": {"properties": {"remoteWrite": {"const": false}, "localWrite": {"const": false}}}
+          },
+          {
+            "if": {
+              "properties": {
+                "action": {"enum": ["create", "acquire", "transition", "resolve", "apply", "uploadVersion", "activateVersion", "delete"]}
+              },
+              "required": ["action"]
+            },
+            "then": {"properties": {"remoteWrite": {"const": true}, "localWrite": {"const": false}}}
+          },
+          {
+            "if": {"properties": {"action": {"const": "persist"}}, "required": ["action"]},
+            "then": {"properties": {"remoteWrite": {"const": false}, "localWrite": {"const": true}}}
+          },
+          {
+            "if": {"properties": {"remoteWrite": {"const": true}}, "required": ["remoteWrite"]},
+            "then": {"properties": {"requiresConfirmation": {"const": true}}}
+          },
+          {
+            "oneOf": [
+              {"properties": {"resourceType": {"const": "account"}, "action": {"enum": ["inspect", "verify", "blocked"]}}, "required": ["resourceType", "action"]},
+              {"properties": {"resourceType": {"const": "d1"}, "action": {"enum": ["inspect", "create", "reuse", "delete", "verify", "blocked"]}}, "required": ["resourceType", "action"]},
+              {"properties": {"resourceType": {"const": "migration"}, "action": {"enum": ["inspect", "reuse", "apply", "verify", "blocked"]}}, "required": ["resourceType", "action"]},
+              {"properties": {"resourceType": {"const": "deploymentFence"}, "action": {"enum": ["inspect", "reuse", "acquire", "transition", "resolve", "verify", "blocked"]}}, "required": ["resourceType", "action"]},
+              {"properties": {"resourceType": {"const": "worker"}, "action": {"enum": ["inspect", "reuse", "uploadVersion", "activateVersion", "delete", "verify", "blocked"]}}, "required": ["resourceType", "action"]},
+              {"properties": {"resourceType": {"const": "assets"}, "action": {"enum": ["inspect", "reuse", "verify", "blocked"]}}, "required": ["resourceType", "action"]},
+              {"properties": {"resourceType": {"const": "health"}, "action": {"enum": ["inspect", "verify", "blocked"]}}, "required": ["resourceType", "action"]},
+              {"properties": {"resourceType": {"const": "localState"}, "action": {"enum": ["inspect", "reuse", "persist", "verify", "blocked"]}}, "required": ["resourceType", "action"]}
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "contains": {
+              "type": "object",
+              "required": ["remoteWrite"],
+              "properties": {"remoteWrite": {"const": true}}
+            }
+          }
+        }
+      },
+      "then": {"properties": {"hasRemoteWrites": {"const": true}}},
+      "else": {"properties": {"hasRemoteWrites": {"const": false}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "actions": {
+            "contains": {
+              "type": "object",
+              "required": ["localWrite"],
+              "properties": {"localWrite": {"const": true}}
+            }
+          }
+        }
+      },
+      "then": {"properties": {"hasLocalWrites": {"const": true}}},
+      "else": {"properties": {"hasLocalWrites": {"const": false}}}
+    },
+    {
+      "if": {"properties": {"kind": {"const": "provision"}}, "required": ["kind"]},
+      "then": {
+        "properties": {
+          "recoveryStrategy": {"enum": ["none", "local-state"]},
+          "actions": {
+            "allOf": [
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "account"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "d1"}}, "required": ["resourceType"]}}
+            ],
+            "items": {"properties": {"action": {"enum": ["inspect", "create", "reuse", "persist", "verify", "blocked"]}}}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"hasRemoteWrites": {"const": true}},
+        "required": ["hasRemoteWrites"]
+      },
+      "then": {
+        "properties": {
+          "hasLocalWrites": {"const": true},
+          "actions": {
+            "contains": {
+              "type": "object",
+              "properties": {"resourceType": {"const": "localState"}, "action": {"const": "persist"}, "localWrite": {"const": true}},
+              "required": ["resourceType", "action", "localWrite"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {"const": "provision"},
+          "hasRemoteWrites": {"const": false},
+          "hasLocalWrites": {"const": false}
+        },
+        "required": ["kind", "hasRemoteWrites", "hasLocalWrites"]
+      },
+      "then": {"properties": {"recoveryStrategy": {"const": "none"}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {"const": "provision"},
+          "hasLocalWrites": {"const": true}
+        },
+        "required": ["kind", "hasLocalWrites"]
+      },
+      "then": {"properties": {"recoveryStrategy": {"const": "local-state"}}}
+    },
+    {
+      "if": {
+        "properties": {"kind": {"const": "provision"}, "hasRemoteWrites": {"const": true}},
+        "required": ["kind", "hasRemoteWrites"]
+      },
+      "then": {
+        "properties": {
+          "hasLocalWrites": {"const": true},
+          "actions": {
+            "contains": {
+              "type": "object",
+              "properties": {"resourceType": {"const": "localState"}, "action": {"const": "persist"}},
+              "required": ["resourceType", "action"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"kind": {"enum": ["deploy"]}}, "required": ["kind"]},
+      "then": {
+        "properties": {
+          "recoveryStrategy": {"enum": ["none", "d1-fence"]},
+          "actions": {
+            "allOf": [
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "account"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "d1"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "migration"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "deploymentFence"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "worker"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "assets"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "health"}}, "required": ["resourceType"]}}
+            ],
+            "items": {"properties": {"action": {"enum": ["inspect", "reuse", "acquire", "transition", "resolve", "apply", "uploadVersion", "activateVersion", "persist", "verify", "blocked"]}}}
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "kind": {"const": "deploy"},
+          "hasRemoteWrites": {"const": false},
+          "hasLocalWrites": {"const": false}
+        },
+        "required": ["kind", "hasRemoteWrites", "hasLocalWrites"]
+      },
+      "then": {"properties": {"recoveryStrategy": {"const": "none"}}}
+    },
+    {
+      "if": {
+        "properties": {"kind": {"const": "deploy"}, "hasRemoteWrites": {"const": true}},
+        "required": ["kind", "hasRemoteWrites"]
+      },
+      "then": {"properties": {"recoveryStrategy": {"const": "d1-fence"}}}
+    },
+    {
+      "if": {
+        "properties": {"kind": {"enum": ["deploy", "repair"]}, "hasRemoteWrites": {"const": true}},
+        "required": ["kind", "hasRemoteWrites"]
+      },
+      "then": {
+        "properties": {
+          "actions": {
+            "allOf": [
+              {
+                "contains": {
+                  "type": "object",
+                  "properties": {"resourceType": {"const": "worker"}, "action": {"const": "uploadVersion"}},
+                  "required": ["resourceType", "action"]
+                }
+              },
+              {
+                "contains": {
+                  "type": "object",
+                  "properties": {"resourceType": {"const": "worker"}, "action": {"const": "activateVersion"}},
+                  "required": ["resourceType", "action"]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"kind": {"const": "rollback"}, "hasRemoteWrites": {"const": true}},
+        "required": ["kind", "hasRemoteWrites"]
+      },
+      "then": {
+        "properties": {
+          "actions": {
+            "contains": {
+              "type": "object",
+              "properties": {"resourceType": {"const": "worker"}, "action": {"const": "activateVersion"}},
+              "required": ["resourceType", "action"]
+            },
+            "not": {
+              "contains": {
+                "type": "object",
+                "properties": {"resourceType": {"const": "worker"}, "action": {"const": "uploadVersion"}},
+                "required": ["resourceType", "action"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"kind": {"const": "deploy"}, "hasRemoteWrites": {"const": false}, "hasLocalWrites": {"const": true}},
+        "required": ["kind", "hasRemoteWrites", "hasLocalWrites"]
+      },
+      "then": false
+    },
+    {
+      "if": {"properties": {"kind": {"const": "migration"}}, "required": ["kind"]},
+      "then": {
+        "properties": {
+          "recoveryStrategy": {"const": "d1-fence"},
+          "actions": {
+            "allOf": [
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "account"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "d1"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "migration"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "deploymentFence"}}, "required": ["resourceType"]}}
+            ],
+            "items": {"properties": {"action": {"enum": ["inspect", "reuse", "acquire", "transition", "resolve", "apply", "persist", "verify", "blocked"]}}}
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"kind": {"enum": ["recover", "repair", "rollback"]}}, "required": ["kind"]},
+      "then": {
+        "properties": {
+          "recoveryStrategy": {"const": "d1-fence"},
+          "actions": {
+            "allOf": [
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "account"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "d1"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "deploymentFence"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "worker"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "assets"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "health"}}, "required": ["resourceType"]}}
+            ],
+            "items": {"properties": {"action": {"enum": ["inspect", "reuse", "acquire", "transition", "resolve", "apply", "uploadVersion", "activateVersion", "persist", "verify", "blocked"]}}}
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"kind": {"const": "cleanup"}}, "required": ["kind"]},
+      "then": {
+        "properties": {
+          "recoveryStrategy": {"const": "staging-ownership"},
+          "actions": {
+            "allOf": [
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "account"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "d1"}}, "required": ["resourceType"]}},
+              {"contains": {"type": "object", "properties": {"resourceType": {"const": "worker"}}, "required": ["resourceType"]}}
+            ],
+            "items": {"properties": {"action": {"enum": ["inspect", "reuse", "delete", "persist", "verify", "blocked"]}}}
+          }
+        }
+      }
+    }
+  ]
+}

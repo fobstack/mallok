@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mallok.dev/schemas/deployment-state-v1.json",
+  "title": "Mallok local deployment state v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "projectId", "environments"],
+  "properties": {
+    "schemaVersion": {"const": "1"},
+    "projectId": {"$ref": "#/$defs/uuid"},
+    "environments": {
+      "type": "object",
+      "propertyNames": {"pattern": "^[a-z][a-z0-9-]{0,31}$"},
+      "additionalProperties": {"$ref": "#/$defs/environment"}
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "accountId", "workerName", "databaseName", "databaseId", "observedAt"],
+      "dependentRequired": {
+        "previousDeployment": ["currentDeployment"]
+      },
+      "x-mallok-runtimeConstraints": {
+        "deploymentEvidenceDistinct": "When currentDeployment and previousDeployment are both present, workerVersionId and deploymentId must differ and the two full evidence objects must not be identical. assetManifestHash/manifestPath may legitimately be equal when Worker code changes without asset changes. JSON Schema cannot compare sibling property values.",
+        "evidencePathsMatchHashes": "Each manifestPath basename hash must equal assetManifestHash, each inventoryPath basename hash must equal candidateInventoryHash, and each snapshotPath trailing hash must equal candidateInputHash.",
+        "versionAnnotations": "For each evidence object, compute deploymentFingerprint as SHA-256 of canonical JSON {assetManifestHash,candidateInputHash,candidateInventoryHash,workerBundleHash}; versionTag must equal `mallok-` plus the first 24 lowercase hex characters. Reconstruct the exact version and deployment messages from the version/activation operation and attempt IDs according to CLOUDFLARE.md. The short tag is never sufficient evidence on its own.",
+        "activationIdentity": "For activationKind deploy, versionOperationId and activationOperationId both equal the D1 lockId for that deployment, while versionAttemptId and activationAttemptId must be distinct logical UUID v4 values. For activationKind rollback, the version operation/attempt pair identifies the original version-upload lock and attempt, the activation operation/attempt pair identifies the later rollback lock and activation attempt, and the two pairs must not be identical. Upload/observation journal records use lockId=versionOperationId; activation records use lockId=activationOperationId."
+      },
+      "properties": {
+        "provider": {"const": "cloudflare"},
+        "accountId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "workerName": {"type": "string", "minLength": 1, "maxLength": 63, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "databaseName": {"type": "string", "minLength": 1, "maxLength": 63, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+        "databaseId": {"type": "string", "minLength": 1, "maxLength": 128},
+        "lastObservedMigration": {"type": "string", "pattern": "^[0-9]{4}_[a-z0-9-]+\\.sql$"},
+        "currentDeployment": {"$ref": "#/$defs/deploymentEvidence"},
+        "previousDeployment": {"$ref": "#/$defs/deploymentEvidence"},
+        "observedAt": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"}
+      }
+    },
+    "deploymentEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workerVersionId", "deploymentId", "versionOperationId", "versionAttemptId", "activationOperationId", "activationAttemptId", "activationKind", "candidateInputHash", "workerBundleHash", "snapshotPath", "assetManifestHash", "manifestPath", "candidateInventoryHash", "inventoryPath", "versionTag", "observedAt"],
+      "x-mallok-runtimeConstraints": {
+        "snapshotPathCandidateInputHash": "snapshotPath must equal `.mallok/candidates/${candidateInputHash}` exactly.",
+        "manifestPathAssetManifestHash": "manifestPath must equal `.mallok/deployments/${assetManifestHash}.asset-manifest.json` exactly.",
+        "inventoryPathCandidateInventoryHash": "inventoryPath must equal `.mallok/deployments/${candidateInventoryHash}.candidate-inventory.json` exactly."
+      },
+      "properties": {
+        "workerVersionId": {"$ref": "#/$defs/providerUuid"},
+        "deploymentId": {"$ref": "#/$defs/providerUuid"},
+        "versionOperationId": {"$ref": "#/$defs/uuid"},
+        "versionAttemptId": {"$ref": "#/$defs/uuid"},
+        "activationOperationId": {"$ref": "#/$defs/uuid"},
+        "activationAttemptId": {"$ref": "#/$defs/uuid"},
+        "activationKind": {"enum": ["deploy", "rollback"]},
+        "candidateInputHash": {"$ref": "#/$defs/hash"},
+        "workerBundleHash": {"$ref": "#/$defs/hash"},
+        "snapshotPath": {"type": "string", "pattern": "^\\.mallok/candidates/[0-9a-f]{64}$"},
+        "assetManifestHash": {"$ref": "#/$defs/hash"},
+        "manifestPath": {"type": "string", "pattern": "^\\.mallok/deployments/[0-9a-f]{64}\\.asset-manifest\\.json$"},
+        "candidateInventoryHash": {"$ref": "#/$defs/hash"},
+        "inventoryPath": {"type": "string", "pattern": "^\\.mallok/deployments/[0-9a-f]{64}\\.candidate-inventory\\.json$"},
+        "versionTag": {"type": "string", "pattern": "^mallok-[0-9a-f]{24}$", "maxLength": 32},
+        "observedAt": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"}
+      }
+    },
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "providerUuid": {
+      "type": "string",
+      "description": "Canonical lowercase UUID returned by the Cloudflare Worker versions/deployments APIs. The provider currently documents these identifiers with OpenAPI format uuid; Mallok does not assume UUID v4 bits.",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    }
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mallok.dev/schemas/build-manifest-v1.json",
+  "title": "Mallok build manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "target", "mallokVersion", "inputHash", "files", "assets"],
+  "properties": {
+    "schemaVersion": {"const": "1"},
+    "target": {"enum": ["static", "cloudflare"]},
+    "asOf": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"},
+    "mallokVersion": {"type": "string", "minLength": 1},
+    "inputHash": {"$ref": "#/$defs/hash"},
+    "files": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "All public-addressable managed output files except internal manifests, Worker bundles and the Cloudflare _headers control file. Runtime requires unique url and outputPath values and canonical url ordering.",
+      "x-mallok-uniqueBy": ["url", "outputPath"],
+      "x-mallok-orderBy": "url:unicode-code-unit-ascending",
+      "items": {"$ref": "#/$defs/file"}
+    },
+    "assets": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "description": "The public/theme projection of files with MIME and source metadata. Runtime requires a one-to-one match on url, outputPath, sha256, bytes and kind/source, unique url values and canonical url ordering.",
+      "x-mallok-projectionOf": "files[kind in public,theme]",
+      "x-mallok-uniqueBy": "url",
+      "x-mallok-orderBy": "url:unicode-code-unit-ascending",
+      "x-mallok-maxTotalBytes": 209715200,
+      "items": {"$ref": "#/$defs/asset"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"target": {"const": "static"}}, "required": ["target"]},
+      "then": {"required": ["asOf"]},
+      "else": {"not": {"required": ["asOf"]}}
+    },
+    {
+      "if": {"properties": {"target": {"const": "cloudflare"}}, "required": ["target"]},
+      "then": {
+        "properties": {
+          "files": {
+            "items": {
+              "allOf": [
+                {"$ref": "#/$defs/file"},
+                {"properties": {"kind": {"enum": ["public", "theme"]}}}
+              ]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "urlPath": {
+      "type": "string",
+      "pattern": "^(?!/(?:_[Hh][Ee][Aa][Dd][Ee][Rr][Ss])$)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*(?:^|/)(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.[^/]*)?(?:/|$))(?!.*[?#%:])(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f])/[^/]+(?:/[^/]+)*$",
+      "description": "Runtime additionally requires NFC, at most 32 non-empty segments, 1,024 UTF-8 bytes total and 255 UTF-8 bytes per segment.",
+      "x-mallok-normalization": "NFC",
+      "x-mallok-maxSegments": 32,
+      "x-mallok-maxUtf8Bytes": 1024,
+      "x-mallok-maxSegmentUtf8Bytes": 255
+    },
+    "outputPath": {
+      "type": "string",
+      "pattern": "^(?!(?:_[Hh][Ee][Aa][Dd][Ee][Rr][Ss])$)(?![A-Za-z]:)(?!.*//)(?!.*(?:^|/)(?:\\.{1,2}|[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.[^/]*)?(?:/|$))(?!.*[?#%:])(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f])[^/]+(?:/[^/]+)*$",
+      "description": "Runtime additionally requires NFC, at most 32 non-empty segments, 1,024 UTF-8 bytes total and 255 UTF-8 bytes per segment.",
+      "x-mallok-normalization": "NFC",
+      "x-mallok-maxSegments": 32,
+      "x-mallok-maxUtf8Bytes": 1024,
+      "x-mallok-maxSegmentUtf8Bytes": 255
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "outputPath", "sha256", "bytes", "kind"],
+      "properties": {
+        "url": {"$ref": "#/$defs/urlPath"},
+        "outputPath": {"$ref": "#/$defs/outputPath"},
+        "sha256": {"$ref": "#/$defs/hash"},
+        "bytes": {"type": "integer", "minimum": 0},
+        "kind": {"enum": ["generated", "public", "theme"]}
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "outputPath", "sha256", "bytes", "kind", "contentType", "source"],
+      "properties": {
+        "url": {"$ref": "#/$defs/urlPath"},
+        "outputPath": {"$ref": "#/$defs/outputPath"},
+        "sha256": {"$ref": "#/$defs/hash"},
+        "bytes": {"type": "integer", "minimum": 0, "maximum": 20971520},
+        "kind": {"enum": ["public", "theme"]},
+        "contentType": {"type": "string", "minLength": 1, "maxLength": 200},
+        "source": {"enum": ["public", "theme"]}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {"const": "public"},
+            "source": {"const": "public"}
+          }
+        },
+        {
+          "properties": {
+            "kind": {"const": "theme"},
+            "source": {"const": "theme"}
+          }
+        }
+      ]
+    }
+  }
+}

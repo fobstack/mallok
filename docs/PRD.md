@@ -1,8 +1,8 @@
 # Mallok 产品需求文档
 
-- 状态：MVP 基线草案
+- 状态：Approved MVP scope baseline
 - 版本：0.1.0
-- 日期：2026-08-26
+- 日期：2026-08-27
 - 产品域名：`mallok.dev`
 
 ## 1. 产品定义
@@ -71,8 +71,8 @@ Mallok 要把这些边界变成明确、可测试的产品契约。
 MVP 中 Markdown/Git 是作者源，D1 是线上发布投影，不是第二个可以随意编辑的主库：
 
 - `mallok publish` 读取本地 Markdown、执行同一套校验和编译，再创建不可变 revision；
-- D1 保存源 Markdown、已清洗的编译结果、内容 hash、compiler version 和当前发布指针；
-- 相同 artifact hash 重复发布是幂等操作；artifact hash 覆盖规范化源、frontmatter、compiler/schema version 和影响输出的编译选项；
+- D1 保存源 Markdown、已清洗的编译结果、内容 hash、compiler version、该 revision 的站内 asset URL 引用和当前发布指针；
+- 当前已经发布相同 artifact 时重复发布是 no-op；unpublish 后重新发布同一 artifact 必须恢复 pointer 并增加 document version，不能误判成 no-op；artifact hash 覆盖规范化源、frontmatter、compiler/schema/sanitizer version 和影响输出的编译选项；
 - 更新创建新 revision，不原地覆盖历史；
 - 同一 id 修改 slug 是同一文档的新 revision；MVP 中旧 slug 变为 404，不自动创建 redirect；
 - 下线必须执行显式 `mallok unpublish`，删除本地文件不会自动删除线上内容；
@@ -86,7 +86,7 @@ MVP 中 Markdown/Git 是作者源，D1 是线上发布投影，不是第二个�
 
 ### 5.3 安全优先于模板自由度
 
-内容值默认转义；Markdown 原始 HTML默认关闭；只有经过可信清洗的 HTML 才能进入原始输出通道。
+内容值默认转义；MVP 固定移除 Markdown 原始 HTML，不提供开启选项；只有经过可信清洗的 HTML 才能进入原始输出通道。
 
 ### 5.4 CLI 是第一产品界面
 
@@ -102,7 +102,7 @@ GUI 复用 CLI 和内容 API 的能力，不拥有独立业务逻辑。内核、
 - 从目录加载 Markdown 与 YAML frontmatter。
 - 统一并校验文章模型。
 - 支持草稿、发布日期、slug、标签、摘要和主题模板名。
-- GFM Markdown 渲染；原始 HTML 默认关闭；输出清洗。
+- GFM Markdown 渲染；原始 HTML 固定移除；输出清洗。
 - 可替换的 Theme API 和一个官方基础主题。
 - 生成首页、文章页、404、RSS、sitemap 和静态资源。
 - `mallok dev`、`build`、`preview`、`doctor`。
@@ -112,10 +112,13 @@ GUI 复用 CLI 和内容 API 的能力，不拥有独立业务逻辑。内核、
 - 带 Bearer token、revision 和乐观锁的最小发布 API。
 - `mallok publish` 和 `mallok unpublish` 安全更新动态站。
 - Cloudflare 模式的首页、RSS 和 sitemap 从同一 D1 发布投影动态生成。
-- `mallok deploy` 在本地验证后调用项目内 Wrangler；默认 dry-run 确认，实际部署需显式确认参数。
+- `mallok deploy` 在本地验证后调用项目内 Wrangler；先显示计划，实际部署需 TTY 确认或非交互 `--yes`，`--dry-run` 保证无远端写入。MVP 不允许 `CI=1` 执行 Cloudflare 基础设施写入，因为恢复所需本地 evidence 尚无 durable store；CI 仍可运行 plan/dry-run/local E2E。
 - 单元、集成和至少一条端到端构建测试。
 - 不把任何密钥或云资源 ID 写入可提交的模板文件。
 - 动态发布阶段只接受绝对 HTTPS 图片 URL或已随站点部署的 `/assets/` 路径；引用新的本地二进制图片时必须阻止 publish 并提示先部署资源。R2 上传属于 P1。
+- Cloudflare target 对单篇 source、编译 HTML、D1 revision row 和全库 revision payload 设独立硬预算，以满足 D1 单行与 Free 数据库容量边界；static target 仍保留较大的本地文件上限。MVP 不自动删除历史 revision，预算耗尽时必须明确阻止发布，而不是写入半条数据。
+- Cloudflare 首页/RSS 使用 metadata-only summary query，禁止为集合页面读取正文；单批 summary 设 2 MiB aggregate 门，避免合法内容组合突破 Worker isolate 内存。
+- deploy 在 migration/Worker 发布前验证候选 asset manifest 覆盖全部 current D1 revision 的站内 asset URL；删除仍被引用 URL 必须阻断。同 URL bytes 可随部署变化，因为 MVP 尚未采用内容寻址资源。
 
 ### 6.2 P1：MVP 后
 
@@ -141,27 +144,27 @@ GUI 复用 CLI 和内容 API 的能力，不拥有独立业务逻辑。内核、
 
 ### FR-001 项目初始化
 
-`mallok init <dir>` 必须生成可立即构建的项目，包含配置、示例文章、基础主题、公开资源和必要脚本。目标目录非空时默认拒绝覆盖。
+`mallok init <dir>` 必须生成可立即构建的项目，包含配置、示例文章、基础主题、公开资源和必要脚本。目标目录非空时拒绝覆盖；MVP 不提供危险的 `--force`。
 
 ### FR-002 配置加载
 
-MVP 使用 `mallok.config.mjs`。配置必须支持站点元数据、内容目录、主题入口、输出目录和目标运行模式。未知字段应给出警告，非法字段应阻止构建。
+MVP 使用 `mallok.config.mjs`。配置必须支持项目身份、站点元数据、内容目录、主题入口、输出目录和目标运行模式。未知字段与非法字段都应阻止构建，避免拼写错误被静默忽略。
 
 ### FR-003 Markdown 内容加载
 
-系统递归加载内容目录中的 `.md` 文件，解析 frontmatter，并规范化为 `ContentEntry`。每篇文章必须有由 `mallok new` 或 starter 生成的不可变 UUID `id`；slug 可以变化但不代表身份。重复 id、重复 slug、越界路径、非法日期和缺失标题必须报告具体文件。文件 mtime 不得成为内容字段或构建输入。
+系统递归加载内容目录中的 `.md` 文件，解析 frontmatter，并规范化为 `ContentEntry`。每篇文章必须有由 `mallok new` 或 starter 生成的不可变、lowercase canonical RFC 9562 UUID v4 `id`；slug 可以变化但不代表身份。重复 id、重复 slug、越界路径、非法日期和缺失标题必须报告具体文件。文件 mtime 不得成为内容字段或构建输入。
 
 ### FR-004 发布过滤
 
-生产构建默认排除 `draft: true` 或发布时间晚于显式构建时钟 `asOf` 的文章。CLI 默认在构建开始时固定一次 `asOf`，测试使用固定值；开发模式可以显式包含草稿。
+生产 build 固定排除 `draft: true` 或发布时间晚于显式构建时钟 `asOf` 的文章，不提供把草稿写进正式 output 的开关。CLI 默认在构建开始时固定一次 `asOf`，测试使用固定值；只有 loopback 开发服务器可以用 `--include-drafts` 显式预览全部 draft（不受其 `publishedAt` 限制），非 draft 的 future 内容仍按 `asOf` 排除。该模式只形成内存响应，不写 output/manifest。
 
 ### FR-005 路由
 
-默认文章路径为 `/articles/<slug>/`。MVP slug 固定为单个小写 ASCII kebab-case URL 段，不允许 `..`、斜杠、空段、百分号、Windows 保留设备名或编码后的路径穿越。完整路由只能由 route planner 生成，不能把 slug 直接拼接为文件系统路径。
+默认文章路径为 `/articles/<slug>/`。MVP slug 固定为单个小写 ASCII kebab-case URL 段，不允许 `..`、斜杠、空段、百分号、Windows 保留设备名或编码后的路径穿越。完整路由只能由 route planner 生成，不能把 slug 直接拼接为文件系统路径。MVP 首页只展示最新 20 篇，不提供分页或 tag archive 路由。
 
 ### FR-006 Markdown 渲染
 
-支持 CommonMark 与 GFM 常用语法。原始 HTML 默认作为文本处理或移除。链接协议只允许安全列表，外部链接策略由主题决定。
+支持 CommonMark 与 GFM 常用语法。原始 HTML node 固定移除，不进入输出；标签之外原本属于 Markdown text 的文字仍按普通文本处理。链接协议只允许安全列表，外部链接策略由主题决定。MVP 的 Markdown 图片只接受绝对 HTTPS URL，或当前构建/部署资源清单中存在的绝对 `/assets/...` URL；相对本地图片路径必须拒绝，避免静态构建或 D1 发布后出现断图。
 
 ### FR-007 主题
 
@@ -177,11 +180,11 @@ MVP 使用 `mallok.config.mjs`。配置必须支持站点元数据、内容目�
 
 ### FR-010 D1 发布投影
 
-D1 模式保存不可变文章 revision 和当前发布指针。公开查询只返回 `published` 且发布时间有效的文章，所有 SQL 使用绑定参数。更新必须携带预期版本，冲突不得静默覆盖。
+D1 模式保存不可变文章 revision、最多 100 个 canonical 站内 asset 引用和当前发布指针。公开查询只返回 `published` 且发布时间有效的文章，所有 SQL 使用绑定参数。文章详情读取完整已编译 artifact；首页/RSS 只读取 metadata summary，单批最多 100 行且 aggregate TEXT 不超过 2 MiB。更新必须携带预期版本，冲突不得静默覆盖。dynamic publish 的 source Markdown 最大 256 KiB UTF-8、编译 HTML 最大 1 MiB、单 revision payload 最大 1,500,000 bytes；MVP 以 256 MiB revision payload ledger 作为保守应用预算，达到后返回明确容量错误。
 
 ### FR-011 动态渲染
 
-Cloudflare Worker 根据请求从 D1 获取经过 Mallok compiler 生成的 `CompiledEntry`，再使用与静态模式相同的 Theme API 返回完整 HTML；请求路径不重新解析 Markdown。发布服务端必须重新校验和编译源 Markdown，不能信任 CLI 上传的 HTML。首页、`/rss.xml` 和 `/sitemap.xml` 也从同一发布投影生成。不存在和未发布内容返回一致的 404 页面。
+Cloudflare Worker 的文章请求从 D1 获取经过 Mallok compiler 生成的 `PublishedArtifact`，再使用与静态模式相同的 Theme API 返回完整 HTML；请求路径不重新解析 Markdown。发布服务端必须重新校验和编译源 Markdown，不能信任 CLI 上传的 HTML。首页和 `/rss.xml` 从同一投影的 metadata summary 生成，`/sitemap.xml` 使用一次轻量 statement；不存在和未发布内容返回一致的 404 页面。
 
 ### FR-012 内容更新 API
 
@@ -193,7 +196,7 @@ Cloudflare Worker 根据请求从 D1 获取经过 Mallok compiler 生成的 `Com
 
 ### FR-014 部署
 
-`mallok provision` 负责规划和创建 D1 等云资源；`mallok deploy` 只迁移已绑定资源并发布 Worker/静态资源。两者都先执行 doctor 和计划；不可逆或计费动作必须展示目标并要求显式确认。首次引导可以串联两个命令，但日志和恢复点必须保持分离。
+`mallok provision` 负责规划和创建 D1 等云资源；`mallok deploy` 构建不可变 candidate snapshot、核验 state/binding/current asset closure，只迁移已绑定资源并发布 Worker/静态资源。closure、evidence 与 Wrangler 必须读取同一 snapshot；部署使用 D1 fence 和逐步 journal，先上传不接流量的 Worker version、持久化 exact target UUID，再独立激活，首次部署或 health 失败不能靠 TTL 解锁。两者都先执行 doctor 和计划；不可逆或计费动作必须展示目标并要求显式确认。首次 Worker 可通过项目外 owner-only `--secrets-file` 把管理 secret 传给非激活 version upload，不调用隐式 `secret put`，activation 不再读取该文件。首次引导可以串联两个命令，但日志和恢复点必须保持分离。static target 只生成可托管目录；MVP 不虚构一个不选择托管商也能工作的通用“一键静态部署”。
 
 ### FR-015 诊断
 
@@ -205,8 +208,8 @@ Cloudflare Worker 根据请求从 D1 获取经过 Mallok compiler 生成的 `Com
 
 - 1000 篇普通文章的干净静态构建目标：开发机上不超过 10 秒；该数字是工程目标，不是发布承诺。
 - 默认页面零客户端 JavaScript。
-- Worker 单篇文章渲染不执行无界查询。
-- 动态公开响应携带 revision id/ETag；publish 成功后的 cache-busted 首次读取必须返回新 revision，普通 URL 最迟 60 秒内一致。
+- Worker 单篇文章渲染不执行无界查询；首页/RSS 不读取正文且 metadata result 受 2 MiB aggregate 门约束。
+- 所有动态公开响应携带 ETag，文章响应另携带 revision id；对当前已到可见时间的 publish，cache-busted 首次读取必须返回新 revision，普通 URL 最迟 60 秒内一致。future publish 由管理 GET 验证 pointer/revision，公开 cache-busted URL 在到期前必须保持 404 且不泄露内容。
 
 ### NFR-002 安全
 
@@ -216,29 +219,29 @@ Cloudflare Worker 根据请求从 D1 获取经过 Mallok compiler 生成的 `Com
 
 ### NFR-003 兼容性
 
-- Node.js 22 及以上。
+- 仓库工具链基线为 Node.js `^22.13.0 || >=24.0.0`；core runtime 下限可在生产依赖 engines 允许时保持 `>=22.0.0`，精确矩阵见版本文档。
 - macOS、Linux；Windows 在 MVP 中作为尽力支持，并通过路径单元测试覆盖。
 - Cloudflare Workers 当前 Module Worker 模式。
 
 ### NFR-004 可维护性
 
 - TypeScript strict。
-- 核心模块分支覆盖目标 80%。
+- 核心模块分支覆盖目标 85%。
 - 公共契约使用语义化版本；破坏性变更必须有 ADR 和迁移说明。
 
 ### NFR-005 可访问性
 
 官方基础主题目标达到 WCAG 2.2 AA 的结构、对比度和键盘可用性要求。
 
-## 9. 成功指标
+## 9. 发布门与上线后指标
 
-MVP 发布判断以任务成功率为主，不以 GitHub star 为主：
+MVP release candidate 的工程发布门由下面后四项及对应 AC 决定，不以 GitHub star 为主。第一项是公开 MVP 后 30 天内由产品负责人组织的产品验证 KPI，**不阻断 T-012 release candidate**，也不得拿自动化 CI 时长冒充：
 
-- 新用户从空目录到本地页面的中位时间小于 5 分钟。
-- 新增 Markdown 到构建成功不超过 3 个命令。
-- 官方示例在静态和 D1 两种模式的渲染快照一致。
-- P0 安全回归测试全部通过。
-- 文档中的全新环境演练可以无隐含步骤完成。
+- 新用户从空目录到本地页面的中位时间小于 5 分钟：在不少于 10 名符合 §3.1 画像、此前未使用 Mallok 的参与者中测试；环境预装文档声明的 Node/pnpm，计时从打开 quickstart 与空目录开始，到 loopback 首页首次成功 GET 为止；不得由维护者代操作，另记录 10 分钟内成功率，目标至少 8/10。原始记录需去标识化保存，未达标进入后续产品 backlog，不能反向篡改 RC 验收证据。
+- 新增 Markdown 到构建成功最多 3 次 Mallok CLI 调用：起点是已经 init 且依赖就绪的项目，终点是新文章进入成功 static output；编辑器操作和读取文档不计为 CLI 调用，但安装、shell alias 或隐藏脚本不能替 Mallok 做额外步骤。T-012 fresh-environment harness 记录实际调用序列并由 AC-3-01 验证。
+- 官方示例在静态和 D1 两种模式的渲染快照一致，由 AC-2A-08 的固定 fixture/theme/clock DOM、feed 与 asset URL golden 判定。
+- P0 安全回归测试全部通过，以 AC-3-05 运行的 release SHA 全套 security gates 为证据；“无已知失败”不等于不存在未知漏洞。
+- 文档中的全新环境演练可以无隐含步骤完成，由 AC-3-01 的 tarball-only harness 与命令映射证明。
 
 ## 10. 待产品负责人决定
 

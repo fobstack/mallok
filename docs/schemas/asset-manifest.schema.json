@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mallok.dev/schemas/asset-manifest-v1.json",
+  "title": "Mallok deployed asset manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "assets"],
+  "properties": {
+    "schemaVersion": {"const": "1"},
+    "assets": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "description": "Canonical asset inventory. Runtime rejects duplicate url values and requires Unicode code-unit ascending url order; JSON Schema uniqueItems cannot express unique-by-url when other fields differ.",
+      "x-mallok-uniqueBy": "url",
+      "x-mallok-orderBy": "url:unicode-code-unit-ascending",
+      "x-mallok-maxTotalBytes": 209715200,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "sha256", "bytes", "contentType"],
+        "properties": {
+          "url": {
+            "type": "string",
+            "pattern": "^(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*(?:^|/)(?:[Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(?:\\.[^/]*)?(?:/|$))(?!.*[?#%:])(?!.*\\\\)(?!.*[\\u0000-\\u001f\\u007f])/assets/[^/]+(?:/[^/]+)*$",
+            "description": "Runtime additionally requires NFC, at most 32 non-empty segments, 1,024 UTF-8 bytes total and 255 UTF-8 bytes per segment.",
+            "x-mallok-normalization": "NFC",
+            "x-mallok-maxSegments": 32,
+            "x-mallok-maxUtf8Bytes": 1024,
+            "x-mallok-maxSegmentUtf8Bytes": 255
+          },
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+          "bytes": {"type": "integer", "minimum": 0, "maximum": 20971520},
+          "contentType": {"type": "string", "minLength": 1, "maxLength": 200}
+        }
+      }
+    }
+  }
+}
