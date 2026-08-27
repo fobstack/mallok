@@ -16,13 +16,14 @@
 
 1. `CLAUDE.md`；
 2. `docs/README.md` 与 `docs/DEVELOPMENT.md`；
-3. 当前任务涉及的字段级 reference，例如 `CONTENT_CONFIG.md`、`THEME_API.md`、`CLI.md`、`HTTP_API.md`、`DATABASE.md`、`BUILD.md`、`CLOUDFLARE.md`；
-4. `docs/SECURITY.md` 与当前任务明确引用的 accepted ADR；
-5. `docs/PRD.md`、`docs/ARCHITECTURE.md`；
-6. `docs/ACCEPTANCE.md`、`docs/TRACEABILITY.md`、`docs/IMPLEMENTATION_PLAN.md`；
-7. 当前唯一的 `docs/tasks/T-xxx.md`。
+3. `docs/PRODUCT_VISION.md`；
+4. 当前任务涉及的字段级 reference，例如 `CONTENT_CONFIG.md`、`THEME_API.md`、`CLI.md`、`HTTP_API.md`、`DATABASE.md`、`BUILD.md`、`CLOUDFLARE.md`；
+5. `docs/SECURITY.md` 与当前任务明确引用的 accepted ADR；
+6. `docs/PRD.md`、`docs/ARCHITECTURE.md`；
+7. `docs/ACCEPTANCE.md`、`docs/TRACEABILITY.md`、`docs/IMPLEMENTATION_PLAN.md`；
+8. 当前唯一的 `docs/tasks/T-xxx.md`。
 
-产品契约的权威关系以 `docs/DEVELOPMENT.md` 为准：accepted ADR 只在声明范围内取代旧决策；PRD 管产品范围、字段级 reference 管各自协议，两者冲突即停止；Security 是不可降低的下限；之后才是 Architecture → Acceptance/Traceability → 当前任务 → 现有代码和工具 prompt。`CLAUDE.md` 与本文提供执行边界，不能被任务中的普通实现细节放宽。
+产品契约的权威关系以 `docs/DEVELOPMENT.md` 为准：accepted ADR 只在声明范围内取代旧决策；Product Vision 管长期用户/竞争边界但不扩大当前交付；PRD 管当前产品范围、字段级 reference 管各自协议，两者冲突即停止；Security 是不可降低的下限；之后才是 Architecture → Acceptance/Traceability → 当前任务 → 现有代码和工具 prompt。`CLAUDE.md` 与本文提供执行边界，不能被任务中的普通实现细节放宽。
 
 `.claude/prompts/01-foundation-core.md` 只属于 T-001。执行 T-002 及之后任务时，调用者必须明确写出当前任务路径；不得把旧的 Phase 1A prompt 当成 active prompt。
 

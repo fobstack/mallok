@@ -5,10 +5,11 @@
 ## 推荐阅读顺序
 
 1. [项目状态](STATUS.md)：现在完成了什么、还没做什么、哪些决策未关闭。
-2. [产品需求](PRD.md)：目标用户、范围、功能和非功能要求。
-3. [术语表](GLOSSARY.md)：作者源、发布投影、revision、artifact 等统一含义。
-4. [技术架构](ARCHITECTURE.md)：包边界、数据流、双运行模式和核心约束。
-5. 领域契约：
+2. [产品愿景与竞争边界](PRODUCT_VISION.md)：Mallok 为谁而做、在哪条路径上追求优于通用框架，以及哪些比较尚待验证。
+3. [产品需求](PRD.md)：当前 MVP 目标用户、范围、功能和非功能要求。
+4. [术语表](GLOSSARY.md)：作者源、发布投影、revision、artifact 等统一含义。
+5. [技术架构](ARCHITECTURE.md)：包边界、数据流、双运行模式和核心约束。
+6. 领域契约：
    - [配置与内容契约](CONTENT_CONFIG.md)
    - [主题 API](THEME_API.md)
    - [CLI 契约](CLI.md)
@@ -17,13 +18,13 @@
    - [D1 数据库契约](DATABASE.md)
    - [Cloudflare 与部署](CLOUDFLARE.md)
    - [版本与兼容性](VERSIONING.md)
-6. 工程质量：
+7. 工程质量：
    - [安全模型](SECURITY.md)
    - [测试策略](TESTING.md)
    - [运维与发布](OPERATIONS.md)
    - [本地开发指南](DEVELOPMENT.md)
-7. [实施计划](IMPLEMENTATION_PLAN.md)、[验收标准](ACCEPTANCE.md) 与 [需求追踪矩阵](TRACEABILITY.md)。
-8. [Claude Code 执行手册](CLAUDE_CODE.md) 和 `docs/tasks/` 中当前阶段任务。
+8. [实施计划](IMPLEMENTATION_PLAN.md)、[验收标准](ACCEPTANCE.md) 与 [需求追踪矩阵](TRACEABILITY.md)。
+9. [Claude Code 执行手册](CLAUDE_CODE.md) 和 `docs/tasks/` 中当前阶段任务。
 
 机器可读契约位于：
 
@@ -44,12 +45,13 @@
 不同文档负责不同问题，不允许实现者在冲突时自行挑选有利版本：
 
 1. 新的、状态为 `Accepted` 的 ADR 只在明确写出的范围内取代旧决策；
-2. `PRD.md` 决定产品范围和用户承诺，领域 reference 决定各自字段、接口、状态机和错误行为；两者领域不同，不能互相偷改；
-3. `SECURITY.md` 的安全下限不可由任务或实现降低；
-4. `ARCHITECTURE.md` 解释模块关系和跨领域不变量，不重复发明字段级协议；
-5. `ACCEPTANCE.md` 决定完成证据，但不能暗中新增产品能力；
-6. `IMPLEMENTATION_PLAN.md` 决定开发顺序；
-7. 单个 `docs/tasks/T-*.md` 只能收窄阶段范围，不能推翻以上文档；`.claude/**` 和聊天不属于规范。
+2. `PRODUCT_VISION.md` 决定长期目标用户、竞争边界和比较声明证据门；它不把未实现愿景变成当前能力；
+3. `PRD.md` 决定当前产品范围和用户承诺，领域 reference 决定各自字段、接口、状态机和错误行为；两者领域不同，不能互相偷改；
+4. `SECURITY.md` 的安全下限不可由任务或实现降低；
+5. `ARCHITECTURE.md` 解释模块关系和跨领域不变量，不重复发明字段级协议；
+6. `ACCEPTANCE.md` 决定完成证据，但不能暗中新增产品能力；
+7. `IMPLEMENTATION_PLAN.md` 决定开发顺序；
+8. 单个 `docs/tasks/T-*.md` 只能收窄阶段范围，不能推翻以上文档；`.claude/**` 和聊天不属于规范。
 
 若两份高层文档不可同时满足，应停止实现，先修改文档并新增或更新 ADR。不能靠代码注释、测试快照或编码助手的推断改变公共契约。
 

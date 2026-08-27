@@ -4,6 +4,7 @@
   "title": "Mallok T-012 accepted release evidence v1",
   "x-mallok-runtimeConstraints": {
     "candidateBinding": "candidateSha must equal the clean checked-out Git commit and the filename segment `.mallok/evidence/T-012/${candidateSha}.json`.",
+    "sourceRepositoryControl": "sourceRepository is a human attestation bound to this immutable candidate evidence. sourceRepository.verifiedBy and verifiedAt must equal the top-level reviewedBy and verifiedAt. The finalizer must require an authenticated-owner confirmation for JasonYv/mallok, must not infer control from a local remote or public repository existence, and must verify every release package uses the exact packageRepositoryUrl, homepageUrl and bugsUrl values. No token, cookie, session material or administration screenshot may be stored.",
     "canonicalOrdering": "gateResults are unique and sorted by name, artifactHashes are unique and sorted by path, and both origin arrays are unique and sorted by Unicode code-unit order.",
     "artifactCoverage": "artifactHashes must cover every release tarball plus the exact Cloudflare candidate build manifest, embedded asset manifest and Worker bundle accepted for this candidate. Every path is project-relative, no-follow, resolves within the project, is a regular file and must match its SHA-256 immediately before evidence finalization.",
     "immutableEvidence": "The file is owner-only, written by exclusive create or temp+fsync+rename when absent, and may never replace different bytes at the same candidate path. It must not contain its own exact-bytes digest.",
@@ -18,6 +19,7 @@
     "task",
     "status",
     "candidateSha",
+    "sourceRepository",
     "environment",
     "gateResults",
     "artifactHashes",
@@ -31,6 +33,34 @@
     "task": {"const": "T-012"},
     "status": {"const": "accepted"},
     "candidateSha": {"type": "string", "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"},
+    "sourceRepository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner",
+        "name",
+        "canonicalUrl",
+        "packageRepositoryUrl",
+        "homepageUrl",
+        "bugsUrl",
+        "controlStatus",
+        "verificationMethod",
+        "verifiedAt",
+        "verifiedBy"
+      ],
+      "properties": {
+        "owner": {"const": "JasonYv"},
+        "name": {"const": "mallok"},
+        "canonicalUrl": {"const": "https://github.com/JasonYv/mallok"},
+        "packageRepositoryUrl": {"const": "git+https://github.com/JasonYv/mallok.git"},
+        "homepageUrl": {"const": "https://mallok.dev"},
+        "bugsUrl": {"const": "https://github.com/JasonYv/mallok/issues"},
+        "controlStatus": {"const": "verified"},
+        "verificationMethod": {"const": "authenticated-owner-confirmation"},
+        "verifiedAt": {"$ref": "#/$defs/time"},
+        "verifiedBy": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9._@:-]+$"}
+      }
+    },
     "environment": {
       "type": "object",
       "additionalProperties": false,

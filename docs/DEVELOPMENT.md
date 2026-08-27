@@ -12,12 +12,13 @@
 发生冲突时：
 
 1. accepted ADR 只在明确声明范围内取代旧决策；
-2. `docs/PRD.md` 负责产品范围，各字段级 reference 负责自己的接口/schema/状态机；若两者冲突必须停止，不能按顺序挑一个；
-3. `docs/SECURITY.md` 是不可降低的安全下限；
-4. `docs/ARCHITECTURE.md` 负责模块关系与跨领域不变量；
-5. `docs/ACCEPTANCE.md`、`TRACEABILITY.md` 负责证据；
-6. active `docs/tasks/T-xxx.md` 只可缩小范围，不能改变上层 contract；
-7. 实现代码和工具 prompt。
+2. `docs/PRODUCT_VISION.md` 负责长期目标用户、竞争边界和比较声明证据门，但不能把未来愿景变成当前已交付范围；
+3. `docs/PRD.md` 负责当前产品范围，各字段级 reference 负责自己的接口/schema/状态机；若两者冲突必须停止，不能按顺序挑一个；
+4. `docs/SECURITY.md` 是不可降低的安全下限；
+5. `docs/ARCHITECTURE.md` 负责模块关系与跨领域不变量；
+6. `docs/ACCEPTANCE.md`、`TRACEABILITY.md` 负责证据；
+7. active `docs/tasks/T-xxx.md` 只可缩小范围，不能改变上层 contract；
+8. 实现代码和工具 prompt。
 
 `.claude/**`、聊天、临时 worktree、实现者记忆和未提交文件不是产品契约。发现两份同级 reference 冲突时停止并先修文档/ADR。
 

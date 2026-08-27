@@ -112,9 +112,11 @@ Task：T-011。
 
 Phase 3 的 `AC-3-*` 与 `AC-NFR-*` 全部通过、无 P0/P1 finding 后，才能标记 MVP release candidate。
 
-### Phase 4：Mallok Studio（不属于本计划交付）
+### Phase 4：Mallok Studio（长期核心产品，不属于当前 MVP 交付）
 
-进入条件：Phase 3 accepted、管理 API 稳定、作者真相/浏览器认证/RBAC 有新 PRD 与 ADR。GUI 不得把长期 CLI bearer token 放进浏览器，也不得直接写 D1。
+进入条件：Phase 3 accepted、管理 API 稳定、作者真相/浏览器认证/RBAC/托管有新 PRD 与 ADR。GUI 不得把长期 CLI bearer token 放进浏览器，不得直接写 D1，也不得通过 shell out 到 CLI 复用业务能力。
+
+Phase 4 的产品退出目标不是“有一个后台页面”，而是让无 Node/终端经验的目标用户完成模板选择、站点创建、内容编辑、预览、首次公开发布和错误恢复。真人任务门以 [PRODUCT_VISION.md §5.2](PRODUCT_VISION.md#52-phase-4-non-technical-path) 为基线；自动化 E2E 不能代替可用性证据。
 
 视觉实施前必须先提供三个可比较方向，由产品负责人选择一个；当前文档阶段不设计或编码 GUI。
 
@@ -164,10 +166,10 @@ Phase 1B 增加 static/determinism/cross-runtime；Phase 2 增加 cloudflare-loc
 
 ## 6. 明确延期
 
-- GUI/Studio、账号/RBAC/远程草稿；
+- GUI/Studio、账号/RBAC/远程草稿：延期到 Phase 4，但属于长期北极星，不是可有可无的附加项；
 - R2 上传/媒体库/图片转换；
 - plugin/theme marketplace、在线第三方主题；
 - 多语言、collection、tag archive/pagination；
-- 多云 deploy adapter、静态托管一键发布；
+- 多云 deploy adapter、静态托管一键发布：在明确托管商、授权、失败恢复和费用边界前不得宣传为已支持；
 - analytics、search、commerce、AI 写作；
 - 增量静态再生和自动历史 revision GC。

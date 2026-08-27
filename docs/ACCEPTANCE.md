@@ -120,7 +120,7 @@ pnpm test:cross-runtime
 ## 7. Phase 3
 
 - **AC-3-01**：在无全局 Mallok 的临时目录安装 tarball，按 README 完成 init/new/build/preview。
-- **AC-3-02**：packlist、ESM/type consumer、license、prod audit、secret/history scan 通过。
+- **AC-3-02**：packlist、ESM/type consumer、license、prod audit、secret/history scan 通过；package repository/homepage/bugs 与 `JasonYv/mallok` canonical metadata 精确一致，accepted release evidence 含不泄露凭据的人工仓库控制权核验记录。
 - **AC-3-03**：migration/upgrade/rollback/troubleshooting/known limitations 文档可按步骤执行，无隐含 prompt。
 - **AC-3-04**：性能/a11y/OS/Node matrix 按 TESTING 固定环境记录，不用单次最好值。
 - **AC-3-05**：全套 `pnpm verify` 对 release SHA 通过，无 P0/P1 finding。
@@ -137,7 +137,7 @@ pnpm test:cross-runtime
 - **AC-NFR-07**：path/symlink/junction/output recovery corpus 全通过。
 - **AC-NFR-08**：管理 API/日志/错误隐私规则全通过。
 - **AC-NFR-09**：Node/OS/Worker compatibility matrix 通过或明确记录 best-effort 不支持项。
-- **AC-NFR-10**：所有包 strict type/lint，core production boundary 无平台泄漏。
+- **AC-NFR-10**：所有包 strict type/lint，core production boundary 无平台泄漏；CLI parser/bin/output 只作 adapter，application/use-case service 不导入 argv、TTY 或进程退出并可脱离 CLI parser 直接测试。
 - **AC-NFR-11**：覆盖率达到 TESTING §10，不存在未说明 skip/ignore/hardcode。
 - **AC-NFR-12**：公共破坏性变更有 ADR、version bump 和 migration guide。
 - **AC-NFR-13**：基础主题 axe 无 critical/serious violation，键盘/landmark/contrast 人工检查通过。

@@ -27,9 +27,13 @@ flowchart LR
   Compile --> Artifact["CompiledEntry + hashes/profile"]
   Artifact --> Theme["Universal Theme API"]
   Theme --> Static["Static BuildWriter / dist"]
-  CLI["Mallok CLI"] --> FileRepo
-  CLI --> Static
-  CLI --> Admin["Authenticated admin HTTP API"]
+  CLI["MVP CLI adapter"] --> NodeApp["Node-local application services"]
+  NodeApp --> UseCases["Domain / use-case contracts"]
+  Studio["Future Guided Start / Studio"] -. "post-MVP boundary; runtime TBD" .-> StudioBoundary["Local bridge or hosted API"]
+  StudioBoundary -. "implements the same contracts" .-> UseCases
+  UseCases --> FileRepo
+  UseCases --> Static
+  UseCases --> Admin["Authenticated admin HTTP API"]
   Admin --> Compile
   Compile --> Tx["Atomic publish domain operation"]
   Tx --> D1["D1 immutable revisions + pointer"]
@@ -40,7 +44,9 @@ flowchart LR
   Assets --> ASSETS["Workers Static Assets"]
 ```
 
-Markdown/Git 是作者真相，D1 是线上发布投影。MVP 禁止 GUI、控制台脚本或其他客户端绕过管理 API 直接写 D1。
+Markdown/Git 是作者真相，D1 是线上发布投影。CLI 解析、TTY/JSON 输出和未来浏览器交互都只是 adapter；可复用业务动作位于 application/domain service，不得把领域规则埋进 shell handler，也不得让 Studio 通过启动 CLI 子进程复用能力。图中的 `Domain / use-case contracts` 是逻辑边界，不是共享进程或已选定的 Phase 4 拓扑：Studio 最终使用本地 bridge、托管 API 或其他运行方式，必须由 Phase 4 PRD/ADR 决定。MVP 可以在现有 package 内组织这些 service，不为未来界面提前增加新 package。
+
+MVP 禁止 GUI、控制台脚本或其他客户端绕过管理 API 直接写 D1。图中的 Studio 只表示 [ADR-0006](adr/0006-guided-product-surface.md) 冻结的长期边界，不代表当前实现范围。
 
 ## 3. Monorepo 与依赖方向
 
@@ -338,7 +344,7 @@ Core/adapter 使用 `MallokError { code, message, hint?, cause? }`，cause 不�
 
 ## 14. MVP 外架构
 
-下列能力不能“顺便”塞进 core：GUI/浏览器认证、多租户、R2 媒体库、remote theme sandbox、插件市场、多语言/collection、自定义 route、静态 provider deploy adapter、增量生成、搜索/电商/AI。它们需要新 PRD/ADR/威胁模型。
+Mallok Studio 是长期核心产品入口，但它的 GUI/浏览器认证、作者真相和托管仍不能“顺便”塞进 core 或现有 MVP task。多租户、R2 媒体库、remote theme sandbox、插件市场、多语言/collection、自定义 route、静态 provider deploy adapter、增量生成、搜索/电商/AI 同样需要新 PRD/ADR/威胁模型。
 
 ## 15. 平台事实来源
 

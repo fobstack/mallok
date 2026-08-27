@@ -34,4 +34,5 @@
 | deployment fence | D1 单例锁；preflight 是有期限 lease，external/releasing 是必须经可证明恢复显式解决的 hard barrier。 |
 | idempotency key | 客户端为一次写请求提供的唯一键；同 key 同请求返回原响应，同 key 不同请求冲突。 |
 | CAS | compare-and-swap，只有预期 document version 等于当前 version 时才允许切换 revision。 |
-| GUI / Studio | 未来的可视化管理界面；不是 MVP CLI 阶段的一部分。 |
+| Guided Start | 面向首次建站者的受控引导入口；长期属于 Studio 产品路径，不是当前 MVP 已实现能力。 |
+| GUI / Studio | 长期面向非技术内容创作者的核心可视化入口；与 CLI 共享 application/domain service，但不是 MVP CLI 阶段的一部分。 |
