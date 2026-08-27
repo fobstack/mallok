@@ -23,7 +23,7 @@
 - `DATABASE.md` 的 D1 schema 可由 SQLite 完整解析；bootstrap → preflight → external → version upload → version ready → activation 的状态向量通过，重复 logical attempt 与大写 provider UUID 反例被拒绝；
 - 44 份 Markdown（包括 active implementation prompt）的本地链接均存在、代码围栏平衡；PRD 中 15 个 FR、5 个 NFR 与 86 个 AC 已纳入追踪/任务体系，其中 6 个 `AC-0-*` 由本 Phase 文档门验收；
 - credential-shaped literal 扫描无命中，`git diff --check` 通过；
-- 技术协议旧基线 `147c5d40b9c822c6c2a34ca1399a3225f8dd122a` 的独立终审为 `0 P0 / 0 P1`；本轮产品定位修订必须在 clean commit 后另以该提交 SHA 绑定审查结论，不沿用旧结论；
+- 产品定位、application-service 边界与 GitHub 发布门候选 `7b5fac2f29f4713174d46737f440f27ba30f2284` 经两轮独立只读终审，结论均为 `0 P0 / 0 P1`；该证据只绑定此 SHA，不自动覆盖后续变更；
 - 本轮没有运行依赖安装、build、test、dev、Claude Code、Cloudflare 登录或任何远程写入。代码级验收只能从 T-001 开始逐任务产生。
 
 ## 未完成
