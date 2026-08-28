@@ -1,144 +1,86 @@
-# Mallok MVP 验收标准
+# Mallok Studio-first 0.1 验收标准
 
 - 状态：Normative
 - 日期：2026-08-27
 
-本文件定义可验证结果；字段行为以各 reference 为准。命令仅在对应实现 task 合入后生效。每条证据必须记录 verified SHA，未运行不得标记通过。
+本文件定义 0.1 的可验证用户结果。字段、协议和安全细节仍由对应 reference 负责，但任何底层测试都不能替代 Studio 主路径。仓库当前尚无实现或稳定脚本；以下 AC 全部为 `NOT_STARTED`，只有在同一 verified SHA 上运行真实证据后才能改变状态。
 
-## 0. 文档阶段
+旧 CLI-first 任务使用的 `AC-1A-*`、`AC-1B-*`、`AC-1C-*`、`AC-2A-*`、`AC-2B-*`、`AC-2C-*` 和 `AC-3-*` 不再是活动路线的完成定义；其历史含义只存在于 Git 历史或归档，不得拿旧结果冒充本文件的新 AC。
 
-- **AC-0-01**：docs index 列出的 required 文件全部存在，Markdown 相对链接无断链。
-- **AC-0-02**：PRD 的 FR-001..015、NFR-001..005 全部出现在 TRACEABILITY，且映射 task/AC。
-- **AC-0-03**：config/build-manifest/asset-manifest/candidate-inventory/deploy-state/deploy-plan/deployment-attempt/release-evidence/staging-authorization/staging-ownership JSON Schema 与 OpenAPI 可被标准 parser 读取；schema 能表达的 URL/path/type 反例必须失败，UTF-8 bytes、aggregate key/depth、realpath、exact-origin/cross-field equality 等不可准确表达的限制必须有显式 machine description/vendor extension并由Mallok runtime validator反例覆盖。
-- **AC-0-04**：reference 不含待定占位符、未裁决的互斥行为或从 `.claude/**` 读取的阈值。
-- **AC-0-05**：publishedAt/activatedAt、artifact/no-op/re-publish、route/asset、codec/profile 在所有文档中语义一致。
-- **AC-0-06**：STATUS 明确主分支实现状态；未实现命令不被描述为当前已通过。
+## 0. 文档与事实门
 
-文档 lint 命令目标：`pnpm docs:check`；在 package scripts 创建前由 reviewer 使用只读 link/schema/OpenAPI checker，证据注明实际命令。
+- **AC-00-01**：README、产品愿景、产品战略、PRD、架构、实施计划、测试、状态和五个活动任务对“Studio 是 MVP、默认 0 终端/0 配置、CLI 是次级 adapter”无冲突。
+- **AC-00-02**：活动任务只有 `01` 至 `05`；当前任务目录不存在 `T-*` 活动文件，Git 历史或归档中的旧任务不能被编码助手误选。
+- **AC-00-03**：尚未实现的界面、脚本、安装包、托管连接或公开仓库不被描述为已存在或已验证。
+- **AC-00-04**：分发形态、首发平台、项目格式、模板信任边界和 Cloudflare 授权路径在进入受影响任务前有 accepted 决策；实现者不需要自行猜测公共行为。
 
-## 1. Phase 1A
+## 1. Task 01：Studio walking skeleton
 
-- **AC-1A-01**：core production dependency graph 无 Node/Cloudflare/FS/HTTP API，ESM package export 在 tarball consumer 可解析。
-- **AC-1A-02**：合法 CommonMark/GFM 编译为运行时不可伪造 `SafeHtml`，caller-owned object 不被修改/冻结。
-- **AC-1A-03**：HTML/URL/JSON helper 与 sanitizer 通过 SECURITY §3 corpus；script/style/comment/raw-text 歧义 fail closed；`jsonScript` 的精确 UTF-8 bytes → SHA-256 → 标准 Base64 CSP source、组合去重排序和伪造拒绝通过 golden；Markdown 图片 URL 类别只接受 HTTPS 或绝对 `/assets/...`。
-- **AC-1A-04**：固定 clock 的 draft/future/no-date 可见性与 BUILD §2 排序向量一致。
-- **AC-1A-05**：slug/route/output path 拒绝 POSIX/Windows/percent/NUL/device/path traversal corpus。
-- **AC-1A-06**：canonical JSON 拒绝 cycle/sparse/array extra key/symbol/getter/Proxy/非有限数；跨运行时 golden hash 一致。
-- **AC-1A-07**：sourceHash/artifactHash 覆盖准确 profile；相同 source + 新 compiler/schema/sanitize 产生新 artifact。
-- **AC-1A-08**：core 覆盖率 lines/statements/functions ≥90%、branches ≥85%，lint/typecheck/build 成功。
+- **AC-01-01**：从 Studio 首屏可以创建新站点；默认流程不打开终端、不要求账号、不要求安装 Node/pnpm，也不要求编辑配置文件。
+- **AC-01-02**：创建向导的四个显式决定固定为站点名称、用途、模板和本地保存位置；语言根据系统推断并可稍后修改，描述在创建后编辑。完成后得到可再次打开的本地项目；取消或失败不留下冒充有效项目的半状态。
+- **AC-01-03**：用户能在 Studio 编辑示例文章的标题与正文，保存后规范 Markdown/项目数据与界面内容一致；重开项目后内容不丢失。
+- **AC-01-04**：Studio 内嵌预览显示首页和文章页，编辑成功后可见更新；失败保留最后成功预览并给出可执行提示。
+- **AC-01-05**：同一 create/edit/preview application service 可脱离 Studio UI 直接测试；UI 不启动 CLI 子进程，不读取或格式化领域内部状态。
+- **AC-01-06**：主路径界面不出现 Node、pnpm、Git、D1、Wrangler、binding、migration、CAS 或 deployment fence 等前置术语。
+- **AC-01-07**：正文默认以可视方式编辑并保存为规范 Markdown；visual → source 往返不改变受支持语义，遇到可安全保留但不受支持的节点时进入 source mode 而不静默丢失。
 
-命令：`pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm test:security && pnpm build && pnpm pack:check:core`。
+## 2. Task 02：完整本地产品
 
-## 2. Phase 1B
+- **AC-02-01**：三个官方模板都能从同一内容创建站点，切换模板不修改或丢失正文、永久文档 ID 和 SEO 数据。
+- **AC-02-02**：用户能导入本地常见静态图片、在文章中选择并预览；非法格式、动画、compressed/decoded 上限、尺寸/frame metadata、路径越界、symlink/junction 和缺失资源被安全拒绝且不破坏项目；签名发行物不依赖本机全局 libvips。
+- **AC-02-03**：站点级 title/description/language 与文章 slug/summary/cover/coverAlt/publishedAt/SEO title/description 可在 Studio 编辑，字段错误定位到具体控件并保留用户输入。
+- **AC-02-04**：一键静态导出生成首页、文章、404、RSS、sitemap 和资产；输出确定、无默认客户端 JavaScript；`ARCHITECTURE.md` 的 sidecar/nonce/phase/inventory 协议在每个崩溃点只自动保留或恢复一份 hash 可证的旧/新目录，任何多义状态 fail closed。
+- **AC-02-05**：自动保存、显式保存、应用内安全退出、browser tab 直接关闭、进程强杀、异常恢复和项目重开均有测试；只能把 backend 已 ack 的 sequence 称为已保存，恢复不得覆盖更新的磁盘内容，未 ack 输入不得被虚假宣称为零丢失。
+- **AC-02-06**：本地完整流程在无网络条件下可完成；“导出成功”不会被文案或状态误称为“已发布到公网”。
+- **AC-02-07**：站点库可按 `PROJECT_FORMAT.md` 的身份规则重命名、复制、备份、恢复和移入废纸篓；站点的名称/描述/Logo/语言/导航与内容的草稿/发布字段可在 Studio 编辑，内容列表可按 title/slug/tag 本地过滤，危险动作不误删公开站点或其他本地目录。
+- **AC-02-08**：支持单篇 Markdown 导入/导出与 `.mallok-backup.tar.gz` 站点备份恢复；streaming restore 对 entry type/path、PAX/GNU path、duplicate/case collision、count/bytes/ratio/hash 做边界与 `+1` 反例，失败不触及目标；受支持的 visual/source 语义往返稳定，不支持语法、raw HTML、重名 ID/slug 和缺失图片都给出定位且不破坏项目。
+- **AC-02-09**：三个模板对同一 published fixture 生成完全相同的 canonical URL 集合；每个 200 HTML page 满足 compiler-owned head 合同且 charset 完整位于前 1024 bytes，preview/404 noindex，robots 指向有效 root sitemap，sitemap 与可索引页面集合 exact 相等；canonical root-relative 内链、slug 改写、draft/broken link、最大合法 origin、1,900 content、XML 特殊字符和 480 KiB 分片边界均有确定性回归。
+- **AC-02-10**：published 内容只使用受管静态图片且正文/cover alt 非空；PNG/JPEG/WebP/AVIF/单帧 GIF 经固定三段 WebP profile 产生至多一个 ≤512 KiB asset，LCP 候选 ≤200 KiB，HTML 尺寸/loading/fetchpriority 正确，作者原图不变，未引用 media 不进 bundle；外部/动画图片和三段后仍超限的图片阻断。每页只引用一个最终 CSS，raw HTML ≤256 KiB、deterministic gzip CSS ≤32 KiB、确定性 critical budget ≤500 KiB。三模板的 home/page/article 在固定 Chrome/Lighthouse mobile 环境各 5 次顺序 cold run，Performance 中位数 ≥95、每次 ≥90，Accessibility/Best Practices 每次 ≥95、SEO 每次 100。
 
-- **AC-1B-01**：workspace-local CLI 在空目录 init，生成项目无需全局 Mallok 即可 build 全部核心 routes/assets。
-- **AC-1B-02**：CONTENT_CONFIG 的 default/strict field/path/project-root 行为与 JSON Schema 一致。
-- **AC-1B-03**：YAML/parser/file discovery/UTF-8/size/symlink/聚合诊断 corpus 通过，诊断稳定排序并包含 file/field/code/hint。
-- **AC-1B-04**：同 `asOf` 下 loader/build 的可见集合和顺序与 core 相同；mtime 不影响。
-- **AC-1B-05**：public/generated/theme 路由冲突全部阻止，写入不越界；asset 单/总 bytes、文件/entry 数、path segment/UTF-8 bytes 的边界和 `+1` 反例稳定失败；production build 对全部可见内容、`mallok validate` 对包括 draft/future 在内的全部内容执行同一 media manifest 校验，Markdown `/assets/...` 引用缺失都必须失败。
-- **AC-1B-06**：基础主题全部 renderer/template/context/head/jsonLd 通过 THEME_API；Node/Worker bundle smoke 成功。
-- **AC-1B-07**：static output 包含首页、文章、404、RSS、sitemap、theme/public assets，默认无 client JS。
-- **AC-1B-08**：两个绝对根、改变 mtime/enumeration 后 build bytes/manifest hash 一致；故障注入保留旧 output 或给出可恢复路径。
-- **AC-1B-09**：doctor 对 Node/pnpm/config/content/theme/path/output 返回稳定 PASS/WARN/FAIL，FAIL 退出 8 且无 secret。
-- **AC-1B-10**：RSS 固定 RSS 2.0、最多 50 篇、canonical URL guid、无正文且缺 `publishedAt` 时省略 `pubDate`；sitemap 固定 Sitemap XML 0.9、首页+全部可见文章、`lastmod` 优先 `updatedAt`；两者 XML escaping、排序、换行和 fixed-`asOf` bytes 确定。
+## 3. Task 03：首个 Cloudflare 公网发布
 
-命令：
+- **AC-03-01**：首次发布前，Studio 用普通语言展示托管商、账号/站点目标、将创建或修改的资源类别、默认 URL、权限与可能费用；用户明确确认前远程 mutation 为 0。
+- **AC-03-02**：账号连接不要求用户复制 token、创建 `.dev.vars`、运行 Wrangler 或手写 Cloudflare ID；credential 只进入批准的系统安全存储，不进入项目、日志、错误、argv 或证据。
+- **AC-03-03**：授权 staging 中，从未发布项目到公网 URL 的主路径由 Studio 完成；成功状态必须经过部署结果校验、health 和匿名 public smoke。smoke 覆盖 homepage、代表性 page/article、404、robots、root sitemap、全部 sitemap shard 和一个受管图片，并核对 status、content type、cache/CSP/nosniff、canonical/sitemap 集合与 asset bytes/hash；不能根据命令返回或本地文件猜测。
+- **AC-03-04**：发布中断、认证失效、名称冲突、权限不足、资源部分创建和公网 smoke 失败都有准确状态；不能显示虚假成功，也不能自动删除 ownership 不明资源。
+- **AC-03-05**：用户取消、关闭窗口或网络失败后可以安全重开项目并继续、重试或查看下一步；重复执行不会无界创建资源。
+- **AC-03-06**：本任务只支持一个批准的 Cloudflare 路径和平台默认 URL；不要求自定义域名、多云或 Mallok 托管账号。
 
-```bash
-pnpm lint
-pnpm typecheck
-pnpm test:coverage
-pnpm build
-pnpm test:integration
-pnpm test:e2e:static
-pnpm test:determinism
-pnpm test:cross-runtime
-```
+## 4. Task 04：更新、原子发布与恢复
 
-## 3. Phase 1C
+- **AC-04-01**：编辑已发布文章后，Studio 显示变更摘要并通过同一 publish application service 生成不可变 PublishBundle；成功后公网正文、canonical、内部链接和 sitemap 同步更新，下线后 URL 从 sitemap 消失，不要求重新部署 Worker，也不要求用户理解 D1。
+- **AC-04-02**：publish/unpublish 使用 `bundleHash`、不可变 staging rows、完整 HTML/robots/sitemap/asset 校验、`expectedCurrentBundleHash` guard、finalize 时 public-asset metadata 冲突 guard 和 D1 current bundle 原子切换；故障注入不留下对访客可见的半 bundle、错误 pointer、虚假版本或跨版本抓取集合。
+- **AC-04-03**：请求结果未知时，Studio 查询远端 current bundle 并安全补齐/重放同一个 `bundleHash`；重复点击、响应丢失和应用重启不会创造不同内容、静默覆盖并发更新，且 inactive bundle 始终受 `8` 个/`64 MiB`、24 小时/7 天与每请求最多清理一组的确定边界约束；容量不足稳定失败且不创建第 9 个候选。
+- **AC-04-04**：文章引用的新本地图片由发布编排先完成必要资产闭合；R2 只用 conditional create，已存在/响应未知只在 HEAD 的 checksum/bytes/MIME exact 时 no-op；资产失败或冲突时内容 pointer 不切换，用户得到可重试提示。
+- **AC-04-05**：用户能从本地保留且 hash 已复核的上一个成功 PublishBundle 发起一次明确恢复发布；恢复前显示影响范围，恢复失败保持当前正常版本或进入明确的“需要处理”状态。
+- **AC-04-06**：发布中与恢复中的用户文案只使用“发布更改、重试、恢复上一版本、需要处理”等产品语言；技术详情可展开或导出，但不是继续操作的前提。
+- **AC-04-07**：真实 staging 覆盖首次发布、普通更新、下线、响应丢失重试、应用重启恢复和上一版本恢复，并保存脱敏证据与 ownership-based cleanup。
+- **AC-04-08**：Studio 显示最近成功/失败/待确认发布记录；协议不兼容时普通发布阻断，只有用户明确确认的“更新网站托管”才调用共享 runtime-upgrade use case，失败不改变 current bundle。
 
-- **AC-1C-01**：dev 默认 `127.0.0.1:3000`，非 loopback 仅显式启用并警告。
-- **AC-1C-02**：content/theme/config/public 变化按 100ms trailing debounce 更新；每次成功 generation 通过仅 dev 的 SSE `reload` event 驱动同源 external client 恰好刷新一次，断连不泄漏 listener；production build 与 preview 均无 client 注入且两个 dev endpoint 都为 404。
-- **AC-1C-03**：重建失败 watcher 存活、继续服务最后成功页面，并输出聚合安全诊断。
-- **AC-1C-04**：preview GET/HEAD、404/MIME/nosniff 正确，traversal/double-decode/encoded separator 阻止。
-- **AC-1C-05**：SIGINT、端口占用、并发变更与关闭句柄测试通过；不残留 temp server/process。
-- **AC-1C-06**：dev 默认排除 draft/future；loopback `--include-drafts` 包含全部 draft、仍排除非 draft future，响应 no-store/noindex 且不写 output/manifest；与非 loopback host 组合必须在监听前拒绝。
+## 5. Task 05：自包含 0.1 发行
 
-命令：`pnpm test:integration && pnpm test:e2e:dev && pnpm test:security`。
+- **AC-05-01**：在一台未安装 Node、pnpm、Git、Wrangler 或 Mallok 的受支持干净机器上，用户通过批准的发行物安装/打开 Studio，并完成本地创建、编辑、预览与静态导出。
+- **AC-05-02**：发行物包含运行所需依赖且有可验证来源、签名/平台信任、版本、许可证和内容清单；不包含测试、源码秘密、开发路径、用户内容或本地 evidence。
+- **AC-05-03**：升级保留用户项目并执行向前兼容检查；降级、卸载和不兼容项目给出诚实边界，不删除用户内容。
+- **AC-05-04**：不少于 10 名没有 Node、终端和前端框架经验的目标用户中，至少 9/10 完成创建到预览，中位时间不超过 3 分钟，且全程不打开终端或代码配置。
+- **AC-05-05**：同一画像至少 9/10 从“没有 Cloudflare 账号但可使用邮箱和系统浏览器”开始，完成账号注册、邮箱验证、条款、连接授权和首次公网发布，中位时间不超过 10 分钟；全部网络等待计入，并记录求助、误操作与手工配置次数。已有账号样本单独报告，不能替代该门。
+- **AC-05-06**：对已写好的文章，从进入编辑界面到公开 URL 显示新内容最多 3 个显式用户动作；端口/本地服务异常、非法 slug、认证缺失、发布中断、恢复失败五类错误至少四类能仅按界面提示处理。
+- **AC-05-07**：Studio 与三个官方站点模板通过适用的键盘、focus、label、读屏、缩放/reflow、对比度和 reduced-motion 检查；自动化结果不能替代人工核验。
+- **AC-05-08**：候选 SHA 的 docs、static、unit、component、local/cloud flow、security、recovery、package、accessibility、performance 和 usability 适用门全部有真实证据，且无 P0/P1 finding。
+- **AC-05-09**：同一候选版本在不少于 30 次受控 staging 单篇更新中公开可见时间 P95 不超过 60 秒；至少 9/10 目标用户在 2 分钟内完成模板切换且内容/URL 保留率 100%；由三个连续小版本组成的升级矩阵中至少 95% 项目自动完成，人工干预中位数为 0。
+- **AC-05-10**：真实 Cloudflare staging 的三个官方模板各至少覆盖 homepage 与 article；每 URL 进行 3 次顺序 PageSpeed Insights mobile lab，Performance 中位数 ≥90，Accessibility/Best Practices ≥95、SEO 100；CrUX 缺失记录 `FIELD_DATA_UNAVAILABLE` 而不是伪造通过，若已有足够 field data 则按 mobile/desktop 第 75 百分位分别报告 LCP/INP/CLS。
 
-## 4. Phase 2A
+## 6. 跨阶段不变量
 
-- **AC-2A-01**：全新 local D1 依次应用全部 migration；重复 apply no-op；失败 migration 回滚。
-- **AC-2A-02**：row codec 用单一 `artifact_format_version` 验证 artifact envelope/codec、schema/compiler/sanitize/options/hash/asset refs/payload bytes；篡改/未知 profile fail closed，不能伪造 SafeHtml；SQL CHECK 独立拒绝伪造 payload，state singleton 不可删除且缺失时 insert fail closed；0001 原子创建 bootstrap deployment barrier。
-- **AC-2A-03**：published repository 使用参数化 query，limit/offset/tag/稳定排序与 no-date/future 语义正确；首页/RSS 只取 metadata summary、绝不选择 source/body/data/template/asset refs，并在同一 statement 将 ordered `revision_tags` 投影与 canonical `tags_json` 字节比较，缺/多/乱序均 fail closed且无 N+1；单批 aggregate 超过 2 MiB 返回稳定 503。
-- **AC-2A-04**：slug rename、revision/tag/current pointer row mapping 符合 DATABASE，不丢 identity/history。
-- **AC-2A-05**：Worker GET/HEAD/308/404/405/raw-path routing 符合 HTTP/CLOUDFLARE；只有不带 query 的 `/index.html` 与合法 article redirect candidate 返回 308；Worker-managed canonical dynamic route 除唯一合法 `__mallok_rev` 外的 query、以及 redirect candidate 的任何 query 为 400；未知 path 在 asset miss 后保持主题 404，asset-first 命中的静态资源 query 由平台处理且不访问 D1；malformed/危险 path encoding 为 400，语法有效但非 canonical article path 为 404。由 Worker 前置拒绝的请求其 redirect、D1 和显式 `env.ASSETS.fetch` 调用数为 0。
-- **AC-2A-06**：文章、首页、RSS、sitemap 来自同一 published projection；draft/future/unpublished 不可访问；sitemap 使用一次有界轻量查询取得同一 statement snapshot，最多返回 10,001 行以检测越界。
-- **AC-2A-07**：生成 Wrangler config 固定 `assets.html_handling="none"`；ASSETS 命中不访问 D1，动态路由不存在同名 static asset，平台默认 HTML handling 不产生契约外 307。
-- **AC-2A-08**：固定 fixture/theme/clock 的 static 与 Worker DOM/feed/asset URL golden 一致。
-- **AC-2A-09**：ETag/If-None-Match/HEAD/cache header local logic 正确；cache-busted D1 request 使用 `first-primary`、普通公开读取可用 replica；JSON-LD CSP hash 与最终 script text bytes 一致且 header snapshot 不含 `unsafe-inline`；生成 `_headers` 固定资产 300 秒缓存、不可被 public/theme 覆盖且不进入 manifest；不在此阶段声称真实 CDN 60 秒。
+- **AC-X-01**：Studio、CLI/自动化 adapter 和测试 composition root 调用同一 application/domain service；任何 adapter 都不能拥有独立业务真相。
+- **AC-X-02**：内容、路径、HTML/URL、SQL、secret、远程 ownership 和恢复边界不因“简化 UI”而降低；所有危险输入和故障路径 fail closed。
+- **AC-X-03**：同一项目、内容、模板、时钟和工具链产生确定输出；系统时间、随机值、绝对路径和机器登录状态不进入发布物。
+- **AC-X-04**：每个用户可修复错误都有稳定内部 code、普通语言消息和具体下一步；默认界面不显示 token、SQL、堆栈、绝对路径或未发布正文。
+- **AC-X-05**：每个任务的证据绑定 base/head SHA、实际命令、退出码、测试路径、环境和未验证项；类别或覆盖率不能替代用户流程结果。
+- **AC-X-06**：0.1 对外列出的高级 CLI 命令逐个调用与 Studio 相同 application use case，具有稳定 JSON/退出码合同；禁用或删除 CLI adapter 时 Studio 仍能完成全部默认流程。
 
-命令：`pnpm test:e2e:cloudflare-local && pnpm test:cross-runtime && pnpm test:security`。
+## 7. 竞争声称门（不阻塞 0.1 产品发布）
 
-## 5. Phase 2B
-
-- **AC-2B-01**：缺/错/未配置 auth、错误 Content-Type/method/header 按 OpenAPI status/envelope 拒绝且 no-store。
-- **AC-2B-02**：publish 2 MiB request 门在 parse 前执行；schema strict；带 offset RFC3339 输入时间规范化为 `.sssZ` response/persistence；服务端编译，客户端不能提交 trusted HTML/hash/time；dynamic source/body/row byte 上限分别准确执行。
-- **AC-2B-03**：publish CAS + deployment fence + revision/pointer/version/idempotency/payload ledger 在单个 transaction-safe operation；active preflight/bootstrap/external/releasing 时新 publish/unpublish 原子 503且零写，已保存 replay 可返回；每个故障点无半状态，256 MiB ledger 超限原子返回 507。
-- **AC-2B-04**：同 key/same request 重放保存响应；same key/different hash 409；response 丢失重试安全。
-- **AC-2B-05**：当前已发布相同 artifact 为 no-op/version 不变；unpublish 后相同 artifact re-publish 恢复 pointer/version+1/action=republished。
-- **AC-2B-06**：同 id 改 slug 保留 history，新 URL 200、旧 URL 404；重复 slug conflict 无写入。
-- **AC-2B-07**：unpublish CAS/idempotency/pointer/version 原子；已下线同 expected version no-op。
-- **AC-2B-08**：API/error/log 无 token、SQL、stack、绝对 home path或 Markdown/frontmatter body。
-- **AC-2B-09**：存储型 XSS、JSON-LD breakout、SQL injection、tampered row/security corpus 通过。
-- **AC-2B-10**：publish CLI 先完整本地校验/asset manifest 检查，再显示 `create|update-or-republish|no-op|conflict`；任意历史 artifact 是否复用以服务端 `updated|republished` outcome 为准。
-- **AC-2B-11**：TTY/non-TTY/JSON/--yes/--dry-run 行为符合 CLI；dry-run 无写。
-- **AC-2B-12**：批量部分成功准确报告并非零退出，不把跨文章操作声称为原子；HTTP client 固定每 attempt 15 秒、response 2 MiB、最多 3 个总 attempts、250/1000ms backoff和闭合 retry status/Retry-After 规则，clock/reader cancellation 可测。
-- **AC-2B-13**：当前可见 publish 的 cache-busted verification 返回新 revision/artifact headers与合法公开弱 ETag，随后同 ETag 得 304；管理 response body/header 使用另一条强 document ETag且互相一致；future publish 以管理 GET 验证 pointer/revision且公开 cache-busted URL 保持 no-store 404；本地 cache logic 覆盖首页/文章/feed。
-- **AC-2B-14**：unpublish 只接受 id/file，不接受歧义 slug，并携带 expected version。
-- **AC-2B-15**：管理 list/get 每个 item 来自单 statement snapshot；created/updated/republished/unpublished/no-op/replay 的 document/revision/pointer/state 系统时间严格符合 DATABASE §7.1，失败 batch 不留下 latest revision 或时间变化。
-
-命令：`pnpm test:e2e:publish-local && pnpm test:e2e:publish-cli-local && pnpm test:security && pnpm test:integration`。
-
-## 6. Phase 2C
-
-- **AC-2C-01**：state/generated Wrangler config 符合 schema且 gitignored，无 secret；固定 DB/ASSETS/required secret，并显式启用 Workers Caching。
-- **AC-2C-02**：doctor 能核验 local state、project Wrangler、binding/migration/profile/secret existence，不显示 secret；state 缺失时 remote doctor 只读发现候选并给 `provision --adopt-database-id` 指引，文件写入数为 0。
-- **AC-2C-03**：provision 默认 plan-only；同资源重复 apply no-op；显式 adopt 必须验证完整 id/账号/名称/closed DB classification并确认，apply 只原子重建当前 projectId 的本地 state、远端 mutation=0；无法证明目标时 blocked。
-- **AC-2C-04**：所有 D1 操作显式 local/remote；remote mutation 要确认；migration 失败不 deploy。
-- **AC-2C-05**：deploy dry-run 不创建、迁移、设置 secret或部署任何资源。
-- **AC-2C-06**：真实动作前计划列 account/environment/Worker/D1/migrations/assets，non-TTY 缺 `--yes` 退出 8；`CI=1` 的 Cloudflare infrastructure mutation 即使有 `--yes` 也退出 8，plan/dry-run 保持零写。
-- **AC-2C-07**：模拟失败正确分类 NO_REMOTE_CHANGE/MIGRATED_NOT_DEPLOYED/DEPLOYED_HEALTH_FAILED 并给恢复方式。
-- **AC-2C-08**：只调用项目锁定 Wrangler；静态 target 不虚构平台 deploy。
-- **AC-2C-09**：revision 持久化最多 100 个 canonical local asset URL refs；deploy 在 D1 preflight fence 内将候选 manifest 与全部 current pointer 分页交叉校验，缺 URL 以 `DEPLOY_ASSET_CLOSURE_FAILED` 阻断；同 URL bytes/hash 变化允许。publish-before-acquire 必须被扫描看到，acquire-before-publish 必须原子 503，过期 preflight 不得进入 external。closure、canonical full-file inventory、evidence、per-lock config 与 Wrangler 必须消费同一只读 candidate snapshot；并发替换 `dist` 不改变实际部署字节，inventory漏项/多项/hash漂移均在external call前阻断。
-- **AC-2C-10**：首次 deploy 的 `--secrets-file` 只接受项目外、普通非 symlink、Unix owner-only 文件且只含一个 canonical `hex:` 或 `b64u:` 管理 token；decode 后 raw length 必须为 32–128 bytes，非 canonical 编码失败；内容不进入 argv/log/state/evidence，deploy 不调用 `wrangler secret put`，用户文件不被 Mallok 删除。
-- **AC-2C-11**：state/binding 精确匹配且 schema 检查证明 pristine/unmigrated 的新 D1 将 current set 视为空；0001 原子留下 bootstrap barrier，首次 deploy claim 后按 classify→confirm→initial migration→schema/profile/empty-set recheck→external→非激活version upload→持久化exact target UUID→显式activation→resolve 完成。claim 后崩溃形成的 initial preflight 可在再次证明 DB 空且无 active Worker 后安全 takeover；首次 upload/activation terminal-failed 可同锁 repair 新 candidate，但没有 baseline 时绝不能 abort/unlock。partial/unknown/nonempty incompatible D1 在任何未授权 remote mutation 前以 `DATABASE_SCHEMA_INCOMPATIBLE` 阻断。
-- **AC-2C-12**：deploy保存canonical lowercase active/previous Worker version/deployment UUID、immutable candidate/manifest/inventory及独立version-upload/activation logical attempt evidence并验证tag/messages。no-op要求D1无active barrier、provider current、四hash、三份exact-bytes evidence、migration和health全部匹配。external journal覆盖`ready/migration_started/migration_complete/version_upload_started/version_ready/activation_started/activation_complete`逐点故障；upload永不激活，target先持久化再activation，同logical attempt可重传且每次providerCallId唯一，多个匹配version按UUID确定性选择；同一logical attempt跨全部journal record的purpose、四hash、tag、message以及activation target保持不变，跨文件漂移在provider call前fail closed。recover重传exact intent；terminal-failed可同锁repair新candidate；normal仅在active=baseline、尚无activation request或其每份request都有terminal-failed result且无缺result调用、migration兼容及closure/ledger通过时显式abort-to-baseline，initial不可abort。rollback显式canonical version UUID，在同锁回到version_ready并以新activation attempt切换，不能另开锁。
-
-命令：`pnpm test:e2e:deploy-dry-run && pnpm test:integration`。第一个脚本必须通过测试 composition root 启动真实 CLI parser/dispatcher，注入 `RecordingCloudflarePort`，覆盖 provision、deploy dry-run、db migrate、fence/recover/repair/rollback plan；remote network 与 mutation 均为零，禁止用 production-visible 环境变量切换 fake。
-
-## 7. Phase 3
-
-- **AC-3-01**：在无全局 Mallok 的临时目录安装 tarball，按 README 完成 init/new/build/preview。
-- **AC-3-02**：packlist、ESM/type consumer、license、prod audit、secret/history scan 通过；package repository/homepage/bugs 与 `JasonYv/mallok` canonical metadata 精确一致，accepted release evidence 含不泄露凭据的人工仓库控制权核验记录。
-- **AC-3-03**：migration/upgrade/rollback/troubleshooting/known limitations 文档可按步骤执行，无隐含 prompt。
-- **AC-3-04**：性能/a11y/OS/Node matrix 按 TESTING 固定环境记录，不用单次最好值。
-- **AC-3-05**：全套 `pnpm verify` 对 release SHA 通过，无 P0/P1 finding。
-- **AC-3-06**：由人工云端操作者在有效、限时、绑定 candidate SHA 与 T-012 evidence hash 的授权 marker 下完成 fresh-only staging provision→migrate→deploy→health→publish→GET→unpublish→cleanup；同名 Worker/D1 或本地 staging state 任一已存在则在写入前阻断，不 reuse/adopt；只删除同 run ownership manifest 证明为本次创建的精确资源，保存脱敏证据；无授权、超出 cleanup window 或 ownership 不明则未通过且不删除。
-
-## 8. 跨阶段 NFR
-
-- **AC-NFR-01**：1000 篇 fixture clean static build 中位数 ≤10s（指定机器/5 次）。
-- **AC-NFR-02**：local warm Worker article p95 ≤100ms，查询有 limit/index；只作本地基线。
-- **AC-NFR-03**：真实 staging 普通首页/文章/RSS/sitemap publish 后 ≤60s 一致；只在 AC-3-06 测。
-- **AC-NFR-04**：secret/history scan 无真实 credential。
-- **AC-NFR-05**：HTML/mXSS/URL/JSON 安全 corpus 全通过。
-- **AC-NFR-06**：SQL/CAS/idempotency/fault injection 全通过。
-- **AC-NFR-07**：path/symlink/junction/output recovery corpus 全通过。
-- **AC-NFR-08**：管理 API/日志/错误隐私规则全通过。
-- **AC-NFR-09**：Node/OS/Worker compatibility matrix 通过或明确记录 best-effort 不支持项。
-- **AC-NFR-10**：所有包 strict type/lint，core production boundary 无平台泄漏；CLI parser/bin/output 只作 adapter，application/use-case service 不导入 argv、TTY 或进程退出并可脱离 CLI parser 直接测试。
-- **AC-NFR-11**：覆盖率达到 TESTING §10，不存在未说明 skip/ignore/hardcode。
-- **AC-NFR-12**：公共破坏性变更有 ADR、version bump 和 migration guide。
-- **AC-NFR-13**：基础主题 axe 无 critical/serious violation，键盘/landmark/contrast 人工检查通过。
-- **AC-NFR-14**：Cloudflare local 的 100 条最大合法 summary fixture 不读取正文且峰值受 2 MiB aggregate 门约束；不得构造可能超过 Workers 128 MiB isolate 限制的集合读取。
+- **AC-C-01**：在同内容、同页面、同图片、同托管结果和锁定版本下，按 `COMPARISON_PROTOCOL.md` 对 Mallok 与 Astro 进行预注册、随机交叉任务测试，公开任务、环境、原始结果和失败样本。
+- **AC-C-02**：同一批受测站点在 30/90 天记录人工维护时间、依赖/配置修改、失败与求助，达到 PRD 阈值后才可对外宣称“在该内容站路径上更易维护”。
+- **AC-C-03**：未达到 `AC-C-01..02` 前，对外文案只能把“比 Astro 更简单、更少维护”表述为明确产品目标，不得伪装成已验证事实。

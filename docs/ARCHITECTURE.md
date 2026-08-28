@@ -1,351 +1,393 @@
-# Mallok 技术架构
+# Mallok 0.1 技术架构
 
-- 状态：Accepted MVP architecture
-- 版本：0.1
+- 状态：Accepted 0.1 architecture
 - 日期：2026-08-27
+- 产品形态：单仓库、单产品、单 application core；Tier-1 仅附一个窄 Keychain helper
 
-本文定义模块、数据流和跨领域不变量。字段、命令、HTTP、SQL、主题与部署细节分别以 [文档导航](README.md) 中的领域 reference 为准；本文不作为第二套 schema。
+本文取代此前的 workspace monorepo、多 npm package、Node/Worker 双渲染 runtime、可执行 ESM Theme API、D1 内容 revision/pointer 和复杂 deployment fence 设计。旧设计只保留在 Git 历史中，不得据此实现第二套架构。
+
+字段级格式分别由下列文档负责：
+
+- [项目目录格式](PROJECT_FORMAT.md)
+- [声明式模板格式](TEMPLATE_FORMAT.md)
+- [搜索与页面性能](SEO_PERFORMANCE.md)
+- [Cloudflare 数据发布](CLOUDFLARE.md)
+- [二进制发行](DISTRIBUTION.md)
+- [安全边界](SECURITY.md)
 
 ## 1. 核心结论
 
-Mallok 自己实现内容引擎、路由/构建计划、Theme contract、CLI 和 Cloudflare adapter，不建立在 Astro/Next 等站点框架上。它仍使用成熟的 Markdown、YAML、HTML、测试和 bundling 库；“自己手搓”不等于重写 parser/sanitizer。
+Mallok 0.1 是一个用 TypeScript 开发、由 Bun 编译成自包含 executable 的本地内容应用。普通用户双击 `Mallok.app`，高级用户运行 `mallok`；两者都在 loopback 打开同一个内置 Studio。CLI 是同一应用能力的另一层 adapter，不是另一套产品。
 
-产品有两个诚实 target：
+普通站点目录只有数据：`mallok.json`、`content/`、`media/` 和 Mallok 自己维护的 `.mallok/`。站点不含 `package.json`、`node_modules`、可执行配置、主题代码或插件。
 
-- `static`：Node 构建时从 Markdown 编译并写完整目录；内容变化必须重建；
-- `cloudflare`：发布时服务端编译到 D1 revision，请求时读取 `CompiledEntry` 并套同一主题；内容更新不重部署 Worker。
+本地 compiler 是唯一渲染 runtime。它把项目数据和一个内置声明式模板编译成 canonical `PublishBundle`：
 
-双 target 分阶段交付：static alpha 先行，Cloudflare alpha 后行，跨模式与 staging 门通过后才是 MVP RC。对应决策见 [ADR-0001](adr/0001-dual-runtime.md)。
+- 已预渲染的 HTML route body；
+- RSS、sitemap 等已生成 feed body；
+- 内容寻址的 CSS、图片、字体等 asset；
+- 绑定全部 body/asset hash 的 canonical manifest。
+
+static export 和 Cloudflare publish 都是 `PublishBundle` sink。它们只能复制或存储 bundle bytes，不得再次解析 Markdown、执行模板或改变 HTML。
 
 ## 2. 系统视图
 
 ```mermaid
 flowchart LR
-  Git["Git / Markdown author source"] --> FileRepo["Node file source repository"]
-  FileRepo --> Normalize["Validate + normalize ContentEntry"]
-  Normalize --> Compile["Markdown + sanitizer compiler"]
-  Compile --> Artifact["CompiledEntry + hashes/profile"]
-  Artifact --> Theme["Universal Theme API"]
-  Theme --> Static["Static BuildWriter / dist"]
-  CLI["MVP CLI adapter"] --> NodeApp["Node-local application services"]
-  NodeApp --> UseCases["Domain / use-case contracts"]
-  Studio["Future Guided Start / Studio"] -. "post-MVP boundary; runtime TBD" .-> StudioBoundary["Local bridge or hosted API"]
-  StudioBoundary -. "implements the same contracts" .-> UseCases
-  UseCases --> FileRepo
-  UseCases --> Static
-  UseCases --> Admin["Authenticated admin HTTP API"]
-  Admin --> Compile
-  Compile --> Tx["Atomic publish domain operation"]
-  Tx --> D1["D1 immutable revisions + pointer"]
-  D1 --> Codec["Validated row codec"]
-  Codec --> Theme
-  Theme --> Worker["Cloudflare public response"]
-  Assets["theme/public assets"] --> Static
-  Assets --> ASSETS["Workers Static Assets"]
+  Project["Data-only site directory"] --> ProjectAdapter["ProjectStore adapter"]
+  Studio["Loopback Studio adapter"] --> App["Application services"]
+  CLI["CLI adapter"] --> App
+  ProjectAdapter --> App
+  App --> Compiler["Single compiler"]
+  Templates["3 embedded declarative templates"] --> Compiler
+  Compiler --> Bundle["Canonical PublishBundle"]
+  Bundle --> Static["StaticExportSink"]
+  Bundle --> Cloudflare["CloudflareBundleSink"]
+  Cloudflare --> PublishAPI["Generic Worker publish API"]
+  PublishAPI --> R2["R2 content-addressed assets"]
+  PublishAPI --> D1["D1 staged routes + current bundle pointer"]
+  Visitor["Visitor request"] --> Worker["Generic Worker"]
+  Worker --> D1
+  Worker --> R2
 ```
 
-Markdown/Git 是作者真相，D1 是线上发布投影。CLI 解析、TTY/JSON 输出和未来浏览器交互都只是 adapter；可复用业务动作位于 application/domain service，不得把领域规则埋进 shell handler，也不得让 Studio 通过启动 CLI 子进程复用能力。图中的 `Domain / use-case contracts` 是逻辑边界，不是共享进程或已选定的 Phase 4 拓扑：Studio 最终使用本地 bridge、托管 API 或其他运行方式，必须由 Phase 4 PRD/ADR 决定。MVP 可以在现有 package 内组织这些 service，不为未来界面提前增加新 package。
+不变量：
 
-MVP 禁止 GUI、控制台脚本或其他客户端绕过管理 API 直接写 D1。图中的 Studio 只表示 [ADR-0006](adr/0006-guided-product-surface.md) 冻结的长期边界，不代表当前实现范围。
+1. Studio 和 CLI 调用相同 application service；两者都不拥有业务规则。
+2. compiler 只读取显式项目快照、模板版本和显式 `asOf`，不读取网络、ambient clock 或随机数。
+3. compiler 与 bundle contract 只有一套。对同一个显式 `canonicalOrigin` 生成的 bundle 只编译一次，任意兼容 sink 消费相同 bytes；若静态托管 origin 与 Cloudflare origin 不同，它们是同一 compiler 用不同显式输入生成的两个确定 bundle，不伪装成同一 hash。
+4. Cloudflare Worker 只按 path 读取预渲染 body 或内容寻址 asset，不运行 Markdown、Liquid-like 模板或站点代码。
+5. 普通 publish 只发送 bundle 数据，不上传 Worker code、不执行 D1 migration、不创建或删除云资源。
 
-## 3. Monorepo 与依赖方向
+## 3. 仓库与模块边界
+
+Mallok 源码是一个普通单仓库。仓库为了构建二进制可以有根 `package.json` 和 Bun lockfile；这些开发文件绝不会复制到用户站点。
 
 ```text
 mallok/
-├── packages/
-│   ├── core/               # Web 标准平台无关模型、compiler、safe HTML、theme/route/feed contract
-│   ├── cli/                # Node 配置/FS/build/dev/preview/命令与远程 client
-│   ├── cloudflare/         # Worker、D1、HTTP、Wrangler config/deploy adapter
-│   └── create-mallok/      # 发布后段的 npm create 入口
-├── examples/basic-blog/    # 唯一 golden E2E fixture
-├── docs/
-└── package.json
+├── package.json
+├── bun.lock
+├── src/
+│   ├── domain/                 # 纯数据类型、不变量、稳定错误码
+│   ├── application/            # Studio/CLI 共用 use cases
+│   ├── compiler/               # 内容、模板、route、feed、asset -> bundle
+│   ├── templates/              # 三个内置声明式模板及解释器
+│   ├── adapters/
+│   │   ├── project-fs/         # 数据项目读写与快照
+│   │   ├── studio-http/        # loopback HTTP/UI adapter
+│   │   ├── cli/                # argv/stdout/stderr adapter
+│   │   ├── static-export/      # bundle -> directory
+│   │   └── cloudflare/         # provision、capability、bundle publish
+│   ├── embedded/
+│   │   ├── studio/             # 编译后的 Studio 前端资源
+│   │   └── cloudflare-worker/  # generic Worker 与 D1 schema
+│   └── main.ts                 # 唯一 composition root
+├── test/
+├── platform/
+│   └── macos/keychain-helper/ # 无业务逻辑的 Security.framework bridge
+└── docs/
 ```
 
 依赖方向：
 
 ```text
-cli ----------> core <---------- cloudflare
-create-mallok -> published CLI/template contract
-examples -----> public package surfaces only
+adapters -> application -> domain
+compiler -> domain
+application -> compiler ports / sink ports
+embedded resources -> composition root
 ```
 
-`@mallok/core` 只依赖 Web 标准与 Worker-compatible 纯 JS 库，不导入 `node:*`、filesystem、HTTP server、D1、Wrangler 或 Cloudflare types。Node/Cloudflare adapter 实现 core port，不把平台类型泄漏进 core。
+禁止：
 
-MVP 不提前拆出 markdown/theme/shared 等细包，避免尚未稳定时产生版本协调成本。包与工具版本见 [VERSIONING.md](VERSIONING.md)。
+- `domain` 或 `compiler` 导入 Studio、CLI、Cloudflare API、Bun server 或本地绝对路径；
+- Studio handler 直接写项目文件或发 Cloudflare 请求；
+- CLI command 复制 application use case；
+- static/Cloudflare sink 修改 bundle body、route、asset URL 或 manifest；
+- 为内部目录建立独立版本、独立 package 或公共插件 API。
 
-## 4. 核心数据与端口
+`platform/macos/keychain-helper` 是唯一例外的平台 helper：它随同一 release 构建/签名，只实现固定 credential CRUD，不包含 application/domain/compiler/provider 逻辑，也不建立独立版本。
 
-规范化类型/限制见 [CONTENT_CONFIG.md](CONTENT_CONFIG.md)。架构上区分：
+## 4. 单一应用层
 
-- `ContentInput`：frontmatter + Markdown 的结构化未规范输入；
-- `ContentEntry`：校验、默认、日期、JSON 和换行规范化后的作者对象；
-- `CompiledEntry`：把规范化 Markdown 改名为受控 `sourceMarkdown`，加入 `SafeHtml`、source/artifact hash 与完整 compile profile；单一 persisted artifact/row-codec format 属于 adapter 持久化 envelope，不伪装成作者字段；
-- `PublishedDocument`：document version、current revision 与 activation metadata 的查询视图。
-
-公共核心模型固定如下；字段限制、默认值与规范化算法仍以 [CONTENT_CONFIG.md](CONTENT_CONFIG.md) 为准：
+0.1 application service 只有下列用户能力：
 
 ```ts
-export type JsonPrimitive = null | boolean | number | string;
-export type JsonValue =
-  | JsonPrimitive
-  | readonly JsonValue[]
-  | { readonly [key: string]: JsonValue };
-
-export interface ContentInput {
-  readonly id: string;
-  readonly slug: string;
-  readonly title: string;
-  readonly description?: string;
-  readonly bodyMarkdown: string;
-  readonly draft?: boolean;
-  readonly publishedAt?: string;
-  readonly updatedAt?: string;
-  readonly tags?: readonly string[];
-  readonly template?: string;
-  readonly data?: Readonly<Record<string, JsonValue>>;
-}
-
-export interface ContentEntry {
-  readonly id: string;
-  readonly type: "article";
-  readonly slug: string;
-  readonly title: string;
-  readonly description?: string;
-  readonly bodyMarkdown: string;
-  readonly status: "draft" | "published";
-  readonly publishedAt?: string;
-  readonly updatedAt?: string;
-  readonly tags: readonly string[];
-  readonly template: string;
-  readonly data: Readonly<Record<string, JsonValue>>;
-}
-
-export interface CompileProfileV1 {
-  readonly compilerVersion: "1";
-  readonly schemaVersion: "1";
-  readonly compileProfileId: "mallok-default-v1";
-  readonly compileOptions: Readonly<{
-    readonly allowRawHtml: false;
-    readonly gfm: true;
-    readonly sanitizeSchemaId: "mallok-default-v1";
-  }>;
-}
-
-export type CompiledEntry =
-  & Omit<ContentEntry, "bodyMarkdown">
-  & CompileProfileV1
-  & Readonly<{
-    sourceMarkdown: string;
-    bodyHtml: SafeHtml;
-    sourceHash: string;
-    artifactHash: string;
-  }>;
-
-export interface MediaAssetReference {
-  readonly url: string; // normalized /assets/** URL
-}
-
-export type PublishedArtifact = CompiledEntry & Readonly<{
-  assetReferences: readonly MediaAssetReference[];
-}>;
-
-export interface PublishedSummary {
-  readonly id: string;
-  readonly revisionId: string;
-  readonly artifactHash: string;
-  readonly slug: string;
-  readonly title: string;
-  readonly description?: string;
-  readonly publishedAt?: string;
-  readonly updatedAt?: string;
-  readonly tags: readonly string[];
+interface MallokApplication {
+  createProject(input: CreateProjectInput): Promise<ProjectSummary>;
+  openProject(path: string): Promise<ProjectSummary>;
+  renameProject(input: RenameProjectInput): Promise<ProjectSummary>;
+  duplicateProject(input: DuplicateProjectInput): Promise<ProjectSummary>;
+  backupProject(input: BackupProjectInput): Promise<BackupResult>;
+  restoreBackup(input: RestoreBackupInput): Promise<ProjectSummary>;
+  deleteLocalProject(input: DeleteLocalProjectInput): Promise<DeleteResult>;
+  updateProject(change: ProjectChange): Promise<ProjectSummary>;
+  importMarkdown(input: ImportMarkdownInput): Promise<ImportResult>;
+  exportMarkdown(input: ExportMarkdownInput): Promise<ExportResult>;
+  validateProject(input: ValidateProjectInput): Promise<ValidationReport>;
+  previewProject(input: PreviewInput): Promise<PreviewSession>;
+  compileBundle(input: CompileBundleInput): Promise<BundleHandle>;
+  exportStatic(input: ExportStaticInput): Promise<ExportResult>;
+  connectCloudflare(input: ConnectCloudflareInput): Promise<ConnectionResult>;
+  provisionCloudflare(input: ProvisionInput): Promise<ProvisionResult>;
+  publishCloudflare(input: PublishInput): Promise<PublishResult>;
+  inspectCloudflare(input: InspectInput): Promise<CloudflareStatus>;
+  listPublishHistory(input: PublishHistoryInput): Promise<PublishHistory>;
+  restorePreviousBundle(input: RestoreInput): Promise<PublishResult>;
+  upgradeCloudflareRuntime(input: RuntimeUpgradeInput): Promise<UpgradeResult>;
+  checkForApplicationUpdate(input: UpdateCheckInput): Promise<UpdateCheckResult>;
 }
 ```
 
-`draft` 只存在于未规范化输入；进入 `ContentEntry` 后转换为 `status`。`sourceMarkdown` 必须逐字节等于规范化后的 `bodyMarkdown`，不能保存另一份未经规范化的正文。optional 字段缺失时在对象上保持缺失；哈希输入按下文显式转成 `null`，消除“省略还是 null”的实现分歧。
+接口名称是架构示意，不是公共 TypeScript API；0.1 不发布 library exports。实现可以拆成更小 use case，但不得产生 Studio-only 或 CLI-only 业务分支。
+
+adapter 职责：
+
+| adapter | 只负责 |
+| --- | --- |
+| Studio | loopback HTTP、session、表单/JSON 映射、浏览器展示 |
+| CLI | argv、交互确认、TTY/JSON 输出和退出码 |
+| ProjectStore | 安全读取/原子写入数据目录、创建一致快照 |
+| StaticExportSink | 将 bundle route/asset bytes 原样写入临时目录并原子替换 |
+| CloudflareBundleSink | 鉴权、缺失 asset 上传、D1 staging、activate/status |
+| CredentialStore | 完成 OAuth PKCE、从 OS credential store 或高级显式环境读取 secret；不写项目 |
+
+## 5. 项目真相与本地状态
+
+`mallok.json`、`content/` 和 `media/` 是作者真相。Cloudflare 只保存某个已编译 bundle 的发布投影，不保存 Markdown、模板源或可反向编辑的内容模型。
+
+`.mallok/` 是非作者真相的本地运行状态：cache、recovery journal、bundle、发布记录、非敏感 provider resource id 和进程锁。删除它不得丢失作者内容或改变线上 current，用户可用项目 `siteId` 和 Cloudflare 凭据重新连接远端；但删除会失去未合并 recovery、发布记录和 cached previous bundle，可能使恢复旧版不可用，因此不是无影响操作。`.mallok/` 不保存 Cloudflare API token、site publish token、cookie 或 Studio session。
+
+ProjectStore 在开始编译时建立只读快照。快照包含所有被消费文件的规范相对路径、bytes、size 和 SHA-256。编译期间文件发生变化时，本轮失败并要求重试，不能混用两个时刻的数据。
+
+具体目录、内容 frontmatter、media URL 和限制见 [PROJECT_FORMAT.md](PROJECT_FORMAT.md)。
+
+## 6. Compiler 与 PublishBundle
+
+compiler 流程固定为：
+
+```text
+project snapshot
+  -> strict config/content validation
+  -> Markdown parse
+  -> raw HTML removal + sanitizer
+  -> route planning and collision check
+  -> declarative template rendering
+  -> compiler-owned SEO head injection
+  -> HTML5 structural and internal-link validation
+  -> RSS/sitemap/robots generation
+  -> referenced-media optimization + template asset hashing
+  -> URL rewriting
+  -> canonical manifest
+  -> PublishBundle
+```
+
+`CompileBundleInput` 必须区分实际响应使用的 `servingOrigin` 与可选 `publicCanonicalOrigin`。本地预览的前者是当前 loopback origin，后者只在项目已有公开 HTTPS origin 时存在；preview 永远 noindex，且不能把 loopback 写成 canonical。静态导出要求用户先确认 `publicCanonicalOrigin`，Cloudflare 首次连接则使用 provision 后得到的 Worker origin。项目可以在首次预览前没有 `canonicalUrl`，但任何可对外发布或导出的 bundle 都必须有明确 HTTPS public canonical origin；成功首次发布后 Studio 将该 origin 原子写回 `mallok.json`。
+
+同一 compiler 有两个显式 selection profile：`preview` 可以包含当前选中的 draft，`publish` 固定排除全部 draft。两者只改变内容集合，不改变 Markdown 解析、净化、route、模板和 asset 规则；static 与 Cloudflare sink 只接受 `publish` profile 的 bundle。
 
 ```ts
-export interface SourceRepository {
-  list(): Promise<readonly ContentEntry[]>;
-  findById(id: string): Promise<ContentEntry | null>;
+interface CompileBundleInput {
+  readonly profile: "preview" | "publish";
+  readonly servingOrigin: string;
+  readonly publicCanonicalOrigin?: string;
+  readonly asOf: string;
+  readonly projectSnapshot: ProjectSnapshot;
 }
-
-export interface PublishedRepository {
-  listPublishedSummaries(
-    query: PublishedQuery,
-    asOf: string,
-  ): Promise<readonly PublishedSummary[]>;
-  findPublishedBySlug(slug: string, asOf: string): Promise<PublishedArtifact | null>;
-  listSitemapEntries(asOf: string): Promise<readonly SitemapEntry[]>;
-}
-
-export interface PublishedQuery {
-  readonly limit?: number;   // default 20, 1..100
-  readonly offset?: number;  // default 0
-  readonly tag?: string;
-}
-
-export interface SitemapEntry {
-  readonly id: string;
-  readonly slug: string;
-  readonly publishedAt?: string;
-  readonly updatedAt?: string;
-}
-
-export interface BuildWriter {
-  write(route: PlannedOutput, body: Uint8Array | string): Promise<void>;
-}
-
-export interface Clock { now(): Date; }
 ```
 
-调用者只把 route planner 产生的 `PlannedOutput` 交给 writer，不能把 slug 或 URL string 直接当 filesystem path。当前 public route 不暴露分页/tag archive；query 的 offset/tag 为 repository 能力和未来兼容，不授权主题发明路由。首页与 RSS 只能读取 `PublishedSummary`，不得把 source/body/data/template 从 D1 拉入集合响应；sitemap 使用另一条单 statement 轻量 query，不能用多次 offset 查询拼接，避免并发 publish 时重复或漏项。Cloudflare adapter 对一次 summary query 的所选 TEXT 字段施加 2 MiB aggregate-byte 上限，超限 fail closed，防止合法单行预算组合突破 Worker 内存边界。
+publish profile 缺少合法 `publicCanonicalOrigin` 时失败；preview 没有它时省略 canonical，同时仍输出 `noindex,nofollow`。head、sitemap、robots、图片优化与 PageSpeed 预算的唯一语义见 [SEO_PERFORMANCE.md](SEO_PERFORMANCE.md)。
 
-## 5. 编译与安全 HTML
-
-```text
-UTF-8/YAML input
-  -> strict schema + canonical normalization
-  -> CommonMark/GFM AST
-  -> raw HTML removal
-  -> fixed sanitizer/URL policy
-  -> SafeHtml
-  -> sourceHash + artifactHash + versioned profile
-```
-
-编译是异步且平台无关的，SHA-256 使用 Web Crypto。canonical JSON、哈希输入、field 限制见 [CONTENT_CONFIG.md](CONTENT_CONFIG.md)；安全边界见 [SECURITY.md](SECURITY.md)。
-
-哈希不是实现者可选择的摘要。两个输入对象和编码固定为：
+### 6.1 Bundle 数据模型
 
 ```ts
-sourceHash = sha256Hex(utf8(canonicalJson({
-  id: entry.id,
-  type: "article",
-  slug: entry.slug,
-  title: entry.title,
-  description: entry.description ?? null,
-  bodyMarkdown: entry.bodyMarkdown,
-  status: entry.status,
-  publishedAt: entry.publishedAt ?? null,
-  updatedAt: entry.updatedAt ?? null,
-  tags: entry.tags,
-  template: entry.template,
-  data: entry.data,
-})));
+interface PublishBundleManifestV1 {
+  readonly formatVersion: 1;
+  readonly siteId: string;
+  readonly canonicalOrigin: string; // publish bundle 的 publicCanonicalOrigin
+  readonly compilerOutputVersion: number;
+  readonly template: Readonly<{ id: string; version: string }>;
+  readonly routes: readonly RouteManifestEntry[];
+  readonly assets: readonly AssetManifestEntry[];
+}
 
-artifactHash = sha256Hex(utf8(canonicalJson({
-  sourceHash,
-  compilerVersion: "1",
-  schemaVersion: "1",
-  compileOptions: {
-    allowRawHtml: false,
-    gfm: true,
-    sanitizeSchemaId: "mallok-default-v1",
-  },
-})));
+interface RouteManifestEntry {
+  readonly path: string;
+  readonly status: 200 | 404;
+  readonly contentType:
+    | "text/html; charset=utf-8"
+    | "application/rss+xml; charset=utf-8"
+    | "application/xml; charset=utf-8"
+    | "text/plain; charset=utf-8";
+  readonly cachePolicy: "page" | "feed" | "not-found";
+  readonly bodySha256: string;
+  readonly bytes: number;
+}
+
+interface AssetManifestEntry {
+  readonly url: string;       // /assets/<sha256>.<canonical-extension>
+  readonly key: string;       // 与 url 去掉前导 / 后相同
+  readonly sha256: string;
+  readonly bytes: number;
+  readonly contentType:
+    | "text/css; charset=utf-8"
+    | "image/png"
+    | "image/jpeg"
+    | "image/webp"
+    | "image/avif"
+    | "image/gif"
+    | "font/woff2";
+}
+
+interface PublishBundle {
+  readonly bundleHash: string;
+  readonly manifest: PublishBundleManifestV1;
+  readonly routeBodies: ReadonlyMap<string, Uint8Array>;
+  readonly assetBodies: ReadonlyMap<string, Uint8Array>;
+}
 ```
 
-`sha256Hex` 输出 64 位小写 hex；`utf8` 是无 BOM 的 UTF-8。`compileProfileId` 是上述固定 options 的可读别名，不作为独立行为输入；实现必须验证别名和 options 对应，不能允许二者漂移。持久化只有一个 `artifact_format_version` 版本轴，它同时标识 artifact envelope 与 row codec 格式；该版本不进入这两个 hash，但 decoder 必须单独验证。任何影响 HTML 或公开元数据的 compiler/schema/options 变化都必须先 bump 对应输入，再产生新 artifact。
+manifest 使用 UTF-8 canonical JSON：object key 由固定 serializer 排序，数组按 `path`/`url` 的 Unicode code-unit 升序，禁止浮点非有限值、重复 key、BOM 和非规范 Unicode scalar。`bundleHash = SHA-256(canonicalManifestBytes)`；manifest 已包含每个 body/asset 的 hash，所以无需把大 body 拼进同一次 hash 输入，也不存在自引用字段。`compilerOutputVersion` 只在会改变规范输出语义时递增；完整 Mallok binary 版本属于 bundle provenance，不进入 canonical manifest 或 `bundleHash`。
 
-`SafeHtml`/`SafeAttribute`/`SafeUrl`/`SafeAssetUrl` 是带彼此独立模块私有运行时身份的不可变对象，不是 primitive type brand。`SafeAssetUrl` 只能由 Theme context 的 manifest-backed `assets.theme/public` mint，`externalScript` 只接受它，通用 URL 不能升级。公开 API 不导出任意 string → SafeHtml。`@mallok/core/adapter` 仅导出异步的 `serializeSafeHtml(SafeHtml) -> Promise<{html, scriptHashSources}>` 冻结快照：它用 Web Crypto 从私有精确 script-text contributions 计算 sources，不允许附加 hash；Node/Worker 共用它，CSP 不靠扫描 HTML。D1 adapter 只能调用 core 的版本化 row codec；codec 验证 row/profile/hash 后在 core 内恢复 SafeHtml。
+`bundleHash` 不进入 manifest。执行时间、主机路径、用户名、locale、mtime、Cloudflare resource id 和随机数都不进入 bundle。相同项目快照、Mallok 版本、内置模板版本和 `asOf` 必须产生相同 bundle。
 
-generic theme `html` 不试图实现完整浏览器 tokenizer，literal script/style/comment 被禁止，专用 helper 生成完整 JSON script/external script。见 [ADR-0004](adr/0004-restrict-theme-html-grammar.md)。
+feeds、root sitemap、可选 sitemap shards 和 robots 都是普通 route body，不是 Worker runtime 逻辑。404 也是 manifest 中 path 为 `/404.html`、status 为 404 的预渲染 route。`/sitemap.xml` 在 480 KiB 内可直接是 `urlset`，否则是指向 `/sitemaps/0001.xml` 等 route 的 `sitemapindex`；全部分片仍计入 route budget。
 
-## 6. Theme 与跨运行时一致性
+### 6.2 内容寻址 asset
 
-Theme 是受信任本地 ESM，`runtime: "universal"`，由 `renderHome`、`articleTemplates` 和 `renderNotFound` 返回完整 SafeHtml 文档。context、asset helper、SEO、feed、完整文档和 golden DOM 见 [THEME_API.md](THEME_API.md)。
+compiler 只处理 published route 实际引用的项目 media。静态图片先按 `SEO_PERFORMANCE.md` 的固定 sharp/libvips profile 自动定向、缩小、清理 metadata 并编码为单一 WebP asset，再按输出 bytes 计算 SHA-256；作者原图不被改写，也不进入公开 bundle。内置模板 CSS/asset 同样按最终 bytes 寻址。HTML、feed 或 config 中的逻辑 `/media/...` 引用在编译时改写；公开内容中的远程图片、动画图片或超出优化预算的图片使 publish profile 失败。
 
-同一 theme bundle、site config、按同一算法形成的 `CompiledEntry`/`PublishedSummary` 集合与 `asOf` 必须在 static/Worker 产生相同业务 DOM。Worker-specific ETag/header/request id 不进入 DOM 对比。Theme 不读环境、I/O、系统时间或随机数。
+asset URL 一旦发布，其 bytes 和 `Content-Type` 永不改变。0.1 不自动删除 R2 asset；这用少量存储换取没有引用 fence、删除竞态和破图恢复协议。
 
-## 7. Static 构建流
+## 7. 两个 sink，不是两个 runtime
+
+### 7.1 StaticExportSink
+
+static sink 将 route 映射为文件：`/` → `index.html`，尾斜杠 route → `<route>/index.html`，文件 route 原样写入，`/404.html` → `404.html`。asset URL 按相同相对 path 写入。
+
+sink 先写入 output 同父目录下的新 staging 目录，逐项复核 bytes/hash/realpath，再执行 crash-safe promote：现有 output rename 为唯一 backup，staging rename 为 output，成功后删除 backup；任一步中断都在下次启动时根据完整性标记恢复到唯一完整目录。0.1 不宣称跨平台“单次 rename 原子替换非空目录”；Tier 1 macOS 必须通过每个故障点的进程终止测试证明旧或新导出至少有一份完整可恢复。sink 不执行模板或内容选择。
+
+恢复标记 v1 固定如下：
+
+- 先求 output 的 canonical absolute path，再计算 `outputPathHash = SHA-256(UTF-8(path))`；每次导出生成 128-bit CSPRNG `nonce`，以 32 个 lowercase hex 表示；
+- 标记位于 output parent，文件名为 `.mallok-export-<outputPathHash>-<nonce>.json`，权限 `0600`；同 parent 的目录名固定为 `.mallok-export-<outputPathHash>-<nonce>.staging` 与 `.mallok-export-<outputPathHash>-<nonce>.backup`；
+- 标记是 strict JSON object，只含 `formatVersion:1`、`owner:'mallok-static-export'`、`nonce`、`canonicalOutputPath`、`stagingBasename`、`backupBasename`、`bundleHash`、`newInventoryHash`、可选 `oldInventoryHash` 和 `phase:'prepared'|'backup-created'|'promoted'`；未知字段失败；
+- inventory 是目录中全部普通文件的 `(POSIX relative path, bytes, sha256)` canonical JSON 数组，按 path code-unit 升序；目录、mtime、mode 和绝对路径不进入，symlink/junction/special file 使 inventory 无效；`*InventoryHash` 是该 canonical JSON 的 SHA-256；
+- marker 与每次 phase 更新都以同目录 temporary file、flush、atomic rename 和 parent-directory sync 写入。marker 永远不进入 staging/output/backup，也不进入导出结果；
+- `prepared` 只在新 staging 已完整复核且 output 仍匹配 `oldInventoryHash`（或确认不存在）后写；随后才允许把旧 output rename 为 backup，并把 phase 写成 `backup-created`；staging rename 为 output 后写 `promoted`；只有新 output 再次匹配 `newInventoryHash` 后才可删除 exact backup 和 marker。
+
+恢复必须先验证 marker mode/owner/schema、output parent realpath、三个 exact child basename、nonce 以及现存目录的完整 inventory，任何 rename/delete 前重新验证且拒绝 symlink/junction：
+
+| 观察到的 phase/state | 唯一自动动作 |
+| --- | --- |
+| `prepared`，无 `oldInventoryHash`、output/backup 不存在、staging=new | 首次导出在 phase update 前中断；将 exact staging promote 为 output，复核 new，再按 `promoted` 收尾 |
+| `prepared`，output=old、backup 不存在、staging=new | 保留旧 output，删除 exact verified staging 与 marker，报告“导出未替换，可重试” |
+| `prepared`，output 不存在、backup=old、staging=new | 更新导出在 output→backup 后、phase update 前中断；将 exact backup 恢复为 output，复核 old，再删除 exact verified staging 与 marker，报告“导出未替换，可重试” |
+| `backup-created`，backup=old、staging=new、output 不存在 | 将 exact staging promote 为 output，复核 new，再进入 `promoted` |
+| `backup-created`，output=new、backup=old、staging 不存在 | 视为 phase update 前崩溃，复核后进入 `promoted` |
+| `backup-created`，new staging 不完整而 backup=old、output 不存在 | 将 exact backup 恢复为 output，复核 old，删除 marker并报告失败 |
+| `promoted`，output=new 且 backup=old 或不存在 | 删除 exact verified backup（若有）与 marker，报告成功 |
+| 任何缺失、额外对象、hash/realpath/nonce 不匹配或多义状态 | 不自动 rename/delete；展示 marker 路径、已验证事实和人工恢复步骤 |
+
+上述 sidecar 是有限的单次文件系统恢复证据，不是全局事务日志。两个并发导出仍由 project/output lock 阻止；启动导出/恢复时按 `outputPathHash` 扫描同 parent：0 个 marker 才可开始新事务，恰好 1 个才进入上述恢复矩阵，2 个及以上一律视为多义状态且零自动 rename/delete。发现未完成 marker 时，新导出必须先完成或显式放弃该恢复，不能另起 nonce 猜测覆盖。
+
+### 7.2 CloudflareBundleSink
+
+首次 `provision` 在用户自己的 Cloudflare account 创建一个 generic Worker、一个 D1 database 和一个 R2 bucket，并安装固定 schema、binding 和 site publish secret。
+
+此后 `publish`：
+
+1. 在 D1 为 `bundleHash` 建立 staging manifest、route 与 asset-verification rows；
+2. 以有界分块确保 R2 中每个内容寻址 asset 存在并把验证结果写入对应 row；
+3. 上传并按 hash 验证预渲染 route body；
+4. 验证 route/asset closure 完整、Worker 支持 bundle format；
+5. 以 null-safe `expectedCurrentBundleHash` 条件更新把 `site.current_bundle_hash` 原子切换为新 bundle。
+
+普通 publish 不调用 Cloudflare account API，不上传 Worker、不迁移 schema。协议和恢复见 [CLOUDFLARE.md](CLOUDFLARE.md)。
+
+## 8. Generic Worker 读取模型
+
+Worker 公共请求只做：
 
 ```text
-load config
-  -> scan content/theme/public
-  -> aggregate diagnostics
-  -> compile visible entries at fixed asOf
-  -> route/resource conflict plan
-  -> render stage
-  -> feed/manifest/integrity verification
-  -> failure-safe output replacement
+validate method and raw path
+  -> /assets/<hash>.<ext> ? D1 activated-asset lookup -> R2 GET
+  -> D1 JOIN current_bundle_hash + exact route path
+  -> exact pre-rendered body
+  -> missing route: current bundle /404.html body with status 404
 ```
 
-确定性输入、路由、资源 manifest、输出布局、managed-root 边界和恢复算法以 [BUILD.md](BUILD.md) 为准。
+Worker 不含 Markdown parser、sanitizer、模板解释器、项目 config loader 或站点专用代码。一个 runtime release 可以服务多个由各自 D1/R2 binding 隔离的站点实例，但 0.1 每次 provision 仍创建用户独占资源，不实现 Mallok 多租户控制面。
 
-这里有一个刻意的产品边界：static output 可以放到任意静态托管，但 MVP 不包含“所有托管平台的一键 deploy”。不选择 provider 就无法诚实地自动配置域名、认证和发布。
+## 9. 版本与兼容
 
-## 8. Cloudflare 读取流
+一个 Mallok release 同时拥有：
 
-Cloudflare target 使用 Module Worker + D1 + Workers Static Assets：
+- binary version；
+- project `formatVersion`；
+- `PublishBundle.formatVersion`；
+- embedded generic Worker protocol/schema version；
+- 三个内置模板版本。
 
-```text
-request
-  -> raw URL/path validation
-  -> admin router OR public dynamic router
-  -> D1 detail query or metadata-only summary query
-  -> strict row codec
-  -> same Theme/feed generator
-  -> response headers/ETag
-  -> otherwise ASSETS fallback
-```
+它们在同一仓库、同一 release 中发布，不独立发包。Worker capability endpoint 返回可接受的 bundle format 和最大预算；binary 在上传任何 bytes 前检查兼容。Worker/schema upgrade 只能由用户明确确认的 `upgradeCloudflareRuntime` application use case 执行，Studio 与高级 CLI 调用同一能力；普通 publish 只报告需要升级，不隐式改变运行代码。
 
-动态 route 是 `/`、`/articles/<slug>/`、`/rss.xml`、`/sitemap.xml`；assets directory 不生成这些同名文件。静态资源命中不访问 D1。完整 route/cache/CSP/binding/config 行为见 [CLOUDFLARE.md](CLOUDFLARE.md) 与 [HTTP_API.md](HTTP_API.md)。
+0.1 不提供公共 plugin/theme ABI，因此 binary 内部重构不产生额外 semver surface。
 
-公开请求绝不解析 Markdown或重新 sanitize。未知/篡改 row profile fail closed；升级通过明确 decoder/migration/re-publish 处理，不把访客流量当 migration worker。
+## 10. 故障与恢复原则
 
-## 9. 发布写入流
+- 编译失败：无 sink 副作用。
+- static 写入失败：旧 output 保留。
+- R2 上传中断：重试相同 content hash；已存在同 hash bytes 即 no-op。Mallok 管理的 `assets/` prefix 在 0.1 是 append-only，current bundle 缺 asset 时从本地完整 bundle 重新上传。
+- D1 staging 中断：current bundle 不变；重试同 bundle 补齐缺失 body。
+- activate response 丢失：查询 current bundle；相同即成功，不同则重试 finalize。
+- 两个发布者竞争：activate 使用一个 current-base guard；旧 base 失败并要求用户刷新，不使用 lease、heartbeat 或全局 fence。
+- 本地 `.mallok` 丢失：用 `siteId`、remote capability/status 和显式凭据重建非敏感连接状态。
+- provision 部分完成：每次 create 成功后先持久化有限 provision receipt 与远端 ownership marker，再进入下一步；重跑只连接 receipt、siteId、provisionId 和远端 marker 一致的资源，不自动删除或接管同名未知资源。
 
-```text
-CLI local validate/compile preview + asset check
-  -> plan/diff/confirmation
-  -> authenticated source request + expectedVersion + idempotency key
-  -> server schema + asset validation
-  -> server compiler
-  -> transactional CAS domain operation
-  -> stored response
-  -> cache-busted public verification
-```
+0.1 没有 per-document revision、idempotency ledger、provider-call journal、upload/activation 两阶段 Worker version 协议、repair/rollback 状态机或自动远程删除。
 
-服务器不信任客户端 HTML/hash/server time。媒体校验返回最多 100 个规范化、去重、稳定排序的本地 asset URL reference；它们与 revision 一起持久化，使后续 deploy 能证明候选 Static Assets bundle 仍覆盖所有 current pointer。MVP 不指纹化资源 URL，因而同 URL bytes 可以在新 deploy 中变化；revision asset reference 只保证 URL 存在，不把 asset bytes 变成文章 artifact identity。一次 document publish 在 D1 中原子处理 revision reuse/insert、pointer、version 和 idempotency response；unpublish 原子删除 pointer并 bump version。状态机、表/index/codec/transaction algorithm 在 [DATABASE.md](DATABASE.md)，wire contract 在 [HTTP_API.md](HTTP_API.md)，CLI 交互在 [CLI.md](CLI.md)。决策依据见 [ADR-0005](adr/0005-versioned-d1-projection.md)。
+## 11. 安全与隐私
 
-多文件 CLI publish 不是跨文章分布式事务；部分成功必须准确报告，不能声称整体回滚。
+安全最低线见 [SECURITY.md](SECURITY.md)。架构层固定：
 
-## 10. 时间、身份与排序
+- Studio 只绑定 loopback，使用进程随机 session capability 和 exact Origin/Host 校验；
+- Markdown/frontmatter/media/HTTP/bundle 都是不可信输入；
+- 原始 Markdown HTML 固定禁用；模板变量默认 HTML escape；
+- 模板无任意 JS、插件、网络、文件系统或 raw filter；
+- project 和 `.mallok` 不保存 credential；
+- Studio browser 永远拿不到 Cloudflare OAuth/API credential；
+- publish token 只授权单站点 bundle 数据写入，不授权 account resource 管理；
+- public Worker 不根据请求执行作者代码或 compiler；
+- 默认无遥测。
 
-- document 由不可变 lowercase canonical UUID v4 frontmatter `id` 标识；slug 可变；
-- revision 不可变；当前 pointer 可切换/删除；
-- `publishedAt`/D1 `content_published_at` 是 nullable 作者排期；缺失立即可见，未来值在 `asOf` 前隐藏；
-- `activated_at` 是 pointer 切换系统事件时间，nonnull，不替代作者排期；
-- current 已发布相同 artifact 才 no-op；unpublish 后相同 artifact re-publish 仍恢复 pointer并 version+1；
-- 排序：显式有效日期降序 → 无日期 → slug 升序 → id 防御性 tie-break。
+## 12. 复杂度预算与非目标
 
-## 11. 配置、状态与部署
+0.1 维护预算：
 
-项目只加载受信任的 `mallok.config.mjs` pure-data default export，完整 schema 与 path 边界见 [CONTENT_CONFIG.md](CONTENT_CONFIG.md)。配置提交 project/site/logical resource names，不提交 secret/account/database id。
+- 1 个源码仓库；
+- 1 个发行产品和 executable；
+- 1 个 compiler；
+- 1 个 bundle format；
+- 3 个内置模板；
+- 2 个 sink；
+- 1 个 Cloudflare runtime/schema；
+- 0 个公共 plugin/theme API；
+- 0 个站点 npm dependency；
+- 0 个自动云资源删除路径。
 
-Cloudflare 非敏感解析写 gitignored `.mallok/state.json`；不可变 build candidate、canonical manifest/inventory evidence、per-lock Wrangler config 与 provider-call request/result journal 也位于 `.mallok`。`dist` 只是可替换 preview 输出，不能作为 deploy 输入。`provision` 默认 plan-only，`deploy` 不隐式 provision/secret put。D1 单例 fence 关闭 current asset closure 与旧 Worker publish 的并发窗口。部署先做不激活流量的 version upload，把 canonical lowercase target version UUID 持久化为`version_ready`，再用独立 logical attempt 显式 activation；同一意图可以在同锁下 effect-idempotent 重传，每次物理调用有唯一`providerCallId`。external barrier只能经recover/repair/rollback或证据充分的normal abort-to-baseline推进，首次部署无baseline时只能recover/repair。migration/upload/activation不是跨云API事务，进入每个边界前都复核provider baseline/target。MVP因recovery evidence无durable remote store而禁止`CI=1`的Cloudflare基础设施写入。见 [CLOUDFLARE.md](CLOUDFLARE.md) 与 [OPERATIONS.md](OPERATIONS.md)。
+明确延期：自定义模板上传、任意 JS、plugin marketplace、第三方 runtime/provider sink、在线多人协作、R2 媒体管理 UI、内容 revision 历史、自动 DNS/domain、CI 云端发布、多租户托管控制面和静态增量构建。
 
-## 12. 错误、日志与隐私
-
-Core/adapter 使用 `MallokError { code, message, hint?, cause? }`，cause 不穿过 CLI JSON/HTTP 边界。CLI exit code 见 [CLI.md](CLI.md)，HTTP envelope/status 见 [HTTP_API.md](HTTP_API.md)。
-
-结构化日志只包含 request id、route template、status、duration、稳定 error code、document/revision 摘要；不记录 token、cookie、request body、source Markdown、frontmatter data、SQL、完整 IP或环境对象。默认无遥测。
+新增上述能力必须先有独立产品需求和维护预算；不得用“以后可能需要”扩大 0.1 内部抽象。
 
 ## 13. 验证架构
 
-- 单元：模型/compiler/html/url/hash/route/feed/CLI/API/codec；
-- 集成：FS boundary/build replace/theme bundle/D1/migration/Worker ASSETS；
-- E2E：init→static、local publish→Worker→unpublish；
-- cross-runtime：固定 fixture/theme/clock 的 DOM/feed；
-- staging：单独授权的完整临时 Cloudflare lifecycle。
-
-固定环境、corpus、fault injection、覆盖率、性能与证据格式见 [TESTING.md](TESTING.md)，可接受结果见 [ACCEPTANCE.md](ACCEPTANCE.md)。
-
-## 14. MVP 外架构
-
-Mallok Studio 是长期核心产品入口，但它的 GUI/浏览器认证、作者真相和托管仍不能“顺便”塞进 core 或现有 MVP task。多租户、R2 媒体库、remote theme sandbox、插件市场、多语言/collection、自定义 route、静态 provider deploy adapter、增量生成、搜索/电商/AI 同样需要新 PRD/ADR/威胁模型。
-
-## 15. 平台事实来源
-
-Cloudflare 平台行为与 2026-08-27 锁定版本依据集中在 [CLOUDFLARE.md](CLOUDFLARE.md)。实现升级必须重新核对官方文档，不能从本架构的日期推断当前平台行为。
+- domain/compiler 单元：规范化、route、Markdown/XSS、template escaping、feed、hash；
+- SEO 单元/集成：head、canonical、robots、sitemap 集合/分片/XML、preview/404 noindex 和 broken link；
+- 图片单元/集成：自动定向、固定 WebP profile、三段 byte gate、尺寸/loading/fetchpriority、未引用 media 与动画/外部图片；
+- project integration：data-only project、原子写入、symlink/path、并发快照；
+- bundle golden：同一 fixture 两次编译 canonical bytes/hash 一致；
+- sink contract：static 与 Cloudflare staging 都证明消费相同 bundle bytes；
+- Studio/CLI parity：同一 application input 得到相同 plan/result/error；
+- Worker local：path → current pre-rendered body、404、HEAD、immutable asset；
+- publish fault injection：每个 asset/route/finalize 中断点重试后 current 只有旧或新完整 bundle；
+- distribution smoke：在无 Bun/Node/package manager 的干净机器运行 binary、打开 Studio、build/export fixture。
+- PageSpeed：固定 Chrome/Lighthouse mobile 配置对三模板三类页面各做 5 次顺序 cold run；release staging 另保存 PSI lab 与可用的 CrUX field 证据。

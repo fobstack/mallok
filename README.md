@@ -1,59 +1,72 @@
 # Mallok
 
-Mallok 是一套从零构建的、内容优先的网站产品。它的长期目标，是让第一次做内容网站的人也能从模板出发完成创建、编辑、预览、发布和更新，而不必先学习前端框架。
+> 选模板，填内容，点发布。网站不再是一个需要维护的前端工程。
 
-Mallok 不依赖 Astro、Next.js 或其他站点框架，使用同一套内容模型和主题契约，同时支持：
+Mallok 是一个计划开源、本地优先、Studio-first 的内容建站产品。它面向博客、知识库、新闻站和中小企业官网，把创建、编辑、预览、发布和持续更新收进一个桌面产品中。
 
-- 将本地 Markdown 编译为纯静态 HTML；
-- 在 Cloudflare Workers 上读取 D1 并动态渲染文章；
-- 通过可替换主题控制页面结构与视觉；
-- 通过 CLI 完成初始化、开发、构建、内容同步和部署；
-- 为长期面向非开发者的 Mallok Studio 保留清晰 application/API 边界；Studio 是长期核心界面，但 MVP 暂不实现 GUI。
+Mallok 不依赖 Astro、Next.js 等站点框架，也不试图成为另一个通用前端框架。它选择一条更窄、也更激进的路：目标是在内容网站场景中，让第一次建站的人比使用 Astro 更少做选择、更少接触技术概念，并且不再承担依赖升级、构建配置和部署脚本的维护成本。当前这是已冻结的产品目标，还不是已完成的比较证明。
 
-项目当前处于 **Phase 0 文档基线，主分支尚无可发布实现**。完整入口见 [开发文档导航](docs/README.md)，当前事实见 [项目状态](docs/STATUS.md)。不要把下面的目标命令当作已经可运行的功能。
+## 用户只需要理解四件事
 
-## 核心原则
+| 对象 | 用户要做的事 |
+| --- | --- |
+| **站点** | 设置名称、描述、Logo、语言、导航和查看公开地址 |
+| **模板** | 选择外观，并调整颜色、字体和紧凑/舒适密度 |
+| **内容** | 编写页面和文章，管理图片与发布状态 |
+| **发布** | 预览变化，点击发布，必要时恢复上一版本 |
 
-1. **HTML 优先**：默认不向访问者发送客户端 JavaScript。
-2. **双运行模式**：纯静态与 D1 动态模式共享内容和主题，但不伪装成同一种部署形态。
-3. **安全边界**：MVP 固定移除 Markdown 原始 HTML，动态内容在进入模板前经过清洗。
-4. **可移植内核**：核心包不依赖 Node.js、Cloudflare 或某个 UI 框架。
-5. **先 CLI、后 Studio**：CLI-first 是交付顺序和自动化接口，不是长期易用性的终点；Studio 与 CLI 最终共享同一应用能力。
+构建、路由、依赖、数据库迁移和云资源配置都是 Mallok 的内部工作，不是用户的学习任务。
 
-## Mallok 要在哪条路上更好
+## 0.1 产品形态
 
-Mallok 不声称全面取代 Astro。它只针对博客、新闻、文档和中小企业内容站，追求把“选模板 → 填内容 → 预览 → 发布 → 持续更新”做得概念更少、步骤更少、默认输出更轻。
+Mallok Studio 是 0.1 的主产品，而不是未来附加的 GUI：
 
-Astro 已经具备零客户端 JS、静态/按需渲染和内容集合等能力；Mallok 的差异不是复刻这些 feature，而是把内容发布、D1 revision、诊断和可恢复部署整合成一条意见明确的产品路径。比较数据出来前，“更轻、更容易”是待验证目标，不是现状宣传。完整边界见 [产品愿景](docs/PRODUCT_VISION.md)。
+- 安装后直接创建或打开本地站点，无需终端；
+- 从官方模板开始，所见即所得地编辑内容和站点信息；
+- 实时预览，点击一次发布到官方支持的托管路径；
+- 后续文章更新仍从同一个“发布”按钮完成；
+- 发布失败时明确说明影响，并提供重试或恢复；
+- 可以导入、导出 Markdown，也可以高级导出纯静态站点；
+- 自动生成 sitemap、robots、canonical 和分享 metadata，并用固定 PageSpeed/Lighthouse 门验证三个官方模板；
+- 本地图片在发布时自动定向、压缩并输出准确尺寸，不要求用户先学图片优化；
+- 每个站点只保存内容、媒体、模板选择和站点设置，不生成 `package.json`、`node_modules` 或需要用户维护的框架工程。
 
-## 计划中的命令
+CLI 作为高级自动化适配器存在，但不参与默认新手路径，也不能成为 Studio 正常工作的前置条件。
 
-```bash
-mallok init my-site
-mallok new article
-mallok dev
-mallok validate
-mallok build
-mallok preview
-mallok publish content/articles/hello.md
-mallok unpublish --file content/articles/hello.md
-mallok db migrate
-mallok provision
-mallok deploy
-mallok doctor
-```
+## 产品原则
 
-准确的参数以 [CLI 契约](docs/CLI.md) 为准，例如下线使用 `mallok unpublish --id <uuid>` 或 `--file <path>`，不接受歧义 slug。以上命令是产品契约，不代表当前已经实现。
+1. **Studio-first**：产品完成以无终端用户走通为准，不以 CLI 能运行作为替代。
+2. **本地优先**：内容默认保存在用户设备上，可备份、迁移和导出；没有账号也能创建和预览。
+3. **零命令、零配置**：默认建站与发布路径不要求输入命令或编辑配置文件。
+4. **网站不是前端工程**：用户不维护依赖、构建器、路由或部署脚本。
+5. **复杂度由产品吸收**：底层可以复杂，界面只呈现结果、影响和下一步。
+6. **默认轻量**：官方模板默认不向公开页面发送客户端 JavaScript。
+7. **搜索与速度是产品责任**：compiler 统一生成抓取文件和 SEO head，官方输出必须通过公开的 Mallok PageSpeed Gate。
+8. **可退出**：内容和静态输出可导出，不能用 Studio 把用户数据锁死。
 
-## 关键取舍
+## 当前状态
 
-- static target 生成可交给任意静态托管的目录，但 MVP 不声称无需选择托管商即可“一键部署到所有平台”；
-- cloudflare target 在资源和 secret 已配置后，由一个 deploy 命令完成 migration、Worker/asset 发布和 smoke；
-- Markdown/Git 是作者源，D1 是发布投影；删除文件不会自动下线线上文章；
-- GUI/Studio、R2 媒体库、多语言和插件市场均不属于 MVP。
+截至 2026-08-27，本仓库处于产品与开发文档阶段，尚无可安装的 Mallok Studio、可发布的 0.1 实现或经过用户测试的比较结果。
 
-## 计划公开归属
+- 计划 GitHub owner：`JasonYv`
+- 计划公开仓库：`JasonYv/mallok`
+- 当前本地仓库未配置 Git remote
+- 远端仓库是否已经创建、归属是否已验证：尚未核验
+- 开源许可证：尚未确定
 
-- 计划 GitHub 维护者：`JasonYv`；
-- 计划公开仓库：`github.com/JasonYv/mallok`；
-- 当前本地仓库尚未配置 Git remote，也尚未公开发布。许可证和仓库所有权在发布前必须核实。
+因此，`JasonYv/mallok` 目前是发布计划，不应表述为已经公开的开源仓库。
+
+## 文档入口
+
+- [产品愿景](docs/PRODUCT_VISION.md)：定位、产品模型与竞争路径
+- [产品战略](docs/PRODUCT_STRATEGY.md)：市场楔子、产品阶梯、开源商业模型与护城河
+- [对比协议](docs/COMPARISON_PROTOCOL.md)：如何证明在内容站路径上比 Astro 更简单、更易维护
+- [产品需求](docs/PRD.md)：0.1 范围、优先级、验收标准与指标
+- [体验规范](docs/EXPERIENCE.md)：界面信息架构、完整旅程、状态与错误文案
+- [架构文档](docs/ARCHITECTURE.md)：实现边界
+- [搜索与页面性能](docs/SEO_PERFORMANCE.md)：sitemap、technical SEO、图片优化和 PageSpeed 验收
+- [技术栈](docs/TECH_STACK.md)：已批准 runtime、Studio、编辑器、compiler 和测试依赖
+- [模板视觉](docs/TEMPLATE_VISUALS.md)：Journal、Docs、Company 的实现范围
+- [实施计划](docs/IMPLEMENTATION_PLAN.md)：开发拆分
+
+产品语义以 `PRODUCT_VISION.md`、`PRODUCT_STRATEGY.md`、`PRD.md` 和 `EXPERIENCE.md` 为准。当前活动工程文档已经切换到 Studio-first 路线；早期 CLI-first 方案只保留在 Git 历史中，不得恢复为实现依据。

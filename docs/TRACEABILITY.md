@@ -1,33 +1,28 @@
-# Mallok MVP 需求追踪矩阵
+# 需求追踪
 
-- 状态：Living document
-- 当前实现状态：全部 `NOT_STARTED`，以 [STATUS.md](STATUS.md) 为准
+状态：`Accepted for 0.1`
 
-状态只能使用：`NOT_STARTED`、`IMPLEMENTED_UNVERIFIED`、`VERIFIED_LOCAL`、`VERIFIED_STAGING`、`ACCEPTED`、`BLOCKED`。
+| PRD 需求 | 用户结果 | 主要契约 | 任务 | 验收 |
+| --- | --- | --- | --- | --- |
+| FR-01 | 无终端启动与新建 | PRD / EXPERIENCE / DISTRIBUTION | 01, 05 | AC-01-01..02, AC-05-01, AC-05-04 |
+| FR-02 | 本地站点、重开与安全升级 | PROJECT_FORMAT / VERSIONING | 01, 02, 05 | AC-01-02..03, AC-02-05..07, AC-05-03 |
+| FR-03 | 三模板预览/切换，内容和 URL 不丢 | TEMPLATE_FORMAT / TEMPLATE_VISUALS | 01, 02 | AC-01-02..04, AC-02-01 |
+| FR-04 | 可视编辑、Markdown 导入导出、图片、列表过滤与草稿 | EDITOR / PROJECT_FORMAT | 01, 02 | AC-01-03, AC-01-07, AC-02-02..03, AC-02-07..08 |
+| FR-05 | 响应式本地预览 | EXPERIENCE / ARCHITECTURE | 01, 02 | AC-01-04, AC-02-01, AC-02-06 |
+| FR-06 | 引导授权并得到首个公网 URL | CLOUDFLARE / SECURITY | 03 | AC-03-01..06 |
+| FR-07 | 单一“发布更改”动作更新内容 | ARCHITECTURE / CLOUDFLARE | 04 | AC-04-01..04, AC-04-07 |
+| FR-08 | 发布历史、结果未知恢复和上一版本恢复 | OPERATIONS / CLOUDFLARE | 04 | AC-04-03..08 |
+| FR-09 | 导出完整静态站，不假称已上线 | ARCHITECTURE / SECURITY | 02 | AC-02-04..06 |
+| FR-10 | 高级 CLI 与 Studio 共享产品能力 | CLI / ARCHITECTURE | 05 | AC-X-01, AC-X-06 |
+| FR-11 | 数据备份、Markdown 导出、不锁定 | PROJECT_FORMAT / EDITOR | 02, 05 | AC-02-07..08, AC-05-03 |
+| FR-12 | 自动 sitemap/robots、technical SEO、受管图片与页面性能 | SEO_PERFORMANCE / TEMPLATE_FORMAT / ARCHITECTURE | 02..05 | AC-02-09..10, AC-03-03, AC-04-01..02, AC-05-08, AC-05-10 |
+| NFR-易用 | 默认 0 命令、0 配置编辑 | EXPERIENCE | 01..05 | AC-01-01, AC-01-06, AC-05-04..06 |
+| NFR-安全 | 内容、模板、凭据、路径与发布 fail closed | SECURITY | 01..05 | AC-X-02..05 |
+| NFR-可携带 | 站点是数据，无每站依赖 | PROJECT_FORMAT / DISTRIBUTION | 01, 02, 05 | AC-01-03, AC-02-04..08, AC-05-01..03 |
+| NFR-可访问 | Studio 与官方站点可键盘/读屏/缩放 | EXPERIENCE / TESTING | 01..05 | AC-05-07, AC-X-04 |
+| NFR-搜索 | canonical/head、sitemap/robots、抓取集合确定且一致 | SEO_PERFORMANCE | 02..05 | AC-02-09, AC-03-03, AC-04-01..02, AC-05-08 |
+| NFR-页面性能 | 官方模板和受管资源通过 Mallok PageSpeed Gate | SEO_PERFORMANCE / TESTING | 02, 05 | AC-02-10, AC-05-08, AC-05-10 |
+| NFR-更简单 | 绝对产品门 | PRD §11.1 | 05 | AC-05-04..06, AC-05-09 |
+| NFR-竞争声称 | 在受测内容站路径上比 Astro 更简单、更少维护 | PRODUCT_VISION / PRODUCT_STRATEGY / PRD §11.2 | post-release claim gate | AC-C-01..03 |
 
-| Requirement | Contract | Task | Acceptance | 主要证据 | 当前状态 |
-| --- | --- | --- | --- | --- | --- |
-| FR-001 init | CLI §4.1 | T-005/T-012 | AC-1B-01, AC-3-01 | static E2E、tarball install | NOT_STARTED |
-| FR-002 config | CONTENT_CONFIG §2–3 | T-002 | AC-1B-02 | config schema/unit/integration | NOT_STARTED |
-| FR-003 content load | CONTENT_CONFIG §4–7 | T-001/T-002 | AC-1A-06, AC-1B-03 | canonical JSON + YAML/path/diagnostic corpus | NOT_STARTED |
-| FR-004 publish filter | BUILD §2, CLI §4.5 | T-001/T-002/T-006 | AC-1A-04, AC-1B-04, AC-1C-06 | fixed-clock与 loopback draft-isolation vectors | NOT_STARTED |
-| FR-005 routes | BUILD §3–4 | T-001/T-004 | AC-1A-05, AC-1B-05 | route/path/conflict tests | NOT_STARTED |
-| FR-006 Markdown | CONTENT_CONFIG §6, BUILD §5.1, SECURITY §3 | T-001/T-004/T-009/T-011 | AC-1A-02/03, AC-1B-05, AC-2B-02, AC-2C-09 | sanitizer+mXSS、media manifest与 deploy closure corpus | NOT_STARTED |
-| FR-007 theme | THEME_API | T-003 | AC-1B-06/10 | Node/Worker bundle、golden DOM/feed | NOT_STARTED |
-| FR-008 static build | BUILD | T-004/T-005 | AC-1B-07/08/10 | determinism/recovery/feed E2E | NOT_STARTED |
-| FR-009 dev/preview | CLI §4.5–4.6, BUILD §10 | T-006 | AC-1C-01..06 | subprocess/watch/path/draft-isolation tests | NOT_STARTED |
-| FR-010 D1 projection | DATABASE | T-007/T-009 | AC-2A-01..04, AC-2B-15 | local migration/query/codec/snapshot/time matrix | NOT_STARTED |
-| FR-011 dynamic render | THEME_API, BUILD §7.2–7.3, CLOUDFLARE §8–9 | T-008 | AC-2A-05..09, AC-NFR-14 | immutable candidate build/metadata-only Worker route/cross-runtime | NOT_STARTED |
-| FR-012 update API | HTTP_API, DATABASE publish protocol | T-009 | AC-2B-01..09, AC-2B-15 | auth/CAS/fault injection/admin snapshot | NOT_STARTED |
-| FR-013 publish CLI | CLI §4.9–4.10 | T-010 | AC-2B-10..14 | CLI/API/local Worker E2E | NOT_STARTED |
-| FR-014 deployment | CLOUDFLARE §3–7 | T-011/T-013 | AC-2C-01..12, AC-3-06 | dry-run/first-deploy/immutable snapshot/fenced closure/non-activating upload→exact UUID→activation/request-result journal/recover+repair+abort+rollback/secret-file + authorized staging | NOT_STARTED |
-| FR-015 doctor | CLI §4.7 | T-005/T-011 | AC-1B-09, AC-2C-02 | local/remote check matrix | NOT_STARTED |
-| NFR-001 performance/cache | TESTING §11, CLOUDFLARE §9 | T-008/T-010/T-012/T-013 | AC-NFR-01..03, AC-NFR-14 | benchmark/summary memory/local cache/staging | NOT_STARTED |
-| NFR-002 security | SECURITY | all, gate T-012 | AC-NFR-04..08 | security/secret/path/API suites | NOT_STARTED |
-| NFR-003 compatibility | VERSIONING §6 | T-012 | AC-NFR-09 | Node/OS/Worker matrix | NOT_STARTED |
-| NFR-004 maintainability | DEVELOPMENT, TESTING §10 | all | AC-NFR-10..12 | lint/type/coverage/ADR | NOT_STARTED |
-| NFR-005 accessibility | THEME_API §5, TESTING §11 | T-003/T-012 | AC-NFR-13 | axe + manual keyboard review | NOT_STARTED |
-
-## 证据记录规则
-
-实现合入后将“主要证据”扩展为具体 test path、命令、结果文件和 verified SHA。不能只写“覆盖率通过”。Cloudflare local 与 staging 必须分别记录；只有产品负责人可以把已验证需求标成 `ACCEPTED`。
+验收编号的详细定义以 `ACCEPTANCE.md` 为准。本表只负责追踪，不新增行为。`AC-C-*` 是对外比较声称门，不会因 30/90 天跟踪周期阻塞 0.1 产品发布；它只阻止未经证明的比较宣传。

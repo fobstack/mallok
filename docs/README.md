@@ -1,86 +1,71 @@
-# Mallok 开发文档导航
+# Mallok 文档导航
 
-这套文档是 Mallok 从零实现的权威入口。当前主分支只有产品与工程契约，**尚未集成可发布实现**；开发者或编码助手必须先阅读 [项目状态](STATUS.md)，不能把计划中的命令误当成已存在能力。
+状态：`Accepted product baseline`
+适用版本：计划中的 Mallok 0.1
+代码状态：尚未实现
 
-## 推荐阅读顺序
+Mallok 是一个 Studio-first 的内容建站产品，不是一个新的前端组件框架。默认用户只需完成四件事：创建站点、选择模板、编辑内容、发布网站。
 
-1. [项目状态](STATUS.md)：现在完成了什么、还没做什么、哪些决策未关闭。
-2. [产品愿景与竞争边界](PRODUCT_VISION.md)：Mallok 为谁而做、在哪条路径上追求优于通用框架，以及哪些比较尚待验证。
-3. [产品需求](PRD.md)：当前 MVP 目标用户、范围、功能和非功能要求。
-4. [术语表](GLOSSARY.md)：作者源、发布投影、revision、artifact 等统一含义。
-5. [技术架构](ARCHITECTURE.md)：包边界、数据流、双运行模式和核心约束。
-6. 领域契约：
-   - [配置与内容契约](CONTENT_CONFIG.md)
-   - [主题 API](THEME_API.md)
-   - [CLI 契约](CLI.md)
-   - [静态构建契约](BUILD.md)
-   - [HTTP 发布 API](HTTP_API.md)
-   - [D1 数据库契约](DATABASE.md)
-   - [Cloudflare 与部署](CLOUDFLARE.md)
-   - [版本与兼容性](VERSIONING.md)
-7. 工程质量：
-   - [安全模型](SECURITY.md)
-   - [测试策略](TESTING.md)
-   - [运维与发布](OPERATIONS.md)
-   - [本地开发指南](DEVELOPMENT.md)
-8. [实施计划](IMPLEMENTATION_PLAN.md)、[验收标准](ACCEPTANCE.md) 与 [需求追踪矩阵](TRACEABILITY.md)。
-9. [Claude Code 执行手册](CLAUDE_CODE.md) 和 `docs/tasks/` 中当前阶段任务。
+## 先读这些
 
-机器可读契约位于：
+1. [产品愿景](PRODUCT_VISION.md)：为什么做、为谁做、什么叫比 Astro 更简单。
+2. [产品战略](PRODUCT_STRATEGY.md)：市场楔子、产品阶梯、开源商业模型与护城河。
+3. [产品需求](PRD.md)：0.1 范围、非目标与量化结果。
+4. [产品体验](EXPERIENCE.md)：Studio 页面、用户旅程、状态和错误体验。
+5. [对比协议](COMPARISON_PROTOCOL.md)：比较性产品声称的预注册任务和证据规则。
+6. [技术架构](ARCHITECTURE.md)：单一编译管线、PublishBundle 与模块边界。
+7. [技术栈](TECH_STACK.md)：已批准 runtime、Studio、编辑器、compiler 和测试依赖。
+8. [搜索与页面性能](SEO_PERFORMANCE.md)：sitemap、technical SEO、受管图片和 PageSpeed/Lighthouse 门。
+9. [实施计划](IMPLEMENTATION_PLAN.md)：五个纵向交付阶段。
+10. [验收标准](ACCEPTANCE.md)：什么证据才算完成。
+11. [当前状态](STATUS.md)：现在能做什么、仍缺什么。
 
-- [`schemas/mallok-config.schema.json`](schemas/mallok-config.schema.json)
-- [`schemas/build-manifest.schema.json`](schemas/build-manifest.schema.json)
-- [`schemas/asset-manifest.schema.json`](schemas/asset-manifest.schema.json)
-- [`schemas/candidate-inventory.schema.json`](schemas/candidate-inventory.schema.json)
-- [`schemas/deployment-state.schema.json`](schemas/deployment-state.schema.json)
-- [`schemas/deployment-attempt.schema.json`](schemas/deployment-attempt.schema.json)
-- [`schemas/deploy-plan.schema.json`](schemas/deploy-plan.schema.json)
-- [`schemas/staging-authorization.schema.json`](schemas/staging-authorization.schema.json)
-- [`schemas/staging-ownership.schema.json`](schemas/staging-ownership.schema.json)
-- [`schemas/release-evidence.schema.json`](schemas/release-evidence.schema.json)
-- [`openapi.yaml`](openapi.yaml)
+## 领域文档
 
-## 文档权威关系
+- [项目格式](PROJECT_FORMAT.md)：站点数据、Markdown 和媒体目录。
+- [内容编辑器](EDITOR.md)：可视编辑、Markdown 真相、无损导入与自动保存。
+- [模板格式](TEMPLATE_FORMAT.md)：声明式模板和可配置设计能力。
+- [模板视觉](TEMPLATE_VISUALS.md)：Journal、Docs、Company 的视觉角色、响应式与验收范围。
+- [搜索与页面性能](SEO_PERFORMANCE.md)：compiler-owned SEO 输出、sitemap/robots、图片优化与真实性能证据。
+- [CLI](CLI.md)：高级用户与自动化入口。
+- [Cloudflare 发布](CLOUDFLARE.md)：用户自有账号上的托管模型。
+- [发行方式](DISTRIBUTION.md)：自包含 Studio、平台和升级策略。
+- [安全模型](SECURITY.md)
+- [测试策略](TESTING.md)
+- [运行与恢复](OPERATIONS.md)
+- [开发约定](DEVELOPMENT.md)
+- [版本规则](VERSIONING.md)
+- [术语表](GLOSSARY.md)
+- [需求追踪](TRACEABILITY.md)
 
-不同文档负责不同问题，不允许实现者在冲突时自行挑选有利版本：
+## 架构决策
 
-1. 新的、状态为 `Accepted` 的 ADR 只在明确写出的范围内取代旧决策；
-2. `PRODUCT_VISION.md` 决定长期目标用户、竞争边界和比较声明证据门；它不把未实现愿景变成当前能力；
-3. `PRD.md` 决定当前产品范围和用户承诺，领域 reference 决定各自字段、接口、状态机和错误行为；两者领域不同，不能互相偷改；
-4. `SECURITY.md` 的安全下限不可由任务或实现降低；
-5. `ARCHITECTURE.md` 解释模块关系和跨领域不变量，不重复发明字段级协议；
-6. `ACCEPTANCE.md` 决定完成证据，但不能暗中新增产品能力；
-7. `IMPLEMENTATION_PLAN.md` 决定开发顺序；
-8. 单个 `docs/tasks/T-*.md` 只能收窄阶段范围，不能推翻以上文档；`.claude/**` 和聊天不属于规范。
+- [DEC-001：Studio-first](decisions/001-studio-first.md)
+- [DEC-002：单一 PublishBundle](decisions/002-publish-bundle.md)
+- [DEC-003：声明式模板](decisions/003-declarative-templates.md)
 
-若两份高层文档不可同时满足，应停止实现，先修改文档并新增或更新 ADR。不能靠代码注释、测试快照或编码助手的推断改变公共契约。
+## 实施任务
 
-## 需求追踪规则
+任务按用户价值纵向切分，必须依次完成：
 
-- 产品需求使用 `FR-*`、`NFR-*` 编号；
-- 验收项使用 `AC-*` 编号；
-- 架构决策使用 `ADR-*`；
-- 实现任务使用 `T-*`；
-- 审查发现使用 `REV-*`。
+1. [Walking skeleton](tasks/01-walking-skeleton.md)
+2. [完整本地产品](tasks/02-local-product.md)
+3. [首次公网发布](tasks/03-cloudflare-publish.md)
+4. [持续更新与恢复](tasks/04-update-recovery.md)
+5. [0.1 发行](tasks/05-release.md)
 
-每个阶段任务必须列出本轮覆盖的 `FR/AC`、允许改动路径、依赖白名单、验证命令和停止条件。每项公共行为至少有一个可重复的自动化证据；真实云端副作用只能由人工授权的 staging 验收覆盖。
+## 权威顺序
 
-## 文档状态词
+发生冲突时按以下顺序处理：
 
-- `Draft`：可讨论，不授权实现公共契约；
-- `Accepted`：当前实现必须遵循；
-- `Experimental`：可以实现和试用，但不保证兼容；
-- `Deprecated`：仍兼容，但不得继续扩大使用；
-- `Superseded`：已被新文档取代。
+1. 产品愿景；
+2. 产品战略；
+3. PRD 与体验/编辑器契约；
+4. 产品决策文件；
+5. 安全下限；
+6. 领域文档与架构；
+7. 验收标准与需求追踪；
+8. 实施计划；
+9. 单个任务。
 
-## 更新要求
-
-公共接口、数据格式、安全边界或运行模式变化时，同一个变更必须同步更新：
-
-1. 对应领域契约；
-2. ADR（若属于跨模块或不可逆决策）；
-3. 验收标准和测试矩阵；
-4. 迁移或兼容说明；
-5. 受影响的阶段任务。
-
-只改代码、不改契约，不算完成。
+任务只能收窄范围，不能擅自改变产品。工程决策若要改变 Studio-first、四对象、0 终端/配置或数据可携带性，必须先修订并重新接受产品基线。旧 CLI-first 基线保存在 Git 提交 `8c0c892`，已被当前文档取代。

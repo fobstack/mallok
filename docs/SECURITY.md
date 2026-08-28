@@ -1,140 +1,161 @@
-# Mallok 安全规范与威胁模型
+# Mallok 0.1 安全规范与威胁模型
 
-- 状态：Accepted for MVP
-- 适用阶段：全部
+- 状态：Accepted 0.1 security baseline
+- 适用范围：binary、数据项目、loopback Studio、compiler、PublishBundle、static/Cloudflare sink
 
 ## 1. 保护目标
 
-Mallok MVP 优先保护：
+Mallok 0.1 优先保护：
 
-1. 访客浏览器不执行文章作者注入的脚本；
-2. 发布者不能通过 API 越权覆盖新 revision 或写任意 SQL/path；
-3. 构建/部署不能写出项目边界或删除源码；
-4. token/云凭据不进入 Git、日志、错误响应或命令行参数；
-5. 静态与动态模式对同一内容采用同一安全编译语义；
-6. 数据库中被篡改或版本未知的 HTML 不被伪装成 `SafeHtml`。
+1. 作者 Markdown、frontmatter、media 和模板数据不能在访客浏览器执行脚本；
+2. Studio 不能被外部网站通过 loopback CSRF/跨源请求驱动；
+3. 项目读写和 static export 不能越界、覆盖源码或跟随恶意 link；
+4. bundle publish 只能切换到完整、hash 一致的预渲染 snapshot；
+5. Cloudflare account/site credential 不进入站点、Git、browser storage、argv 或日志；
+6. Worker 不根据访客输入执行 compiler、模板或作者代码；
+7. 失败后线上只可见旧完整 bundle 或新完整 bundle，不可见 staging 半状态。
 
-MVP 不保护项目所有者免受其主动安装的恶意 npm 依赖、主题或配置代码。主题与配置是可信代码执行边界，文档不得宣传为沙箱。
+非目标：已完全控制本机用户、Mallok binary、Cloudflare account或site publish token的攻击者；用户访问的第三方普通 HTTPS 链接；Cloudflare 自身平台失陷。发生这些情况时不得声称 Mallok 仍能保护站点管理员。0.1 公开内容不允许第三方图片，因而第三方图片不再是性能/隐私豁免项。
 
 ## 2. 信任边界
 
-| 输入 | 信任级别 | 处理 |
+| 输入/组件 | 信任 | 处理 |
 | --- | --- | --- |
-| Mallok 发布包与 migration | 可信发布物 | lock、签名/来源审计 |
-| 项目配置与本地主题代码 | 项目所有者可信代码 | 明示可执行，不做沙箱承诺 |
-| Markdown/frontmatter/data | 不可信内容 | schema、compiler、sanitize、escape |
-| HTTP path/query/header/body | 不可信网络输入 | 限额、严格 parse、认证、参数化 |
-| D1 row/body_html | 不可信持久化 bytes | row codec + profile/version/hash 校验 |
-| public/theme 二进制文件 | 不可信 bytes | path/MIME/size/hash，不执行 |
-| Cloudflare/Wrangler 输出 | 外部系统数据 | redaction、schema 校验、最小记录 |
+| 官方签名 binary、内置模板、generic Worker | 可信发布物 | checksum/signature、release provenance、embedded hash |
+| `mallok.json`、Markdown/frontmatter | 不可信作者数据 | strict parse、schema、预算、escape/sanitize |
+| `media/` bytes | 不可信文件 | no-follow、magic/type/size/hash、不可执行 MIME |
+| `.mallok/` cache/state | 不可信可再生状态 | 使用前重算 hash/重查 provider；绝不作为 credential |
+| Studio browser request | 不可信 loopback network input | session capability、Origin/Host、body/method限制 |
+| 声明式模板 context | 不可信数据进入可信内置模板 | typed value、默认 escape、无 raw filter |
+| PublishBundle | 不可信传输数据 | canonical manifest、逐 body/asset hash、预算、完整性验证 |
+| Cloudflare API/Worker response | 外部系统数据 | strict response schema、redaction、超时/大小限制 |
+| D1/R2 | 受Cloudflare account权限保护的运行状态 | 写入时验证site/bundle/path/hash/MIME；account失陷不在保护范围 |
 
-## 3. 内容与 XSS
+0.1 不执行站点提供的 JavaScript、ESM theme、plugin、Wasm、shell command 或 package lifecycle script。
 
-- Markdown raw HTML node 固定为“移除”，不是可选的 escape/保留模式；
-- GFM 输出必须经过固定 sanitizer allowlist；scheme 匹配大小写不敏感；
-- sanitizer 默认删除 event attributes、style、iframe/object/embed、form、meta refresh、srcdoc、srcset/imagesrcset 和危险 URL；
-- 外部链接是否添加 `rel` 是 theme UX 决策，但 target `_blank` 时 helper 强制 `rel="noopener noreferrer"`；
-- `SafeHtml` 是运行时不可伪造对象，只能由 sanitizer、HTML document builder、`jsonScript`/`externalScript` 等封闭 helper 创建；`externalScript` 还只接受 manifest-backed、不可由通用 URL 升级的 `SafeAssetUrl`；
-- D1 `body_html` 只有受控 row codec 校验完整版本/profile/hash 后才能恢复；公开 API 不导出 string → SafeHtml；
-- template `html` helper 禁止 script/style/comment raw-text 文法，详情以 [THEME_API.md](THEME_API.md) 为准。
-- `jsonScript` 只把最终标签间精确文本作为私有 contribution 随 `SafeHtml` 传播；异步 adapter serializer 用 Web Crypto 从其 UTF-8 bytes 计算并只读导出排序后的 hash sources，禁止主题/Worker 注册任意 contribution/hash 或扫描 HTML 猜测 script 边界；
+## 3. Loopback Studio
 
-安全测试不能只断言恶意字符串“不存在”。输出要用 HTML5 parser 重解析并遍历 DOM，覆盖 mXSS、script/style raw text、comment、NUL、实体、大小写 scheme、SVG/MathML integration point、JSON-LD `</script>` 和分块输入。
+Studio backend 只绑定 `127.0.0.1` 的 OS-assigned ephemeral port；0.1 不绑定 IPv6。禁止固定端口扫描、`0.0.0.0`、LAN 自动发现和 remote tunnel。单实例 rendezvous 使用用户私有 Unix socket并验证 peer UID/version；它只触发打开新的单次 browser capability，不能绕过 Studio session 检查或传递 credential。
 
-## 4. SQL 与持久化
+启动时生成至少 32-byte CSPRNG session capability。自动打开浏览器时 capability 只放在 URL fragment；内置前端读取后立即 `history.replaceState` 清除，并在后续请求的 `X-Mallok-Studio-Session` header 中发送。不得放 query、cookie、localStorage、日志或错误页面。
 
-- 所有值使用 D1 prepared statement bind；表/列/order 只能来自固定代码枚举；
-- publish/unpublish 使用数据库约束、CAS guard 与 transactional batch；
-- revision 不可变；只允许追加和 pointer 变更；
-- idempotency key 与 request hash 绑定；同 key 不同请求返回冲突；
-- API 不接受客户端提交 body_html、artifactHash 或 server timestamp 作为权威；
-- row codec 校验 UUID、数值范围、JSON purity、hash 长度、compiler/schema/sanitize/codec profile；
-- dynamic publish 在写入前执行 source/body/row UTF-8 byte 上限，D1 trigger 原子执行总 payload ledger；不得用 JavaScript string length 代替字节数；
-- 未知 profile 返回安全 503/`PUBLISHED_REVISION_INCOMPATIBLE`，不在访客请求时重新编译 Markdown；
-- migration 永不拼接用户输入，不回显完整 row。
+backend 必须：
 
-## 5. 认证与 secret
+- 只接受 exact loopback Host 和本次进程 Origin；
+- 不配置 permissive CORS；所有 state-changing request 同时验证 session header、Origin、method 和 JSON Content-Type；
+- auth/parse 顺序在读取大 body 前拒绝无效请求；
+- 每次启动使用新 capability，关闭后立即失效；
+- Studio assets 全部嵌入 binary，CSP 禁止 remote script/style、inline script和frame；
+- 不把 Cloudflare API/site publish token、绝对 home path或环境变量返回给浏览器；
+- browser 只提交业务输入，filesystem和Cloudflare操作由 application service执行；
+- 文件外部变化以 hash conflict展示，不能覆盖用户编辑。
 
-- 管理 API 只接受 `Authorization: Bearer <token>`；不接受 query/cookie/form token；
-- token 只接受 `hex:` 或 `b64u:` 两种带前缀 canonical 编码；运行时 decode 后要求 32–128 raw bytes，再 re-encode 并要求完全相同，拒绝 padding、非 canonical 尾位和空白；官方生成器固定使用 CSPRNG 32 raw bytes，不能把运行时格式校验伪装成熵估算，也不增加任意字符串黑名单；
-- server token 只在 Worker secret 中；本地只在 gitignored `.dev.vars` 或进程环境；CI 的 local tests/content API 若需要 token只能用平台 secret store，MVP CI不得执行 Cloudflare基础设施 mutation；
-- CLI 不提供 `--token`，不写 shell history；
-- 首次 deploy 的 `--secrets-file` 必须位于项目外、是当前用户拥有的普通非 symlink `0600` 文件，且只能以无 BOM UTF-8 单行保存 `MALLOK_ADMIN_TOKEN=<canonical-token>`；Mallok 不复制、不打印、不删除用户文件；
-- 比较前把两边编码成固定长度 digest，再 constant-time compare；格式/长度不合法也走近似一致失败路径；
-- 管理 endpoint 不配置 secret 时 fail closed；
-- 认证失败不区分“文档存在与否”，不记录 token；
-- 不配置 CORS；浏览器 GUI 不直接复用长期 CLI bearer token。
+Studio 前端发生 XSS 时 session capability 可能失守，因此前端自身仍按不可信内容渲染：正文 preview放入 sandboxed、无 same-origin/script 权限的 frame，普通 UI使用 text node，不用不受控 `innerHTML`。
 
-`account_id`、`database_id` 不是认证 secret，但属于环境标识，默认只写 gitignored state。任何 credential-like 字符串都纳入 secret scan。
+## 4. 内容、模板与 XSS
 
-## 6. 请求防护
+- Markdown raw HTML固定移除，无配置开关；
+- CommonMark/GFM output经过固定 sanitizer allowlist；移除 event attribute、style、script、iframe/object/embed、form、meta refresh、srcdoc、srcset/imagesrcset和危险 URL；compiler 后续只为受管图片注入自己生成的 width/height/loading/fetchpriority；
+- scheme匹配大小写不敏感并在实体/控制字符规范化后执行；
+- 声明式模板的普通输出按 HTML text/attribute/URL context自动 escape；
+- 唯一 HTML fragment入口是 compiler mint 的 sanitized Markdown body和内置 serializer；没有 `raw|safe` filter；
+- 模板禁止 script、inline style、事件属性、动态 include、JS/plugin和网络；
+- config design token经过类型校验后才进入生成 CSS variable，用户 string不直接拼进 CSS；
+- 最终 document用 HTML5 parser重解析，覆盖 mXSS、raw-text/comment、SVG/MathML integration、NUL/entity和JSON breakout corpus；
+- Cloudflare Worker 对 public HTML 固定发送 `default-src 'none'; img-src 'self'; style-src 'self'; font-src 'self'; script-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` CSP header。0.1 公开模板无 script/JSON-LD，因此不需要 script hash/nonce机制。通用 static export 在 HTML 内嵌 meta CSP 的可支持部分（不包含无法由 meta 强制的 `frame-ancestors`）；是否禁止 framing 取决于最终静态托管商的 HTTP header，Mallok 在导出报告中提示，不宣称跨托管商保证。
 
-- publish JSON body 在读取/解析前硬限制 2 MiB；unpublish 必须为空 body，GET/HEAD 不接受 body；
-- 只接受准确的 `application/json`（可带 UTF-8 charset）；压缩 request body MVP 不支持；
-- JSON 必须是 UTF-8、单一 object、无 duplicate semantic fields，拒绝非 JSON number；
-- path segment 先验证原始 URL 中的 percent encoding，再 decode 一次；拒绝 encoded slash/backslash/NUL/dot segment；Worker-managed canonical dynamic route 除唯一合法 `__mallok_rev` 外的 query、以及 redirect candidate 的任何 query在 D1/redirect 前拒绝；asset-first 静态资源 query 由平台处理且不查 D1，unknown-after-miss 的 query 不改变主题 404；
-- method、Content-Type、Authorization、Idempotency-Key、If-Match 按 [HTTP_API.md](HTTP_API.md)；
-- 错误 envelope 不含 stack、SQL、绝对 home path、token、完整 Markdown 或 frontmatter data；
-- admin response 和所有 auth error 使用 `Cache-Control: no-store`。
+外部 HTTPS 图片不由 Mallok抓取，避免 SSRF；preview/source import 可以定位并警告，但 publish/static export 阻断并要求用户下载后作为受管 media 导入。普通外部 HTTPS 超链接不受此限制。
 
-MVP 不内置分布式 rate limiter。高熵 token 只能降低凭据被猜中的概率，仍建议生产操作者按自身威胁与流量在 Cloudflare 配置 WAF/rate limiting；该建议不是 Mallok RC 验收门，也不能被写成内核已有能力。若未来要把它升级为强制要求，必须先冻结可检查的规则、套餐前提与自动/人工证据。
+## 5. 文件系统与项目数据
 
-## 7. 文件系统与构建
+- 所有输入使用 project-root-relative token，realpath后必须仍位于对应 managed root；
+- content/media不跟随 symlink、junction、special file或项目外hardlink；
+- `.mallok-backup.tar.gz` 通过批准的 streaming tar reader 在任务拥有的 sibling staging 中处理；每个 effective header/path 在创建文件前验证 closed top-level、entry type、entry count/bytes/hash、规范 relative path 和 compression ratio；拒绝 absolute/parent path、symlink/hardlink/device/FIFO/socket、危险 PAX/GNU path、duplicate/NFC/case-fold collision 和 archive bomb，失败不触及最终目标目录；
+- 拒绝absolute/drive/UNC/backslash/percent/NUL/control/empty/dot/device path；
+- source、`.git`、project root、home和filesystem root永远不可作为递归删除/替换目标；
+- 写入使用同目录temporary file、flush、atomic rename和expected old hash；
+- static export只消费compiler产生的route/asset token，在output同父目录staging后执行 crash-safe backup/promote；恢复 sidecar 使用 `ARCHITECTURE.md` 固定的 owner、128-bit nonce、exact basename、phase 与新旧 inventory hash，任一 mismatch 时不自动 rename/delete；不谎称可用单次 rename 跨平台原子替换非空目录；
+- `.mallok` cache使用前复核manifest和每个body/asset hash；cache corruption只能导致重建，不能改变作者数据；
+- 单文件、文件数、总bytes、目录深度和render iteration均有固定预算；
+- 图片除 compressed bytes 外还按批准 decoder metadata 限制宽高、channel、frame count 和 decoded pixels；动画、缺失/溢出/截断 metadata 与 decoder warning fail closed，禁止 `unlimited` 解码。优化后的 WebP 还要重新解码核对尺寸、单帧、MIME、bytes 和 hash，不能信任 encoder 返回 metadata。
 
-- 所有 managed roots 双向不重叠；`.git`、项目根、home、filesystem root 永远保留；
-- 不跟随 content/theme/public symlink 或 junction；
-- output 写入仅消费 route planner token，不消费用户拼接 path；
-- 不以 `rm -rf` 清理未解析变量、glob 或宽目录；
-- stage 完整校验后才替换 output，失败保留旧版本或明确 recovery paths；
-- preview 只提供 output 内普通文件，防止 traversal、double decode、encoded separator 和 symlink；
-- 文件大小、总量、深度和数量设上限，避免 zip-bomb 式本地资源耗尽。
+## 6. PublishBundle 完整性
 
-## 8. Cloudflare 与部署
+manifest使用唯一canonical JSON serializer；`bundleHash`绑定所有route/asset metadata，metadata再绑定exact bytes hash。sink必须逐项验证：
 
-- deploy/provision 默认计划优先，实际动作必须明确确认；
-- `--yes` 不跳过 doctor/schema/boundary；
-- Mallok 不隐式创建 secret、清空数据库、删除资源或修改 DNS；
-- 所有 D1 命令显式 local/remote；
-- 生成配置与 state gitignore；
-- MVP CI 不持有 Cloudflare infrastructure mutation token；plan/dry-run/local tests 无真实凭据。未来启用 CI deploy前必须提供加密 durable recovery evidence store，并继续使用最小 scoped token、staging/production分离；
-- deploy 日志对 Authorization、token-like key、account/database/deploy id 做分级 redaction；用于恢复的非敏感 id 只在用户本地详细日志中显示。
+- `bundleHash == SHA-256(canonicalManifestBytes)`；
+- route body和asset body的SHA-256、bytes、content type匹配manifest；
+- route/asset排序、唯一性、必需route、path namespace无冲突；
+- asset URL含对应content hash，existing key不能被不同bytes覆盖；
+- manifest中无absolute local path、credential、Markdown source、build host或ambient timestamp。
 
-## 9. 依赖与供应链
+static和Cloudflare sink不得重渲染或“修复”不合法bundle。不合法即拒绝。
 
-- 只使用 lockfile，CI `pnpm install --frozen-lockfile`；
-- 新 direct dependency 必须记录用途、license、维护状态、运行时边界和替代方案；
-- 不因缺包自研 Markdown/YAML/HTML parser 或 sanitizer；
-- `pnpm audit --prod` 结果按可利用性评估，不能仅以“有 advisory”或“0 advisory”替代人工判断；
-- 发布前检查 packlist、license、provenance 能力和 npm 2FA；
-- 生命周期脚本按依赖逐项审核；生成项目不默认运行来源不明脚本。
+## 7. Cloudflare 发布与持久化
 
-## 10. 日志与隐私
+- Cloudflare OAuth account credential 只用于显式 provision/connect/rotate/upgrade，site publish token 只用于单站点 bundle 数据；
+- publish endpoint在读取body前验证Bearer token，所有response `no-store`；token格式/长度固定并constant-time compare；
+- 所有D1值使用prepared statement；table/column/order来自固定代码；
+- R2 asset只用 `If-None-Match:*` 等价的 conditional create + SHA-256 checksum 写入；precondition/timeout 后 HEAD 证明 checksum/bytes/MIME exact 才算 no-op，永不无条件覆盖；
+- 只有原子 activate 后写入不可变 public-asset registry 的 key 才能由公开 Worker 读取，staging 不泄露未发布 asset；
+- activate只在route完整、asset存在、bundle/runtime兼容、既有 public-asset metadata 无冲突且 prospective inactive-bundle 容量不超限后，用一个D1 transaction切换current pointer；
+- current-base guard失败不得last-write-wins；
+- content-addressedPUT和bundle/path primary key提供幂等重试，不维护request journal；
+- public Worker只按exact normalized path读取pre-renderedbody；unknown/malformed storage数据返回安全503/404，不当作HTML输出；
+- 0.1不自动删除R2、D1 database、bucket、Worker、DNS或unknown resource。
 
-结构化日志 allowlist：timestamp、requestId、route template、method、status、durationMs、Mallok error code、document id、revision id 的短摘要。禁止：Authorization、cookie、request body、source Markdown、frontmatter data、SQL、环境变量、完整 IP。
+详细协议见 [CLOUDFLARE.md](CLOUDFLARE.md)。
 
-默认无遥测。未来遥测必须 opt-in、单独 ADR 和数据保留说明。
+## 8. Credential
 
-## 11. 安全验证门
+- `MALLOK_CLOUDFLARE_API_TOKEN`、`MALLOK_SITE_PUBLISH_TOKEN` 不得作为 CLI option；
+- Studio 默认通过 Cloudflare 公共 OAuth client + Authorization Code with PKCE 获取 account credential；必须验证 `state`、PKCE、exact redirect 与 publisher domain，不在 binary 嵌入 client secret；
+- Studio browser 不接收 Cloudflare account 或 site publish token；OAuth callback/code exchange 与 credential store 只在 backend 完成，site token 只由 backend credential adapter 读取；
+- site token优先存OS credential store；无安全credential store的平台只能使用process environment，不写plaintext fallback；
+- project、`.mallok`、static output、bundle、log、crash report和shell completion不得含secret；
+- provider resource id不是认证secret，但仍只写gitignored state并在log中缩短/脱敏；
+- auth失败不区分site/bundle存在性，不记录header；
+- rotate 需要有效 OAuth account grant 或高级环境 API token，生成新 site token 并使旧 token 失效；
+- Studio browser永远不直接调用Cloudflare API或远端publish endpoint。
 
-发布候选前必须通过：
+## 9. 请求与滥用边界
 
-- secret scan 与 Git history scan；
-- Markdown/HTML/URL/JSON/mXSS corpus；
-- API auth/body/CAS/idempotency/SQL injection；
-- path traversal/symlink/junction/TOCTOU 定向测试；
-- D1 row tamper 与未知 codec profile；
-- 依赖/pack/license 审计；
-- static 与 Worker CSP/header/DOM 对比；
-- 人工复核所有 `set:html` 类原始输出通道（Mallok 内不应存在未受控等价物）。
+- Studio、publish API和public Worker各自使用closed method/path/content-type allowlist；
+- request body在parse前限制bytes；JSON拒绝duplicate key、非UTF-8、非object和非有限数；
+- raw path在decode前校验，最多decode一次；encoded slash/backslash/dot/NUL失败；
+- upload采用流式byte limit，不把超大body完整缓冲；
+- timeout/cancel后不得继续后台提交D1 current switch；
+- error envelope不含stack、SQL、credential、完整content、provider response或absolute path；
+- 0.1不内置分布式rate limiter。生产用户可在Cloudflare设置WAF/rate limit；高熵token不是滥用防护替代品。若实际攻击数据证明需要，后续再冻结可测试的内置策略。
 
-任何真实 secret 进入 Git、任意作者输入进入 script/style raw text、任意 path 可越界、或 CAS 故障留下半发布状态，均为发布阻断。
+## 10. 供应链与二进制
 
-## 12. 漏洞响应
+- source repository使用精确lockfile；新增direct dependency记录用途、license、维护/安全信号和binary体积影响；
+- 不自研Markdown/YAML/HTML parser、sanitizer、crypto或TLS；
+- release binary、embedded Studio/template/Worker、checksum、SBOM和source tag绑定同一版本；
+- macOS artifact签名/notarize；其他平台按 [DISTRIBUTION.md](DISTRIBUTION.md) 提供签名/checksum；
+- 0.1无自动更新器、安装期script或远程plugin/template下载；
+- CI对secret/history、dependency/license、binary strings和archive content扫描；
+- binary不读取站点package manager文件，也不执行项目命令。
 
-公开发布前在 `SECURITY.md` 根文件声明私下报告渠道、支持版本和响应目标。安全修复涉及 compiler/sanitizer profile 时必须：
+## 11. 日志与隐私
 
-1. 提升 profile/version；
-2. 保留明确兼容 decoder 或阻止不兼容 row；
-3. 提供重发布/迁移说明；
-4. 增加回归 fixture；
-5. 不在请求时静默重编译旧 Markdown。
+默认无遥测。结构化日志allowlist：时间、binary版本、稳定error code、operation、duration、route template、bundle hash短摘要、HTTP status和非敏感计数。
+
+禁止：Authorization、cookie、session capability、secret、环境变量、source Markdown、frontmatter、完整HTML、SQL、完整provider id/response、absolute home path和IP。debug模式也不得放宽credential/content边界。
+
+## 12. 发布阻断安全门
+
+0.1发布前至少验证：
+
+- Markdown/URL/template/HTML5 mXSS corpus；
+- loopback Host/Origin/session/CSRF和sandbox preview；
+- path traversal、symlink/junction、atomic write/output recovery；
+- canonical bundle、hash collision/tamper、route/asset冲突；
+- R2/D1 publish每个中断点与竞争base；
+- auth/body/SQL/path fuzz和secret redaction；
+- static与Cloudflare返回同一bundle body hash；
+- 无Bun/Node/package manager机器的signed binary smoke；
+- dependency、license、SBOM、secret/history和binary-content scan。
+
+任意作者输入可执行脚本、任意loopback跨源写、任意path越界、secret进入项目/日志、不同asset bytes覆盖同hash key，或current切到不完整bundle，均为发布阻断。
