@@ -1,100 +1,135 @@
 # Mallok 0.1 技术栈与依赖边界
 
-- 状态：Accepted for 0.1 implementation
-- 目标：让 Task 01 可直接开始，不把换栈决策丢给实现者
+- 状态：0.1 技术基线
+- 日期：2026-08-28
+- 目标：让实现任务可以直接开始，不把选型决策丢给实现者
+
+本文取代此前的「Bun 自包含桌面 app + Preact Studio + 构建期渲染」技术栈。旧选型的核心前提（渲染在本地机器上跑）已不成立，因此依赖清单基本全部重选。
 
 ## 1. 一句话结论
 
-Mallok 是一个 TypeScript + Bun 的单仓库、单发行产品。`Mallok.app` 启动本地 loopback backend 并在系统浏览器打开 Preact Studio；同一 Bun application core 也暴露高级 CLI。Tier-1 另允许一个只负责 macOS Keychain 的签名 Swift helper，它不是第二套业务 runtime。用户站点不包含任何这些依赖。
+Mallok 是一个 TypeScript 单仓库项目，产物是一个跑在 Cloudflare Workers 上的 Worker（含公开站点、后台和管理 API），外加一个发布到 npm 的 CLI。**最硬的选型约束是：所有进入渲染路径的依赖必须是纯 JavaScript、能在 Workers 运行时里跑、且打包后足够小。** 任何需要原生二进制、Node 内置模块或文件系统的库自动出局。
 
-## 2. Runtime 与仓库
+## 2. 运行时与仓库
 
 | 领域 | 0.1 选择 | 理由 |
 | --- | --- | --- |
-| 语言 | TypeScript strict | 一套类型跨 local app、compiler 和 Worker |
-| 开发/runtime | Bun stable | 内置 HTTP、Web API、test/build 与 standalone executable |
-| 包管理 | 根 `package.json` + `bun.lock` | 只有 Mallok 自己有依赖，用户站点永不生成依赖树 |
-| 模块 | ESM only | 不维护 CJS 双面 |
-| 源码结构 | `src/domain|application|compiler|templates|adapters|embedded` | 与 ARCHITECTURE 一致，不拆 npm packages |
-| 首发 | macOS 13+ Apple Silicon | 一个真正支持的平台优先于多平台假完成 |
+| 语言 | TypeScript strict + `noUncheckedIndexedAccess` | 一套类型跨 Worker、CLI 和后台 |
+| 线上运行时 | Cloudflare Workers（`workerd`） | 产品定位如此，不做多云抽象 |
+| 开发运行时 | Node.js 22 LTS | CLI 要发 npm，Node 兼容性最好；不引入第二个运行时 |
+| 包管理 | pnpm + lockfile | 单仓库，锁文件是发行输入 |
+| 模块 | ESM only | Workers 原生 ESM，不维护 CJS 双面 |
+| 仓库结构 | 单仓库，`src/` 下按 §3 分目录 | 不拆 npm workspace，只有 CLI 单独发布 |
+| 构建/部署 | `wrangler` | Cloudflare 官方工具，同时提供本地 D1/R2 模拟 |
 
-Bun 的 exact version 在 Task 01 第一个 dependency-only commit 锁定并写入 engine/toolchain 文件。选择当时最新 stable，但只有通过 Tier-1 standalone compile、loopback server、WebCrypto、SQLite/Worker bundle 和 macOS clean-machine smoke 后才能升级基线。
+精确版本在第一个 dependency-only 提交中锁定，之后不在功能提交里顺手升级。
 
-## 3. Studio
+## 3. 依赖分层与硬规则
 
-- UI：`preact`、`@preact/signals`；不使用 React compatibility mode。
-- build-only：`vite`、`@preact/preset-vite`；产物作为 hashed static bytes 嵌入 executable。
-- 样式：仓库内部 CSS tokens/components；不使用 Tailwind、CSS-in-JS 或第三方组件库。
-- 路由/状态：0.1 只有四个产品区，使用小型内部 state/router；不引入通用 SPA framework。
-- backend：`Bun.serve` 绑定 `127.0.0.1`/`::1`，使用 SECURITY 规定的 session capability、Origin/Host 和 CSRF 边界。
-- desktop shell：定制 `Mallok.app` bundle + `Info.plist`，启动 executable 后打开系统默认浏览器；0.1 不引入 Electron、Tauri 或 WebView runtime。
+依赖按「能不能进 Worker」分成三层，越界即为架构违规：
 
-## 4. 编辑器与内容管线
+| 层 | 位置 | 约束 |
+| --- | --- | --- |
+| **渲染层** | `src/core/`，同时被 Worker 和 CLI 使用 | 纯 JS、无 Node 内置模块、无 Cloudflare 全局对象、体积敏感 |
+| **Worker 层** | `src/worker/`、`src/db/` | 可用 Workers 运行时 API，不可用 Node 内置模块 |
+| **构建/开发层** | 构建脚本、测试、CLI 的本地部分 | 无限制，但绝不进入 Worker 产物 |
 
-### 4.1 可视编辑
+`src/core/` 不得 import 任何 Cloudflare 类型或全局对象。这是保证「CLI 的本地预览和线上渲染逐字节一致」的唯一机制，必须由 lint 规则强制。
 
-- `@tiptap/core`、`@tiptap/pm`、`@tiptap/starter-kit` 及完成 EDITOR 节点所需的官方 link/image/table extensions。
-- Markdown source mode：`codemirror`、`@codemirror/lang-markdown`。
-- 不使用当前仍标 Beta 的 `@tiptap/markdown` 作为 0.1 数据真相。批准节点在 ProseMirror JSON 与 compiler 共用 mdast 之间做小型、穷尽的类型映射，Markdown 输出由 `mdast-util-to-markdown` + `mdast-util-gfm` 的固定选项生成。这是 AST adapter，不是自写 Markdown parser。
-- Tiptap DOM 不是发布真相；每次保存生成 Markdown，preview/publish 再从磁盘 Markdown 经 compiler 解析。
-- 不支持可视节点保留原 source，Studio 回退到 source mode；不因 editor extension 默认行为丢数据。
+## 4. 渲染管线依赖
 
-### 4.2 Compiler
+| 能力 | 选择 | 说明 |
+| --- | --- | --- |
+| Markdown 解析 | `unified` + `remark-parse` + `remark-gfm` | 纯 JS。选 AST 方案而不是 `marked`/`markdown-it`，因为插件的 `beforeRender` 钩子需要操作 AST |
+| frontmatter | `yaml` | 禁用 alias、自定义 tag、重复 key |
+| Markdown → HTML | `remark-rehype` + `rehype-stringify` | 与上游同一生态 |
+| HTML 净化 | `rehype-sanitize` | 白名单模式，内容一律不可信 |
+| Markdown 序列化 | `mdast-util-to-markdown` + `mdast-util-gfm` | 后台可视编辑保存时用，保证导出的是标准 Markdown |
+| 模板引擎 | `liquidjs`（浏览器构建 `dist/liquid.browser.mjs`） | 已核实该包提供无 Node 依赖的浏览器构建；Liquid 语法为 Shopify/Jekyll/11ty 通用，主题作者上手成本低 |
+| 校验 | `zod` | 内容字段、`theme.json`、`plugin.json`、API 入参 |
+| 哈希/加密 | WebCrypto（运行时内置） | 内容寻址、PBKDF2、session token；不引入第二套 crypto 库 |
 
-| 能力 | 批准依赖 |
+**体积是一等约束。** remark/rehype 生态方便但不算小，而 Worker 脚本上限是 gzip 后 3 MB（Free）/ 10 MB（Paid）。第一个实现任务必须给出打包后的实测体积，超标时的处置顺序是：先裁剪 remark 插件 → 再评估换 `markdown-it` → **绝不自写 Markdown 解析器或 HTML 净化器**。
+
+同样明确排除：`sharp` 及任何原生图片库（Workers 里跑不了），任何依赖 `fs`/`path`/`child_process` 的模板引擎加载方式（模板从 D1 读取，以字符串形式喂给引擎）。
+
+## 5. 后台
+
+| 领域 | 选择 | 说明 |
+| --- | --- | --- |
+| UI 框架 | `preact` + `@preact/signals` | 体积优先；不使用 React 兼容层 |
+| 构建 | `vite` + `@preact/preset-vite` | 仅构建期依赖 |
+| 富文本编辑 | `@tiptap/core` + `@tiptap/pm` + 必要官方扩展 | 跑在浏览器里，不进 Worker |
+| Markdown 源码模式 | `codemirror` + `@codemirror/lang-markdown` | 同上 |
+| 样式 | 仓库内部 CSS 变量与组件 | 不引入 Tailwind、CSS-in-JS 或第三方组件库 |
+| 图片处理 | 浏览器 Canvas API | 上传时在客户端转 WebP 并生成多宽度变体，见 ARCHITECTURE §8 |
+
+**后台产物用 Cloudflare Workers Static Assets 提供，不打进 Worker 脚本。** 已核实静态资源请求免费且不计入 Worker 调用计费，这样后台 UI 的体积不挤占渲染管线的脚本预算。（具体的文件数与单文件大小上限需在实现任务中核实。）
+
+Tiptap 的 DOM 不是内容真相。每次保存都把编辑器状态序列化成 Markdown 存进 D1；渲染永远从 D1 里的 Markdown 重新解析。可视编辑无法无损表达的内容，后台退回源码模式，绝不因编辑器默认行为丢数据。
+
+## 6. 数据与存储
+
+- **D1**：内容、主题、设置、会话。用 `wrangler d1 migrations` 管理 schema 版本，不引入 ORM 和迁移框架。SQL 手写、参数化绑定，查询集中在 `src/db/`，不向上层泄漏 D1 类型。
+- **R2**：媒体本体与主题静态资源，内容寻址 key。
+- **Cache API**：渲染结果缓存，见 ARCHITECTURE §6。
+- 不引入 Workers KV，除非 ARCHITECTURE §6.2 的备选缓存方案被实测证明必需。
+
+## 7. CLI
+
+- 发布到 npm，`node >= 22`，可 `npx mallok` 直接用。
+- 通过 HTTPS 调管理 API，与后台用同一套接口和同一套 Bearer token。**CLI 不是 Worker 的子进程，也不能有后台没有的能力。**
+- 复用 `src/core/` 做本地预览和导入导出，保证与线上渲染一致。
+- 命令行解析用轻量方案，不引入重型 CLI 框架。
+
+## 8. 本地开发
+
+`wrangler dev` 直接提供本地的 D1 和 R2 模拟，且 v3 以上默认持久化数据（可用 `--persist-to` 指定位置），迁移用 `wrangler d1 migrations apply <db> --local`。
+
+因此 **0.1 不自写 dev server**。本地开发就是 `wrangler dev`，跑起来的是和线上完全相同的代码路径，主题和插件作者的开发体验与生产一致。
+
+## 9. 质量工具
+
+| 领域 | 选择 |
 | --- | --- |
-| Markdown AST/GFM | `unified`, `remark-parse`, `remark-gfm`, `mdast-util-to-markdown`, `mdast-util-gfm` |
-| HTML AST | `remark-rehype`, `rehype-sanitize`, `rehype-stringify`, `parse5` |
-| frontmatter | `yaml`，配置禁止 alias/custom tag/duplicate key |
-| 字段验证 | `zod` |
-| 声明式模板 | `liquidjs`，只开放 TEMPLATE_FORMAT 定义的 Mallok profile |
-| 图片安全与优化 | `sharp`，读取批准格式 metadata，并按 `SEO_PERFORMANCE.md` 的固定单输出 WebP profile 自动定向/缩小/清理 metadata/编码 |
-| 备份 tar.gz | `tar-stream` + runtime 内置 `node:zlib`，只用流式 entry API，不调用直接解压到目标目录的 convenience API |
-| hash/crypto | Web Crypto；不引入第二套 crypto package |
+| 类型检查 | `typescript` strict |
+| lint / 格式化 | `@biomejs/biome`，不同时维护 ESLint + Prettier |
+| 单元测试 | `vitest` |
+| Worker 集成测试 | `@cloudflare/vitest-pool-workers`（在真实 workerd 里跑） |
+| 后台组件测试 | `@testing-library/preact` + `happy-dom` |
+| 属性测试 / 恶意语料 | `fast-check` |
+| 端到端 | `playwright` + `@axe-core/playwright` |
+| 性能门 | `lighthouse` / `@lhci/cli`，锁定版本，仅开发期使用 |
 
-Liquid 引擎的默认 tag/filter 不是公共能力。adapter 必须在 parse/compile 时拒绝非白名单语法；不得为了省事暴露完整 LiquidJS。
+额外的、工具替代不了的证据：Worker CPU 时间实测、打包体积实测、缓存命中率实测、真实 Cloudflare 账号上的部署验证。
 
-`sharp` 和 `tar-stream` 在 Task 02 的 dependency-only gate 锁 exact version。图片读取固定 `limitInputPixels=40_000_000`、`limitInputChannels=4`、`sequentialRead=true`、`unlimited=false`、`failOn='warning'`，并由 Mallok 再验证 `PROJECT_FORMAT.md` 的单帧上限。公开图片执行 `SEO_PERFORMANCE.md` 的确定性 WebP 三段 profile；作者源文件不改写。`sharp` 的原生 binary/libvips 必须随 Tier-1 standalone app 正确签名和打包；干净 macOS 机器不得依赖全局 Node、Bun 或 libvips。
+## 10. 依赖 gate
 
-备份使用 `tar-stream` 的 header/data stream 和内置 gzip 流；Mallok 在写磁盘前决定每个 entry 的合法性并逐 byte 计预算，只自行创建普通目录/文件。禁止自己解析 tar header，也禁止使用会在检查 entry type 前创建 link 或覆盖目标的通用 extractor。若锁定版本无法在 Bun standalone 中满足 streaming、PAX、entry type、预算中断或签名发行要求，Task 02 返回 `BLOCKED` 并先修订本文件；不得退回 shell `tar`、不安全的直接 extraction 或手写 archive parser。
+1. 上述是 0.1 唯一批准的直接依赖；未列出的包需先修订本文件。
+2. 每个任务先提交 dependency-only diff：精确版本、锁文件、许可证、安装脚本、传递依赖数、体积、以及归属于渲染层 / Worker 层 / 构建层的哪一层。
+3. 生产依赖使用精确版本，不用浮动 tag。
+4. 进入渲染层的依赖必须附一份在真实 `workerd` 里跑通的证据，以及打包后的 gzip 体积。
+5. 依赖无法满足契约时返回 BLOCKED 并说明，不用自写解析器或净化器绕过。
 
-## 5. Cloudflare
+## 11. 明确禁止
 
-- runtime Worker 使用 Web-standard TypeScript，在 release build 中编译为嵌入 bytes；用户机器不需要 Wrangler。
-- Studio 通过 Cloudflare 官方 HTTPS API + OAuth PKCE 直接完成 account-level provision；普通 publish 只调 generic Worker 的 site-scoped API。
-- OS credential：Tier-1 macOS 随 app 签名一个最小 Swift `mallok-keychain-helper`，只封装 Security.framework 的 `SecItemAdd/CopyMatching/Update/Delete` 和固定 Mallok service/account schema。Bun core 以固定 bundle-relative path 直接 spawn helper，不经过 shell；secret 只走有长度上限的 inherited stdin/stdout frame，不进入 argv/environment/log。helper 无网络、项目文件和任意 keychain query 能力，并与主 app 一起 codesign/notarize。Task 03 必须在 clean machine 验证 add/find/update/delete、ACL prompt、取消和错误语义；禁止使用实验性的 Bun FFI 或把 `/usr/bin/security` CLI 当生产 API。
-- Cloudflare contract test 可在 Task 03 的 dependency-only gate 加入 `wrangler`、`vitest`、`@cloudflare/vitest-pool-workers`；这些是开发/验证依赖，不进 runtime executable。
+- Astro、Next.js、Nuxt、SvelteKit、Gatsby、Eleventy 等站点框架（Mallok 是它们的替代品，不是它们的包装）；
+- 任何原生二进制依赖（`sharp`、`better-sqlite3`、Argon2 原生绑定等）；
+- 需要 Node 内置模块的库进入 Worker 层或渲染层；
+- ORM、通用 CMS 运行时、第二个模板引擎、第二套渲染管线；
+- 运行时动态 `import` 远程代码或任何形式的 `eval`；
+- React 兼容层、通用 UI 组件库；
+- 为「以后可能支持别的云」提前抽象 provider/adapter 层。
 
-## 6. 质量工具
+## 12. 外部依据
 
-- typecheck：`typescript`，strict + no unchecked indexed access。
-- lint/format：`@biomejs/biome`，不同时维护 ESLint/Prettier 组合。
-- unit/component：`vitest`、`@testing-library/preact`、`happy-dom`。
-- property/fault corpus：`fast-check`。
-- Studio/website E2E：`playwright`、`@axe-core/playwright`。
-- SEO/PageSpeed release gate：锁定 exact `lighthouse` 与 `@lhci/cli`，只作为开发/发行验证依赖，不进入 `Mallok.app` 或用户站点；runner 同时锁 Chrome、mobile 配置和顺序 5-run 聚合协议。
-- 无障碍人工测试、clean-machine、真人 usability 和 Cloudflare staging 仍是独立证据，不被工具包替代。
+本文引用的平台事实取自以下官方文档，于 2026-08-28 核对：
 
-## 7. 依赖 gate
+- Worker 脚本大小、CPU 时间、启动时间、内存与子请求上限：[Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
+- D1 数据库大小、每次调用查询数、行与语句上限：[D1 limits](https://developers.cloudflare.com/d1/platform/limits/)
+- Cache API 的作用域与 `cache.delete` 的数据中心局部性：[Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/)
+- 静态资源请求免费且不计费：[Static assets billing and limitations](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)
+- 本地 D1 持久化与迁移命令：[D1 local development](https://developers.cloudflare.com/d1/best-practices/local-development/)
+- `liquidjs` 提供浏览器构建：npm 包 `liquidjs@10.29.0` 的 `browser` 字段映射到 `dist/liquid.browser.mjs`
 
-1. 上述是 0.1 唯一批准的直接依赖名称空间；未列包需先修订本文。
-2. 每个任务先提交 dependency-only diff：exact version、lock、license、engine、install script、transitive count、体积和 runtime/build/test 归属。
-3. 生产 dependency 使用 exact version，lock 是发行输入；不使用 floating tag。
-4. 禁止在一个功能 diff 中顺手升级工具链。
-5. 依赖的安全性、维护状态或数据往返无法满足契约时返回 BLOCKED，不用自写 parser/sanitizer 或弱化 AC 规避。
-6. Task 02 的 dependency gate 额外提供两份 clean-machine 证据：`sharp` 在签名 app 中覆盖 PNG/JPEG/WebP/AVIF/单帧 GIF metadata、动画拒绝、三段优化 profile、输出 hash/bytes/尺寸与拒绝语料且不加载全局 libvips；`tar-stream` 覆盖 gzip、PAX、非普通 entry、bomb、截断和恢复，并证明失败前不触及最终目标。
-
-## 8. 明确禁止
-
-- Astro、Next.js、Nuxt、SvelteKit、Gatsby、Eleventy 等站点框架；
-- Electron、Tauri、第二 JavaScript runtime 或第二 package manager；
-- React compatibility layer、通用 UI kit、Tailwind、ORM、通用 CMS/plugin/theme runtime；
-- runtime 中的 Wrangler、每站点 npm 依赖、动态安装和远程代码执行；
-- 为了抽象而拆 monorepo packages、公共 SDK 或 provider/plugin API。
-
-## 9. 外部能力依据
-
-- sharp 官方列出 Bun 安装入口、macOS ARM64 prebuilt binary，并提供受限 metadata、autoOrient、resize 和 WebP output options：[Installation](https://sharp.pixelplumbing.com/install/)、[Input metadata](https://sharp.pixelplumbing.com/api-input/)、[Constructor](https://sharp.pixelplumbing.com/api-constructor/)、[Image operations](https://sharp.pixelplumbing.com/api-operation/)、[Resize](https://sharp.pixelplumbing.com/api-resize/)、[Output](https://sharp.pixelplumbing.com/api-output/)。
-- tar-stream 提供不落盘的 streaming tar parser/generator 与 entry header/data stream；gzip 由 runtime 内置 `node:zlib` 处理：[tar-stream](https://github.com/mafintosh/tar-stream)。
-
-这些链接只证明候选依赖提供相关 API，不证明其已被 Mallok 锁版本、打入 standalone app 或通过恶意语料；Task 02 的 dependency gate 仍是硬门。
+这些链接只证明平台或依赖具备相关能力，不证明 Mallok 已经锁定版本、打包通过或跑过恶意语料。ARCHITECTURE §15 列出的待验证事项仍是硬门。
