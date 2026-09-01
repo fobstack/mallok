@@ -11,7 +11,7 @@ foreign-trade B2B company sites.
 > Chinese at their canonical path, and are the authority until they are.
 >
 > Translated so far: this index, `CONTENT_FORMAT.md`, `CLOUDFLARE_RESOURCES.md`,
-> `CONVENTIONS.md`, `THEME_FORMAT.md`, `PLUGIN_API.md`.
+> `CONVENTIONS.md`, `THEME_FORMAT.md`, `PLUGIN_API.md`, `ARCHITECTURE.md`.
 
 ## Design documents
 
@@ -21,7 +21,7 @@ rest are the contracts for individual subsystems.
 | Document | Contents |
 | --- | --- |
 | [PRODUCT_VISION.md](PRODUCT_VISION.md) *(zh)* | What Mallok is, the first vertical, who it is for, the promises, what 0.1 delivers, the cost ladder, the success pictures, the roadmap, the non-goals, the known risks |
-| [ARCHITECTURE.md](ARCHITECTURE.md) *(zh)* | Hard constraints, system parts, the request path, two-stage rendering, the three cache layers, the content model, media, multilingual, themes, starters, plugin capabilities, the inquiry path, security boundaries, deployment and migration, what is still unmeasured |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Hard constraints, system parts, the request path, two-stage rendering, the three cache layers, the content model, media, multilingual, themes, starters, plugin capabilities, the inquiry path, security boundaries, deployment and migration, what is still unmeasured |
 | [TECH_STACK.md](TECH_STACK.md) *(zh)* | Runtime, the four dependency layers and their hard rules, external services, the admin app, the CLI, the dependency gate, what is explicitly forbidden, external sources |
 | [CONTENT_FORMAT.md](CONTENT_FORMAT.md) | The content bundle format, relative-path rules, common front-matter fields, the import/export contract, missing-image state |
 | [DATA_MODEL.md](DATA_MODEL.md) *(zh)* | The 0.1 D1 schema, indexes, constraints, migration and garbage-collection rules |

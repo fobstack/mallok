@@ -1,248 +1,420 @@
-# Mallok 0.1 架构
+# Mallok 0.1 architecture
 
-- 状态：0.1 架构基线（2026-08-28 第二次修订）
-- 日期：2026-08-28
+- Status: 0.1 architecture baseline (second revision, 2026-08-28)
+- Date: 2026-08-28
 
-本文取代此前的「macOS 桌面 Studio + 构建期预渲染 + Worker 只查表」架构。旧设计只保留在 Git 提交 `2e775cb` 及更早历史中，不得据此实现第二套架构。本次修订在 Cloudflare 原生方向上补入：外贸首垂直带来的多语言、内容类型、媒体、询盘与部署入口设计，以及为 Free 计划 10 ms CPU 预算而设的 D1 派生片段缓存。
+This document supersedes the earlier "macOS desktop Studio, build-time
+prerendering, a Worker that only looks up rows" architecture. That design
+survives only in git commit `2e775cb` and earlier history, and must not be
+used as the basis for a second implementation. This revision adds, on the
+Cloudflare-native line: the multilingual model, content kinds, media,
+inquiries and deployment entry points that the foreign-trade vertical
+requires, plus the D1 fragment cache that exists for the free plan's 10 ms CPU
+budget.
 
-## 1. 一句话架构
+## 1. The architecture in one sentence
 
-Mallok 是一个部署到用户自己 Cloudflare 账号的 Worker。内容以 Markdown 存在 D1，媒体存在 R2 并通过 R2 自定义域直出。保存内容时，管理 API 把 Markdown 渲染成与主题无关的 HTML 片段写入 D1 派生缓存；访客请求时，Worker 只做主题模板渲染并写入边缘缓存，绝大多数访客请求由缓存直接返回。同一个 Worker 还提供后台界面、管理 API、首次启动向导和插件路由，CLI 与本地后台通过同一套 API 接入。
+Mallok is a Worker deployed into the user's own Cloudflare account. Content
+lives as Markdown in D1; media lives in R2 and is served directly through an
+R2 custom domain. When content is saved, the management API renders the
+Markdown into a theme-independent HTML fragment and writes it to a derived
+cache in D1. When a visitor arrives, the Worker only applies the theme
+template and writes the page to the edge cache, so the overwhelming majority
+of visitor requests are answered by the cache. The same Worker also serves the
+admin interface, the management API, the setup wizard and plugin routes; the
+CLI and the local admin use that same API.
 
-## 2. 硬约束（架构的边界条件）
+## 2. Hard constraints (the boundary conditions)
 
-以下取自 Cloudflare 官方文档（2026-08-28 核对），是本架构所有设计决策的前提。**每一条都必须在 Task 01 的 spike 中用真实账号复核，实测结果与本表冲突时先改本文再写代码。**
+Taken from Cloudflare's official documentation (checked 2026-08-28), these are
+the premise of every design decision here. **Each one must be re-verified
+against a real account in the Task 01 spike. Where a measurement contradicts
+this table, this document is corrected before any code is written.**
 
-| 约束 | Free | Paid | 对架构的影响 |
+| Constraint | Free | Paid | Effect on the architecture |
 | --- | --- | --- | --- |
-| 每请求 CPU 时间 | **10 ms** | 默认 30 s | **所有** Worker 调用都受限，包括管理 API 的保存请求；缓存命中路径必须近乎零成本；Markdown 解析移出访客请求路径 |
-| 请求数 | 10 万/天 | 1000 万/月 | 静态资源不计入；图片走 R2 自定义域也不计入 |
-| Worker 脚本大小（gzip 后） | 3 MB | 10 MB | 渲染管线 + 模板引擎 + 官方插件必须共同装得下；后台 SPA 走 Static Assets 不占此预算 |
-| Worker 启动时间 | 1 s | 1 s | 顶层代码不得做重初始化，主题/模板解析必须惰性 |
-| isolate 内存 | 128 MB | 128 MB | 不在内存里缓存整站内容 |
-| 子请求（含 Cache API 调用） | 50/请求 | 10,000/请求 | 一次渲染的 D1 + Cache + R2 调用总数必须是小常数 |
-| Cron Triggers | **5/账号** | 250/账号 | 每个 Worker 只用 1 个 cron；免费账号最多 5 个站有定时任务 |
-| D1 单库大小 | 5 GB 总量 | 5 GB 后计费 | 后台显示用量 |
-| D1 行读 / 行写 | 500 万/天，10 万/天；**超出当天不可用** | 250 亿/月，5000 万/月 | 每次渲染的行读必须有界；接近上限要提醒 |
-| D1 每次调用查询数 | 50 | 1,000 | 单次渲染的查询数必须是常数级 |
-| D1 单行/字符串 | 2 MB | 2 MB | 单篇 Markdown 上限，保存时校验并给出明确错误 |
-| D1 单条 SQL 长度 | 100 KB | 100 KB | 批量导入必须分批 |
-| R2 | 10 GB-月，100 万写、1000 万读/月，出站免费 | 0.015 美元/GB-月 | 原图默认限制最大边长；变体数量有限 |
-| Static Assets | 2 万文件，单文件 25 MiB，请求免费 | 10 万文件 | 后台 SPA 的承载方式 |
-| Turnstile | 20 个 widget，每个 10 个主机名 | — | 询盘表单防刷 |
-| Purge API | 单文件清除每次 ≤100 个 URL；按标签/主机/前缀/全站清除 5 次/分钟 | 更高 | 清缓存必须合并与去抖 |
+| CPU time per request | **10 ms** | 30 s by default | Applies to **every** Worker invocation, the management API's saves included. The cache-hit path must cost almost nothing, and Markdown parsing moves off the visitor path |
+| Requests | 100k/day | 10M/month | Static assets do not count; images served from an R2 custom domain do not either |
+| Worker script size (gzipped) | 3 MB | 10 MB | The render pipeline, the template engine and the official plugins must all fit together. The admin app goes through Static Assets and is outside this budget |
+| Worker startup time | 1 s | 1 s | No heavy initialisation at the top level; theme and template parsing must be lazy |
+| Isolate memory | 128 MB | 128 MB | Never cache a whole site in memory |
+| Subrequests (Cache API calls included) | 50/request | 10,000/request | The total D1, Cache and R2 calls in one render must be a small constant |
+| Cron Triggers | **5 per account** | 250 per account | One cron per Worker; a free account can have scheduled work on at most five sites |
+| D1 database size | 5 GB total | Billed past 5 GB | Show usage in the admin |
+| D1 rows read / written | 5M/day, 100k/day; **exceeding it makes the database unavailable for the day** | 25B/month, 50M/month | Row reads per render must be bounded, and the admin must warn as the limit approaches |
+| D1 queries per call | 50 | 1,000 | Queries in one render must be a constant |
+| D1 row / string size | 2 MB | 2 MB | The ceiling on one Markdown document; validated on save with a clear error |
+| D1 statement length | 100 KB | 100 KB | Bulk imports must be batched |
+| R2 | 10 GB-month, 1M writes and 10M reads/month, free egress | $0.015/GB-month | Originals are limited by maximum edge by default; variants are few |
+| Static Assets | 20k files, 25 MiB each, free requests | 100k files | How the admin app is served |
+| Turnstile | 20 widgets, 10 hostnames each | — | Inquiry-form abuse protection |
+| Purge API | ≤100 URLs per single-file purge; 5 tag/host/prefix/everything purges per minute | Higher | Purges must be coalesced and debounced |
 
-已核对的已知坑：
+Known traps, already checked:
 
-- **Cache API 在自定义域上可用**（官方原文：Workers deployed to custom domains have access to functional cache operations）；仪表盘编辑器与 Playground 预览中无效；**被 Cloudflare Access 挡在前面的 Worker 无法使用 Cache API**。`.workers.dev` 的行为当前文档未明说，必须实测。结论是自定义域是缓存策略的硬前提，`.workers.dev` 只作预览，Access 只能保护 `/_mallok/*` 路径且要实测不影响公开路径缓存。
-- **`cache.delete()` 只清除当前数据中心的副本**，不能作为全局失效手段。
-- **用 Worker 自定义 cache key 存入的条目无法按 URL 清除**，只能按标签、主机、前缀或全站清除。这直接决定 §6 的方案选择。
-- **Email Workers 的发信绑定仅 Paid 可用**且只能发给已验证地址，不能作为询盘邮件通道。
+- **The Cache API works on custom domains** (the official wording: Workers
+  deployed to custom domains have access to functional cache operations). It
+  does not work in the dashboard editor or the Playground preview, and **a
+  Worker sitting behind Cloudflare Access cannot use the Cache API.** The
+  behaviour on `.workers.dev` is not stated in the current documentation and
+  must be measured. The consequence is that a custom domain is a hard
+  precondition for the caching strategy, `.workers.dev` is preview only, and
+  Access may protect `/_mallok/*` only if it is measured not to affect caching
+  on public paths.
+- **`cache.delete()` removes only the copy in the current data centre** and
+  cannot be used as a global invalidation.
+- **An entry stored under a Worker's custom cache key cannot be purged by
+  URL** — only by tag, host, prefix or everything. This directly decides the
+  choice in §6.
+- **Email Workers' send binding is Paid-only** and can only send to verified
+  addresses, so it cannot carry inquiry email.
 
-## 3. 系统组成
+## 3. The parts
 
 ```mermaid
 flowchart TB
-  Visitor[访客] --> Worker
-  Visitor --> R2Domain[media.example.com<br/>R2 自定义域直出]
-  Admin[管理员浏览器] --> Worker
+  Visitor[Visitor] --> Worker
+  Visitor --> R2Domain[media.example.com<br/>served directly from R2]
+  Admin[Administrator's browser] --> Worker
   CLI[mallok CLI] --> Worker
-  Cron[Cron Trigger<br/>每分钟] --> Worker
+  Cron[Cron Trigger<br/>every minute] --> Worker
 
-  subgraph CF["用户自己的 Cloudflare 账号"]
-    Worker["Mallok Worker<br/>公开站点 + 后台 + 管理 API + 插件路由"]
-    Worker <--> Cache[(Cache API<br/>边缘缓存)]
-    Worker <--> D1[(D1<br/>内容 · 片段缓存 · 主题 · 设置 · 询盘)]
-    Worker --> R2[(R2<br/>媒体 · 主题静态资源)]
+  subgraph CF["The user's own Cloudflare account"]
+    Worker["Mallok Worker<br/>public site + admin + management API + plugin routes"]
+    Worker <--> Cache[(Cache API<br/>edge cache)]
+    Worker <--> D1[(D1<br/>content · fragments · settings · inquiries)]
+    Worker --> R2[(R2<br/>media)]
     R2 --> R2Domain
     Worker --> Purge[Cloudflare Purge API]
   end
-  Worker --> Resend[Resend 邮件]
-  Worker --> Turnstile[Turnstile 校验]
+  Worker --> Resend[Resend email]
+  Worker --> Turnstile[Turnstile verification]
 ```
 
-一个 Worker 按路由前缀分流：
+One Worker, routed by prefix:
 
-| 路由 | 职责 | 缓存 |
+| Route | Responsibility | Cache |
 | --- | --- | --- |
-| `/*`、`/<locale>/*` | 公开站点渲染 | 边缘缓存 |
-| `/sitemap.xml`、`/feed.xml`、`/robots.txt` | 核心内建的 SEO 端点 | 边缘缓存 |
-| `/_mallok/setup` | 首次启动向导（完成后自动关闭） | `no-store` |
-| `/_mallok/api/*` | 管理 API（认证保护） | `no-store` |
-| `/_mallok/preview/<token>` | 草稿签名预览 | `no-store` |
-| `/_mallok/p/<plugin>/*` | 插件注册的路由（如询盘提交） | 插件声明，默认 `no-store` |
-| `/_mallok/*` | 后台单页应用（Static Assets） | 静态资源自身缓存 |
-| `/theme/<id>/<version>/*` | 主题静态资源（Static Assets，随部署产出） | 长缓存，`immutable` |
-| `/media/*` | R2 媒体代理，**仅在未配置 R2 自定义域时启用** | 长缓存 |
+| `/*`, `/<locale>/*` | Rendering the public site | Edge cache |
+| `/sitemap.xml`, `/feed.xml`, `/robots.txt` | The SEO endpoints built into the core | Edge cache |
+| `/_mallok/setup` | The setup wizard (closes itself once complete) | `no-store` |
+| `/_mallok/api/*` | The management API (authenticated) | `no-store` |
+| `/_mallok/preview/<token>` | Signed draft preview | `no-store` |
+| `/_mallok/p/<plugin>/*` | Routes a plugin registers, such as inquiry submission | Declared by the plugin; `no-store` by default |
+| `/_mallok/*` | The admin single-page app (Static Assets) | The assets' own caching |
+| `/theme/<id>/<version>/*` | Theme assets (Static Assets, produced by the build) | Long-lived, `immutable` |
+| `/media/*` | An R2 media proxy, **only when no R2 custom domain is configured** | Long-lived |
 
-后台既可以访问线上这个路径，也可以用 `wrangler dev` 跑在本地 localhost——**同一份代码，同一套 API，没有能力差**。
+The admin can be reached at that path in production or run locally through
+`wrangler dev` — **the same code and the same API, with no difference in
+capability.**
 
-源码结构：
+Source layout:
 
 ```text
 src/
-├── core/           # 与 Cloudflare 无关的纯逻辑：渲染管线、内容模型、校验、文章包解析
-├── worker/         # Worker 入口、路由、缓存、认证、向导、cron
-├── db/             # D1 schema、迁移、查询
-├── admin/          # 后台 SPA
-├── themes/         # 官方主题（atelier、journal、gazette、manual、folio）
-├── starters/       # 官方 Starter（trade-b2b，用 atelier 主题）
-├── plugins/        # 插件运行时与官方插件（inquiry）
-└── cli/            # CLI（独立发布到 npm）
+├── core/           # Cloudflare-independent logic: the render pipeline, the content model, validation, bundle parsing
+├── worker/         # The Worker entry point, routing, caching, authentication, the wizard, cron
+├── db/             # D1 schema, migrations, queries
+├── admin/          # The admin single-page app
+├── themes/         # The official themes (atelier, journal, gazette, manual, folio)
+├── starters/       # The official starter (trade-b2b, on the atelier theme)
+├── plugins/        # The plugin runtime and the official plugin (inquiry)
+└── cli/            # The CLI, published separately to npm
 ```
 
-`core/` 不得 import 任何 Cloudflare 类型或全局对象——它必须能在 Node（CLI、测试）、浏览器（后台预览）和 Worker 里同样运行。这是保证 CLI 与 Worker 行为一致的唯一机制。
+`core/` must not import any Cloudflare type or global — it has to run
+identically in Node (the CLI, the tests), in a browser (the admin's preview)
+and in the Worker. That is the only mechanism guaranteeing the CLI and the
+Worker behave the same.
 
-## 4. 公开请求路径
+## 4. The public request path
 
 ```
 GET /de/products/titanium-bar
  │
- ├─ 0. 插件 onRequest 钩子（重定向、访问控制；默认无）
+ ├─ 0. Plugin onRequest hooks (redirects, access control; none by default)
  │
- ├─ 1. cache.match(request)  ── 命中 ──> 直接返回（目标 < 1 ms CPU）
+ ├─ 1. cache.match(request)  ── hit ──> return directly (target: under 1 ms CPU)
  │
- └─ 2. 未命中：
-      ├─ 一次 D1 batch 取 { site 设置, 当前内容行(含 assets 与片段缓存), 导航/列表所需的有界数据 }
-      │   （主题模板不在其中：它随构建打进产物，见 §10）
-      ├─ 若片段缓存缺失或过期：现场生成片段（§5 第一阶段）并回写 D1
-      ├─ 主题模板渲染成完整页面（§5 第二阶段）
-      ├─ 插件 afterRender 钩子
-      ├─ 设置 Cache-Control 与 Cache-Tag，cache.put()
-      └─ 返回
+ └─ 2. On a miss:
+      ├─ one D1 batch fetching { site settings, the content row (with its assets and cached fragment), bounded data for navigation and lists }
+      │   (the theme templates are not among them: they ship in the artifact, see §10)
+      ├─ if the cached fragment is missing or stale: generate it now (stage one, §5) and write it back to D1
+      ├─ render the complete page through the theme templates (stage two, §5)
+      ├─ plugin afterRender hooks
+      ├─ set Cache-Control and Cache-Tag, cache.put()
+      └─ return
 ```
 
-**设计目标：单次冷渲染的 D1 调用是 1 次 batch，其中查询数是常数（目标 ≤ 3），行读有界，与站点内容量无关。** 列表页和导航所需的数据用单独的、有界的查询获取（`LIMIT` 分页），不允许出现「按内容条数循环查询」。**列表页只读取 frontmatter 与摘要字段，永远不解析正文 Markdown。**
+**The design target: one cold render issues one D1 batch, containing a
+constant number of queries (≤ 3 is the goal), reading a bounded number of rows
+regardless of how much content the site holds.** Data for list pages and
+navigation comes from separate, bounded queries with `LIMIT` pagination; a
+query per content item is never acceptable. **A list page reads front matter
+and summary fields only, and never parses body Markdown.**
 
-主题模板是构建产物的一部分，以字符串形式随 Worker 一起加载；解析后在 isolate 模块级作用域内缓存并复用，isolate 存活期间不重复解析。它不随请求变化，因此没有失效逻辑——换主题就是换一次部署。
+Theme templates are part of the build artifact and load as strings with the
+Worker. Once parsed they are cached in module scope in the isolate and reused,
+never re-parsed while the isolate lives. They do not vary per request, so
+there is no invalidation logic — changing themes is a deployment.
 
-## 5. 渲染管线
+## 5. The render pipeline
 
-渲染分两个阶段，边界是「与主题是否相关」：
+Rendering has two stages, divided by whether something depends on the theme:
 
 ```
-第一阶段：Markdown → HTML 片段（与主题无关，可缓存在 D1）
-  D1.content.markdown（标准 Markdown 文本）
-    → 分离 YAML frontmatter
-    → remark 解析成 mdast（含 GFM）
-    → 插件 beforeRender 钩子（可改 AST）
-    → 转成 hast
-    → 净化（白名单，内容一律视为不可信）
-    → 按 assets 映射把 images/、files/ 相对路径替换为 R2 URL，补 srcset / width / height / loading（§8）
-    → 序列化成 HTML 片段 + 派生元数据（标题树、摘要、阅读时长、引用与缺失的相对路径列表）
-    → 写入 D1 render_cache
+Stage one: Markdown → an HTML fragment (theme-independent, cacheable in D1)
+  D1.content.markdown (standard Markdown text)
+    → split off the YAML front matter
+    → remark parses it into mdast (with GFM)
+    → plugin beforeRender hooks (may change the AST)
+    → convert to hast
+    → sanitise against an allow-list (content is always untrusted)
+    → substitute R2 URLs for images/ and files/ relative paths through the assets map, adding srcset / width / height / loading (§8)
+    → serialise to an HTML fragment plus derived metadata (heading tree, excerpt, reading time, referenced and missing relative paths)
+    → write to D1 render_cache
 
-第二阶段：片段 → 完整页面（与主题相关，缓存在边缘）
-  片段 + 派生元数据
-    → 交给主题模板引擎（Liquid），渲染成完整页面
-    → 插件 afterRender 钩子（可改最终 HTML）
+Stage two: fragment → complete page (theme-dependent, cached at the edge)
+  the fragment plus its derived metadata
+    → the theme's template engine (Liquid) renders the complete page
+    → plugin afterRender hooks (may change the final HTML)
 ```
 
-第一阶段**在管理 API 保存内容时执行**（后台保存、CLI 发布、导入均如此），产物写入 `render_cache`；访客请求路径通常只跑第二阶段。片段缓存的键是 `sha256(正文) + frontmatter + 管线版本 + assets 映射（含媒体尺寸与变体）+ 媒体域名 + 已启用插件及其设置的哈希`，任何一项变化即失效并在下一次请求或保存时重建。相对路径在第一阶段就解析成 R2 地址，是为了让访客路径不再解析任何 HTML；代价是换媒体域名会使全部片段失效一次，这是可接受的罕见操作。这样冷渲染的 CPU 只剩 Liquid 模板与字符串拼接，Free 计划的 10 ms 才有把握。
+Stage one **runs when the management API saves content** — from the admin, a
+CLI publish or an import alike — and its output goes into `render_cache`. The
+visitor path normally runs stage two only. The fragment cache key is
+`sha256(body) + front matter + pipeline version + the assets map (including
+media dimensions and variants) + the media hostname + a hash of the enabled
+plugins and their settings`; any change invalidates it, and it is rebuilt on
+the next request or save. Relative paths are resolved to R2 addresses in stage
+one precisely so the visitor path never parses HTML again; the cost is that
+changing the media hostname invalidates every fragment once, which is an
+acceptable price for a rare operation. What remains of a cold render's CPU is
+Liquid and string concatenation, which is what makes the free plan's 10 ms
+achievable.
 
-四条不可让步的规则：
+Four rules that do not bend:
 
-1. **内容永远不可信**，即使是管理员写的。净化在生成片段时进行，**不改动 Markdown 原文**——D1 里的 Markdown 必须可原样导出。
-2. **同一份 Markdown、同一个管线版本、同一个主题版本，必须渲染出逐字节相同的 HTML。** 渲染函数不得读取时间、随机数或请求特征；`beforeRender` 钩子必须是 (AST, frontmatter, 插件设置) 的纯函数。这是缓存正确性与测试可复现性的前提。
-3. **渲染管线整体位于 `core/`，不依赖 Worker 全局对象。** CLI 的本地预览、后台的实时预览和 Worker 的线上渲染跑的是同一个函数。
-4. **HTML 不是真相。** `render_cache` 是派生数据，可以随时整表清空，清空后站点仍然正确，只是下一次访问会重建。
+1. **Content is never trusted**, even when an administrator wrote it.
+   Sanitisation happens when the fragment is generated and **does not modify
+   the Markdown source** — the Markdown in D1 must be exportable verbatim.
+2. **The same Markdown, pipeline version and theme version must render
+   byte-identical HTML.** Render functions may not read the clock, a random
+   source or anything about the request, and a `beforeRender` hook must be a
+   pure function of (AST, front matter, plugin settings). This is the premise
+   of both cache correctness and reproducible tests.
+3. **The whole render pipeline lives in `core/`** and depends on no Worker
+   global. The CLI's local preview, the admin's live preview and the Worker's
+   production rendering run the same function.
+4. **HTML is not the truth.** `render_cache` is derived data; the whole table
+   can be emptied at any time and the site is still correct — the next visit
+   simply rebuilds it.
 
-保存时的第一阶段同样受 10 ms（Free）约束。若某篇内容在预算内无法完成片段生成，保存请求仍然把 Markdown 存为草稿并返回明确错误（内容过长，需拆分或升级计划），**不得静默失败**。可接受的内容长度上限由 spike 实测后写入 §18。
+Stage one on save is bound by the same 10 ms on the free plan. When a document
+cannot be turned into a fragment within that budget, the save still stores the
+Markdown as a draft and returns a clear error — too long, split it or upgrade
+the plan — and **must not fail silently**. The acceptable length ceiling goes
+into §18 once measured.
 
-## 6. 缓存策略
+## 6. Caching
 
-三层缓存，各自解决一个问题：
+Three layers, each solving one problem:
 
-| 层 | 位置 | 键 | 解决什么 |
+| Layer | Where | Key | What it solves |
 | --- | --- | --- | --- |
-| 边缘缓存 | Cache API | 请求 URL | 访客请求不进渲染 |
-| 片段缓存 | D1 `render_cache` | Markdown 哈希 + 管线版本 + 插件哈希 | 冷渲染不解析 Markdown |
-| 模板缓存 | isolate 模块作用域 | 主题 id + version（构建期常量） | 同一 isolate 不重复解析 Liquid |
+| Edge cache | Cache API | The request URL | Visitor requests never reach rendering |
+| Fragment cache | D1 `render_cache` | Markdown hash + pipeline version + plugin hash | A cold render never parses Markdown |
+| Template cache | Isolate module scope | Theme id + version (a build-time constant) | Liquid is never parsed twice in one isolate |
 
-目标有两个，且互相冲突：访客请求近乎全部命中边缘缓存；内容保存后，公开页面在数秒内更新。
+There are two goals, and they pull against each other: nearly every visitor
+request should hit the edge cache, and a saved edit should appear on the
+public page within seconds.
 
-### 6.1 写缓存
+### 6.1 Writing to the cache
 
-渲染完成后 `cache.put()`，`Cache-Control: public, max-age=<site.cache_ttl>`（默认 1 小时，后台可调）。每个响应带 `Cache-Tag` 头，标签集合固定为：`site`、`c:<content_id>`、`k:<kind>:<locale>`（该类型的列表页）、`home:<locale>`、`feed:<locale>`、`sitemap`。列表页与首页带上它们所展示的每条内容的 `c:<id>` 标签。
+After rendering, `cache.put()` with
+`Cache-Control: public, max-age=<site.cache_ttl>` — one hour by default,
+adjustable in the admin. Every response carries a `Cache-Tag` header, drawn
+from a fixed set: `site`, `c:<content_id>`, `k:<kind>:<locale>` (that kind's
+list pages), `home:<locale>`, `feed:<locale>` and `sitemap`. List pages and
+the home page also carry the `c:<id>` tag of every item they display.
 
-### 6.2 失效：两个候选，spike 决定
+### 6.2 Invalidation: two candidates, decided by the spike
 
-- **方案 A：按标签清除。** 内容保存/删除/定时发布时，管理 API 调用 Cloudflare Purge API 按标签清除：文章本身 `c:<id>`，所在列表 `k:<kind>:<locale>`，`home:<locale>`、`feed:<locale>`、`tag:<locale>`（标签归档跨类型列内容，任何改动都可能影响它）与 `sitemap`，一次保存 6 个标签——**限额是按调用算的，不是按标签，多一个标签不多花一次**。换主题、改导航或站点设置清 `site`。官方文档确认标签清除不受自定义 cache key 影响，因此它同时兼容 §6.3 的退路。代价：Free 计划标签清除 **5 次/分钟**，所以清除必须**合并去抖**（同一 Worker 内 2 秒窗口合并一次调用，一次调用携带多个标签），且每日新闻站连续保存时会排队数十秒——界面要显示「缓存清除排队中」。
-- **方案 B：按 URL 清除。** cache key 必须是原始请求 URL（不做自定义 key），管理 API 计算受影响的 URL 列表（文章、列表页各分页、首页、sitemap、feed，通常 ≤ 20 个），单次 ≤ 100 个 URL。额度充足，但 URL 计算逻辑复杂且多语言下容易漏。
-- **两个方案都需要**一个带 Zone 级 `Cache Purge` 权限的 API token 和 Zone ID，在向导中配置，存 Worker secret。Zone 的存在再次意味着必须绑定自定义域。
+- **Plan A: purge by tag.** On save, delete or scheduled publication, the
+  management API purges by tag: the item's own `c:<id>`, its list
+  `k:<kind>:<locale>`, plus `home:<locale>`, `feed:<locale>`, `tag:<locale>`
+  (tag archives cross kinds, so any change can affect them) and `sitemap` —
+  six tags for one save. **The limit counts calls, not tags, so an extra tag
+  costs nothing.** Changing theme, navigation or site settings purges `site`.
+  The official documentation confirms tag purges are unaffected by custom
+  cache keys, so this also stays compatible with the fallback in §6.3. The
+  cost: the free plan allows **five tag purges per minute**, so purges must be
+  **coalesced and debounced** — one call per two-second window within a
+  Worker, carrying several tags — and a news site saving repeatedly will queue
+  for tens of seconds, which the interface must show as "cache purge queued".
+- **Plan B: purge by URL.** The cache key must then be the raw request URL
+  with no customisation, and the management API computes the affected URLs —
+  the item, each page of its lists, the home page, the sitemap, the feed;
+  usually 20 or fewer — with a limit of 100 per call. The quota is ample, but
+  computing the URL set is intricate and easy to get wrong once several
+  languages are involved.
+- **Both plans need** an API token with zone-level `Cache Purge` permission
+  and the Zone ID, configured in the wizard and stored as a Worker secret.
+  That a zone must exist is another reason a custom domain is required.
 
-**0.1 默认走方案 A，方案 B 作为备选。Task 01 必须实测两者的可用性、延迟与速率限制并把结论写回本文，不得由实现者临场选一个。**
+**0.1 takes plan A by default with B as the alternative. Task 01 must measure
+the availability, latency and rate limits of both and write the conclusion
+back here. An implementer may not pick one on the spot.**
 
-### 6.3 退路：版本化 cache key
+### 6.3 The fallback: a versioned cache key
 
-若 A、B 在 spike 中都不可行，退到：cache key 带全站单调递增的 `content_rev`，内容变更时 `content_rev + 1`，旧 key 自然失效，无需 purge。代价是每次请求都要先知道当前 `content_rev`：每请求查一次 D1（增加一次查询和延迟）。不引入 KV（免费档每天 1000 次写不够用）。
+If neither A nor B survives the spike, fall back to a cache key carrying a
+site-wide monotonic `content_rev`, incremented on any content change so old
+keys expire naturally and no purge is needed. The cost is that every request
+must first learn the current `content_rev` — one extra D1 query and its
+latency. KV is not introduced; 1,000 writes a day on the free tier is not
+enough.
 
-### 6.4 不缓存的路径
+### 6.4 What is never cached
 
-`/_mallok/*` 全部不进缓存，且必须带 `Cache-Control: private, no-store`。草稿与定时发布未到期的内容永不写入缓存。插件路由默认不缓存。
+Everything under `/_mallok/*`, which must carry
+`Cache-Control: private, no-store`. Drafts and scheduled content whose time
+has not come are never written to the cache. Plugin routes are uncached by
+default.
 
-### 6.5 定时任务
+### 6.5 Scheduled work
 
-每个 Worker 只用一个 Cron Trigger（`* * * * *`），一次调度内依次执行：到期的定时发布（改状态 + 清缓存）、失败邮件重试、片段缓存与媒体引用的垃圾回收、插件声明的 `scheduled` 钩子。免费账号最多 5 个 cron，站群超过 5 个站需要 Paid，向导与文档要说明。
+One Cron Trigger per Worker (`* * * * *`), running in order within each
+invocation: due scheduled publications (change status, purge), retries of
+failed email, garbage collection of the fragment cache and media references,
+and the `scheduled` hooks plugins declare. A free account allows five crons,
+so a portfolio beyond five sites needs Paid — which the wizard and the
+documentation must say.
 
-## 7. 内容模型
+## 7. The content model
 
-概要如下，精确 DDL 在 [DATA_MODEL.md](DATA_MODEL.md)。
+An outline; the exact DDL is in [DATA_MODEL.md](DATA_MODEL.md).
 
-| 表 | 作用 | 关键点 |
+| Table | Purpose | Key point |
 | --- | --- | --- |
-| `site` | 站点设置、语言、导航、SEO 默认值、主题配置项的取值、启用的内容类型 | 单行；**不记录用哪个主题——那由构建决定** |
-| `content` | 所有内容类型的条目 | **存 Markdown 原文、frontmatter 和 assets 映射，不存 HTML** |
-| `render_cache` | 第一阶段的派生片段与元数据 | 可整表清空 |
-| `media` | 媒体元数据 | 文件本体在 R2，此处存 sha、原始文件名、尺寸、类型、变体、引用计数 |
-| `redirect` | URL 变更时的重定向 | 保证换 slug 不丢外链 |
-| `plugin_state` | 插件启用状态、设置、加密后的第三方密钥 | 官方插件开关即时生效 |
-| `admin_user`、`session`、`api_token` | 管理员、后台登录会话与 CLI token | 见 §14 |
-| `migration` | schema 版本 | 见 §15 |
-| `job` | 定时发布、邮件重试等待办 | 由 cron 消费 |
+| `site` | Settings, locales, navigation, SEO defaults, theme option values, enabled content kinds | A single row. **It does not record which theme is in use — the build decides that** |
+| `content` | Items of every content kind | **Stores the Markdown source, the front matter and the assets map; never HTML** |
+| `render_cache` | Stage one's derived fragments and metadata | Can be emptied wholesale |
+| `media` | Media metadata | The bytes are in R2; this holds the sha, original filename, dimensions, type, variants and reference count |
+| `redirect` | Redirects for changed URLs | Keeps inbound links alive across a slug change |
+| `plugin_state` | Plugin enablement, settings, encrypted third-party keys | The official plugin's switch is immediate |
+| `admin_user`, `session`, `api_token` | Administrators, admin sessions and CLI tokens | See §14 |
+| `migration` | Schema version | See §15 |
+| `job` | Scheduled publication, email retries and other pending work | Consumed by cron |
 
-`content` 的核心字段：`id`（UUID，永不变）、`kind`（由主题声明，见 §10）、`locale`、`translation_group`（同一内容各语言版本共享）、`slug`、`path`（渲染出的公开路径）、`title`、`frontmatter`（JSON，导入别名已归一化）、`markdown`（`index.md` 含 frontmatter 块的完整原文）、`assets`（JSON，相对路径 → media sha）、`status`（`draft` / `scheduled` / `published`）、`published_at`、`updated_at`、`rev`。
+`content`'s core fields: `id` (a UUID that never changes), `kind` (declared by
+the theme, see §10), `locale`, `translation_group` (shared by every language
+of one item), `slug`, `path` (the public path as rendered), `title`,
+`frontmatter` (JSON with import aliases normalised), `markdown` (the complete
+`index.md` source including the front-matter block), `assets` (JSON mapping
+relative paths to media shas), `status` (`draft`, `scheduled` or `published`),
+`published_at`, `updated_at` and `rev`.
 
-**`id` 是内容的身份，`path` 只是当前的公开地址。** 换主题、改 slug、改目录结构都不改变 `id`；`path` 变化时自动写一条 `redirect`。
+**`id` is the content's identity; `path` is only its current public address.**
+Changing theme, slug or directory structure never changes an `id`, and a
+changed `path` writes a `redirect` automatically.
 
-内容类型不是核心的枚举。核心只认识两种内建类型 `page` 与 `article`；其余（`product`、`category`、`case`、`faq`……）由主题的 `theme.json` 声明，包含每种类型的 frontmatter schema、字段类型（文本、数字、图片、图片列表、键值表、关联内容）与布局。`site.kinds` 记录本站启用的类型；切换到不支持某类型的主题时，该类型内容退回 `page` 布局渲染，后台给出警告，**内容与 URL 不丢失**。
+Content kinds are not an enumeration in the core. The core knows two built-in
+kinds, `page` and `article`; the rest — `product`, `category`, `case`, `faq`
+and so on — are declared by a theme's `theme.json`, along with each kind's
+front-matter schema, field types (text, number, image, image list, key-value
+table, related content) and layout. `site.kinds` records what this site has
+enabled. Switching to a theme that does not know a kind renders that kind's
+content through the `page` layout with a warning in the admin, and **neither
+the content nor its URLs are lost**.
 
-单条 `markdown` 受 D1 的 2 MB 行上限约束，保存时校验并返回明确错误，不允许静默截断。
+A single `markdown` value is bound by D1's 2 MB row limit, validated on save
+with a clear error and never silently truncated.
 
-## 8. 媒体与 R2
+## 8. Media and R2
 
-- 文件本体存 R2，key 为内容寻址：原图 `media/<sha256>.<ext>`，变体 `media/<sha256>_<width>.webp`（默认宽度 480 / 960 / 1440 / 1920，主题可在 `theme.json` 里收窄）。相同文件不重复存储。
-- **Markdown 里写的是相对路径**（`images/hero.jpg`），不是 R2 地址。`content.assets` 记录该条内容里每个相对路径对应的 sha；映射按内容存，两篇文章各有一张 `images/cover.jpg` 互不干扰。第一阶段生成片段时把相对路径替换为 R2 URL 并生成 `srcset` / `sizes` / `width` / `height` / `loading="lazy"` / `decoding="async"`，宽高来自 `media` 表，避免布局抖动。frontmatter 中类型为图片的字段按同一规则解析。
-- **图片处理在上传端完成，不在 Worker 里做。** 后台上传时用浏览器 Canvas 转 WebP 并生成变体；CLI 在本地用 `sharp`（CLI 是 Node 进程，不受「无原生库」规则约束）。两端产物**同规格但不保证逐字节一致**，去重键是原图的 sha，因此不影响正确性。
-- 原始文件默认保留，但向导提供「原图最大边长 2560」的默认开关以适配 R2 免费额度；关闭后保留真正的原件。
-- **媒体通过 R2 自定义域直出**（默认 `media.<站点域名>`，向导用 DNS API 自动创建），图片请求不经过 Worker，不计入 Workers 请求数与子请求数，并享受 Cloudflare 缓存。内容寻址意味着这些 URL 可以永久缓存（`max-age=31536000, immutable`）；换图即换 sha 即换 URL，永远不需要清图片缓存。`.workers.dev` 预览阶段与未配置自定义域时退回 `/media/*` 代理。
-- `media.ref_count` 记录被多少条内容的 `assets` 引用；归零的媒体由 cron 延迟回收（默认保留 7 天），后台可见「未使用的媒体」。
-- 非图片附件（产品手册 PDF 等）放在文章包的 `files/`，走同一套 sha 寻址与 `assets` 映射，原样存储、按嗅探类型校验、以 `Content-Disposition: attachment` 直出。
-- 正文里的外链图片（`https://…`）净化后原样输出，不代理、不下载。
-- 引用了 `assets` 中不存在的相对路径是**正常状态而非错误**：内容可以存为草稿，后台与 CLI 显示「缺 N 张图」，发布时警告但不阻止。AI 内容管线产出的 `image-slots.json` 可被 CLI 读取以报告缺图。
+- The bytes live in R2 under content-addressed keys: originals at
+  `media/<sha256>.<ext>`, variants at `media/<sha256>_<width>.webp` (480, 960,
+  1440 and 1920 by default; a theme may narrow the set in `theme.json`).
+  Identical files are stored once.
+- **Markdown holds relative paths** (`images/hero.jpg`), not R2 addresses.
+  `content.assets` records the sha behind each relative path for that item, so
+  two articles can each have their own `images/cover.jpg` without interfering.
+  Stage one substitutes the R2 URL and generates `srcset`, `sizes`, `width`,
+  `height`, `loading="lazy"` and `decoding="async"`, taking the dimensions
+  from the `media` table so the layout does not shift. Front-matter fields
+  typed as images resolve by the same rule.
+- **Image processing happens on the upload side, never in the Worker.** The
+  admin converts to WebP and generates variants with the browser's Canvas; the
+  CLI uses `sharp` locally, being a Node process and so exempt from the
+  no-native-libraries rule. The two produce **the same specification but not
+  byte-identical output**; deduplication keys on the original's sha, so
+  correctness is unaffected.
+- Originals are kept by default, but the wizard offers a "limit originals to
+  2560 px on the longest edge" default to suit R2's free allowance. Turning it
+  off keeps true originals.
+- **Media is served directly from an R2 custom domain** — `media.<site
+  domain>` by default, created automatically by the wizard through the DNS
+  API. Image requests never touch the Worker, count against neither the
+  request nor the subrequest budget, and get Cloudflare's cache.
+  Content-addressing means those URLs can be cached forever
+  (`max-age=31536000, immutable`): a new image is a new sha and a new URL, so
+  image caches never need purging. During `.workers.dev` preview, and whenever
+  no custom domain is configured, this falls back to the `/media/*` proxy.
+- `media.ref_count` records how many items' `assets` reference it. Media that
+  reaches zero is collected by cron after a delay — seven days by default —
+  and the admin shows "unused media".
+- Non-image attachments such as product datasheets live in a bundle's
+  `files/`, use the same sha addressing and `assets` map, are stored as they
+  are, validated against the sniffed type, and served with
+  `Content-Disposition: attachment`.
+- External images in the body (`https://…`) are emitted as they are after
+  sanitisation — not proxied, not downloaded.
+- Referencing a relative path absent from `assets` is a **normal state, not an
+  error**: the content can be saved as a draft, the admin and CLI report "N
+  images missing", and publishing warns without blocking. An
+  `image-slots.json` produced by an AI content pipeline can be read by the CLI
+  to report which slots are still empty.
 
-文章包格式、相对路径规则与导入导出契约见 [CONTENT_FORMAT.md](CONTENT_FORMAT.md)。
+The bundle format, the relative-path rules and the import/export contract are
+in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
 
-## 9. 多语言
+## 9. Multiple languages
 
-- `site.locales` 声明启用的语言列表与 `site.default_locale`。默认语言的 URL 无前缀，其他语言以 `/<locale>/` 为前缀（`/products/x`、`/de/products/x`）。0.1 各语言共用内容类型的基础路径，slug 按翻译各自设置。
-- 每条内容有 `locale`；同一内容的各语言版本共享 `translation_group`。翻译版本是独立的内容行（各自的 Markdown、assets、状态与 URL），不是字段级翻译。
-- 渲染上下文向主题提供当前内容的全部可用翻译，主题据此输出语言切换器；核心在 `<head>` 与 sitemap 中自动输出 `hreflang`（含 `x-default` 指向默认语言）。
-- 主题的界面文案来自 `theme.json` 声明的语言包（`locales/<locale>.json`），按 `site` 语言与内容 `locale` 选择，缺失时回退到主题默认语言。
-- 列表页、首页、feed 按语言分别渲染与缓存（标签 `k:<kind>:<locale>`、`home:<locale>`）。
-- 不做的：字段级实时翻译、自动语言检测跳转（SEO 有害）。AI 自动翻译在 0.2 作为 `onContentSave` 插件提供。
+- `site.locales` declares the enabled languages and `site.default_locale`. The
+  default language's URLs carry no prefix; every other language is prefixed
+  `/<locale>/` (`/products/x`, `/de/products/x`). In 0.1 the languages share a
+  kind's base path, while slugs are set per translation.
+- Every item has a `locale`, and the languages of one item share a
+  `translation_group`. A translation is an independent content row — its own
+  Markdown, assets, status and URL — not a field-level translation.
+- The render context gives the theme every available translation of the
+  current item so it can build a language switcher, and the core emits
+  `hreflang` (including an `x-default` pointing at the default language) in
+  `<head>` and in the sitemap automatically.
+- A theme's interface strings come from the language packs its `theme.json`
+  declares (`locales/<locale>.json`), selected by the site's language and the
+  content's `locale`, falling back to the theme's default language.
+- List pages, home pages and feeds are rendered and cached per language, under
+  the `k:<kind>:<locale>` and `home:<locale>` tags.
+- Not done: field-level live translation, and automatic language detection
+  with redirection, which is harmful to SEO. AI translation arrives in 0.2 as
+  an `onContentSave` plugin.
 
-## 10. 主题
+## 10. Themes
 
-主题是**声明式的、随构建打进产物的、不含任意 JavaScript 的**模板集合。
+A theme is a **declarative** set of templates, **bundled into the artifact at
+build time**, containing **no arbitrary JavaScript**.
 
 ```text
 src/themes/atelier/
-├── theme.json          # 名称、版本、支持的内容类型及其字段 schema、开放的配置项、图片宽度、语言包清单
+├── theme.json          # name, version, supported kinds and their field schemas, exposed options, image widths, language packs
 ├── layouts/
 │   ├── base.liquid
 │   ├── home.liquid
-│   ├── page.liquid     # 必需：不被支持的内容类型退回到它
+│   ├── page.liquid     # required: unsupported kinds fall back to it
 │   ├── article.liquid
 │   ├── product.liquid
 │   ├── category.liquid
@@ -255,166 +427,313 @@ src/themes/atelier/
     └── style.css
 ```
 
-- 模板与语言包在构建期作为文本模块打进 Worker；`assets/` 复制到 Static Assets 目录，公开路径 `/theme/<id>/<version>/<path>`。**两者都不进 D1。**
-- **哪个主题生效由构建决定**（`src/themes/index.ts` 的导出 + wrangler 变量），不是数据库里的一个字段。换主题 = 改源码 + 重新部署。
-- 主题**开放的配置项**（`theme.json` 的 `options`）的取值仍存 `site.theme_options`，**在后台随时可改、即时生效**。主题决定有哪些旋钮，运营决定旋钮拧到哪。
-- 模板引擎在 Worker 里运行，由内存中的模板映射支撑，没有文件系统：`include` / `render` / `layout` 只能引用主题自身的文件。所有 `{{ }}` 输出默认 HTML 转义，`raw` 过滤器只放行核心标记为安全的 HTML（净化后的正文片段、核心生成的 head 标签），对普通字符串仍然转义。禁止：任意表达式求值、网络访问、原型链访问、未知过滤器。
-- 主题能拿到的数据由一份明确的上下文契约定义（站点设置、当前内容与其翻译、有界的内容列表、导航、分页、主题配置项、语言包、插件提供的片段如询盘表单），不是「整个数据库」。
-- 主题的配置项与内容类型由 `theme.json` 声明，后台据此自动生成表单。主题作者不写后台代码。
-- 主题声明它输出的客户端 JavaScript 为 0 B；如需 JS 必须在 `theme.json` 里列出并说明用途。**这一条在构建期校验**：模板里出现未声明的 `<script>` 或 `on*=` 属性，构建失败。
+- Templates and language packs are bundled into the Worker as text modules at
+  build time; `assets/` is copied into the Static Assets directory and served
+  at `/theme/<id>/<version>/<path>`. **Neither enters D1.**
+- **Which theme is active is decided by the build** — the export from
+  `src/themes/index.ts` plus a wrangler variable — not by a database field.
+  Switching themes means editing source and redeploying.
+- The values of a theme's **exposed options** (`theme.json`'s `options`) still
+  live in `site.theme_options` and are **editable in the admin at any time,
+  taking effect immediately**. The theme decides which knobs exist; the
+  operator decides where they are set.
+- The template engine runs in the Worker over an in-memory template map with
+  no filesystem: `include`, `render` and `layout` can only reference the
+  theme's own files. Every `{{ }}` output is HTML-escaped by default, and the
+  `raw` filter passes through only HTML the core has marked safe — the
+  sanitised body fragment and the head tags the core generates — while still
+  escaping ordinary strings. Forbidden: evaluating arbitrary expressions,
+  network access, prototype-chain access, unknown filters.
+- What a theme can see is defined by an explicit context contract — site
+  settings, the current item and its translations, bounded content lists,
+  navigation, pagination, theme options, language packs, and fragments a
+  plugin supplies such as the inquiry form. It is not "the whole database".
+- A theme's options and content kinds are declared in `theme.json`, and the
+  admin generates its forms from that. A theme author writes no admin code.
+- A theme declares that it emits 0 bytes of client-side JavaScript; anything
+  else must be listed in `theme.json` with its purpose. **This is checked at
+  build time**: an undeclared `<script>` or `on*=` attribute in a template
+  fails the build.
 
-**切换主题不改变内容 `id`、`translation_group`、已有 URL 与 `redirect` 表。** 切到不支持某内容类型的主题时，该类型的内容用 `page` 布局渲染，`site.kinds` 的 base 不变，URL 不变——所以每个主题都必须有 `page` 布局。
+**Switching themes changes no content `id`, no `translation_group`, no
+existing URL and nothing in the `redirect` table.** Switching to a theme that
+does not know a content kind renders that kind through the `page` layout with
+`site.kinds`'s base unchanged, so URLs stay — which is why every theme must
+have a `page` layout.
 
-安全定位：主题是**半可信**的。它不能执行代码，但能输出 HTML，而且它进入你的构建产物——审阅一个主题和审阅任何一段进仓库的代码是一回事。因此模板引擎的转义规则与构建期的校验都是安全边界的一部分，不是排版细节。
+Security position: a theme is **semi-trusted**. It cannot execute code, but it
+does emit HTML and it does enter your build artifact — reviewing a theme is
+the same act as reviewing any other code that enters the repository. The
+template engine's escaping and the build-time checks are therefore part of the
+security boundary, not formatting details.
 
-## 11. Starter
+## 11. Starters
 
-Starter 就是**你 fork 的那个仓库**：主题已经选好、插件已经装好、`wrangler.jsonc` 已经配好，外加一批示例内容（文章包目录）和一份设置预设。
+A starter **is the repository you forked**: the theme already chosen, the
+plugins already present, `wrangler.jsonc` already configured, plus a set of
+example content bundles and a settings preset.
 
-创建站点 = 用这个仓库部署一次，首次启动向导把示例内容与设置导入 D1。官方 Starter `trade-b2b` 提供外贸企业站的完整页面集合：首页、产品分类与详情、关于/工厂/资质、新闻、案例、FAQ、联系与询盘。
+Creating a site means deploying that repository once and letting the setup
+wizard import the example content and settings into D1. The official
+`trade-b2b` starter provides a complete page set for a trade company: home,
+product families and detail pages, about/factory/certifications, news, case
+studies, an FAQ, and contact with an inquiry form.
 
-导入之后示例内容就是普通内容，和手工录入的没有区别。再次导入属于覆盖操作，需要明确确认。
+After the import, the example content is ordinary content, indistinguishable
+from anything typed by hand. Importing again overwrites, and requires explicit
+confirmation.
 
-## 12. 插件
+## 12. Plugins
 
-插件是真正的 JavaScript/TypeScript，**官方与第三方走同一条路**：源码进 `src/plugins/`，构建期打包进 Worker。
+A plugin is real JavaScript or TypeScript, and **official and third-party
+plugins take the same path**: source into `src/plugins/`, bundled into the
+Worker at build time.
 
-| 操作 | 怎么生效 |
+| Action | How it takes effect |
 | --- | --- |
-| 安装 / 更新 / 移除插件 | 改源码 + 重新部署 |
-| 启用 / 停用已装的插件（`plugin_state.enabled`） | 后台开关，即时生效 |
-| 改插件设置与密钥 | 后台表单，即时生效 |
+| Install, update or remove a plugin | Edit source, redeploy |
+| Enable or disable an installed plugin (`plugin_state.enabled`) | A switch in the admin, immediate |
+| Change a plugin's settings and secrets | A form in the admin, immediate |
 
-开关只决定要不要跑，不改变打进产物的是什么代码——这是它能即时生效的原因，也是它和「安装」的区别。界面必须把两者分开说。
+The switch decides only whether the code runs; it does not change what code is
+in the artifact. That is why it can be immediate, and it is what separates it
+from installing. The interface must state both facts separately.
 
 ```text
 src/plugins/inquiry/
-├── plugin.json     # 名称、版本、钩子、路由、设置项与密钥项、数据表迁移、后台面板、注入的客户端 JS 声明
+├── plugin.json     # name, version, hooks, routes, settings and secrets, table migrations, admin panels, declared client JS
 ├── migrations/
 │   └── 0001_inquiry.sql
 └── index.ts
 ```
 
-0.1 开放的钩子：
+The hooks 0.1 exposes:
 
-| 钩子 | 时机 | 典型用途 |
+| Hook | When | Typical use |
 | --- | --- | --- |
-| `onRequest` | 请求进入，缓存查询之前 | 重定向、访问控制 |
-| `beforeRender` | 第一阶段，拿到 AST 之后 | 自定义语法、短代码；必须是纯函数 |
-| `afterRender` | 完整 HTML 生成之后 | 注入 meta、结构化数据、表单片段 |
-| `onContentSave` | 内容保存时 | 校验、自动摘要、自动翻译、通知外部服务 |
-| `scheduled` | 每分钟 cron 调度内 | 重试、同步、清理 |
+| `onRequest` | A request arrives, before the cache lookup | Redirects, access control |
+| `beforeRender` | Stage one, once the AST exists | Custom syntax, shortcodes; must be pure |
+| `afterRender` | After the complete HTML is generated | Injecting meta, structured data, form markup |
+| `onContentSave` | When content is saved | Validation, auto-summaries, auto-translation, notifying something external |
+| `scheduled` | Inside the once-a-minute cron | Retries, syncing, cleanup |
 
-0.1 开放的六种能力（`plugin.json` 声明，核心提供实现）：
+The six capabilities 0.1 exposes, declared in `plugin.json` and implemented by
+the core:
 
-1. **数据表**：插件自带 SQL 迁移，表名以 `p_<plugin>_` 为前缀，由核心的迁移器统一执行与记录。
-2. **路由**：`/_mallok/p/<plugin>/<path>`，声明方法、是否缓存、是否需要 Turnstile 校验、限流键。核心提供 body 解析、zod 校验、Turnstile 服务端验证与基于 Workers 限流绑定的限流辅助（该绑定按数据中心计数、最终一致，只用于防刷不用于计费）。
-3. **设置与密钥**：普通设置明文存 `plugin_state.settings`；声明为 `secret` 的项用部署时生成的 `MALLOK_SECRET` 以 AES-GCM 加密后存 `plugin_state.secrets`，后台可填写、可轮换，返回体永远不回显。
-4. **定时任务**：`scheduled` 钩子，共享站点唯一的 cron。
-5. **声明式后台面板**：插件不带前端代码。它声明「设置表单」（按 schema 生成）与「数据表视图」（表、列、筛选、可执行的操作如标记/删除/导出 CSV），由后台 SPA 统一渲染。询盘列表与将来的订单列表都是这种面板。
-6. **发邮件**：核心提供 `sendEmail({ to, subject, html, text, replyTo })`，0.1 唯一实现是 Resend（直接 `fetch` 其 HTTP API，不引入 SDK）。发送记录与失败重试由核心的 `job` 表承担。
+1. **Tables**: a plugin brings SQL migrations, with table names prefixed
+   `p_<plugin>_`, run and recorded by the core's migrator.
+2. **Routes**: `/_mallok/p/<plugin>/<path>`, declaring method, cacheability,
+   whether Turnstile verification is required, and the rate-limit key. The
+   core provides body parsing, zod validation, server-side Turnstile
+   verification and rate limiting through the Workers binding — which counts
+   per data centre and is eventually consistent, so it deters abuse and must
+   not back billing.
+3. **Settings and secrets**: ordinary settings in cleartext in
+   `plugin_state.settings`; anything declared a `secret` is AES-GCM encrypted
+   with the deployment's `MALLOK_SECRET` into `plugin_state.secrets`, editable
+   and rotatable in the admin, and never echoed in a response.
+4. **Scheduled work**: the `scheduled` hook, sharing the site's single cron.
+5. **Declarative admin panels**: a plugin ships no frontend code. It declares
+   a settings form, generated from its schema, and a data view — table,
+   columns, filters and actions such as marking, deleting or exporting CSV —
+   which the admin app renders. The inquiry list, and any future order list,
+   is a panel of this kind.
+6. **Sending email**: the core provides
+   `sendEmail({ to, subject, html, text, replyTo })`, whose only 0.1
+   implementation is Resend, called through its HTTP API with `fetch` and no
+   SDK. Delivery records and retries live in the core's `job` table.
 
-约束：
+Constraints:
 
-- 插件在 `onRequest` / `afterRender` 中的 CPU 开销直接计入访客请求。插件必须声明是否影响片段缓存键、是否注入客户端 JS，后台如实展示。
-- 插件跑在用户自己的账号里、拥有 Worker 的全部能力。**插件是可信代码**，安全模型与 WordPress 插件一致：用户为自己安装的东西负责。文档必须讲清楚，不得暗示有沙箱。
-- 每新增一个插件都要给出打包体积证据；产物总体积须在 3 MB（Free）内。
+- A plugin's CPU cost in `onRequest` or `afterRender` counts directly against
+  the visitor request. A plugin must declare whether it affects the fragment
+  cache key and whether it injects client-side JavaScript, and the admin must
+  display both honestly.
+- A plugin runs in the user's own account with the Worker's full capabilities.
+  **A plugin is trusted code**, on the same security model as a WordPress
+  plugin: the user is responsible for what they install. The documentation
+  must say so and must not imply a sandbox.
+- Every added plugin must come with bundle-size evidence; the total must stay
+  within 3 MB on the free plan.
 
-## 13. 询盘链路（官方 `inquiry` 插件的参考设计）
+## 13. The inquiry path (the reference design for the official plugin)
 
 ```
-产品页 / 联系页的原生 HTML <form>（隐藏字段：content_id、locale；蜜罐字段；Turnstile widget）
+A native HTML <form> on a product or contact page (hidden fields: content_id, locale; a honeypot field; the Turnstile widget)
   → POST /_mallok/p/inquiry/submit
-  → zod 校验 → 蜜罐与提交耗时检测 → Turnstile 服务端验证 → 限流
-  → 写 D1 p_inquiry_inquiry（来源页面、产品、姓名、邮箱、公司、电话/WhatsApp、留言、request.cf.country、UA、时间）
-  → 写两条 job：通知站主（Reply-To 设为买家邮箱）、买家自动回执（按 locale 选模板）
-  → 立即尝试发送；失败的由 cron 重试，状态可见
-  → 302 到该语言的感谢页（可缓存）
+  → zod validation → honeypot and submission-timing checks → server-side Turnstile verification → rate limit
+  → write D1 p_inquiry_inquiry (source page, product, name, email, company, phone/WhatsApp, message, request.cf.country, user agent, time)
+  → write two jobs: notify the owner (Reply-To set to the buyer's address) and auto-acknowledge the buyer (template chosen by locale)
+  → attempt delivery immediately; the cron retries failures, and the status is visible
+  → 302 to that language's thank-you page, which is cacheable
 ```
 
-后台面板：询盘列表（新 / 已回复 / 垃圾）、详情、标记垃圾、导出 CSV。设置：接收邮箱、发件域名与地址、自动回执开关与模板、垃圾规则（国家、关键词）。向导在填入 Resend key 后，可调用 Cloudflare DNS API 直接写入 SPF/DKIM 记录（域名本来就在同一账号）。询盘数据进入站点整体导出（`inquiries.csv`）。
+The admin panel: an inquiry list (new / replied / spam), a detail view, mark
+as spam, export CSV. The settings: recipient address, sending domain and
+address, the auto-acknowledgement switch and its template, and spam rules by
+country and keyword. Once a Resend key is supplied, the wizard can write the
+SPF and DKIM records directly through the Cloudflare DNS API, the domain being
+in the same account already. Inquiry data is part of the site export, as
+`inquiries.csv`.
 
-## 14. 认证与安全边界
+## 14. Authentication and the security boundary
 
-| 主体 | 信任级别 | 边界 |
+| Subject | Trust level | Boundary |
 | --- | --- | --- |
-| 访客内容（Markdown 正文） | 不可信 | 生成片段时白名单净化 |
-| 访客提交（询盘表单） | 不可信 | zod 校验、Turnstile、限流、参数化 SQL、邮件模板转义 |
-| 主题 | 半可信 | 受限模板引擎，无代码执行 |
-| 插件 | 可信 | 用户主动启用/安装，无沙箱，需明确告知 |
-| 管理 API 调用者 | 需认证 | 见下 |
+| Visitor-facing content (Markdown bodies) | Untrusted | Allow-list sanitisation when the fragment is generated |
+| Visitor submissions (the inquiry form) | Untrusted | zod validation, Turnstile, rate limiting, parameterised SQL, escaped email templates |
+| Themes | Semi-trusted | A restricted template engine with no code execution |
+| Plugins | Trusted | Installed and enabled deliberately by the user; no sandbox, and this must be stated |
+| Management API callers | Authenticated | See below |
 
-Worker secret 只有三个，都在部署时设置：`MALLOK_SECRET`（随机 32 字节；签发 session、加密第三方密钥、签名预览链接）、`CF_API_TOKEN`（Zone 级 Cache Purge 与 DNS 编辑权限，仅用于清缓存与向导写 DNS）、`CF_ZONE_ID`。**Cloudflare 自身的凭据只进 Worker secret**；第三方服务密钥（Resend 等）加密存 D1 以便后台配置，不进日志、不进返回体。
+There are three Worker secrets, all set at deployment: `MALLOK_SECRET` (32
+random bytes; signs sessions, encrypts third-party keys, signs preview links),
+`CF_API_TOKEN` (zone-level Cache Purge and DNS Edit, used only for purging and
+for the wizard's DNS writes) and `CF_ZONE_ID`. **Cloudflare's own credentials
+exist only as Worker secrets**; third-party service keys such as Resend's are
+encrypted into D1 so the admin can configure them, and reach neither a log nor
+a response body.
 
-0.1 的后台认证：
+Admin authentication in 0.1:
 
-- 首次启动向导设置管理员邮箱与密码，向导完成后 `/_mallok/setup` 永久关闭；
-- 密码用 WebCrypto 原生 PBKDF2 派生（不用 Argon2/bcrypt 的 WASM 实现——10 ms CPU 限制下跑不动），参数在 spike 中按实测 CPU 预算确定；
-- 登录后签发 session token，存 D1，cookie 为 `HttpOnly; Secure; SameSite=Strict`；
-- 所有写操作要求 CSRF token；
-- 管理 API 同时接受 Bearer token，供 CLI 使用；token 在后台生成、可撤销、有作用域；
-- 可选加强：用 Cloudflare Access 保护 `/_mallok/*` 路径。文档给出配置，但必须先实测它不影响公开路径的 Cache API。
+- The setup wizard sets the administrator's email and password, and
+  `/_mallok/setup` closes permanently once it completes.
+- Passwords are derived with WebCrypto's native PBKDF2 — a WASM Argon2 or
+  bcrypt cannot run inside 10 ms of CPU — with parameters chosen from the
+  spike's measured budget.
+- Logging in issues a session token stored in D1, with the cookie set
+  `HttpOnly; Secure; SameSite=Strict`.
+- Every write requires a CSRF token.
+- The management API also accepts a Bearer token for the CLI; tokens are
+  generated in the admin, are revocable, and are scoped.
+- Optionally, Cloudflare Access can protect `/_mallok/*`. The documentation
+  gives the configuration, but only after measuring that it does not affect
+  the Cache API on public paths.
 
-其他：
+Also:
 
-- 上传文件按嗅探出的真实类型而非扩展名校验，只接受白名单类型；
-- 错误响应不泄露 SQL、bucket 名、database id 或堆栈；
-- 草稿预览链接由 `MALLOK_SECRET` 签名、带过期时间，响应 `no-store` 且 `noindex`。
+- Uploads are validated against the sniffed type rather than the extension,
+  and only allow-listed types are accepted.
+- Error responses leak no SQL, bucket name, database id or stack trace.
+- Draft preview links are signed with `MALLOK_SECRET`, expire, and are served
+  `no-store` and `noindex`.
 
-## 15. 部署、向导、迁移与升级
+## 15. Deployment, the wizard, migration and upgrades
 
-三个部署入口（见 PRODUCT_VISION §5.4）汇入同一个首次启动向导；每个站点的资源清单、命名与创建顺序在 [CLOUDFLARE_RESOURCES.md](CLOUDFLARE_RESOURCES.md)：
+Three deployment entry points (see PRODUCT_VISION §5.4) converge on one setup
+wizard. Each site's resources, naming and creation order are in
+[CLOUDFLARE_RESOURCES.md](CLOUDFLARE_RESOURCES.md):
 
-1. **`npx mallok create`**：调用 wrangler 完成 OAuth 登录、创建 D1 与 R2、生成 `MALLOK_SECRET`、部署 Worker，打印 `.workers.dev` 地址并打开向导。支持 `--starter`、`--domain`、`--locale` 参数以便站群脚本化。
-2. **Deploy to Cloudflare 按钮**：官方文档确认它只支持 GitHub/GitLab、要求源仓库公开、按 wrangler 配置自动创建 D1/R2 等资源并接入 Workers Builds。Mallok 仓库需为此提供带默认资源名的 wrangler 配置，且不采用 monorepo 布局。此路径下升级 Mallok 是同步 fork，安装第三方插件是修改配置文件后自动构建。
-3. **托管部署助手**（1.0）：官网代为创建资源，不属于 0.1。
+1. **`npx mallok create`**: drives wrangler through OAuth login, creates D1 and
+   R2, generates `MALLOK_SECRET`, deploys the Worker, prints the
+   `.workers.dev` address and opens the wizard. It accepts `--starter`,
+   `--domain` and `--locale` so a portfolio can be scripted.
+2. **The Deploy to Cloudflare button**: the official documentation confirms it
+   supports GitHub and GitLab only, requires the source repository to be
+   public, and creates D1, R2 and the rest from the wrangler configuration
+   while wiring up Workers Builds. The Mallok repository must therefore carry
+   a wrangler configuration with default resource names, and must not use a
+   monorepo layout. On this path, upgrading Mallok means syncing the fork, and
+   installing a third-party plugin means editing a configuration file and
+   letting the build run.
+3. **A hosted setup assistant** (1.0): the project site creates the resources
+   on the user's behalf. Not part of 0.1.
 
-**schema 迁移由 Worker 在运行时自行执行**：每次冷启动检查 `migration` 表，落后则在一个 D1 batch 内按序应用（`migration` 表内的锁行防止并发重复执行），插件迁移随之执行。这样三个入口都不依赖 CI 跑迁移，升级 = 部署新版本 Worker。迁移必须向前兼容：迁移期间旧版本 Worker 仍在服务，失败不得让站点不可用。
+**Schema migration runs inside the Worker**: every cold start checks the
+`migration` table and, if behind, applies migrations in order within one D1
+batch, with a lock row in that same table preventing concurrent duplicate
+execution. Plugin migrations run with them. This keeps all three entry points
+free of any CI step, so upgrading is just deploying a new Worker version.
+Migrations must be forward-compatible: the old Worker version is still serving
+during one, and a failure must not take the site down.
 
-向导 `/_mallok/setup` 的步骤：管理员账号 → 站点名称与语言 → 选择 Starter → 域名（检测是否已绑定自定义域，未绑定则给出步骤并提示缓存尚未生效）→ 媒体域名（自动创建 `media.<域名>`）→ 邮件（Resend key、发件域名、写入 DNS 记录）→ 完成。每一步可跳过并在设置里补做。
+The wizard's steps at `/_mallok/setup`: administrator account → site name and
+languages → choose a starter → domain (detecting whether a custom domain is
+bound, and otherwise giving the steps and warning that caching is not yet in
+effect) → media domain (creating `media.<domain>` automatically) → email (the
+Resend key, the sending domain, writing the DNS records) → done. Every step
+can be skipped and completed later in settings.
 
-**哪些操作需要重新部署，必须在界面上一次讲清**：
+**Which actions need a redeploy must be stated plainly in one place:**
 
-| 不需要部署（后台改完即时生效） | 需要重新部署 |
+| No deployment needed (immediate from the admin) | Needs a redeploy |
 | --- | --- |
-| 内容、媒体、多语言翻译 | 换主题、改主题模板 |
-| 站点设置、导航、SEO 默认值 | 安装 / 更新 / 移除插件 |
-| 主题开放的配置项 | 升级 Mallok 本身 |
-| 插件的启用开关、设置与密钥 | 改 wrangler 配置、加绑定 |
+| Content, media, translations | Changing theme, editing theme templates |
+| Site settings, navigation, SEO defaults | Installing, updating or removing a plugin |
+| The options a theme exposes | Upgrading Mallok itself |
+| A plugin's enabled switch, settings and secrets | Changing wrangler configuration or adding a binding |
 
-升级前提示用户导出一次备份，并给出 D1 备份方式。
+Before an upgrade, prompt the user to export a backup and show how to back up
+D1.
 
-## 16. 内容导入导出
+## 16. Import and export
 
-这是「不锁定」承诺的可执行部分，不是附加功能。格式契约在 [CONTENT_FORMAT.md](CONTENT_FORMAT.md)。
+This is the executable half of the no-lock-in promise, not an added feature.
+The format contract is in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
 
-- **导出**：一次操作产出按内容类型组织的文章包目录（每个翻译组一个文件夹：`index.md`、`index.<locale>.md`、`images/`、`files/`、`mallok.json`），`index*.md` 是 D1 中的原文逐字节输出，图片与附件按 `assets` 的原始文件名从 R2 取原图放回；另附 `site.json`（设置与导航）、`redirects.csv`、`themes/`（已安装主题的安装包）、`inquiries.csv`（若启用询盘插件）与 `media/`（未被引用的媒体）。frontmatter 只含通用字段；`mallok.json` 是唯一的私有文件，只承载 `id` 与 `translation_group`，其他工具会忽略它。
-- **导入**：接受文章包目录；0.1 至少覆盖通用 Markdown 与 Astro Content Collections 的常见 frontmatter 形态；相对路径图片按 §8 上传并建立 `assets` 映射。
-- **往返一致性必须有测试**：导出再导入再导出，`index.md` 与图片逐字节一致，`id`、`locale`、`translation_group` 保持不变。这是回归测试的硬性项，不是尽力而为。
-- WordPress 导入器与产品 CSV/Excel 导入放在 0.2。
+- **Export**: one operation producing bundle directories organised by content
+  kind — one folder per translation group holding `index.md`,
+  `index.<locale>.md`, `images/`, `files/` and `mallok.json`. Each `index*.md`
+  is the D1 source emitted byte for byte, and images and attachments are
+  fetched from R2 as originals under their `assets` filenames. Alongside them:
+  `site.json` (settings and navigation), `redirects.csv`, `inquiries.csv` when
+  the inquiry plugin is enabled, and `media/` for anything unreferenced. Front
+  matter carries only generic fields; `mallok.json` is the one private file
+  and holds only `id` and `translation_group`, which other tools ignore.
+- **Import**: accepts bundle directories, and in 0.1 covers at least generic
+  Markdown and the common front-matter shapes of Astro Content Collections.
+  Relative-path images are uploaded per §8 and recorded in `assets`.
+- **Round-trip fidelity must be tested**: export, import, export again, and
+  every `index.md` and image is byte-identical while `id`, `locale` and
+  `translation_group` are unchanged. This is a mandatory regression test, not
+  a best effort.
+- A WordPress importer and product CSV/Excel import belong to 0.2.
 
-## 17. 明确不做
+## 17. Deliberately not done
 
-- 不在 Worker 里做图片处理；
-- 不在运行时加载远程代码或动态 `import`；
-- 不引入 ORM、通用插件市场运行时、第二个模板引擎、第二套渲染管线；
-- **不做运行时安装**：主题与插件都不通过上传包在线安装，因此 Worker 里没有解压、没有包校验、没有安装事务；这些工作全部发生在构建期；
-- 不引入 Workers KV 或 Queues（0.1 用不到，Free 额度也不合适）；
-- 不做 Mallok 侧的账号、计费、多租户控制面；
-- 不做在线协作编辑与内容修订历史 UI（0.1 保留 `rev` 字段但不做界面）；
-- 不做字段级翻译与自动语言跳转；
-- 不为「以后可能需要」提前抽象出 provider/adapter 层——0.1 只有 Cloudflare 一个目标，邮件也只有 Resend 一个实现（`sendEmail` 是内部函数边界，不是 provider 层）。
+- No image processing in the Worker.
+- No loading remote code or dynamic `import` at runtime.
+- No ORM, no general plugin-marketplace runtime, no second template engine, no
+  second render pipeline.
+- **No runtime installation**: neither themes nor plugins are installed by
+  uploading a package, so the Worker contains no unpacking, no package
+  validation and no install transaction. All of that happens at build time.
+- No Workers KV and no Queues — 0.1 does not need them, and the free
+  allowances do not suit.
+- No Mallok-side accounts, billing or multi-tenant control plane.
+- No collaborative editing and no revision-history UI; 0.1 keeps the `rev`
+  column but builds no interface for it.
+- No field-level translation and no automatic language redirection.
+- No provider or adapter layer abstracted for a need that has not arrived —
+  0.1 targets Cloudflare only, and email has one implementation in Resend
+  (`sendEmail` is an internal function boundary, not a provider layer).
 
-## 18. 待验证事项
+## 18. Open items
 
-以下每一条都必须在 Task 01 的 spike 中得到实测结论并写回本文，**在此之前不得当作既定事实实现**：
+Each of the following must be measured in the Task 01 spike and written back
+here. **Until then none of it may be implemented as established fact:**
 
-1. Cache API 在 `.workers.dev` 上是否生效；自定义域是否为硬前提；Cloudflare Access 保护 `/_mallok/*` 路径时公开路径的 Cache API 是否仍然可用。
-2. 第二阶段冷渲染（D1 batch + Liquid）在典型产品页与文章页上的实际 CPU 时间；第一阶段片段生成在保存请求内的 CPU 时间随 Markdown 长度的曲线，以及 Free 计划下可接受的内容长度上限。
-3. 按标签清除（方案 A）对 Cache API 写入条目是否生效、实际生效延迟、5 次/分钟限制下的去抖策略是否可接受；按 URL 清除（方案 B）在无自定义 key 时的可用性。两者择一并写回 §6。
-4. 渲染管线 + 模板引擎 + 官方插件打包后的实际 gzip 体积，对照 3 MB 上限。
-5. PBKDF2 在 10 ms CPU 预算下可用的迭代次数，以及这个强度是否可接受。
-6. R2 自定义域在免费计划下的可用性、缓存行为与向导自动创建 DNS 记录所需的 token 权限。
-7. Deploy to Cloudflare 按钮实际走通一次：资源自动创建、`MALLOK_SECRET` 如何在该路径下生成与设置、Workers Builds 的构建时长。
-8. 运行时自迁移在并发冷启动下的正确性（锁行方案是否足够）。
-9. Turnstile 服务端验证与 Resend 发送各自的延迟，确认询盘提交在 Free 计划的 CPU 与子请求预算内。
+1. Whether the Cache API works on `.workers.dev`; whether a custom domain is a
+   hard precondition; and whether the Cache API still works on public paths
+   when Cloudflare Access protects `/_mallok/*`.
+2. The actual CPU time of a stage-two cold render (a D1 batch plus Liquid) on
+   a typical product page and article page; the curve of stage-one fragment
+   generation against Markdown length within a save request; and the
+   acceptable content-length ceiling on the free plan.
+3. Whether tag purging (plan A) affects entries the Cache API wrote, its real
+   latency, and whether a debounce strategy is acceptable under five calls per
+   minute; and whether URL purging (plan B) works without a custom cache key.
+   Pick one and write it back into §6.
+4. The real gzipped size of the render pipeline, the template engine and the
+   official plugins together, against the 3 MB ceiling.
+5. How many PBKDF2 iterations fit in a 10 ms CPU budget, and whether that
+   strength is acceptable.
+6. R2 custom domains on the free plan: availability, caching behaviour, and
+   the token permissions the wizard needs to create the DNS record.
+7. One real run of the Deploy to Cloudflare button: automatic resource
+   creation, how `MALLOK_SECRET` is generated and set on that path, and how
+   long a Workers Build takes.
+8. Whether runtime self-migration is correct under concurrent cold starts —
+   whether the lock row is sufficient.
+9. The latency of Turnstile verification and of a Resend send, confirming that
+   an inquiry submission fits the free plan's CPU and subrequest budgets.
