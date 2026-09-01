@@ -22,7 +22,7 @@
 | Task 14 CLI | **内容命令已完成**（publish / import / export / media push）；`create`、`destroy`、`preview` 命令未接 |
 | Task 15 Starter 与向导 | **已完成**；`ACTIVE_THEME` 改为 `atelier`，向导四步（媒体域名与邮件步骤待 Task 16） |
 | Task 16 部署入口 | **代码完成、未经真实账号验证**；`create` / `destroy` 已实现并有单元测试，未在真实 Cloudflare 账号上跑过 |
-| Task 17 验收收口 | **部分完成**：76 条 AC 逐条取证（48 本地已验 / 28 无证据 / **0 真实账号已验**），见 `ACCEPTANCE.md §14` |
+| Task 17 验收收口 | **部分完成**：67 条 AC 逐条取证，2026-09-01 重核后拆成 75 行（50 本地已验 / 6 未跑 / 3 待裁决 / 16 需真实账号 / **0 真实账号已验**），见 `ACCEPTANCE.md §14` |
 | 主题 ×5 | **已完成**：设计稿经产品负责人评审后 1:1 落地（atelier/gazette/manual/folio + journal） |
 | `ARCHITECTURE §18` 九项实测 | **未做**（`TASK-01 §4` 待产品负责人执行） |
 | 设计文档 | 全部就位（本文是最后一份） |
@@ -167,7 +167,7 @@
 - 闭环：在一个干净账号上 `npx mallok create` 一路到向导。
 - 依赖：门 A、Task 15。契约：`CLOUDFLARE_RESOURCES.md`。
 
-**Task 17 — 验收收口** ⚠️ **部分完成（2026-08-30，见 `tasks/TASK-17.md`）：76 条逐条取证已做；Lighthouse/axe、spike 删除、英文文档均待前置条件**
+**Task 17 — 验收收口** ⚠️ **部分完成（2026-08-30，见 `tasks/TASK-17.md`）：67 条逐条取证已做（2026-09-01 重核）；Lighthouse/axe、spike 删除、英文文档均待前置条件**
 - `ACCEPTANCE.md` 全部 AC 逐条取证。
 - Lighthouse、axe、体积预算。
 - 删除 `src/worker/spike.ts` 及其路由。

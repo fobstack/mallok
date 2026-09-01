@@ -37,7 +37,7 @@
 
 **功能本地齐了，但生产环境未验证。** 渲染内核、数据库 schema、Worker 请求路径、边缘缓存、管理 API、媒体管线、SEO 端点、多语言模型、插件运行时与官方询盘插件、五个零 JS 主题、完整后台、导入导出、CLI、`trade-b2b` Starter 与安装向导都已存在，有 308 个测试覆盖。
 
-**但没有任何东西在真实 Cloudflare 账号上跑过。** [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) 是诚实的现状：76 条验收里 48 条本地已验、28 条无证据、**0 条真实基础设施已验**。`mallok create` 写完了但从没执行过，Lighthouse 从没跑过，也没发布到 npm。请把它当成一个可以试的代码库，不是一个可以部署的产品。
+**但没有任何东西在真实 Cloudflare 账号上跑过。** [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) 是诚实的现状：75 行验收（67 条，其中 8 条各拆两半）里 50 条本地已验、6 条未跑、3 条待裁决、16 条需真实账号，**0 条真实基础设施已验**。`mallok create` 写完了但从没执行过，Lighthouse 从没跑过，也没发布到 npm。请把它当成一个可以试的代码库，不是一个可以部署的产品。
 
 ```sh
 pnpm install

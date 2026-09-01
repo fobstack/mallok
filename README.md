@@ -66,7 +66,7 @@ a static build has no inquiry form, no admin, and needs rebuilding after edits.
 
 **Feature complete locally; unproven in production.** The rendering core, database schema, Worker request path, edge cache, management API, media pipeline, SEO endpoints, multilingual model, plugin runtime with the official inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the CLI, and the `trade-b2b` starter with its setup wizard all exist and are covered by 344 tests.
 
-**Nothing has run against a real Cloudflare account yet.** [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the honest status: of 76 acceptance criteria, 48 are verified locally, 28 have no evidence, and **none** are verified on real infrastructure. `mallok create` is written but never executed. Lighthouse has never been run. Nothing is published to npm. Treat this as a codebase to try, not a product to deploy.
+**Nothing has run against a real Cloudflare account yet.** [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the honest status: of 67 acceptance criteria — split into 75 rows where a criterion bundled a testable half with an untestable one — 50 are verified locally, 6 have an implementation but no reproducible assertion, 3 are waiting on a product decision, 16 need a real account, and **none** are verified on real infrastructure. `mallok create` is written but never executed. Lighthouse has never been run. Nothing is published to npm. Treat this as a codebase to try, not a product to deploy.
 
 ```sh
 pnpm install

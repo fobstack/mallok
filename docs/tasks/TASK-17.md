@@ -4,9 +4,16 @@
   The evidence review is done; three things it depends on need the product
   owner.
 - Date: 2026-08-30
-- Scope: an evidenced status for all 76 acceptance criteria, the D1 budget
+- Scope: an evidenced status for every acceptance criterion, the D1 budget
   measurement, and the decisions the review surfaced.
 - Contract: `docs/ACCEPTANCE.md`.
+- **Correction, 2026-09-01**: this document said "all 76 acceptance criteria".
+  There were never 76 — counting the unique `AC-` identifiers gives 67, as does
+  summing the per-group table. The task also left the count unverifiable:
+  statuses were recorded for the `AC-INV` group only, so the totals were
+  maintained by hand and drifted into three mutually contradictory figures.
+  `ACCEPTANCE.md §14.0` records the reconciliation; every criterion now carries
+  a status and a `file:line` pointer, and the totals are counted from those.
 
 ## 1. What this task produced
 
