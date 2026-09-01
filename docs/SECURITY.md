@@ -1,197 +1,298 @@
-# Mallok 安全边界
+# The Mallok security boundary
 
-- 状态：0.1 基线（首次编写）
-- 日期：2026-08-28
-- 地位：定义信任级别、凭据处理、认证机制与净化规则。**本文描述的是 0.1 实际做到的事，不是安全愿景。** 做不到的必须写进 §12「明确不防」，而不是含糊带过。
+- Status: 0.1 baseline
+- Date: 2026-08-28
+- Standing: defines trust levels, credential handling, authentication and
+  sanitisation. **This describes what 0.1 actually does, not a security
+  aspiration.** Anything it does not do belongs in §12, "Deliberately not
+  defended against", rather than being glossed over.
 
-## 1. 信任级别
+> Reporting a vulnerability is covered by [`SECURITY.md`](../SECURITY.md) in
+> the repository root. This document is the design.
 
-来自 `ARCHITECTURE §14`，是所有设计的出发点：
+## 1. Trust levels
 
-| 主体 | 信任级别 | 边界 |
+From `ARCHITECTURE §14`; everything else follows from it:
+
+| Subject | Trust level | Boundary |
 | --- | --- | --- |
-| 访客提交（询盘表单） | **不可信** | zod 校验、Turnstile、限流、参数化 SQL、邮件模板转义 |
-| 内容 Markdown 正文 | **不可信**（即使管理员写的） | 生成片段时白名单净化 |
-| 主题 | **半可信** | 受限模板引擎，无代码执行 |
-| 插件 | **可信** | 用户主动启用/安装，**无沙箱** |
-| 管理 API 调用者 | 需认证 | session 或有作用域的 token |
+| Visitor submissions (the inquiry form) | **Untrusted** | zod validation, Turnstile, rate limiting, parameterised SQL, escaped email templates |
+| Markdown bodies | **Untrusted**, even when an administrator wrote them | Allow-list sanitisation when the fragment is generated |
+| Themes | **Semi-trusted** | A restricted template engine with no code execution |
+| Plugins | **Trusted** | Installed and enabled deliberately by the user; **no sandbox** |
+| Management API callers | Authenticated | A session or a scoped token |
 
-「内容即使管理员写的也不可信」不是形式主义：管理员会粘贴外部来源的 Markdown，AI 内容管线会自动写入，导入器会吃第三方导出的文件。
+"Untrusted even when an administrator wrote it" is not a formality:
+administrators paste Markdown from elsewhere, AI content pipelines write
+automatically, and the importer consumes files exported by other tools.
 
-## 2. 凭据
+## 2. Credentials
 
-### 2.1 三个 Worker secret
+### 2.1 The three Worker secrets
 
-**Cloudflare 自身的凭据只进 Worker secret，绝不进 D1**（`docs/CONVENTIONS.md` 工程边界）：
+**Cloudflare's own credentials exist only as Worker secrets and never enter
+D1** (`docs/CONVENTIONS.md`, engineering boundaries):
 
-| secret | 用途 | 权限范围 |
+| Secret | Purpose | Scope |
 | --- | --- | --- |
-| `MALLOK_SECRET` | 签发 session、加密第三方密钥、签名预览链接、`ip_hash` 加盐 | 随机 32 字节 |
-| `CF_API_TOKEN` | 清缓存、向导写 DNS | Zone 级 Cache Purge + DNS 编辑；账号级 R2 编辑（仅挂自定义域用） |
-| `CF_ZONE_ID` | 同上 | — |
+| `MALLOK_SECRET` | Signs sessions, encrypts third-party keys, signs preview links, salts `ip_hash` | 32 random bytes |
+| `CF_API_TOKEN` | Purging the cache, and the wizard's DNS writes | Zone: Cache Purge and DNS Edit. Account: R2 Edit, only to attach a custom domain |
+| `CF_ZONE_ID` | As above | — |
 
-`CF_API_TOKEN` 未配置时站点照常工作，只是没有主动清缓存（`CLOUDFLARE_RESOURCES.md §6`）——**这是诚实的降级，不是故障**。
+Without `CF_API_TOKEN` the site works normally, it simply cannot purge on
+demand (`CLOUDFLARE_RESOURCES.md §6`) — **an honest degradation, not a
+fault**.
 
-### 2.2 第三方密钥存 D1
+### 2.2 Third-party keys live in D1
 
-Resend key 这类第三方服务密钥**加密后存 D1**，以便后台配置（`DATA_MODEL §2.7`）。格式规定如下，实现不得自行发挥：
+Third-party service keys such as a Resend key are **encrypted into D1** so the
+admin can configure them (`DATA_MODEL §2.7`). The format is fixed and an
+implementation may not improvise:
 
 ```
 key      = HKDF-SHA256(MALLOK_SECRET, salt = "mallok.plugin.secret.v1",
                        info = "<plugin_id>:<secret_name>", length = 32)
-iv       = 12 随机字节，每次写入重新生成
-payload  = AES-GCM-256(key, iv, plaintext)          // tag 附在密文尾部
+iv       = 12 random bytes, regenerated on every write
+payload  = AES-GCM-256(key, iv, plaintext)          // the tag is appended to the ciphertext
 stored   = base64(iv || payload)
 ```
 
-- 每个 `(plugin_id, secret_name)` 派生独立的密钥，一个泄露不牵连其他；
-- IV 每次写入随机，**不复用**；
-- 管理 API 只返回「已设置 / 未设置」，**永不回显值**（`PLUGIN_API.md §7.3`）；
-- 支持轮换：写入新值即覆盖。
+- Each `(plugin_id, secret_name)` derives its own key, so one leak does not
+  reach the others.
+- The IV is random on every write and is **never reused**.
+- The management API returns only "set" or "not set" and **never echoes a
+  value** (`PLUGIN_API.md §7.3`).
+- Rotation is supported: writing a new value overwrites.
 
-### 2.3 `MALLOK_SECRET` 轮换
+### 2.3 Rotating `MALLOK_SECRET`
 
-轮换会使全部 session 失效并让已存的第三方密钥无法解密。因此：
+Rotating invalidates every session and makes stored third-party keys
+undecryptable. Therefore:
 
-- 后台提供「轮换」操作时，必须先用旧 secret 解密全部第三方密钥、用新 secret 重新加密、再切换；
-- Deploy 按钮路径下若走了「实例密钥存 `site` 表」的降级方案（`CLOUDFLARE_RESOURCES.md §7`），后台必须常驻提示「安全性低于 Worker secret」，且用户在仪表盘补上真 secret 后自动执行上述重加密。
+- when the admin offers a rotate action, it must first decrypt every
+  third-party key with the old secret, re-encrypt with the new one, and only
+  then switch over;
+- if the Deploy button path fell back to an instance secret in the `site` table
+  (`CLOUDFLARE_RESOURCES.md §7`), the admin must carry a standing notice that
+  this is weaker than a Worker secret, and must run that re-encryption
+  automatically once the user adds a real secret in the dashboard.
 
-### 2.4 绝不外泄
+### 2.4 Never leaked
 
-任何凭据不进日志、不进返回体、不进导出包（`CONTENT_FORMAT §8`）、不进错误信息。
+No credential reaches a log, a response body, an export
+(`CONTENT_FORMAT §8`), or an error message.
 
-## 3. 管理员认证
+## 3. Administrator authentication
 
-### 3.1 密码
+### 3.1 Passwords
 
-- 用 **WebCrypto 原生 PBKDF2-SHA256** 派生（`ARCHITECTURE §14`）。不用 Argon2 或 bcrypt 的 WASM 实现——10 ms CPU 限制下跑不动，且会撑大 Worker 体积；
-- 参数存 `admin_user.password_params`（`{iterations, salt}`），**每个用户独立 salt，≥ 16 随机字节**；
-- 迭代数由 `TASK-01 §4.4` 的实测决定（`ARCHITECTURE §18` item 5）。
+- Derived with **WebCrypto's native PBKDF2-SHA256** (`ARCHITECTURE §14`). Not
+  a WASM Argon2 or bcrypt — neither runs inside 10 ms of CPU, and both would
+  inflate the Worker.
+- Parameters live in `admin_user.password_params` (`{iterations, salt}`), with
+  **a distinct salt per user of at least 16 random bytes**.
+- The iteration count comes from the measurement in `TASK-01 §4.4`
+  (`ARCHITECTURE §18`, item 5).
 
-> **必须诚实处理的已知问题**：本地基准（`TASK-01 §3.3`）显示 Free 计划 10 ms 预算下大约只能跑 5 万次迭代，**低于 OWASP 2023 建议的 60 万次**。真实账号数字出来后：
-> - 若确认如此，产品必须在文档与后台明说这一点，并给出两条加固路径：用 Cloudflare Access 保护 `/_mallok/*`，或升级 Workers Paid 后提高迭代数；
-> - **不得**假装 5 万次等同于行业标准，也不得悄悄降低要求。
+> **A known problem that must be handled honestly**: the local benchmark
+> (`TASK-01 §3.3`) suggests only about 50,000 iterations fit in the free
+> plan's 10 ms budget, **well below OWASP's 2023 recommendation of 600,000**.
+> Once the real-account numbers exist:
+> - if this is confirmed, the product must say so plainly in the documentation
+>   and in the admin, and offer two hardening paths: protect `/_mallok/*` with
+>   Cloudflare Access, or move to Workers Paid and raise the count;
+> - it must **not** pretend 50,000 is equivalent to the industry standard, and
+>   must not quietly lower the requirement.
 >
-> 迭代数可升级：登录成功时若发现存储的迭代数低于当前配置，用新参数重新派生并写回。
+> The count is upgradable: on a successful login, if the stored iteration
+> count is below the current configuration, re-derive with the new parameters
+> and write it back.
 
-### 3.2 Session
+### 3.2 Sessions
 
-- 登录后签发随机 token 写 cookie，D1 里只存 `sha256(token)`（`DATA_MODEL §2.8`）——**cookie 本身不落库**；
-- cookie 属性：`HttpOnly; Secure; SameSite=Strict; Path=/_mallok`；
-- 默认有效期 14 天，`expires_at` 过期由 cron 清理；
-- 登出即删行。
+- Logging in issues a random token in a cookie; D1 stores only
+  `sha256(token)` (`DATA_MODEL §2.8`) — **the cookie value itself is never
+  stored**.
+- Cookie attributes: `HttpOnly; Secure; SameSite=Strict; Path=/_mallok`.
+- Fourteen days by default; cron cleans up rows past `expires_at`.
+- Logging out deletes the row.
 
 ### 3.3 CSRF
 
-所有写操作要求 CSRF token（`ARCHITECTURE §14`）：
+Every write requires a CSRF token (`ARCHITECTURE §14`):
 
-- token 随 session 生成，存 `session.csrf`；
-- 通过 `X-Mallok-CSRF` 头提交，与 session 里的值做常量时间比较；
-- **Bearer token 认证的请求豁免 CSRF**——它们不带 cookie，不受 CSRF 影响。
+- the token is generated with the session and stored in `session.csrf`;
+- it is submitted in an `X-Mallok-CSRF` header and compared in constant time
+  against the stored value;
+- **requests authenticated with a Bearer token are exempt** — they carry no
+  cookie and are not subject to CSRF.
 
-### 3.4 API token
+### 3.4 API tokens
 
-- 后台生成，明文只显示一次，D1 存 `sha256(token)`（`DATA_MODEL §2.8`）；
-- 有作用域：`content:write`、`media:write`、`export`、`settings:write`；
-- 可撤销（`revoked_at`），记录 `last_used_at`；
-- 前缀 `mlk_live_` 便于密钥扫描器识别。
+- Generated in the admin, shown in cleartext once; D1 stores `sha256(token)`
+  (`DATA_MODEL §2.8`).
+- Scoped: `content:write`, `media:write`, `export`, `settings:write`.
+- Revocable (`revoked_at`), with `last_used_at` recorded.
+- Prefixed `mlk_live_` so secret scanners recognise them.
 
-### 3.5 常量时间比较
+### 3.5 Constant-time comparison
 
-token 与 CSRF 的比较必须常量时间。当前实现（`src/worker/http.ts` 的 `bearerMatches`）先 SHA-256 再用 `crypto.subtle.timingSafeEqual`，这个模式是正确的，新代码沿用。
+Token and CSRF comparisons must be constant time. The current implementation
+(`bearerMatches` in `src/worker/http.ts`) hashes with SHA-256 and then uses
+`crypto.subtle.timingSafeEqual`. That pattern is correct and new code follows
+it.
 
-### 3.6 首次启动向导
+### 3.6 The setup wizard
 
-`/_mallok/setup` 在 `site.setup_completed_at` 非空后**永久返回 404**（`ARCHITECTURE §15`）。这是硬门：一个还开着的向导等于一个无认证的管理员创建接口。
+`/_mallok/setup` **returns 404 permanently** once `site.setup_completed_at` is
+non-null (`ARCHITECTURE §15`). This is a hard gate: a wizard still answering
+is an unauthenticated administrator-creation endpoint.
 
-## 4. 内容净化
+## 4. Content sanitisation
 
-- 净化在**生成片段时**进行，使用 `rehype-sanitize` 的白名单模式（`ARCHITECTURE §5`）；
-- **不改动 Markdown 原文**——D1 里的 `markdown` 必须可原样导出（`CONTENT_FORMAT §8`）；
-- 移除：`<script>`、事件属性（`on*`）、`javascript:` 链接、`<style>`、`<iframe>`、`<object>`、`<embed>`、`<form>`；
-- 允许的 `img` 属性在默认白名单基础上扩展了 `srcSet`、`sizes`、`width`、`height`、`loading`、`decoding`（`src/core/fragment.ts`），因为这些是核心自己加的。
+- Sanitisation happens **when the fragment is generated**, using
+  `rehype-sanitize` in allow-list mode (`ARCHITECTURE §5`).
+- It **does not modify the Markdown source** — `markdown` in D1 must be
+  exportable verbatim (`CONTENT_FORMAT §8`).
+- Removed: `<script>`, event attributes (`on*`), `javascript:` links,
+  `<style>`, `<iframe>`, `<object>`, `<embed>`, `<form>`.
+- The allowed `img` attributes extend the default list with `srcSet`, `sizes`,
+  `width`, `height`, `loading` and `decoding` (`src/core/fragment.ts`),
+  because the core adds those itself.
 
-> **0.1 待决**：Task 01 的实现**整体剥掉**内联 HTML 而不是净化后保留，因为 `rehype-raw` 不在批准的依赖清单里（`TASK-01 §2` 第 3 条）。保留内联 HTML 需要引入一个 parse5 基础的 HTML 解析器，有体积代价。这是与 Markdown 引擎绑定的决策，**由产品负责人在 Task 02 前一并决定**。`CONTENT_FORMAT §3.4` 承诺「允许内联 HTML，但按白名单净化」，因此若最终选择继续剥掉，**必须改 `CONTENT_FORMAT §3.4` 的措辞**，不能让文档说一套代码做一套。
+> **Open in 0.1**: the Task 01 implementation **strips inline HTML entirely**
+> rather than sanitising and keeping it, because `rehype-raw` was not on the
+> approved dependency list (`TASK-01 §2`, item 3). Keeping inline HTML means
+> adding a parse5-based HTML parser, at a size cost. This decision is tied to
+> the Markdown engine and is **for the product owner to settle before Task
+> 02**. `CONTENT_FORMAT §3.4` promises that inline HTML is allowed but
+> sanitised, so if stripping is kept, **the wording in `CONTENT_FORMAT §3.4`
+> must change** — the documentation must not say one thing while the code does
+> another.
 
-## 5. 相对路径
+## 5. Relative paths
 
-`CONTENT_FORMAT §4` 第 2 条是安全规则不只是格式规则：只允许 `images/` 与 `files/` 两个前缀，**不允许 `..`、绝对路径、`file:`、协议相对路径**。
+Rule 2 of `CONTENT_FORMAT §4` is a security rule, not merely a formatting one:
+only the `images/` and `files/` prefixes are allowed, and **`..`, absolute
+paths, `file:` and protocol-relative paths are not**.
 
-`normalizeRelativePath`（`src/core/assets.ts`）是唯一入口，管理 API 已经在用它拒绝非法路径。
+`normalizeRelativePath` (`src/core/assets.ts`) is the only entry point, and
+the management API already uses it to reject illegal paths.
 
-## 6. 上传
+## 6. Uploads
 
-- **按嗅探出的真实类型校验，不看扩展名**（`ARCHITECTURE §14`）；
-- 只接受 `CONTENT_FORMAT §4.1` 的白名单；
-- **svg 0.1 不接受**——svg 可以携带脚本，安全地净化 svg 需要另一套白名单，0.1 不做；
-- `files/` 的附件原样存储，以 `Content-Disposition: attachment` 直出，**绝不以 inline 方式渲染**；
-- R2 key 是内容寻址的，上传者无法控制路径。
+- **Validated against the sniffed type, never the extension**
+  (`ARCHITECTURE §14`).
+- Only the allow-list in `CONTENT_FORMAT §4.1` is accepted.
+- **svg is not accepted in 0.1** — svg can carry script, and sanitising it
+  safely needs a separate allow-list, which 0.1 does not build.
+- Attachments under `files/` are stored as they are and served with
+  `Content-Disposition: attachment`, **never rendered inline**.
+- R2 keys are content-addressed, so an uploader cannot control the path.
 
-## 7. 插件路由
+## 7. Plugin routes
 
-核心为每个插件路由代做（`PLUGIN_API.md §7.2`）：
+The core does the following for every plugin route (`PLUGIN_API.md §7.2`):
 
-1. body 解析与大小上限；
-2. zod 校验；
-3. Turnstile 服务端 `siteverify`（声明 `turnstile: true` 时）；
-4. 限流（`RATE_LIMITER` 绑定）。
+1. body parsing, with a size limit;
+2. zod validation;
+3. the server-side Turnstile `siteverify`, when `turnstile: true` is declared;
+4. rate limiting, through the `RATE_LIMITER` binding.
 
-限流绑定**按数据中心计数、最终一致**（`TECH_STACK §5`）。只用于防刷，**不得**用于任何要求精确的场景。
+The rate-limit binding **counts per data centre and is eventually consistent**
+(`TECH_STACK §5`). It deters abuse and **must not** back anything requiring an
+exact count.
 
-询盘链路额外有蜜罐字段与提交耗时检测（`ARCHITECTURE §13`）——这两个不需要 JS，对无脚本的爬虫也有效。
+The inquiry path adds a honeypot field and a submission-timing check
+(`ARCHITECTURE §13`) — neither needs JavaScript, so both work against scrapers
+that run none.
 
 ## 8. SQL
 
-- 全部手写、**参数化绑定**，集中在 `src/db/`（`TECH_STACK §7`）；
-- 不使用 ORM，也不做字符串拼接；
-- 插件表名前缀 `p_<plugin_id>_` 由核心迁移器校验。
+- All hand-written and **parameterised**, kept in `src/db/`
+  (`TECH_STACK §7`).
+- No ORM, and no string concatenation.
+- The `p_<plugin_id>_` table prefix is enforced by the core's migrator.
 
-## 9. 错误卫生
+## 9. Error hygiene
 
-**永远不向客户端泄露 SQL、bucket 名、database id、绑定名或堆栈**（`CONTRIBUTING.md`）。
+**Never leak SQL, a bucket name, a database id, a binding name or a stack
+trace to a client** (`CONTRIBUTING.md`).
 
-- 客户端得到的是稳定的错误码与一句人话；
-- 详情写成结构化 JSON 日志一行（`src/worker/index.ts` 已按此实现）；
-- 日志本身也不得包含凭据或完整的用户提交内容。
+- The client gets a stable error code and one sentence of plain language.
+- The detail goes into one line of structured JSON logging, as
+  `src/worker/index.ts` already does.
+- The log itself must contain neither credentials nor a complete user
+  submission.
 
-## 10. 草稿预览
+## 10. Draft previews
 
-- 链接由 `MALLOK_SECRET` 签名（HMAC），带过期时间（`ARCHITECTURE §14`）；
-- 响应 `Cache-Control: private, no-store` 且带 `noindex`；
-- **永不写入边缘缓存**（`ARCHITECTURE §6.4`）。
+- Links are signed with `MALLOK_SECRET` (HMAC) and expire
+  (`ARCHITECTURE §14`).
+- Responses carry `Cache-Control: private, no-store` and `noindex`.
+- They are **never written to the edge cache** (`ARCHITECTURE §6.4`).
 
-## 11. 个人数据
+## 11. Personal data
 
-询盘表存买家的姓名、邮箱、公司、电话（`DATA_MODEL §2.11`）。
+The inquiry table holds a buyer's name, email, company and phone number
+(`DATA_MODEL §2.11`).
 
-- IP **不明文存储**，只存 `ip_hash = sha256(ip || MALLOK_SECRET)`，且只用于去重与限流；
-- 询盘数据进入站点整体导出，站主可随时带走或删除；
-- Mallok 自身不收集、不上传任何数据到 Mallok 的服务器——**Mallok 没有服务器**（`PRODUCT_VISION §5.3`）；
-- 站主对这些数据的合规责任由站主承担，文档要说明但产品不代为承诺 GDPR 合规。
+- The IP address is **never stored in cleartext**; only
+  `ip_hash = sha256(ip || MALLOK_SECRET)` is kept, and only for deduplication
+  and rate limiting.
+- Inquiry data is part of the site export, so the owner can take it away or
+  delete it at any time.
+- Mallok itself collects nothing and uploads nothing to a Mallok server —
+  **Mallok has no servers** (`PRODUCT_VISION §5.3`).
+- Compliance for this data rests with the site owner. The documentation says
+  so; the product does not promise GDPR compliance on their behalf.
 
-## 12. 明确不防（必须如实告知）
+## 12. Deliberately not defended against (which must be stated honestly)
 
-诚实地列出边界，比暗示有防护更安全：
+Listing the boundary honestly is safer than implying protection:
 
-1. **插件没有沙箱。** 插件是可信代码，拥有 Worker 全部权限，能读所有 secret、读写所有表。风险边界与 WordPress 插件一致。
-2. **主题能输出误导性 HTML。** 它不能执行代码，但能画一个假的登录框。安装第三方主题前后台会提示。
-3. **不防管理员自己。** 0.1 只有一个管理员，没有角色权限、没有操作审计。
-4. **不防 Cloudflare 账号被攻破。** 一切都在用户自己的账号里，账号安全由用户负责（建议开双因素）。
-5. **限流是尽力而为。** 按数据中心计数、最终一致，分布式攻击可以绕过。真正的防护是 Cloudflare 自身的 WAF 与 Bot 管理。
-6. **不防内容作者上传恶意附件。** `files/` 的内容原样存储，只做类型嗅探；下载者自负。
-7. **PBKDF2 强度可能低于行业建议**（见 §3.1），实测后如实说明。
+1. **Plugins have no sandbox.** A plugin is trusted code with the Worker's
+   full permissions: it can read every secret and read and write every table.
+   The risk boundary is a WordPress plugin's.
+2. **A theme can emit misleading HTML.** It cannot execute code, but it can
+   draw a fake login box. The admin warns before a third-party theme is
+   installed.
+3. **No defence against the administrator.** 0.1 has one administrator, no
+   roles and no audit log.
+4. **No defence against a compromised Cloudflare account.** Everything lives
+   in the user's own account, and its security is theirs — two-factor
+   authentication is recommended.
+5. **Rate limiting is best-effort.** It counts per data centre and is
+   eventually consistent, so a distributed attack gets around it. The real
+   protection is Cloudflare's own WAF and bot management.
+6. **No defence against a content author uploading a hostile attachment.**
+   Files under `files/` are stored as they are with only type sniffing;
+   downloaders take their own risk.
+7. **PBKDF2 strength may be below the industry recommendation** (§3.1), to be
+   stated honestly once measured.
 
-## 13. 供应链
+## 13. Supply chain
 
-- 生产依赖用**精确版本**，不用浮动 tag（`TECH_STACK §11`）；
-- 新依赖走 `TECH_STACK §11` 的 gate：精确版本、锁文件、许可证、安装脚本、传递依赖数、体积、所属层；
-- **运行时动态 `import` 远程代码或任何形式的 `eval` 一律禁止**（`TECH_STACK §12`）；
-- 不引入任何服务商 SDK 进 Worker，一律 `fetch`。
+- Production dependencies are pinned to **exact versions**, never a floating
+  tag (`TECH_STACK §11`).
+- A new dependency goes through the gate in `TECH_STACK §11`: exact version,
+  lockfile, licence, install scripts, transitive count, size, and which layer
+  it belongs to.
+- **Dynamic `import` of remote code and `eval` in any form are forbidden at
+  runtime** (`TECH_STACK §12`).
+- No vendor SDK enters the Worker; everything is `fetch`.
 
-## 14. 恶意语料测试（硬性）
+## 14. Hostile-input tests (mandatory)
 
-`CONTENT_FORMAT §9` 第 7 条已经把它列为往返一致性的必过项。测试语料至少覆盖：
+`CONTENT_FORMAT §9`, item 7 already lists this among the round-trip
+requirements. The corpus covers at least:
 
-`..` 路径、绝对路径、`javascript:` 链接、`data:` 链接、内联 `<script>`、事件属性、超 2 MB 正文、畸形 YAML（alias、自定义 tag、重复 key）、超长单行、深嵌套列表、Unicode 方向控制字符、HTML 实体绕过、svg 伪装成 png。
+`..` paths, absolute paths, `javascript:` links, `data:` links, inline
+`<script>`, event attributes, a body over 2 MB, malformed YAML (aliases,
+custom tags, duplicate keys), very long single lines, deeply nested lists,
+Unicode direction-control characters, HTML-entity evasion, and an svg
+disguised as a png.
 
-用 `fast-check` 做属性测试（`TECH_STACK §10`）：**任意输入下，渲染要么产出净化后的 HTML，要么抛出明确错误——不崩溃、不泄露、不产生未转义输出。**
+Property testing uses `fast-check` (`TECH_STACK §10`): **for any input,
+rendering either produces sanitised HTML or throws a clear error — it never
+crashes, never leaks, and never emits unescaped output.**
