@@ -87,4 +87,13 @@ Contributing guidelines, including the code style, are in [CONTRIBUTING.md](CONT
 
 ## License
 
-Leaning towards MIT; not finalized.
+[Apache-2.0](LICENSE). Chosen over MIT for its explicit patent grant and
+patent-retaliation clause — the same reason a company's legal review tends to
+prefer it.
+
+## Contributing
+
+[`CONTRIBUTING.md`](CONTRIBUTING.md) has the code style and the checks a
+change has to pass. Report security problems privately through
+[a security advisory](https://github.com/JasonYv/mallok/security/advisories/new),
+never a public issue — see [`SECURITY.md`](SECURITY.md).

@@ -1,0 +1,42 @@
+name: Bug report
+description: Something behaves differently from what the docs say
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mallok is pre-1.0 and has never run against a real Cloudflare
+        account — see `docs/ACCEPTANCE.md §14`. Deployment problems are
+        expected; report them anyway, they are the most useful reports
+        right now.
+
+        **Never paste `MALLOK_SECRET`, an API token or a zone ID here.**
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 0.1.0-dev, or the commit SHA
+    validations: { required: true }
+  - type: dropdown
+    id: path
+    attributes:
+      label: Which path
+      options:
+        - Worker on Cloudflare (D1)
+        - Local wrangler dev
+        - Static build (mallok build)
+        - CLI
+        - Admin app
+    validations: { required: true }
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+      description: Point at the doc line you are going by, if there is one.
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Commands and requests. Redact hostnames if you need to.
+    validations: { required: true }

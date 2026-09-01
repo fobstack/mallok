@@ -1,8 +1,39 @@
 {
   "name": "mallok",
   "version": "0.1.0-dev",
-  "private": true,
   "description": "Open-source, Cloudflare-native content website. Markdown in D1, instant publishing, no build step.",
+  "license": "Apache-2.0",
+  "author": "JasonYv",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JasonYv/mallok.git"
+  },
+  "homepage": "https://github.com/JasonYv/mallok#readme",
+  "bugs": {
+    "url": "https://github.com/JasonYv/mallok/issues"
+  },
+  "keywords": [
+    "cms",
+    "cloudflare",
+    "cloudflare-workers",
+    "d1",
+    "markdown",
+    "static-site",
+    "headless-cms",
+    "b2b"
+  ],
+  "files": [
+    "dist/cli/",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "bin": {
+    "mallok": "dist/cli/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"

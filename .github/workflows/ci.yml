@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same branch makes an in-flight run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      # The Worker has a hard 3 MB gzip ceiling on Cloudflare's free plan and
+      # the admin app has a 150 KB first-load budget. Both assert, so a change
+      # that blows either one fails here rather than at deploy time.
+      - name: Worker bundle budget
+        run: pnpm bundle:size
+
+      - name: Admin bundle budget
+        run: pnpm admin:size
+
+      # Proves the no-D1 path still compiles the repository's own content/.
+      - name: Static build
+        run: pnpm build:site

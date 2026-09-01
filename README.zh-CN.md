@@ -58,4 +58,12 @@ pnpm dev           # wrangler dev，http://127.0.0.1:8787
 
 ## 许可证
 
-倾向 MIT，尚未最终确定。
+[Apache-2.0](LICENSE)。相比 MIT 多了显式专利授权与专利报复条款——企业法务
+评审通常更认这一条。
+
+## 参与贡献
+
+代码风格与改动必须通过的检查见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
+安全问题请走
+[私密安全公告](https://github.com/JasonYv/mallok/security/advisories/new)，
+不要开公开 issue，详见 [`SECURITY.md`](SECURITY.md)。

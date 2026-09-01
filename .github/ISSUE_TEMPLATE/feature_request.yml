@@ -1,0 +1,29 @@
+name: Feature request
+description: Propose something Mallok should do
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Read `docs/PRODUCT_VISION.md` first — it lists what 0.1 deliberately
+        does not do (hosting, accounts, billing, multi-tenancy, carts,
+        payments) and the constraints everything else is designed against.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you unable to do today? Describe the situation, not the solution.
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+    validations: { required: true }
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints it has to live within
+      options:
+        - label: Works on Cloudflare's free plan
+        - label: Keeps visitor pages at zero client-side JavaScript
+        - label: Does not require a rebuild to change content
