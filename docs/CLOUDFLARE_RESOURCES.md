@@ -1,69 +1,91 @@
-# Mallok 站点在 Cloudflare 里的资源规划
+# What a Mallok site owns in a Cloudflare account
 
-- 状态：0.1 基线
-- 日期：2026-08-28
-- 地位：回答「一个 Mallok 站点在 Cloudflare 账号里到底有哪些东西、叫什么名字、谁在什么时候建、怎么备份和删除」。`mallok create`、Deploy 按钮和首次启动向导都必须按本文执行，不得各自发明命名或建资源的顺序。
+- Status: 0.1 baseline
+- Date: 2026-08-28
+- Standing: answers "what exactly does a Mallok site consist of inside a
+  Cloudflare account, what is each thing called, who creates it and when, and
+  how is it backed up and deleted". `mallok create`, the Deploy button and the
+  setup wizard all follow this document; none of them may invent its own
+  naming or its own creation order.
 
-## 1. 一句话原则
+## 1. The principle, in one sentence
 
-**一个站点 = 一组自己的资源（Worker、D1、R2、域名、Cron、Turnstile、密钥），站点之间不共享任何资源，只共享账号的配额。** 站点可以被完整地备份、导出、删除，不影响同账号里的其他站点。
+**One site is one set of resources it alone owns — Worker, D1, R2, domain,
+cron, Turnstile, secrets. Sites share no resources with each other, only the
+account's quotas.** A site can be backed up, exported and deleted in full
+without touching any other site in the same account.
 
-## 2. 账号拓扑
+## 2. Account topology
 
-| 账号 | 里面放什么 | 计划 | 说明 |
+| Account | What it holds | Plan | Notes |
 | --- | --- | --- | --- |
-| 产品负责人的站群账号 | 自己运营的全部外贸站 | Workers Paid（5 美元/月） | 免费配额是账号级共用的，多个站互相挤；Paid 后请求按月池化，数量不再是瓶颈 |
-| 每个客户自己的账号 | 该客户的一个或几个站 | Free 起步 | 这就是产品模型：Mallok 不托管，客户的站在客户的账号里，天然隔离 |
-| Mallok 官网账号 | 官网（自己跑在 Mallok 上）、文档、Deploy 按钮的源仓库 | Free 或 Paid | 与站群分开，避免官网流量和站群共用配额 |
+| The operator's portfolio account | Every trade site they run themselves | Workers Paid ($5/month) | Free quotas are shared account-wide, so sites crowd each other out. On Paid, requests pool monthly and count stops being the constraint |
+| Each customer's own account | That customer's one or few sites | Starts on Free | This is the product model: Mallok does not host. The customer's site lives in the customer's account, isolated by construction |
+| The Mallok project account | The project site (itself running on Mallok), the docs, the Deploy button's source repository | Free or Paid | Kept apart from the portfolio so project traffic does not eat site quota |
 
-一个账号能装几个站，由下面这些**账号级**上限决定（官方文档，2026-08-28 核对）：
+How many sites fit in one account is decided by these **account-level** limits
+(from the official documentation, checked 2026-08-28):
 
-| 上限 | Free | Paid | 对站点数量的含义 |
+| Limit | Free | Paid | What it means for site count |
 | --- | --- | --- | --- |
-| Worker 请求 | 10 万/天，**全账号共用**，超出返回 1027 | 1000 万/月共用，超出 0.3 美元/百万 | Free 下一个站被扫会拖垮其他站 |
-| Cron Triggers | 5/账号 | 250/账号 | 每站 1 个 → Free 最多 **5 个站** |
-| D1 数据库数 | 10/账号，单库 500 MB，总 5 GB | 50,000/账号，单库 10 GB | Free 最多 10 个站 |
-| Turnstile widget | 20/账号 | 企业版不限 | 每站 1 个 → 20 个站 |
-| Worker 数 | 100/账号 | 500/账号 | 不构成瓶颈 |
-| R2 | 10 GB-月/账号免费 | 之后 0.015 美元/GB-月 | 图片多的站群早于其他项触顶 |
+| Worker requests | 100k/day, **shared account-wide**, then 1027 | 10M/month shared, then $0.30/million | On Free, one site being crawled drags the others down |
+| Cron Triggers | 5 per account | 250 per account | One per site → **5 sites** on Free |
+| D1 databases | 10 per account, 500 MB each, 5 GB total | 50,000 per account, 10 GB each | 10 sites on Free |
+| Turnstile widgets | 20 per account | Unlimited on Enterprise | One per site → 20 sites |
+| Workers | 100 per account | 500 per account | Never the constraint |
+| R2 | 10 GB-month per account free | Then $0.015/GB-month | An image-heavy portfolio hits this before anything else |
 
-结论：**Free 账号规划 5 个站以内**（Cron 是第一个触顶的），超过就升 Paid；Paid 账号的瓶颈是流量与存储，不是数量。
+Conclusion: **plan for five sites or fewer on a Free account** — cron is the
+first ceiling you meet — and move to Paid beyond that. On Paid the constraint
+is traffic and storage, not count.
 
-## 3. 一个站点的资源清单
+## 3. What one site owns
 
-以站点 slug `titaniumseller`、域名 `titaniumseller.com` 为例：
+Taking site slug `titaniumseller` and domain `titaniumseller.com`:
 
-| 资源 | 名称 | 绑定名 / 位置 | 谁创建 | 备注 |
+| Resource | Name | Binding / location | Created by | Notes |
 | --- | --- | --- | --- | --- |
-| Worker | `mallok-titaniumseller` | — | CLI / Deploy 按钮 | 一个 Worker 承担公开站、后台、API、cron |
-| Static Assets | 随 Worker 上传，目录 `dist/assets/` | `ASSETS` | 构建产物 | 后台 SPA 在 `_mallok/app/`，主题资源在 `theme/<id>/<version>/`；请求免费不计入 |
-| D1 | `mallok-titaniumseller-db` | `DB` | CLI / Deploy 按钮 | 内容、片段缓存、询盘等全部表 |
-| R2 桶 | `mallok-titaniumseller-media` | `MEDIA` | CLI / Deploy 按钮 | 媒体与主题静态资源 |
-| R2 自定义域 | `media.titaniumseller.com` | — | CLI（OAuth）或向导（token） | 图片直出，不经 Worker；未配置时退回 `/media/*` 代理 |
-| Worker 自定义域 | `titaniumseller.com`、`www.titaniumseller.com` | wrangler `routes[].custom_domain: true` | CLI / 向导 | Cloudflare 自动建 DNS 记录与证书；目标主机名不能已有 CNAME |
-| Cron Trigger | `* * * * *` | wrangler `triggers.crons` | 随 Worker 部署 | 每站只此一个 |
-| 限流绑定 | 命名空间 id 每站唯一 | `RATE_LIMITER` | 随 Worker 部署 | 询盘等插件路由防刷 |
-| Turnstile widget | `mallok-titaniumseller` | 站点密钥存 `plugin_state` | CLI（OAuth）或用户在仪表盘创建后粘贴 | 主机名填 `titaniumseller.com`、`www.titaniumseller.com` |
-| Worker secret | `MALLOK_SECRET` | secret | CLI 生成；按钮路径见 §7 | 随机 32 字节，签发 session、加密第三方密钥、签名预览链接 |
-| Worker secret | `CF_API_TOKEN` | secret | 用户在仪表盘创建后由 CLI/向导写入 | Zone 级：Cache Purge、DNS 编辑；账号级：R2 编辑（仅用于挂自定义域） |
-| Worker secret | `CF_ZONE_ID` | secret | CLI / 向导 | 绑定域名后写入 |
-| Worker vars | `MALLOK_SITE=titaniumseller` | `vars` | 配置文件 | 只放非敏感值 |
-| DNS 记录 | `@`、`www` → Worker；`media` → R2；`resend._domainkey` TXT、`send` MX/TXT、`_dmarc` TXT | zone | 前两项自动；邮件三项由向导写入 | 域名的 nameserver 必须托管在 Cloudflare |
-| 可观测 | Workers Logs | wrangler `observability.enabled` | 配置文件 | 免费额度需核实，见 §11 |
+| Worker | `mallok-titaniumseller` | — | CLI / Deploy button | One Worker serves the public site, the admin, the API and cron |
+| Static Assets | Uploaded with the Worker from `dist/assets/` | `ASSETS` | Build output | The admin app under `_mallok/app/`, theme assets under `theme/<id>/<version>/`. These requests are free and are not billed |
+| D1 | `mallok-titaniumseller-db` | `DB` | CLI / Deploy button | Content, the fragment cache, inquiries — every table |
+| R2 bucket | `mallok-titaniumseller-media` | `MEDIA` | CLI / Deploy button | Media |
+| R2 custom domain | `media.titaniumseller.com` | — | CLI (OAuth) or wizard (token) | Images served directly, never through the Worker. Without it, falls back to a `/media/*` proxy |
+| Worker custom domain | `titaniumseller.com`, `www.titaniumseller.com` | wrangler `routes[].custom_domain: true` | CLI / wizard | Cloudflare creates the DNS record and certificate. The target hostname must not already have a CNAME |
+| Cron Trigger | `* * * * *` | wrangler `triggers.crons` | Deployed with the Worker | Exactly one per site |
+| Rate-limit binding | Namespace id unique per site | `RATE_LIMITER` | Deployed with the Worker | Protects plugin routes such as inquiry submission |
+| Turnstile widget | `mallok-titaniumseller` | Site key stored in `plugin_state` | CLI (OAuth), or the user creates it in the dashboard and pastes it | Hostnames are `titaniumseller.com` and `www.titaniumseller.com` |
+| Worker secret | `MALLOK_SECRET` | secret | Generated by the CLI; for the button path see §7 | 32 random bytes. Signs sessions, encrypts third-party keys, signs preview links |
+| Worker secret | `CF_API_TOKEN` | secret | The user creates it in the dashboard; the CLI or wizard stores it | Zone: Cache Purge, DNS Edit. Account: R2 Edit, used only to attach the custom domain |
+| Worker secret | `CF_ZONE_ID` | secret | CLI / wizard | Written once a domain is bound |
+| Worker vars | `MALLOK_SITE=titaniumseller` | `vars` | Config file | Non-sensitive values only |
+| DNS records | `@` and `www` → Worker; `media` → R2; `resend._domainkey` TXT, `send` MX/TXT, `_dmarc` TXT | zone | First two automatic; the three mail records are written by the wizard | The domain's nameservers must be on Cloudflare |
+| Observability | Workers Logs | wrangler `observability.enabled` | Config file | Free allowance still to be confirmed, see §11 |
 
-不建的东西：KV、Queues、Durable Objects、Cloudflare Images、Pages 项目、第二个 Worker。
+Deliberately not created: KV, Queues, Durable Objects, Cloudflare Images, a
+Pages project, or a second Worker.
 
-## 4. 命名规范
+## 4. Naming
 
-- **slug**：`[a-z0-9-]`，3–30 字符，不以 `-` 开头结尾；默认取域名去掉 TLD（`titaniumseller.com` → `titaniumseller`），冲突时用户改。**slug 创建后不改**，它出现在所有资源名里。
-- 所有资源名以 `mallok-` 为前缀，后缀固定：Worker 无后缀，D1 `-db`，R2 `-media`，Turnstile 同 Worker 名。这样在仪表盘里搜 `mallok-` 能一眼看全，也不会和账号里别的东西撞名。
-- 绑定名固定为 `DB`、`MEDIA`、`ASSETS`、`RATE_LIMITER`，代码只认绑定名，从不引用资源名或 id。
-- 限流命名空间 id：`1000 + 站点在登记表中的序号`，保证账号内唯一。
-- 媒体子域固定用 `media.<域名>`；用户要改必须在向导里显式改，改后 `site.media_base_url` 同步。
+- **slug**: `[a-z0-9-]`, 3–30 characters, no leading or trailing `-`. Defaults
+  to the domain without its TLD (`titaniumseller.com` → `titaniumseller`); on
+  a collision the user picks another. **A slug never changes after creation**
+  — it appears in every resource name.
+- Every resource name is prefixed `mallok-` with a fixed suffix: the Worker
+  has none, D1 takes `-db`, R2 takes `-media`, and the Turnstile widget
+  matches the Worker name. Searching `mallok-` in the dashboard then shows
+  everything at once, and nothing collides with the rest of the account.
+- Binding names are fixed: `DB`, `MEDIA`, `ASSETS`, `RATE_LIMITER`. Code
+  refers to binding names only, never to a resource name or id.
+- Rate-limit namespace id: `1000 + the site's index in the registry`, which
+  keeps it unique within the account.
+- The media subdomain is always `media.<domain>`. Changing it requires an
+  explicit change in the wizard, which also updates `site.media_base_url`.
 
-## 5. wrangler 配置模板
+## 5. The wrangler configuration template
 
-每个站点一份配置文件，由 `mallok create` 生成到 `.mallok/sites/<slug>.jsonc`（已在 `.gitignore`），部署时 `wrangler deploy -c .mallok/sites/<slug>.jsonc`：
+One configuration file per site, generated by `mallok create` into
+`.mallok/sites/<slug>.jsonc` (already gitignored) and deployed with
+`wrangler deploy -c .mallok/sites/<slug>.jsonc`:
 
 ```jsonc
 {
@@ -71,18 +93,18 @@
   "name": "mallok-titaniumseller",
   "main": "dist/worker/index.js",
   "compatibility_date": "2026-08-01",
-  "workers_dev": true,                               // 保留作预览；缓存不在此生效
+  "workers_dev": true,                               // kept as a preview entry; the cache does not apply here
   "routes": [
     { "pattern": "titaniumseller.com", "custom_domain": true },
     { "pattern": "www.titaniumseller.com", "custom_domain": true }
   ],
   "assets": {
-    "directory": "./dist/assets",                    // 内含 _mallok/app/**，命中即直接返回，不进 Worker
+    "directory": "./dist/assets",                    // contains _mallok/app/**; a hit returns directly, never entering the Worker
     "binding": "ASSETS",
-    "not_found_handling": "none"                     // 未命中的一律交给 Worker
+    "not_found_handling": "none"                     // a miss falls through to the Worker
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "mallok-titaniumseller-db", "database_id": "<创建后填入>" }
+    { "binding": "DB", "database_name": "mallok-titaniumseller-db", "database_id": "<filled in after creation>" }
   ],
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "mallok-titaniumseller-media" }
@@ -96,50 +118,103 @@
 }
 ```
 
-三条说明：静态资源目录放后台 SPA（`_mallok/app/**`）与主题资源（`theme/<id>/<version>/**`），这两个前缀都是保留的，内容类型不得拿它们当 base；`not_found_handling: "none"` 让未命中的请求落到 Worker，公开页面因此不受影响；`workers_dev` 保持开启是为了让向导在绑定域名前就能打开，绑定后可以在设置里关掉。
+Three notes. The assets directory holds the admin app (`_mallok/app/**`) and
+theme assets (`theme/<id>/<version>/**`); both prefixes are reserved and no
+content kind may use them as a base. `not_found_handling: "none"` lets a miss
+fall through to the Worker, so public pages are unaffected. `workers_dev`
+stays on so the wizard is reachable before a domain is bound; it can be turned
+off in settings afterwards.
 
-## 6. `mallok create` 的创建顺序
+## 6. The order `mallok create` works in
 
-1. `wrangler login`（OAuth）。CLI 路径全程用 OAuth 身份，不要求用户手动创建 token。
-2. 收集：slug、域名（可稍后）、默认语言、Starter。校验 slug 与账号内资源名不冲突。
-3. 创建 D1 `mallok-<slug>-db`，取得 `database_id`。
-4. 创建 R2 桶 `mallok-<slug>-media`。
-5. 生成 `MALLOK_SECRET`（32 字节随机）。
-6. 生成 `.mallok/sites/<slug>.jsonc`，把站点登记进 `.mallok/sites.json`（分配限流命名空间序号）。
-7. 构建 Worker 与后台 SPA，`wrangler deploy`。
-8. `wrangler secret put MALLOK_SECRET`。
-9. 若给了域名：配置里已含 `custom_domain` 路由，部署时自动建 DNS 与证书；随后挂 R2 自定义域 `media.<域名>`；创建 Turnstile widget（主机名为该域名）并把密钥写入 D1；提示用户在仪表盘创建 `CF_API_TOKEN`（列出精确权限）后 `wrangler secret put`。
-10. 打开 `https://mallok-<slug>.<账号>.workers.dev/_mallok/setup`（或域名），向导接手：管理员、公司信息、邮件、DNS 记录、Starter 应用。schema 迁移由 Worker 在第一次请求时自行执行，CLI 不跑迁移。
+1. `wrangler login` (OAuth). The CLI path uses the OAuth identity throughout
+   and never asks the user to mint a token by hand.
+2. Collect: slug, domain (optional for now), default locale, starter.
+   Check the slug against existing resource names in the account.
+3. Create D1 `mallok-<slug>-db` and take its `database_id`.
+4. Create the R2 bucket `mallok-<slug>-media`.
+5. Generate `MALLOK_SECRET` (32 random bytes).
+6. Write `.mallok/sites/<slug>.jsonc` and register the site in
+   `.mallok/sites.json`, assigning the rate-limit namespace index.
+7. Build the Worker and the admin app, then `wrangler deploy`.
+8. `wrangler secret put MALLOK_SECRET`.
+9. If a domain was given: the configuration already carries the
+   `custom_domain` routes, so deployment creates the DNS records and
+   certificate. Then attach the R2 custom domain `media.<domain>`, create the
+   Turnstile widget for that hostname and store its key in D1, and tell the
+   user which exact permissions `CF_API_TOKEN` needs so they can create it in
+   the dashboard and `wrangler secret put` it.
+10. Open `https://mallok-<slug>.<account>.workers.dev/_mallok/setup` (or the
+    domain) and hand over to the wizard: administrator, company details,
+    email, DNS records, starter. Schema migration runs inside the Worker on
+    its first request; the CLI never migrates.
 
-`CF_API_TOKEN` 未配置时站点照常工作，只是没有主动清缓存：向导把 `site.cache_ttl` 临时设为 60 秒，页面最多一分钟更新，并在后台显示「配置 token 后恢复即时生效」。这是诚实的降级，不是故障。
+Without `CF_API_TOKEN` the site works normally, it just cannot purge the cache
+on demand: the wizard sets `site.cache_ttl` to 60 seconds so a page is at most
+a minute stale, and the admin shows "configure a token to restore instant
+publishing". This is an honest degradation, not a fault.
 
-## 7. Deploy 按钮路径的差异
+## 7. How the Deploy button path differs
 
-公开仓库根目录的 `wrangler.jsonc` 提供默认值：`name: mallok-site`、`mallok-site-db`、`mallok-site-media`、cron、限流、assets。官方文档要求「源仓库包含每个绑定的资源名与 id 默认值」，按钮会按这份配置自动创建 D1 与 R2 并接入 Workers Builds；用户在设置页可改 Worker 名与资源名。
+The `wrangler.jsonc` in the public repository root supplies the defaults:
+`name: mallok-site`, `mallok-site-db`, `mallok-site-media`, the cron, the rate
+limiter and assets. The official documentation requires the source repository
+to carry a resource name and id default for every binding; the button then
+creates D1 and R2 from that configuration and wires up Workers Builds. The
+user can change the Worker and resource names on the settings screen.
 
-> **2026-08-30 更正（已查官方文档）**：按钮流程**有**设置 secret 的入口。`package.json` 的 `cloudflare.bindings` 可以为每个绑定写一段 Markdown 说明，按钮在交互式部署时按此提示用户填写；同时它会自动识别并预填 `package.json` 里的 build 与 deploy 脚本（缺省 `npx wrangler deploy`）。本仓库已按此配置：`cloudflare.bindings` 里写了 `MALLOK_SECRET`（必填）、`CF_API_TOKEN` 与 `CF_ZONE_ID`（选填）的说明。按钮本身**不需要任何配置文件**，只要一个指向公开仓库的 URL。
+> **Corrected 2026-08-30 against the official documentation**: the button flow
+> **does** have a place to set secrets. `package.json`'s `cloudflare.bindings`
+> can carry a Markdown description per binding, which the button shows the
+> user during an interactive deployment; it also detects and pre-fills the
+> build and deploy scripts from `package.json`, defaulting to
+> `npx wrangler deploy`. This repository is configured that way:
+> `cloudflare.bindings` describes `MALLOK_SECRET` (required) plus
+> `CF_API_TOKEN` and `CF_ZONE_ID` (optional). The button itself **needs no
+> configuration file at all** — only a URL pointing at a public repository.
 >
-> 下面两条退路仍然保留，因为用户可能跳过填写：`scripts/ensure-secret.mjs` 在 deploy 脚本里兜底生成一次（已存在则绝不轮换——轮换会让所有会话失效、已加密的插件密钥无法解密）。
+> The fallback below still stands, because a user may skip the prompt:
+> `scripts/ensure-secret.mjs` generates one from the deploy script if none
+> exists. It never rotates an existing secret — rotating would invalidate
+> every session and make already-encrypted plugin keys undecryptable.
 
-原文（已过时）：`MALLOK_SECRET` 在此路径下按以下顺序解决，**具体可行性列入 spike**：
+Superseded text, kept for the record: `MALLOK_SECRET` was to be resolved in
+this order, **with feasibility deferred to a spike**:
 
-1. `package.json` 的 `deploy` 脚本在 Workers Builds 里执行：若 `wrangler secret list` 中没有 `MALLOK_SECRET`，生成一个并 `wrangler secret put`；已存在则不动，避免每次构建轮换导致会话与加密数据失效。
-2. 若构建环境的权限不允许，Worker 首次启动时生成一个实例密钥存入 `site` 表并在后台明确提示「安全性低于 Worker secret，请在仪表盘 Variables and Secrets 里添加 `MALLOK_SECRET`」；添加后 Worker 自动切换并重新加密已存的第三方密钥。
+1. The `package.json` `deploy` script, running inside Workers Builds, checks
+   `wrangler secret list` for `MALLOK_SECRET` and creates one if absent,
+   leaving an existing one alone so builds do not rotate it.
+2. If the build environment lacks the permission, the Worker generates an
+   instance secret on first start, stores it in the `site` table and tells the
+   operator plainly that it is weaker than a Worker secret and that they
+   should add `MALLOK_SECRET` under Variables and Secrets — after which the
+   Worker switches over and re-encrypts stored third-party keys.
 
-其余差异：自定义域、R2 自定义域、Turnstile 在此路径下由向导用 `CF_API_TOKEN` 完成或给出仪表盘步骤；升级 Mallok 是在 GitHub 上同步 fork；安装第三方插件是改配置文件后自动构建。
+The other differences on this path: custom domains, the R2 custom domain and
+Turnstile are handled by the wizard using `CF_API_TOKEN`, or the wizard shows
+the dashboard steps; upgrading Mallok means syncing the fork on GitHub; and
+installing a third-party plugin means editing a configuration file and letting
+the build run.
 
-## 8. 环境
+## 8. Environments
 
-0.1 只有两个环境：
+0.1 has two:
 
-- **本地**：`wrangler dev -c .mallok/sites/<slug>.jsonc --local`，D1 与 R2 用本地模拟，状态在 `.wrangler/`（已忽略）；cron 用 `--test-scheduled` 触发；`.dev.vars` 放本地 secret（已忽略）。
-- **生产**：上面那一套资源。
+- **Local**: `wrangler dev -c .mallok/sites/<slug>.jsonc --local`, with D1 and
+  R2 simulated locally and state under `.wrangler/` (gitignored). Cron is
+  fired with `--test-scheduled`, and `.dev.vars` holds local secrets (also
+  gitignored).
+- **Production**: everything above.
 
-不设 staging。需要试新版本时，用 `mallok create --slug <slug>-next` 建一个完整的第二个站，导入导出把内容搬过去；这比在同一套资源上做半个 staging 干净得多。`.workers.dev` 不是环境，它只是同一个生产 Worker 的无缓存入口。
+There is no staging. To try a new version, create a complete second site with
+`mallok create --slug <slug>-next` and move content across with export and
+import; that is far cleaner than half a staging environment sharing one set of
+resources. `.workers.dev` is not an environment — it is the same production
+Worker reached through an entry point where the cache does not apply.
 
-## 9. 站群登记
+## 9. The site registry
 
-`mallok create` 维护 `.mallok/sites.json`：
+`mallok create` maintains `.mallok/sites.json`:
 
 ```json
 {
@@ -149,30 +224,46 @@
 }
 ```
 
-站群建议放进一个**私有**仓库 `mallok-sites`，内容是 `sites.json` 与每站的 `wrangler.jsonc`、Starter 覆盖项、主题选项；**不放任何 secret**。产品仓库保持公开，站群仓库只引用产品仓库的版本号。这样「升级站群」就是改一个版本号、循环执行 `wrangler deploy`。
+A portfolio is best kept in a **private** repository — `sites.json`, each
+site's `wrangler.jsonc`, starter overrides and theme options — and **no
+secrets**. The product repository stays public and the portfolio repository
+only references a version of it. Upgrading a portfolio is then a version bump
+and a loop of `wrangler deploy`.
 
-## 10. 备份与删除
+## 10. Backup and deletion
 
-**备份**（升级前必做，后台会提示）：后台或 CLI 一键导出（CONTENT_FORMAT §5，含内容、图片、询盘）；另加 `wrangler d1 export mallok-<slug>-db --output backup.sql` 做数据库级备份；R2 用 `wrangler r2 object get` 或 rclone 同步一份。导出目录就是一个能直接搬去别处的站，这是「不锁定」的落地。
+**Backup** (do this before an upgrade; the admin says so): export from the
+admin or the CLI (CONTENT_FORMAT §5 — content, images, inquiries). Add a
+database-level backup with
+`wrangler d1 export mallok-<slug>-db --output backup.sql`, and sync R2 with
+`wrangler r2 object get` or rclone. The export directory is a site that can
+be carried elsewhere as it stands; that is what no lock-in means in practice.
 
-**删除**按顺序，且每一步幂等：
+**Deletion** runs in order, and every step is idempotent:
 
-1. 后台确认已导出；
-2. 删除 Worker 自定义域与 R2 自定义域（否则域名被占着）；
-3. 删除 Worker（cron、限流绑定随之消失）；
-4. 删除 D1；
-5. 清空并删除 R2 桶（非空桶删不掉）；
-6. 删除 Turnstile widget；
-7. 删除 `CF_API_TOKEN`（仪表盘）；
-8. 清理向导写入的 DNS 记录（`media`、Resend 相关）；
-9. 从 `.mallok/sites.json` 移除。
+1. Confirm in the admin that an export exists.
+2. Remove the Worker custom domain and the R2 custom domain, or the hostnames
+   stay claimed.
+3. Delete the Worker; the cron and rate-limit binding go with it.
+4. Delete D1.
+5. Empty the R2 bucket, then delete it — a non-empty bucket cannot be deleted.
+6. Delete the Turnstile widget.
+7. Delete `CF_API_TOKEN` in the dashboard.
+8. Clean up the DNS records the wizard wrote (`media`, and the Resend ones).
+9. Remove the entry from `.mallok/sites.json`.
 
-`mallok destroy <slug>` 按此顺序执行并在每步打印结果，任何一步失败停下来说明，不跳过。
+`mallok destroy <slug>` runs exactly this order, prints the result of each
+step, and stops with an explanation on the first failure rather than skipping
+ahead.
 
-## 11. 待验证
+## 11. Still to be verified
 
-- Deploy 按钮路径下 Workers Builds 能否执行 `wrangler secret list/put`（§7 第 1 条）。
-- 用 `CF_API_TOKEN` 挂 R2 自定义域所需的最小权限集。
-- 限流绑定 `namespace_id` 是否要求账号内唯一（本文按唯一规划）。
-- Workers Logs 在 Free 计划的免费额度与保留期。
-- Turnstile widget 通过 API 创建所需的 token 权限（CLI 走 OAuth 时是否已覆盖）。
+- Whether Workers Builds on the Deploy button path can run
+  `wrangler secret list` and `put` (§7, item 1).
+- The minimum permission set `CF_API_TOKEN` needs to attach an R2 custom
+  domain.
+- Whether a rate-limit `namespace_id` must be unique within the account (this
+  document assumes it must).
+- The Workers Logs free allowance and retention on the free plan.
+- The token permissions needed to create a Turnstile widget through the API,
+  and whether the CLI's OAuth scope already covers them.
