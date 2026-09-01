@@ -1,77 +1,93 @@
-# Mallok 插件 API
+# The Mallok plugin API
 
-- 状态：0.1 基线（首次编写）
-- 日期：2026-08-28
-- 地位：插件的唯一契约。官方插件与第三方插件用同一套机制，没有私有接口。本文的边界描述必须与后台界面上的措辞一致——**不得暗示存在沙箱**。
+- Status: 0.1 baseline
+- Date: 2026-08-28
+- Standing: the only contract a plugin has. Official and third-party plugins
+  use the same mechanism; there is no private interface. The boundaries
+  described here must match the wording in the admin interface — **nothing may
+  imply a sandbox exists**.
 
-## 1. 一句话定义
+## 1. In one sentence
 
-**插件是真正的 JavaScript/TypeScript 代码，通过声明式的 `plugin.json` 接入五个钩子和六种能力。它跑在用户自己的 Cloudflare 账号里，拥有 Worker 的全部权限。**
+**A plugin is real JavaScript or TypeScript that reaches five hooks and six
+capabilities through a declarative `plugin.json`. It runs in the user's own
+Cloudflare account with the Worker's full permissions.**
 
-## 2. 诚实的边界（必须原样反映到界面上）
+## 2. The honest boundary (which the interface must state as-is)
 
-**官方插件与第三方插件走同一条路**：源码进 `src/plugins/`，构建期打包进 Worker。区别只在谁写的、谁负责。
+**Official and third-party plugins take the same path**: source into
+`src/plugins/`, bundled into the Worker at build time. The only difference is
+who wrote it and who is responsible for it.
 
-| 操作 | 怎么生效 | 谁做 |
+| Action | How it takes effect | Who does it |
 | --- | --- | --- |
-| 安装 / 更新 / 移除插件 | 改源码 + 重新部署 | 技术人员 |
-| 启用 / 停用已装的插件 | 后台开关，**即时生效** | 运营 |
-| 改设置与密钥 | 后台表单，**即时生效** | 运营 |
+| Install, update or remove a plugin | Edit source, redeploy | Someone technical |
+| Enable or disable an installed plugin | A switch in the admin, **immediate** | The operator |
+| Change settings and secrets | A form in the admin, **immediate** | The operator |
 
-开关只决定要不要跑，不改变打进产物的是什么代码——这是它能即时生效的原因，也是它和「安装」的根本区别。
+The switch decides only whether the code runs; it does not change what code is
+in the artifact. That is why it can be immediate, and it is what separates it
+from installing.
 
-**界面不得把安装插件做成「点一下就装好」的样子**——它做不到，假装能做会在用户第一次装插件时暴露。正确的界面是：告诉用户需要改源码并触发一次构建，并给出具体步骤。
+**The interface must not make installing a plugin look like a single click** —
+it cannot be, and pretending otherwise is exposed the first time a user tries.
+The correct interface tells the user that source must change and a build must
+run, and gives them the steps.
 
-### 2.1 安全模型
+### 2.1 Security model
 
-插件是**可信代码**（`ARCHITECTURE §14`）。它能读写整个数据库、调用任何外部服务、读取所有 secret。**没有沙箱，也不会有。** 风险边界与 WordPress 插件一致：用户为自己安装的东西负责。
+A plugin is **trusted code** (`ARCHITECTURE §14`). It can read and write the
+entire database, call any external service, and read every secret. **There is
+no sandbox, and there will not be one.** The risk boundary is the same as a
+WordPress plugin's: the user is responsible for what they install.
 
-文档与界面必须直说这一点。掩盖它比没有沙箱更危险。
+The documentation and the interface must say this outright. Concealing it is
+more dangerous than the absence of a sandbox.
 
-## 3. 包结构
+## 3. Package structure
 
 ```text
 src/plugins/inquiry/
-├── plugin.json           # 声明：钩子、路由、设置、密钥、迁移、面板、注入的客户端 JS
+├── plugin.json           # declares hooks, routes, settings, secrets, migrations, panels, injected client JS
 ├── migrations/
-│   └── 0001_inquiry.sql  # 表名必须以 p_inquiry_ 开头
-├── emails/               # 可选：邮件模板（Liquid，走同一个受限引擎）
+│   └── 0001_inquiry.sql  # table names must start with p_inquiry_
+├── emails/               # optional: email templates (Liquid, through the same restricted engine)
 │   ├── notify.en.liquid
 │   └── autoreply.en.liquid
-└── index.ts              # 实现，只导出 plugin.json 声明过的符号
+└── index.ts              # the implementation; exports only what plugin.json declares
 ```
 
 ## 4. `plugin.json`
 
 ```jsonc
 {
-  "id": "inquiry",                   // [a-z][a-z0-9-]*，也是表前缀与路由前缀
+  "id": "inquiry",                   // [a-z][a-z0-9-]*; also the table prefix and the route prefix
   "name": "Inquiry form",
   "version": "1.0.0",
   "description": "Product inquiry form with spam protection and email delivery.",
-  "official": true,                  // 仅用于界面上区分来源，不影响打包方式
-  "pluginApi": 1,                    // 本文契约版本
+  "official": true,                  // shown in the interface to indicate origin; does not change how it is bundled
+  "pluginApi": 1,                    // the version of this contract
 
   "hooks": ["afterRender", "onContentSave", "scheduled"],
 
   "routes": [
     {
-      "path": "submit",              // 实际路径 /_mallok/p/inquiry/submit
+      "path": "submit",              // actually /_mallok/p/inquiry/submit
       "method": "POST",
-      "cache": false,                // 默认 false；true 时必须给 ttl
-      "turnstile": true,             // 核心代做服务端 siteverify
+      "cache": false,                // defaults to false; `ttl` is required when true
+      "turnstile": true,             // the core performs the server-side siteverify
       "rateLimit": { "key": "ip", "limit": 5, "period": 60 }
     }
   ],
 
-  "settings": {                      // 明文存 plugin_state.settings
+  "settings": {                      // stored in cleartext in plugin_state.settings
     "recipient":     { "type": "string",  "label": "Recipient email", "required": true },
     "from_address":  { "type": "string",  "label": "From address",    "required": true },
     "autoreply":     { "type": "boolean", "label": "Send auto-reply", "default": true },
     "block_countries": { "type": "string[]", "label": "Blocked countries" }
   },
 
-  "secrets": {                       // AES-GCM 加密存 plugin_state.secrets
+  "secrets": {                       // AES-GCM encrypted into plugin_state.secrets
     "resend_api_key": { "label": "Resend API key", "required": true }
   },
 
@@ -79,7 +95,7 @@ src/plugins/inquiry/
 
   "panels": [ /* §7.5 */ ],
 
-  "affectsFragmentCache": false,     // 见 §9
+  "affectsFragmentCache": false,     // see §9
   "clientScripts": [
     { "src": "https://challenges.cloudflare.com/turnstile/v0/api.js",
       "purpose": "Turnstile bot protection", "bytes": 0 }
@@ -87,19 +103,21 @@ src/plugins/inquiry/
 }
 ```
 
-`settings` 的字段类型与 `THEME_FORMAT.md §5.2` 的表一致（不含 `image` / `file` / `reference`）。校验用 zod，schema 由 `plugin.json` 生成。
+The field types in `settings` match the table in `THEME_FORMAT.md §5.2`,
+excluding `image`, `file` and `reference`. Validation uses zod, with the
+schema generated from `plugin.json`.
 
-## 5. 钩子
+## 5. Hooks
 
-0.1 开放五个（`ARCHITECTURE §12`）。每个钩子都是 `index.ts` 的一个具名导出。
+0.1 exposes five (`ARCHITECTURE §12`). Each is a named export from `index.ts`.
 
-| 钩子 | 时机 | 计入谁的 CPU | 典型用途 |
+| Hook | When | Whose CPU it costs | Typical use |
 | --- | --- | --- | --- |
-| `onRequest` | 请求进入，**缓存查询之前** | 访客请求 | 重定向、访问控制 |
-| `beforeRender` | 第一阶段，拿到 mdast 之后 | **保存请求** | 短代码、自定义语法 |
-| `afterRender` | 完整 HTML 生成之后 | 访客请求（未命中缓存时） | 注入 meta、结构化数据、表单片段 |
-| `onContentSave` | 内容保存时 | 保存请求 | 校验、自动摘要、通知外部 |
-| `scheduled` | 每分钟 cron 内 | cron 调度 | 重试、同步、清理 |
+| `onRequest` | A request arrives, **before the cache lookup** | The visitor request | Redirects, access control |
+| `beforeRender` | Stage one, once the mdast exists | **The save request** | Shortcodes, custom syntax |
+| `afterRender` | After the complete HTML is generated | The visitor request, on a cache miss | Injecting meta, structured data, form markup |
+| `onContentSave` | When content is saved | The save request | Validation, auto-summaries, notifying something external |
+| `scheduled` | Inside the once-a-minute cron | The cron invocation | Retries, syncing, cleanup |
 
 ### 5.1 `onRequest`
 
@@ -110,7 +128,12 @@ export async function onRequest(
 ): Promise<Response | undefined>;
 ```
 
-返回 `Response` 则短路整个请求；返回 `undefined` 继续。**它在缓存查询之前运行，所以每个访客请求都会付它的 CPU 代价**，包括本该由缓存直接返回的那些。写得重会直接毁掉「缓存命中路径近乎零成本」这条设计目标（`ARCHITECTURE §2`）。后台在启用带 `onRequest` 的插件时必须提示这一点。
+Returning a `Response` short-circuits the request; returning `undefined`
+continues. **It runs before the cache lookup, so every visitor request pays
+its CPU cost** — including the ones the cache would otherwise have answered
+directly. Writing something heavy here destroys the design goal that a cache
+hit costs almost nothing (`ARCHITECTURE §2`). The admin must say so when a
+plugin declaring `onRequest` is enabled.
 
 ### 5.2 `beforeRender`
 
@@ -123,11 +146,21 @@ export function beforeRender(
 ): void | Promise<void>;
 ```
 
-签名即 `src/core/fragment.ts` 的 `BeforeRenderHook`。它操作 **mdast**（remark 的 AST）——这是选用 unified 而非 `marked` / `markdown-it` 的唯一理由（`TECH_STACK §4`）。
+The signature is `BeforeRenderHook` in `src/core/fragment.ts`. It operates on
+**mdast**, remark's AST — the only reason unified was chosen over `marked` or
+`markdown-it` (`TECH_STACK §4`).
 
-**必须是纯函数**：`(AST, frontmatter, 插件设置)` 之外的任何输入都禁止。不得读时间、随机数、请求特征、数据库。理由是 `ARCHITECTURE §5` 的确定性规则——同样输入必须产出逐字节相同的 HTML，否则片段缓存与回归测试都不成立。
+**It must be pure**: no input beyond the AST, the front matter and the
+plugin's settings. It may not read the clock, a random source, anything about
+the request, or the database. The reason is the determinism rule in
+`ARCHITECTURE §5` — identical input must produce byte-identical HTML, or
+neither the fragment cache nor the regression tests hold.
 
-> **契约版本警告**：`beforeRender` 的参数类型绑定在 remark 的 mdast 上。若将来核心更换 Markdown 引擎（`TASK-01 §6` 的遗留决策），这个签名必然破坏，届时必须提 `pluginApi` 到 2，不做静默兼容。0.1 按 unified/mdast 定契约。
+> **Contract-version warning**: `beforeRender`'s parameter type is bound to
+> remark's mdast. Should the core ever change Markdown engine (the open
+> decision in `TASK-01 §6`), this signature necessarily breaks, and
+> `pluginApi` must go to 2 rather than degrade silently. 0.1 defines the
+> contract against unified and mdast.
 
 ### 5.3 `afterRender`
 
@@ -138,7 +171,10 @@ export async function afterRender(
 ): Promise<string>;
 ```
 
-拿到完整页面 HTML，返回修改后的 HTML。注入的内容**由插件自己负责转义**——核心的净化发生在第一阶段，这里已经过了。插件是可信代码，所以这是它的责任，但文档要说清楚。
+Receives the complete page HTML and returns modified HTML. **The plugin is
+responsible for escaping what it injects** — the core's sanitisation happened
+in stage one and is already past. A plugin is trusted code, so this is its
+job, but the documentation has to say so plainly.
 
 ### 5.4 `onContentSave`
 
@@ -149,7 +185,10 @@ export async function onContentSave(
 ): Promise<ContentDraft | void>;
 ```
 
-返回修改后的草稿则采用，返回 `void` 则不改。抛错会让保存失败并把错误信息返回给调用者——**这是插件拒绝一次保存的正当方式**，比静默改写好。
+Returning a modified draft adopts it; returning `void` changes nothing.
+Throwing fails the save and returns the error to the caller — **that is the
+legitimate way for a plugin to refuse a save**, and it is better than
+rewriting silently.
 
 ### 5.5 `scheduled`
 
@@ -157,51 +196,68 @@ export async function onContentSave(
 export async function scheduled(ctx: PluginContext): Promise<void>;
 ```
 
-在站点唯一的 cron（`* * * * *`）里执行。所有插件的 `scheduled` **共享一次调度的 10 ms CPU 预算**（Free）。因此插件必须自己分批：一次处理少量、把剩下的留给下一分钟，不要试图一次做完。
+Runs inside the site's single cron (`* * * * *`). Every plugin's `scheduled`
+**shares one invocation's 10 ms CPU budget** on the free plan. A plugin must
+therefore batch its own work: do a little, leave the rest for the next minute,
+and do not try to finish everything at once.
 
-## 6. 上下文对象
+## 6. The context objects
 
 ```ts
 interface PluginContext {
   readonly db: D1Database;
   readonly media: R2Bucket;
-  /** 本插件在 plugin_state.settings 里的值，已按 schema 校验。 */
+  /** This plugin's values in plugin_state.settings, validated against the schema. */
   readonly settings: Readonly<Record<string, unknown>>;
-  /** 已解密的 secret。绝不进日志、绝不进返回体。 */
+  /** Decrypted secrets. Never logged, never returned to a client. */
   readonly secrets: Readonly<Record<string, string>>;
   readonly site: SiteSettings;
-  /** 核心提供，见 §7.6。 */
+  /** Provided by the core, see §7.6. */
   readonly sendEmail: (message: EmailMessage) => Promise<void>;
-  /** 排队一个 job（§7.4）。 */
+  /** Enqueue a job (§7.4). */
   readonly enqueue: (type: string, payload: unknown, runAt?: Date) => Promise<string>;
-  /** 按标签清缓存，自动合并去抖。 */
+  /** Purge by tag, coalesced automatically. */
   readonly purgeTags: (tags: readonly string[]) => Promise<void>;
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }
 ```
 
-`PluginRequestContext` 额外有 `request`、`url`、`locale`；`PluginRenderContext` 额外有 `content`、`page`、`locale`。
+`PluginRequestContext` adds `request`, `url` and `locale`;
+`PluginRenderContext` adds `content`, `page` and `locale`.
 
-**`ctx.db` 是完整的 D1 绑定**，插件能读写任何表。核心不做表级隔离——那会给人虚假的安全感。约定是：插件只碰自己 `p_<id>_` 前缀的表，读核心表可以，写核心表要有充分理由。
+**`ctx.db` is the full D1 binding** — a plugin can read and write any table.
+The core enforces no table-level isolation, because that would offer a false
+sense of security. The convention is: a plugin touches only its own
+`p_<id>_`-prefixed tables, may read core tables, and needs a good reason to
+write to one.
 
-## 7. 六种能力
+## 7. The six capabilities
 
-### 7.1 数据表
+### 7.1 Tables
 
-插件自带 SQL 迁移，**表名必须以 `p_<plugin_id>_` 开头**，迁移 id 以 `plugin:<plugin_id>:` 开头（`DATA_MODEL §2.11`）。由核心的迁移器与核心迁移一起执行、一起记进 `migration` 表、共用 `migration_lock`。
+A plugin brings its own SQL migrations. **Table names must start with
+`p_<plugin_id>_`** and migration ids with `plugin:<plugin_id>:`
+(`DATA_MODEL §2.11`). The core's migrator runs them alongside the core
+migrations, records them in the same `migration` table, and shares the same
+`migration_lock`.
 
-迁移规则同核心（`DATA_MODEL §2.10`）：**只允许追加式变更**（新表、带默认值的新列、新索引），不允许在同一版本内删列或改列语义。理由是迁移期间旧版本 Worker 仍在服务。
+The migration rules are the core's (`DATA_MODEL §2.10`): **additive changes
+only** — new tables, new columns with defaults, new indexes. Dropping a column
+or changing its meaning within one version is not allowed, because the old
+Worker version is still serving during the migration.
 
-禁用插件**不删表**。卸载插件时后台明确询问「是否一并删除数据」，默认不删。
+Disabling a plugin **does not drop its tables**. Uninstalling one makes the
+admin ask explicitly whether to delete the data, defaulting to no.
 
-### 7.2 路由
+### 7.2 Routes
 
-`/_mallok/p/<plugin_id>/<path>`，由 `plugin.json` 的 `routes` 声明。核心代做：
+`/_mallok/p/<plugin_id>/<path>`, declared in `plugin.json`'s `routes`. The
+core handles:
 
-- body 解析（`application/json` 与 `application/x-www-form-urlencoded`）；
-- 按 schema 的 zod 校验；
-- Turnstile 服务端 `siteverify`（`turnstile: true` 时）；
-- 限流（Workers 限流绑定 `RATE_LIMITER`）。
+- body parsing (`application/json` and `application/x-www-form-urlencoded`);
+- zod validation against the schema;
+- the server-side Turnstile `siteverify`, when `turnstile: true`;
+- rate limiting, through the `RATE_LIMITER` Workers binding.
 
 ```ts
 export const routes = {
@@ -209,25 +265,43 @@ export const routes = {
 };
 ```
 
-限流绑定**按数据中心计数、最终一致**（`TECH_STACK §5`）。只用于防刷，**不得**用于计费、配额或任何要求精确的场景。
+The rate-limit binding **counts per data centre and is eventually consistent**
+(`TECH_STACK §5`). Use it to deter abuse only; it **must not** back billing,
+quotas, or anything requiring an exact count.
 
-路由默认 `Cache-Control: private, no-store`。声明 `cache: true` 的路由必须同时给 `ttl`，且核心会拒绝为带 `turnstile` 或 `rateLimit` 的路由启用缓存。
+Routes default to `Cache-Control: private, no-store`. A route declaring
+`cache: true` must also give a `ttl`, and the core refuses to enable caching
+on a route that declares `turnstile` or `rateLimit`.
 
-### 7.3 设置与密钥
+### 7.3 Settings and secrets
 
-- `settings`：明文存 `plugin_state.settings`，后台按 schema 生成表单。
-- `secrets`：用 `MALLOK_SECRET` 经 HKDF 派生的密钥做 **AES-GCM** 加密后存 `plugin_state.secrets`，IV 每次写入随机（`DATA_MODEL §2.7`）。
-- 插件可选声明 `checkSecrets`（2026-08-30 新增）：按密钥名给出一个只读的校验函数，后台在密钥旁给一个「Test」按钮。**核心分不清一个 Resend key 是好是坏，插件分得清。** 校验必须是只读或可安全重复的；**返回的只有结论，密钥值永远不出 Worker**。
+- `settings`: stored in cleartext in `plugin_state.settings`; the admin
+  generates the form from the schema.
+- `secrets`: **AES-GCM** encrypted with a key derived from `MALLOK_SECRET`
+  through HKDF and stored in `plugin_state.secrets`, with a fresh random IV on
+  every write (`DATA_MODEL §2.7`).
+- A plugin may declare `checkSecrets` (added 2026-08-30): a read-only
+  validation function per secret name, behind a "Test" button next to the
+  secret in the admin. **The core cannot tell a good Resend key from a bad
+  one; the plugin can.** The check must be read-only or safe to repeat, and
+  **only the verdict is returned — the secret value never leaves the Worker.**
 
-**管理 API 只返回「已设置 / 未设置」，永不回显密钥值。** 支持轮换：写入新值即覆盖。`SECURITY.md` 定义具体的派生与编码格式。
+**The management API returns only "set" or "not set", and never echoes a
+secret value.** Rotation is supported: writing a new value overwrites.
+`SECURITY.md` defines the derivation and encoding.
 
-### 7.4 定时任务
+### 7.4 Scheduled work
 
-`scheduled` 钩子 + 核心的 `job` 表。`ctx.enqueue(type, payload, runAt)` 写一条 `job`，`type` 自动加 `plugin:<id>:` 前缀。失败按指数退避重试，超过 `max_attempts`（默认 5）置 `failed` 并在后台可见。
+The `scheduled` hook plus the core's `job` table.
+`ctx.enqueue(type, payload, runAt)` writes a `job` row, with `type`
+automatically prefixed `plugin:<id>:`. Failures retry with exponential
+backoff; past `max_attempts` (5 by default) the job becomes `failed` and is
+visible in the admin.
 
-### 7.5 声明式后台面板
+### 7.5 Declarative admin panels
 
-**插件不带任何前端代码。** 它声明面板，后台 SPA 统一渲染。
+**A plugin ships no frontend code.** It declares a panel and the admin app
+renders it.
 
 ```jsonc
 "panels": [
@@ -257,7 +331,7 @@ export const routes = {
 ]
 ```
 
-`actions` 里声明的 id 对应 `index.ts` 的导出：
+Ids declared in `actions` correspond to exports from `index.ts`:
 
 ```ts
 export const actions = {
@@ -266,9 +340,12 @@ export const actions = {
 };
 ```
 
-询盘列表与将来的订单列表都是这种面板。**这个机制的存在是为了让插件永远不需要写 React/Preact 代码**——一旦插件能塞前端代码进后台，后台的体积预算和安全边界就都没了。
+The inquiry list, and any future order list, is a panel of this kind. **This
+mechanism exists so that a plugin never needs to write React or Preact code**
+— the moment a plugin can inject frontend code into the admin, both the
+admin's size budget and its security boundary are gone.
 
-### 7.6 发邮件
+### 7.6 Sending email
 
 ```ts
 interface EmailMessage {
@@ -280,67 +357,92 @@ interface EmailMessage {
 }
 ```
 
-0.1 唯一实现是 Resend，直接 `fetch` 其 HTTP API，**不引入 SDK**（`TECH_STACK §5`）。发送记录与失败重试由核心的 `job` 表承担。
+The only implementation in 0.1 is Resend, called through its HTTP API with
+`fetch` and **no SDK** (`TECH_STACK §5`). Delivery records and retries live in
+the core's `job` table.
 
-`sendEmail` 是**内部函数边界，不是 provider 抽象层**（`ARCHITECTURE §17`）。0.1 不为「以后可能换邮件服务商」做适配器。
+`sendEmail` is **an internal function boundary, not a provider abstraction**
+(`ARCHITECTURE §17`). 0.1 builds no adapter for a mail provider it might use
+one day.
 
-邮件模板放 `emails/<name>.<locale>.liquid`，走与主题相同的受限引擎，因此**买家填的内容在邮件里也是默认转义的**。
+Email templates live at `emails/<name>.<locale>.liquid` and go through the
+same restricted engine as themes, so **what a buyer typed is escaped by
+default in the email too**.
 
-## 8. 生命周期
+## 8. Lifecycle
 
-| 阶段 | 怎么做 |
+| Stage | How |
 | --- | --- |
-| 发现 | 编译期静态导入，注册表在 `src/plugins/index.ts` |
-| 迁移 | Worker 冷启动时随核心迁移一起执行 |
-| 启用 | `plugin_state.enabled = 1`，即时生效 |
-| 禁用 | `enabled = 0`，钩子与路由立即不再生效，**表与数据保留** |
-| 移除 | 从仓库删掉 + 重新部署；后台询问是否一并删数据，默认不删 |
+| Discovery | Static imports at compile time; the registry is `src/plugins/index.ts` |
+| Migration | Runs with the core migrations on a Worker cold start |
+| Enable | `plugin_state.enabled = 1`, immediate |
+| Disable | `enabled = 0`; hooks and routes stop at once, **tables and data are kept** |
+| Removal | Delete from the repository and redeploy. The admin asks whether to delete the data, defaulting to no |
 
-**动态 `import` 与远程加载一律禁止**（`TECH_STACK §12`）。插件注册表是编译期常量。
+**Dynamic `import` and remote loading are forbidden** (`TECH_STACK §12`). The
+plugin registry is a compile-time constant.
 
-## 9. 缓存与插件
+## 9. Plugins and the cache
 
-插件通过 `affectsFragmentCache` 声明它是否影响第一阶段输出：
+A plugin declares through `affectsFragmentCache` whether it changes stage-one
+output:
 
-- 声明 `beforeRender` 钩子的插件**必须**为 `true`；
-- `true` 时，该插件的 id、version 与 settings 进入 `render_cache` 的缓存键（`src/worker/render.ts` 的 `pluginHash`），改设置即失效全部片段；
-- `false` 且只有 `afterRender` 的插件不进片段键，但**必须清边缘缓存**——启用/禁用/改设置时核心自动清 `site` 标签。
+- a plugin declaring a `beforeRender` hook **must** set it to `true`;
+- when `true`, the plugin's id, version and settings enter the `render_cache`
+  key (`pluginHash` in `src/worker/render.ts`), so changing a setting
+  invalidates every fragment;
+- a plugin that is `false` and only has `afterRender` stays out of the
+  fragment key, but **the edge cache must still be purged** — the core purges
+  the `site` tag automatically when it is enabled, disabled or reconfigured.
 
-声明错误会导致改了设置却看到旧内容。安装校验时核心检查「声明了 `beforeRender` 却写 `affectsFragmentCache: false`」并拒绝。
+Declaring this wrongly means changing a setting and still seeing old content.
+At install the core rejects a plugin that declares `beforeRender` alongside
+`affectsFragmentCache: false`.
 
-## 10. 体积预算
+## 10. The size budget
 
-官方插件预打包的前提是总体积装得下（`ARCHITECTURE §12`）。规则：
+Pre-bundling the official plugins is only possible while the total fits
+(`ARCHITECTURE §12`). The rules:
 
-1. 每新增一个插件，提交里必须附 `pnpm bundle:size` 的前后对比。
-2. 插件不得引入渲染层已有能力的第二套实现（第二个 Markdown 解析器、第二个校验库）。
-3. 插件不得引入任何服务商 SDK，一律 `fetch`。
-4. 当前基线：Worker gzip 202.65 KiB（`wrangler` Total Upload 口径），Free 上限 3 MB。
+1. Every added plugin must come with a before-and-after `pnpm bundle:size` in
+   the commit.
+2. A plugin must not introduce a second implementation of something the render
+   layer already has — a second Markdown parser, a second validation library.
+3. A plugin must not introduce a vendor SDK; call the API with `fetch`.
+4. The current baseline is 202.65 KiB gzip for the Worker, measured as
+   wrangler's Total Upload, against a 3 MB free-plan ceiling.
 
-## 11. 官方插件
+## 11. The official plugin
 
-0.1 只有一个（`PRODUCT_VISION §6`）：
+0.1 has one (`PRODUCT_VISION §6`):
 
-**`inquiry`（询盘）** —— 0.1 验收的核心。链路见 `ARCHITECTURE §13`：
+**`inquiry`** — the heart of 0.1's acceptance. The path is in
+`ARCHITECTURE §13`:
 
 ```
-产品页原生 <form>（隐藏 content_id、locale；蜜罐字段；Turnstile widget）
+A native <form> on the product page (hidden content_id and locale; a honeypot field; the Turnstile widget)
   → POST /_mallok/p/inquiry/submit
-  → zod 校验 → 蜜罐与提交耗时检测 → Turnstile 验证 → 限流
-  → 写 p_inquiry_inquiry（含 request.cf.country、UA、ip_hash）
-  → 两条 job：通知站主（Reply-To = 买家邮箱）、买家自动回执（按 locale 选模板）
-  → 立即尝试发送，失败由 cron 重试
-  → 302 到该语言的感谢页（可缓存）
+  → zod validation → honeypot and submission-timing checks → Turnstile verification → rate limit
+  → write p_inquiry_inquiry (with request.cf.country, the user agent, ip_hash)
+  → two jobs: notify the site owner (Reply-To is the buyer's address) and auto-acknowledge the buyer (template chosen by locale)
+  → attempt delivery immediately; the cron retries failures
+  → 302 to that locale's thank-you page, which is cacheable
 ```
 
-它是 0.1 唯一被允许注入客户端 JavaScript 的东西（Turnstile 脚本，`PRODUCT_VISION §5.6`）。
+It is the only thing in 0.1 permitted to inject client-side JavaScript — the
+Turnstile script (`PRODUCT_VISION §5.6`).
 
-## 12. 明确不做
+## 12. Deliberately not done
 
-- 不做插件沙箱，也不假装有；
-- 不做插件市场运行时、不做远程安装、不做在线上传安装（1.0 的方向，届时也是源码集市）；
-- 不允许插件注入前端代码进后台（只能声明式面板）；
-- 不允许插件注册 Liquid 过滤器或标签（那会突破主题的安全边界）；
-- 不允许插件新增 Cron Trigger（每站只有一个）；
-- 不为插件提供 KV、Queues、Durable Objects（`TECH_STACK §12`）；
-- 不做插件之间的依赖声明与版本求解（0.1 只有一个官方插件，做这个是过早抽象）。
+- No plugin sandbox, and no pretence that one exists.
+- No plugin marketplace runtime, no remote installation, no upload-and-install
+  in the browser. That is a 1.0 direction, and it will be a marketplace of
+  source too.
+- Plugins may not inject frontend code into the admin; declarative panels
+  only.
+- Plugins may not register Liquid filters or tags, which would break through
+  the theme security boundary.
+- Plugins may not add a Cron Trigger; a site has exactly one.
+- No KV, Queues or Durable Objects for plugins (`TECH_STACK §12`).
+- No inter-plugin dependency declarations or version solving. With one
+  official plugin in 0.1, that would be premature abstraction.

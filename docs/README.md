@@ -10,7 +10,8 @@ foreign-trade B2B company sites.
 > [`zh/`](zh/). Documents still marked below as *not yet translated* are
 > Chinese at their canonical path, and are the authority until they are.
 >
-> Translated so far: this index, `CONTENT_FORMAT.md`, `CLOUDFLARE_RESOURCES.md`.
+> Translated so far: this index, `CONTENT_FORMAT.md`, `CLOUDFLARE_RESOURCES.md`,
+> `CONVENTIONS.md`, `THEME_FORMAT.md`, `PLUGIN_API.md`.
 
 ## Design documents
 
@@ -30,8 +31,8 @@ rest are the contracts for individual subsystems.
 
 | Document | Contents |
 | --- | --- |
-| [THEME_FORMAT.md](THEME_FORMAT.md) *(zh)* | Theme package structure, `theme.json`, content kinds and field schemas, the view contract, the restricted Liquid subset, language packs, install and switch semantics |
-| [PLUGIN_API.md](PLUGIN_API.md) *(zh)* | `plugin.json`, the hooks, the capabilities, the context objects, lifecycle, size budget, the official `inquiry` plugin |
+| [THEME_FORMAT.md](THEME_FORMAT.md) | Theme package structure, `theme.json`, content kinds and field schemas, the view contract, the restricted Liquid subset, language packs, install and switch semantics |
+| [PLUGIN_API.md](PLUGIN_API.md) | `plugin.json`, the hooks, the capabilities, the context objects, lifecycle, size budget, the official `inquiry` plugin |
 | [ADMIN.md](ADMIN.md) *(zh)* | Admin information architecture, the setup wizard, the content editor, the schema-driven form generator, the media library, the quality gates |
 | [CLI.md](CLI.md) *(zh)* | Commands, arguments, authentication, idempotence rules, exit codes, error-message rules |
 | [SEO_PERFORMANCE.md](SEO_PERFORMANCE.md) *(zh)* | The SEO output built into the core, hreflang, structured data, the performance budget and how it is measured |

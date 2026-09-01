@@ -1,64 +1,89 @@
-# Mallok 主题格式
+# The Mallok theme format
 
-- 状态：0.1 基线（2026-08-29 修订：主题从「zip 上传、运行时安装」改为「源码目录、构建期打包」）
-- 日期：2026-08-29
-- 地位：本文是主题的**唯一契约**。第三方主题与官方主题用同一套机制，没有只有官方能用的私有接口（`PRODUCT_VISION §5.10`）。契约之外的字段一律不保证。
+- Status: 0.1 baseline (revised 2026-08-29: themes moved from "upload a zip,
+  install at runtime" to "a source directory, bundled at build time")
+- Date: 2026-08-29
+- Standing: this is the **only contract** a theme has. Third-party themes and
+  official themes use the same mechanism; there is no private interface only
+  the official ones can reach (`PRODUCT_VISION §5.10`). Nothing outside this
+  contract is guaranteed.
 
-## 1. 一句话定义
+## 1. In one sentence
 
-**主题是源码目录里的一个文件夹：一份 `theme.json`、若干 Liquid 模板、若干语言包、一个样式表。它不含任何可执行代码，在构建期打进 Worker 产物。**
+**A theme is a folder in the source tree: one `theme.json`, some Liquid
+templates, some language packs and a stylesheet. It contains no executable
+code and is bundled into the Worker artifact at build time.**
 
-主题决定三件事：网站长什么样、支持哪些内容类型、开放哪些配置项。它不决定内容存什么，也不能改变内容的 `id`。
+A theme decides three things: what the site looks like, which content kinds
+exist, and which options are exposed. It does not decide what content stores,
+and it cannot change a content `id`.
 
-**换主题要改源码并重新部署**（`PRODUCT_VISION §4`）。主题开放的配置项则是运行时设置，后台随时可改、即时生效——主题决定有哪些旋钮，运营决定旋钮拧到哪。
+**Switching themes means editing source and redeploying**
+(`PRODUCT_VISION §4`). The options a theme exposes are runtime settings the
+admin can change at any time, taking effect immediately — the theme decides
+which knobs exist, the operator decides where they are set.
 
-## 2. 安全定位
+## 2. Security position
 
-主题是**半可信**的（`ARCHITECTURE §14`）。它不能执行代码、不能访问网络、不能读文件系统，但它能输出 HTML，**而且它进入你的构建产物**。因此：
+A theme is **semi-trusted** (`ARCHITECTURE §14`). It cannot execute code,
+reach the network or read the filesystem, but it does emit HTML, **and it
+enters your build artifact**. Therefore:
 
-- 模板引擎的转义规则是安全边界的一部分，不是排版细节；
-- 装一个陌生主题不等于在自己站上跑陌生人的代码，但**审阅一个主题和审阅任何一段进仓库的代码是一回事**；
-- 一个恶意主题仍然可以输出误导性的 HTML（比如伪造的登录框）。这道关卡在代码评审，不在运行时。
+- the template engine's escaping rules are part of the security boundary, not
+  a formatting detail;
+- installing an unfamiliar theme is not the same as running a stranger's code
+  on your site, but **reviewing a theme is the same act as reviewing any other
+  code that enters the repository**;
+- a hostile theme can still emit misleading HTML — a fake login box, say. That
+  is caught in code review, not at runtime.
 
-## 3. 目录结构
+## 3. Directory structure
 
-主题住在仓库里，一个目录一个主题：
+Themes live in the repository, one directory each:
 
 ```text
 src/themes/trade/
-├── theme.json              # 必需
-├── index.ts                # 必需：把下面的文件作为文本模块导出，见 §3.1
+├── theme.json              # required
+├── index.ts                # required: exports the files below as text modules, see §3.1
 ├── layouts/
-│   ├── base.liquid         # 约定的外壳，非必需但强烈建议
-│   ├── home.liquid         # 必需（theme.json 的 home 指向它）
-│   ├── page.liquid         # 必需（page 是内建类型，且是降级布局）
+│   ├── base.liquid         # the conventional shell; not required but strongly advised
+│   ├── home.liquid         # required (theme.json's `home` points at it)
+│   ├── page.liquid         # required (`page` is built in, and is the fallback layout)
 │   ├── article.liquid
 │   ├── product.liquid
 │   ├── category.liquid
 │   └── list.liquid
-├── partials/               # 可选，被 {% render %} 引用
+├── partials/               # optional, referenced by {% render %}
 │   ├── header.liquid
 │   ├── footer.liquid
 │   └── language-switcher.liquid
 ├── locales/
-│   ├── en.json             # 必需：theme.json 的 defaultLocale 对应的文件
+│   ├── en.json             # required: the file for theme.json's defaultLocale
 │   └── zh.json
 └── assets/
-    └── style.css           # 可选，多文件时按需引用
+    └── style.css           # optional; reference more files as needed
 ```
 
-硬规则（**全部在构建期校验，不通过就构建失败**）：
+Hard rules, **all checked at build time — a failure fails the build**:
 
-1. 目录名等于 `theme.json` 的 `id`。
-2. 只接受这几类路径：`theme.json`、`index.ts`、`layouts/*.liquid`、`partials/*.liquid`、`locales/*.json`、`assets/**`。
-3. `assets/` 下的扩展名限于能安全直出的一组：`css`、`woff2`、`woff`、`png`、`jpg`、`jpeg`、`webp`、`gif`、`ico`、`txt`。**`svg` 不接受**，理由与上传媒体一致（`SECURITY.md §6`）：它能携带脚本。
-4. `layouts/` 与 `partials/` 的文件名限 `[a-z0-9-]+`。
-5. `home` 指向的布局、每个 kind 的 `layout` 与 `listLayout`、`locales` 里声明的每个语言包，都必须真实存在。
-6. 每个主题必须有 `page` kind——它是类型降级的兜底（§5.3）。
+1. The directory name equals `theme.json`'s `id`.
+2. Only these paths are accepted: `theme.json`, `index.ts`,
+   `layouts/*.liquid`, `partials/*.liquid`, `locales/*.json`, `assets/**`.
+3. Extensions under `assets/` are limited to what can be served safely: `css`,
+   `woff2`, `woff`, `png`, `jpg`, `jpeg`, `webp`, `gif`, `ico`, `txt`.
+   **`svg` is not accepted**, for the same reason as uploaded media
+   (`SECURITY.md §6`): it can carry script.
+4. Filenames under `layouts/` and `partials/` match `[a-z0-9-]+`.
+5. The layout `home` points at, every kind's `layout` and `listLayout`, and
+   every language pack named in `locales` must actually exist.
+6. Every theme must have a `page` kind — it is the fallback when a kind is not
+   supported (§5.3).
 
 ### 3.1 `index.ts`
 
-模板和语言包以文本模块的形式导出，由 wrangler 的 `rules` 配置（`**/*.liquid`、`**/*.json` 按 `Text` 处理）打进产物：
+Templates and language packs are exported as text modules, bundled by
+wrangler's `rules` configuration (`**/*.liquid` and `**/*.json` handled as
+`Text`):
 
 ```ts
 import { parseThemeManifest, type ThemeFiles } from '../../core/index.js';
@@ -74,17 +99,25 @@ export const files: ThemeFiles = {
 };
 ```
 
-`src/themes/index.ts` 汇总所有主题并导出当前生效的那一个。**这里就是「换主题」的那一行改动。**
+`src/themes/index.ts` collects every theme and exports the active one.
+**That is the one-line edit that switches themes.**
 
 ### 3.2 `assets/`
 
-构建脚本（`scripts/build-themes.mjs`）把 `src/themes/<id>/assets/**` 复制到 Static Assets 目录下的 `theme/<id>/<version>/`，公开路径即 `/theme/<id>/<version>/style.css`。
+The build script (`scripts/build-themes.mjs`) copies
+`src/themes/<id>/assets/**` into the Static Assets directory under
+`theme/<id>/<version>/`, so the public path is
+`/theme/<id>/<version>/style.css`.
 
-- 路径带 `version`，所以可以永久缓存；
-- Static Assets 请求免费且不计入 Worker 调用（`TECH_STACK §6`）；
-- **主题资源既不进 D1，也不进 R2。**
+- The path carries the version, so the files can be cached forever.
+- Static Assets requests are free and are not billed as Worker invocations
+  (`TECH_STACK §6`).
+- **Theme assets go neither into D1 nor into R2.**
 
-**缓存头必须显式设置。** Static Assets 的默认响应头是 `Cache-Control: public, max-age=0, must-revalidate`（2026-08-29 在 `wrangler dev` 实测），要覆盖它得在资源目录里放一个 `_headers` 文件，由构建脚本生成：
+**Cache headers must be set explicitly.** Static Assets responds by default
+with `Cache-Control: public, max-age=0, must-revalidate` (measured in
+`wrangler dev` on 2026-08-29). Overriding it needs a `_headers` file in the
+assets directory, generated by the build script:
 
 ```
 /theme/*
@@ -92,39 +125,47 @@ export const files: ThemeFiles = {
   X-Content-Type-Options: nosniff
 ```
 
-两条注意：`_headers` 只作用于 Static Assets 直出的响应，**不作用于 Worker 生成的响应**；新增或修改 `_headers` 需要重启 `wrangler dev` 才会被读到。
+Two caveats: `_headers` applies only to responses Static Assets serves
+directly, **not to responses the Worker generates**; and adding or changing it
+requires restarting `wrangler dev` before it is read.
 
 ## 4. `theme.json`
 
-权威 schema 是 `src/core/theme.ts` 的 `themeManifestSchema`。本节是它的说明与 0.1 的扩展。
+The authoritative schema is `themeManifestSchema` in `src/core/theme.ts`.
+This section explains it and the 0.1 extensions.
 
 ```jsonc
 {
-  "id": "trade",                        // [a-z][a-z0-9-]*，安装 id，包目录名必须与之相同
+  "id": "trade",                        // [a-z][a-z0-9-]*; the directory name must match
   "name": "Trade",
-  "version": "1.0.0",                   // 严格 x.y.z
+  "version": "1.0.0",                   // strictly x.y.z
   "description": "B2B trade site.",
-  "home": "layouts/home.liquid",        // 首页布局
+  "home": "layouts/home.liquid",        // the home page layout
 
   "kinds": { /* §5 */ },
   "options": { /* §6 */ },
 
-  "locales": ["en", "zh", "de"],        // locales/<locale>.json 必须都存在
-  "defaultLocale": "en",                // 必须在 locales 里
-  "imageWidths": [480, 960, 1440, 1920],// 升序；主题可收窄，不可新增核心不生成的宽度
-  "clientScripts": []                   // 见 §9
+  "locales": ["en", "zh", "de"],        // every locales/<locale>.json must exist
+  "defaultLocale": "en",                // must be one of `locales`
+  "imageWidths": [480, 960, 1440, 1920],// ascending; a theme may narrow the set, never add a width the core does not generate
+  "clientScripts": []                   // see §9
 }
 ```
 
-### 4.1 校验时机
+### 4.1 When validation happens
 
-构建期用 zod 校验整个 manifest，**任何一条不通过就构建失败**。`locales` 里声明的语言包缺文件、`home` 指向不存在的布局、`kinds` 的 `layout` 指向不存在的布局，都属于校验失败。
+The whole manifest is validated with zod at build time, and **any failure
+fails the build**. A language pack named in `locales` with no file, a `home`
+pointing at a layout that does not exist, a kind whose `layout` does not
+exist — all of these are build failures.
 
-这样做的好处是：错误在开发者的终端上出现，而不是在运营点「上传」之后。
+The point is that the error appears in a developer's terminal rather than
+after an operator presses "upload".
 
-## 5. `kinds`：内容类型声明
+## 5. `kinds`: declaring content kinds
 
-核心只内建 `page` 与 `article`（`docs/CONVENTIONS.md` 产品边界）。其余类型由主题声明。
+The core builds in `page` and `article` only (`docs/CONVENTIONS.md`, product
+boundaries). Every other kind is declared by a theme.
 
 ```jsonc
 "kinds": {
@@ -145,23 +186,31 @@ export const files: ThemeFiles = {
 }
 ```
 
-| 键 | 必需 | 含义 |
+| Key | Required | Meaning |
 | --- | --- | --- |
-| `layout` | 是 | 单条内容的布局，`layouts/<name>.liquid` |
-| `listLayout` | 否 | 该类型的分页列表布局。缺省则该类型没有列表页，访问列表路径返回 404 |
-| `label` | 否 | 后台显示名，缺省用 kind 名 |
-| `base` | 否 | 公开 URL 的基础段。`page` 恒为空（`/about`），其余缺省用 kind 名 |
-| `fields` | 否 | 该类型的 frontmatter 字段 schema，**0.1 新增** |
+| `layout` | Yes | Layout for a single item, `layouts/<name>.liquid` |
+| `listLayout` | No | Paginated list layout for this kind. Without it the kind has no list page and the list path returns 404 |
+| `label` | No | Display name in the admin; defaults to the kind name |
+| `base` | No | The base segment of the public URL. `page` is always empty (`/about`); others default to the kind name |
+| `fields` | No | The front-matter field schema for this kind, **new in 0.1** |
 
-### 5.1 `base` 与 URL
+### 5.1 `base` and URLs
 
-`base` 只是**默认值**。站点的实际基础段存在 `site.kinds`（`DATA_MODEL §2.1`），由向导或后台设置。这样换主题不会改变已有内容的 URL——`PRODUCT_VISION §5.7` 要求换主题「默认不改变公开 URL」。
+`base` is only a **default**. The site's actual base segment lives in
+`site.kinds` (`DATA_MODEL §2.1`), set by the wizard or the admin. That is what
+keeps switching themes from changing the URLs of existing content —
+`PRODUCT_VISION §5.7` requires a theme switch to leave public URLs alone by
+default.
 
-路径计算见 `src/core/paths.ts` 的 `buildPublicPath`：非默认语言加 `/<locale>` 前缀，`page` 不加 base，其余加 base。
+Path construction is in `buildPublicPath` in `src/core/paths.ts`: a
+non-default locale prefixes `/<locale>`, `page` takes no base, everything else
+takes its base.
 
-### 5.2 `fields`：字段 schema
+### 5.2 `fields`: the field schema
 
-后台据此自动生成表单（`ADMIN.md`），CLI 据此校验导入（`CONTENT_FORMAT §3.2`）。**主题作者不写任何后台代码。**
+The admin generates its forms from this (`ADMIN.md`), and the CLI validates
+imports against it (`CONTENT_FORMAT §3.2`). **A theme author writes no admin
+code.**
 
 ```jsonc
 "fields": {
@@ -175,45 +224,53 @@ export const files: ThemeFiles = {
 }
 ```
 
-支持的 `type`：
+Supported types:
 
-| type | 存进 frontmatter 的形态 | 后台控件 | 备注 |
+| type | Shape in front matter | Admin control | Notes |
 | --- | --- | --- | --- |
-| `string` | 字符串 | 单行输入 | `max` 限长 |
-| `text` | 字符串 | 多行输入 | 不走 Markdown 管线 |
-| `number` | 数字 | 数字输入 | `min` / `max` |
-| `boolean` | 布尔 | 开关 | |
-| `date` | ISO 8601 字符串 | 日期选择 | |
-| `select` | 字符串 | 下拉 | 必须给 `choices` |
-| `string[]` | 字符串数组 | 标签输入 | |
-| `color` | `#rrggbb` | 取色器 | |
-| `image` | **相对路径**字符串 | 媒体选择 | 必须是 `images/…`，见 `CONTENT_FORMAT §4` |
-| `image[]` | 相对路径数组 | 媒体多选 | `max` 限数量 |
-| `file` | **相对路径**字符串 | 文件选择 | 必须是 `files/…`，`accept` 限扩展名 |
-| `keyvalue` | `{k: v}` 对象 | 键值表 | 值一律按字符串处理 |
-| `reference` | 目标内容的 **slug** 字符串 | 内容选择 | 必须给 `kind`；用 slug 而非 id，导出后仍可读 |
-| `reference[]` | slug 数组 | 内容多选 | |
+| `string` | string | Single-line input | `max` limits length |
+| `text` | string | Multi-line input | Does not go through the Markdown pipeline |
+| `number` | number | Number input | `min` / `max` |
+| `boolean` | boolean | Switch | |
+| `date` | ISO 8601 string | Date picker | |
+| `select` | string | Dropdown | `choices` is required |
+| `string[]` | array of strings | Tag input | |
+| `color` | `#rrggbb` | Colour picker | |
+| `image` | **relative path** string | Media picker | Must be under `images/`, see `CONTENT_FORMAT §4` |
+| `image[]` | array of relative paths | Multi-select media | `max` limits the count |
+| `file` | **relative path** string | File picker | Must be under `files/`; `accept` limits extensions |
+| `keyvalue` | `{k: v}` object | Key-value table | Values are always treated as strings |
+| `reference` | the target's **slug** | Content picker | `kind` is required. A slug rather than an id, so the export stays readable |
+| `reference[]` | array of slugs | Multi-select content | |
 
-通用可选键：`label`、`required`（默认 `false`）、`help`、`default`、`group`（后台表单分组名）。
+Optional keys on any field: `label`, `required` (default `false`), `help`,
+`default`, `group` (the admin form's grouping).
 
-三条硬规则：
+Three hard rules:
 
-1. **未在 `fields` 中声明的 frontmatter 字段原样保留，不报错、不丢弃**（`CONTENT_FORMAT §3.2`）。换主题不能丢数据。
-2. `image` / `image[]` / `file` 的值**只能是相对路径**，绝不能是 R2 URL。相对路径在第一阶段渲染时才解析（`ARCHITECTURE §8`）。
-3. `reference` 用 slug，不用 `id`。理由：导出的 `index.md` 要能被 Astro/Hugo 直接读懂，一串 UUID 不满足「不锁定」。
+1. **A front-matter field not declared in `fields` is kept as it is — neither
+   an error nor discarded** (`CONTENT_FORMAT §3.2`). Switching themes must not
+   lose data.
+2. `image`, `image[]` and `file` values **may only be relative paths**, never
+   R2 URLs. Relative paths are resolved during stage-one rendering
+   (`ARCHITECTURE §8`).
+3. `reference` uses a slug, not an `id`. The reason: an exported `index.md`
+   has to be readable by Astro or Hugo directly, and a UUID does not satisfy
+   the no-lock-in promise.
 
-### 5.3 换主题时的类型降级
+### 5.3 Kind fallback when switching themes
 
-切到不支持某类型的主题时（`ARCHITECTURE §7`）：
+Switching to a theme that does not know a kind (`ARCHITECTURE §7`):
 
-- 该类型的内容用 `kinds.page.layout` 渲染；
-- `site.kinds` 中该类型的 `base` 保持不变，**URL 不变**；
-- 后台在内容列表上标出「当前主题不支持此类型」；
-- 内容、`id`、`frontmatter` 一概不动。
+- that kind's content renders through `kinds.page.layout`;
+- the kind's `base` in `site.kinds` is untouched, so **URLs do not change**;
+- the admin marks those items "the current theme does not support this kind";
+- content, `id` and `frontmatter` are all left alone.
 
-因此 **`page` 布局是每个主题的必需项**——它是降级路径的兜底。
+This is why **a `page` layout is required in every theme** — it is what the
+fallback path lands on.
 
-## 6. `options`：主题配置项
+## 6. `options`: theme settings
 
 ```jsonc
 "options": {
@@ -223,84 +280,104 @@ export const files: ThemeFiles = {
 }
 ```
 
-`type` 取值：`string` / `text` / `number` / `boolean` / `color` / `select`（与 `src/core/theme.ts` 的 `themeOptionSchema` 一致）。`select` 必须给 `choices`。
+Types: `string`, `text`, `number`, `boolean`, `color`, `select` — matching
+`themeOptionSchema` in `src/core/theme.ts`. `select` requires `choices`.
 
-用户设置的值存 `site.theme_options`，模板通过 `theme.options.<key>` 读取；未设置时用 `default`。换主题时旧主题的 options **保留在 D1 里但不再生效**，换回来时恢复。
+Values the user sets live in `site.theme_options`, and templates read them as
+`theme.options.<key>`; an unset option falls back to its `default`. When the
+theme changes, the old theme's options **stay in D1 but stop applying**, and
+come back if the theme does.
 
-## 7. 视图契约
+## 7. The view contract
 
-模板能看到的**全部**数据由 `src/core/page.ts` 的 `PageView` 定义。不存在「拿到整个数据库」的途径。属性名用 `snake_case`，因为这是 Shopify/Jekyll 主题作者熟悉的 Liquid 惯例（`CONTRIBUTING.md` 的两个 camelCase 例外之一）。
+**Everything** a template can see is defined by `PageView` in
+`src/core/page.ts`. There is no path to "the whole database". Property names
+use `snake_case`, because that is the Liquid convention theme authors know
+from Shopify and Jekyll — one of the two camelCase exceptions in
+`CONTRIBUTING.md`.
 
-### 7.1 每个页面都有
+### 7.1 On every page
 
 ```liquid
 {{ site.name }}            {{ site.tagline }}
 {{ site.locale }}          {{ site.default_locale }}
-{{ site.locales }}         {# 数组 #}
-{{ site.base_url }}        {# https://example.com，无尾斜杠 #}
-{{ site.home_path }}       {# / 或 /de/ #}
+{{ site.locales }}         {# array #}
+{{ site.base_url }}        {# https://example.com, no trailing slash #}
+{{ site.home_path }}       {# / or /de/ #}
 {% for item in site.nav %}{{ item.label }} {{ item.href }} {{ item.active }}{% endfor %}
 
 {{ page.title }}           {{ page.description }}
 {{ page.canonical }}       {{ page.kind }}        {# home | content | list #}
 {{ page.locale }}
 {% for alt in page.alternates %}{{ alt.locale }} {{ alt.href }}{% endfor %}
-{{ page.head }}            {# 核心生成的 hreflang 与 JSON-LD，必须放进 <head> #}
+{{ page.head }}            {# hreflang and JSON-LD from the core; must go in <head> #}
 
 {{ theme.id }}             {{ theme.version }}
 {{ theme.options.accent }}
-{{ theme.asset_base }}     {# 本主题该版本的 R2 资源前缀，无尾斜杠 #}
+{{ theme.asset_base }}     {# asset prefix for this theme at this version, no trailing slash #}
 
-{{ t.read_more }}          {# 语言包字符串 #}
+{{ t.read_more }}          {# a language-pack string #}
 ```
 
-**`page.head` 是强制项**：核心在这里输出 `hreflang`（含 `x-default`）与 JSON-LD。`base.liquid` 不输出它，站点的多语言 SEO 就是坏的。`SEO_PERFORMANCE.md` 会把它列为验收项。
+**`page.head` is mandatory**: the core emits `hreflang` (including
+`x-default`) and JSON-LD there. A `base.liquid` that omits it leaves the
+site's multilingual SEO broken. `SEO_PERFORMANCE.md` lists it as an acceptance
+criterion.
 
-样式表这样引：
+Reference the stylesheet like this:
 
 ```liquid
 <link rel="stylesheet" href="{{ theme.asset_base }}/style.css">
 ```
 
-`asset_base` 形如 `/theme/trade/1.2.0`。它带主题版本，所以指向的文件可以永久缓存；改了资源就要提 `theme.json` 的 `version`（§13）。
+`asset_base` looks like `/theme/trade/1.2.0`. It carries the theme version, so
+what it points at can be cached forever — which means changing an asset
+requires bumping `theme.json`'s `version` (§13).
 
-### 7.2 内容页额外有 `content`
+### 7.2 Content pages also get `content`
 
 ```liquid
 {{ content.id }}        {{ content.kind }}      {{ content.locale }}
 {{ content.slug }}      {{ content.path }}
 {{ content.title }}     {{ content.description }}
 {{ content.published_at }} {{ content.updated_at }}
-{{ content.html }}      {# 净化后的正文片段，唯一可以原样输出的富文本 #}
+{{ content.html }}      {# the sanitised body fragment; the only rich text emitted verbatim #}
 {{ content.excerpt }}   {{ content.reading_time }}
 {% for h in content.headings %}{{ h.depth }} {{ h.text }}{% endfor %}
 {% for tr in content.translations %}{{ tr.locale }} {{ tr.href }}{% endfor %}
-{{ content.frontmatter.sku }}      {# 类型专属字段从这里读 #}
-{{ content.cover }}                {# 封面图 URL，缺图时为空串 #}
+{{ content.frontmatter.sku }}      {# kind-specific fields come from here #}
+{{ content.cover }}                {# cover image URL; empty string when there is none #}
 ```
 
-### 7.3 列表页额外有 `list`
+### 7.3 List pages also get `list`
 
 ```liquid
 {{ list.kind }}  {{ list.page }}  {{ list.has_next }}
-{{ list.next_path }}  {{ list.prev_path }}    {# 空串表示没有 #}
+{{ list.next_path }}  {{ list.prev_path }}    {# empty string means none #}
 {% for item in list.items %}{{ item.title }} {{ item.path }} {{ item.description }}{% endfor %}
 ```
 
-`list.items` 的元素是 `ContentSummaryView`——**只有标量字段与 `frontmatter`，没有 `html`**。这是硬约束：`ARCHITECTURE §4` 要求「列表页永远不解析正文 Markdown」。想在列表上显示正文摘要，用 `item.description`。
+Each element of `list.items` is a `ContentSummaryView` — **scalar fields and
+`frontmatter` only, no `html`**. This is a hard constraint: `ARCHITECTURE §4`
+requires that a list page never parses body Markdown. To show a summary on a
+list, use `item.description`.
 
-### 7.4 首页额外有 `recent`
+### 7.4 Home pages also get `recent`
 
 ```liquid
 {% for item in recent.article %}…{% endfor %}
 {% for item in recent.product %}…{% endfor %}
 ```
 
-按 kind 分组的有界最近内容，每组 `LIMIT ≤ 12`（`DATA_MODEL §3`）。
+Recent content grouped by kind and bounded, with `LIMIT ≤ 12` per group
+(`DATA_MODEL §3`).
 
-### 7.5 图片、文件与关联内容（2026-08-29 新增，Task 09）
+### 7.5 Images, files and related content
 
-前置事实：**frontmatter 里的图片和文件是相对路径，不是 URL**（`CONTENT_FORMAT §4`）。正文里的相对路径由第一阶段渲染解析，frontmatter 里的不会——所以核心额外给出两张已解析的表：
+The premise: **images and files in front matter are relative paths, not URLs**
+(`CONTENT_FORMAT §4`). Relative paths in the body are resolved during
+stage-one rendering; those in front matter are not — so the core supplies two
+resolved maps:
 
 ```liquid
 {% assign shot = content.images[content.frontmatter.gallery[0]] %}
@@ -309,66 +386,106 @@ export const files: ThemeFiles = {
 <a href="{{ content.files[content.frontmatter.datasheet] }}" download>…</a>
 ```
 
-- `content.images[<相对路径>]` → `{ url, srcset, width, height, alt }`。`url` 与 `srcset` 与正文里同一张图完全一致（同一套变体、同一个域名）；`width` / `height` 一并给出，因为主题必须能预留版位（`SEO_PERFORMANCE §9` 的 CLS 要求）。
-- `content.files[<相对路径>]` → 非图片资源的 URL（数据表、图纸）。
-- `content.cover` / `item.cover` 是封面图 URL，缺图时为空串；列表页的封面在**一次**查询里批量解析，不随条数增长。
-- 路径查不到时该键不存在，模板用 `{% if %}` 跳过即可——缺图是正常状态，不是错误（`CONTENT_FORMAT §4`）。
+- `content.images[<relative path>]` → `{ url, srcset, width, height, alt }`.
+  The `url` and `srcset` are identical to what the same image gets in the body
+  — same variants, same hostname. `width` and `height` come with it because a
+  theme has to be able to reserve the space (`SEO_PERFORMANCE §9`, on CLS).
+- `content.files[<relative path>]` → the URL of a non-image asset such as a
+  datasheet or a drawing.
+- `content.cover` and `item.cover` are cover image URLs, empty when absent.
+  Covers on a list page are resolved in **one** batched query, so the cost does
+  not grow with the number of items.
+- When a path is not found the key is simply absent, and a template skips it
+  with `{% if %}` — a missing image is a normal state, not an error
+  (`CONTENT_FORMAT §4`).
 
-关联内容由主题的 `reference` 字段声明决定，核心不认识任何具体类型：
+Related content follows from the `reference` fields a theme declares. The core
+knows no concrete kind:
 
 ```liquid
-{{ content.refs.category.title }}                {# 本条指向的分类 #}
-{% for item in content.backrefs.product %}…{% endfor %}   {# 指向本条的产品 #}
-{% for item in content.siblings %}…{% endfor %}  {# 同类型的最近内容，不含自己 #}
+{{ content.refs.category.title }}                {# the category this item points at #}
+{% for item in content.backrefs.product %}…{% endfor %}   {# products pointing at this item #}
+{% for item in content.siblings %}…{% endfor %}  {# recent content of the same kind, excluding this one #}
 ```
 
-| 组 | 来自 | 上限 |
+| Group | Source | Limit |
 | --- | --- | --- |
-| `content.refs.<字段>` | 本类型声明的 `reference` 字段，解析成目标条目 | 每字段 1 条 |
-| `content.backrefs.<类型>` | **别的**类型声明了指向本类型的 `reference` 字段，反向取回 | 24 条 |
-| `content.siblings` | 本类型的最近内容，排除自己；仅当本类型有 `listLayout` | 6 条 |
+| `content.refs.<field>` | A `reference` field this kind declares, resolved to the target item | 1 per field |
+| `content.backrefs.<kind>` | **Another** kind declaring a `reference` at this kind, resolved backwards | 24 |
+| `content.siblings` | Recent content of this kind, excluding this item; only when the kind has a `listLayout` | 6 |
 
-三组恒定存在（没有内容时为空），模板不必先判空。只取**已发布、同语言、发布时间已到**的内容。指向不存在或未发布的目标时该 `ref` 键不存在。
+All three always exist — empty when there is nothing — so a template need not
+check first. Only published content in the same locale whose publication time
+has arrived is included. When a reference points at something missing or
+unpublished, that `ref` key is absent.
 
-> 换句话说：产品页上的「所属系列」和系列页上的「本系列产品」是**同一条 `reference` 声明**的两个方向，主题只写一次。核心里没有 `category` 这个词（`ARCHITECTURE §11`）。
+> Put differently: "the family this product belongs to" on a product page and
+> "the products in this family" on a family page are the two directions of
+> **one** `reference` declaration, written once by the theme. The word
+> `category` does not appear anywhere in the core (`ARCHITECTURE §11`).
 
-### 7.6 FAQ 问答对
+### 7.6 FAQ pairs
 
-`faq` 类型的 frontmatter 键 `faq` 由核心归一化后给到模板：
+The `faq` front-matter key on a `faq` kind is normalised by the core before it
+reaches the template:
 
 ```liquid
 {% for pair in content.faq %}<h3>{{ pair.question }}</h3><p>{{ pair.answer }}</p>{% endfor %}
 ```
 
-接受两种写法——后台 `keyvalue` 控件产出的映射 `{问: 答}`，以及手写 Markdown 常用的列表 `- question: … / answer: …`。**核心管这一个字段，是因为同一批问答同时要生成 `FAQPage` 结构化数据**（`SEO_PERFORMANCE §5`）；模板必须把它们渲染出来，否则结构化数据描述了页面上不存在的内容。
+Two spellings are accepted: the mapping `{question: answer}` that the admin's
+`keyvalue` control produces, and the list form
+`- question: … / answer: …` common in hand-written Markdown. **The core
+handles this one field because the same pairs also generate `FAQPage`
+structured data** (`SEO_PERFORMANCE §5`), and a template must render them —
+otherwise the structured data describes content that is not on the page.
 
-### 7.6 语言切换器
+### 7.7 The language switcher
 
-`page.alternates` 的每一项现在带 `name`——**该语言对自己的称呼**（`中文`，不是 `Chinese` 也不是 `zh`）。找自己语言的读者是在扫自己语言的名字；用他读不懂的语言写出来，切换器就白做了。
+Every entry in `page.alternates` carries a `name` — **what that language calls
+itself** (`中文`, not `Chinese` and not `zh`). A reader looking for their own
+language is scanning for its name in that language; writing it in one they
+cannot read defeats the switcher.
 
-名字来自各语言包里的 `language_name` 键；缺省回落到语言代码。核心读的是**全部**语言包而不只是当前这个，因为切换器必须叫得出读者当前不在的那些语言。
+The names come from each language pack's `language_name` key, falling back to
+the language code. The core reads **every** language pack, not just the
+current one, because a switcher has to name the languages the reader is not
+currently in.
 
-官方主题把它做成 `<details>` 下拉：
+The official themes build it as a `<details>` disclosure:
 
-- **纯 CSS，零脚本**——`<select>` 要靠 JS 才能跳转，不符合零客户端 JS；
-- **可扩展**——两种语言排一行还行，八种就不行了；
-- 与移动菜单不同，这里不需要在断点处强制展开，所以 `<details>` 是对的元素（移动菜单必须用 checkbox，原因见 `tasks/TASK-09.md §4`）；
-- 只有一种语言时整个控件不渲染。
+- **Pure CSS, no script** — a `<select>` needs JavaScript to navigate, which
+  breaks the zero-client-JavaScript rule.
+- **It scales** — two languages fit on one row, eight do not.
+- Unlike the mobile navigation, nothing here needs to be forced open at a
+  breakpoint, so `<details>` is the right element. (The mobile menu must use a
+  checkbox instead; see `tasks/TASK-09.md §4`.)
+- With only one language the control is not rendered at all.
 
-### 7.6.1 配置项是站点级的，语言包才是分语言的
+#### 7.7.1 Options are site-wide; language packs are per-language
 
-**主题配置项（`theme.json` 的 `options`）每个只有一个值，不分语言。** 站点开了两种语言时，任何面向读者的文案放进配置项都必然有一种语言是错的。
+**A theme option has one value, not one per language.** On a site with two
+languages, any reader-facing copy placed in an option is necessarily wrong in
+one of them.
 
-规则：
+The rule:
 
-- **面向读者的文字进语言包**（`locales/<locale>.json`），模板用 `{{ t.xxx }}`；
-- **配置项只放与语言无关的东西**：颜色、开关、链接、数量、外部 ID。
+- **Reader-facing text goes in language packs** (`locales/<locale>.json`),
+  read by templates as `{{ t.xxx }}`.
+- **Options hold only language-independent things**: colours, switches, links,
+  counts, external ids.
 
-`atelier` 2.2.0 因此把 `quote_label` 与 `case_cta_label` 从配置项移进了语言包。
+That is why `atelier` 2.2.0 moved `quote_label` and `case_cta_label` out of
+options and into the language packs.
 
-**但纯语言包解决不了另一半**：首页的标题、导语、数字、能力带、CTA 全是配置项——它们是**这个站的文案**，不是主题的通用词汇，不该写进主题的语言包。双语站的中文首页顶着英文大标题，是最重要的一页坏掉。
+**But language packs do not solve the other half.** A home page's headline,
+lede, statistics, capability band and calls to action are all options — they
+are *this site's* copy, not the theme's general vocabulary, and they do not
+belong in a theme's language pack. A bilingual site whose Chinese home page
+carries an English headline has its single most important page broken.
 
-所以 `site.theme_options` 里保留一个键 `$locales`，放各语言的覆盖值：
+So `site.theme_options` reserves one key, `$locales`, holding per-language
+overrides:
 
 ```json
 {
@@ -380,46 +497,69 @@ export const files: ThemeFiles = {
 }
 ```
 
-取值顺序：**该语言的覆盖 → 站点级的值 → `theme.json` 里的默认值**。`$locales` 不会和配置项撞名，因为配置项名受 `^[a-z][a-z0-9_]*$` 约束。后台的外观页对每个文本类配置项按启用的语言各给一个输入框。
+Resolution order: **the override for that locale → the site-wide value → the
+default in `theme.json`**. `$locales` cannot collide with an option name,
+because option names are constrained to `^[a-z][a-z0-9_]*$`. The admin's
+appearance page renders one input per enabled language for each text option.
 
-### 7.7 分页
+### 7.8 Pagination
 
-列表页大小由核心固定（0.1 为 20），主题不能改。分页不做 `COUNT(*)`，用 `LIMIT n+1` 判断 `has_next`（`DATA_MODEL §3`）——所以模板拿不到总页数，只能拿到「有没有下一页」。这是刻意的：总数会让行读随内容量线性增长。
+Page size is fixed by the core — 20 in 0.1 — and a theme cannot change it.
+Pagination does no `COUNT(*)`; it uses `LIMIT n+1` to decide `has_next`
+(`DATA_MODEL §3`). A template therefore cannot get a total page count, only
+whether there is a next page. That is deliberate: a total would make row reads
+grow linearly with the amount of content.
 
-## 8. 受限 Liquid
+## 8. The restricted Liquid
 
-引擎是 `liquidjs`，配置见 `src/core/liquid.ts`。
+The engine is `liquidjs`, configured in `src/core/liquid.ts`.
 
-### 8.1 转义规则
+### 8.1 Escaping
 
-**所有 `{{ }}` 输出默认 HTML 转义。** `raw` 过滤器被重写：它只放行核心标记为安全的 `SafeHtml`（净化后的正文片段、`page.head`、`theme.css`），对普通字符串**仍然转义**。因此主题作者无法通过 `{{ user_input | raw }}` 制造 XSS。
+**Every `{{ }}` output is HTML-escaped by default.** The `raw` filter is
+overridden: it passes through only what the core has marked `SafeHtml` — the
+sanitised body fragment, `page.head`, `theme.css` — and **still escapes**
+ordinary strings. A theme author therefore cannot manufacture XSS with
+`{{ user_input | raw }}`.
 
-可以原样输出的只有两个：`content.html` 与 `page.head`。样式表不再作为字符串进入视图——它是 R2 上的一个文件，用 `theme.asset_base` 引用（§11）。
+Only two things are emitted verbatim: `content.html` and `page.head`. The
+stylesheet is no longer a string in the view — it is a file, referenced
+through `theme.asset_base` (§11).
 
-### 8.2 可用与不可用
+### 8.2 Available and not
 
-| 可用 | 不可用 |
+| Available | Not available |
 | --- | --- |
-| `{% if %}` `{% unless %}` `{% case %}` | 任意 JavaScript 求值 |
-| `{% for %}`（带 `limit` / `offset` / `reversed`） | 网络访问、`fs`、`import` |
-| `{% assign %}` `{% capture %}` | 原型链访问（`ownPropertyOnly: true`） |
-| `{% render %}` `{% include %}`（仅限本主题文件） | 未知过滤器（`strictFilters: true`，用了就报错） |
-| `{% layout %}`（仅限本主题文件） | 从文件系统加载模板（引擎由内存映射支撑） |
-| liquidjs 内置过滤器 | 注册自定义过滤器 |
+| `{% if %}`, `{% unless %}`, `{% case %}` | Evaluating arbitrary JavaScript |
+| `{% for %}` (with `limit`, `offset`, `reversed`) | Network access, `fs`, `import` |
+| `{% assign %}`, `{% capture %}` | Prototype-chain access (`ownPropertyOnly: true`) |
+| `{% render %}`, `{% include %}` (this theme's files only) | Unknown filters (`strictFilters: true` — using one is an error) |
+| `{% layout %}` (this theme's files only) | Loading templates from the filesystem (the engine is backed by an in-memory map) |
+| liquidjs's built-in filters | Registering custom filters |
 
-`{% render %}` / `{% include %}` / `{% layout %}` 只能引用**本主题自己**的文件，因为引擎背后是一张内存里的模板表，没有文件系统。引用不存在的路径抛出明确错误。
+`{% render %}`, `{% include %}` and `{% layout %}` can reference only **this
+theme's own** files, because behind the engine is an in-memory template table
+with no filesystem. Referencing a path that does not exist raises a clear
+error.
 
-### 8.3 确定性
+### 8.3 Determinism
 
-`date` 过滤器被固定为 `timezoneOffset: 0`、`locale: 'en-US'`。理由：`ARCHITECTURE §5` 要求「同一份 Markdown、同一个管线版本加同一个主题版本，必须渲染出逐字节相同的 HTML」。主题里**不得**出现「现在几点」这类输出——没有 `now` 变量，也不要用 `date` 过滤器格式化当前时间。
+The `date` filter is pinned to `timezoneOffset: 0` and `locale: 'en-US'`.
+`ARCHITECTURE §5` requires that the same Markdown, pipeline version and theme
+version render byte-identical HTML. A theme therefore **must not** emit
+anything resembling "the time now" — there is no `now` variable, and the
+`date` filter must not be used to format the current time.
 
-### 8.4 资源限制
+### 8.4 Resource limits
 
-`parseLimit: 1e6`、`memoryLimit: 5e7`。超限抛错。模板本身的 CPU 开销计入访客请求，受 Free 计划 10 ms 约束——所以别在模板里写 `{% for %}` 嵌套三层。
+`parseLimit: 1e6`, `memoryLimit: 5e7`; exceeding either raises. A template's
+own CPU cost counts against the visitor request and its 10 ms free-plan
+budget — so do not nest `{% for %}` three deep.
 
 ## 9. `clientScripts`
 
-主题声明它输出的客户端 JavaScript。**官方主题恒为 `[]`**（`PRODUCT_VISION §5.6`）。
+A theme declares the client-side JavaScript it emits. **Official themes are
+always `[]`** (`PRODUCT_VISION §5.6`).
 
 ```jsonc
 "clientScripts": [
@@ -427,13 +567,19 @@ export const files: ThemeFiles = {
 ]
 ```
 
-声明了就必须在后台的主题详情页如实展示「本主题会向访客页面注入 N 个脚本，共 X KB」。**未声明却在模板里写 `<script>` 的主题，安装时拒绝**——安装器扫描模板中的 `<script` 与 `on*=` 属性，发现未声明的就报错。这是「默认零客户端 JavaScript」这条承诺可执行的部分。
+Anything declared must be shown honestly on the theme's detail page in the
+admin: "this theme injects N scripts totalling X KB into visitor pages". **A
+theme that writes `<script>` in a template without declaring it is rejected at
+install** — the installer scans templates for `<script` and `on*=` attributes
+and errors on anything undeclared. This is the executable part of the
+zero-client-JavaScript promise.
 
-移动端导航、图集这类交互，官方主题用纯 CSS 实现（`:target`、`checkbox` hack）。
+Interactions such as mobile navigation and galleries are done in pure CSS in
+the official themes (`:target`, the checkbox hack).
 
-## 10. 语言包
+## 10. Language packs
 
-`locales/<locale>.json` 是一层扁平的字符串映射：
+`locales/<locale>.json` is a flat map of strings:
 
 ```json
 {
@@ -444,73 +590,116 @@ export const files: ThemeFiles = {
 }
 ```
 
-- 模板用 `{{ t.read_more }}` 读取。
-- 查找顺序见 `src/core/theme.ts` 的 `themeStrings`：先取 `defaultLocale` 的全部，再用当前 locale 的覆盖。**缺 key 回退到主题默认语言，不报错、不显示 key 名。**
-- 列表页标题按 `t[kind]` 取，缺失时用 `kinds[kind].label`，再缺用 kind 名本身。
-- 不支持插值与复数形式。需要拼接的地方由模板自己 `{% capture %}`。0.1 刻意不引入 i18n 库。
+- Templates read them as `{{ t.read_more }}`.
+- Lookup order is in `themeStrings` in `src/core/theme.ts`: take everything
+  from `defaultLocale`, then overlay the current locale. **A missing key falls
+  back to the theme's default language — no error, and never the key name.**
+- A list page's title comes from `t[kind]`, falling back to
+  `kinds[kind].label`, then to the kind name itself.
+- Interpolation and plural forms are not supported. Where text must be
+  assembled, the template does it with `{% capture %}`. 0.1 deliberately
+  introduces no i18n library.
 
-## 11. `assets/` 与静态资源
+## 11. `assets/` and static files
 
-见 §3.2。要点重复一次，因为它决定了模板怎么写：
+See §3.2. The essentials again, because they decide how templates are written:
 
 ```liquid
 <link rel="stylesheet" href="{{ theme.asset_base }}/style.css">
 ```
 
-`theme.asset_base` 形如 `/theme/trade/1.2.0`，带版本，因此指向的文件可以永久缓存。直出时带 `X-Content-Type-Options: nosniff`，Content-Type 只从 §3 第 3 条的白名单里取。
+`theme.asset_base` looks like `/theme/trade/1.2.0`. It carries the version, so
+what it points at can be cached forever. Responses carry
+`X-Content-Type-Options: nosniff`, and the Content-Type comes only from the
+allow-list in §3 rule 3.
 
-Task 01 曾把样式表内联进每个页面，该捷径已移除。是否额外保留「首屏关键 CSS 内联」由 `SEO_PERFORMANCE.md` 决定，目前不做。
+Task 01 inlined the stylesheet into every page; that shortcut has been
+removed. Whether to additionally inline critical above-the-fold CSS is
+`SEO_PERFORMANCE.md`'s decision, and is currently not done.
 
-## 12. 换主题怎么换
+## 12. How a theme is switched
 
 ```sh
-# 1. 把主题目录放进 src/themes/
-# 2. 在 src/themes/index.ts 里改一行，指向新主题
-# 3. 提交并部署
+# 1. Put the theme directory in src/themes/
+# 2. Change one line in src/themes/index.ts to point at it
+# 3. Commit and deploy
 pnpm build && npx wrangler deploy
 ```
 
-**换主题不改变**：内容 `id`、`translation_group`、`site.kinds` 的 base、已有 URL、`redirect` 表、媒体。
+**A theme switch does not change**: content `id`, `translation_group`, the
+bases in `site.kinds`, existing URLs, the `redirect` table, or media.
 
-**换主题会改变**：页面长相；以及——如果新主题不认识某个内容类型——那类内容改用 `page` 布局渲染（§5.3），URL 仍然不变。
+**A theme switch does change**: how pages look — and, if the new theme does
+not know a content kind, that kind renders through the `page` layout (§5.3),
+still at the same URLs.
 
-部署完成后建议清一次边缘缓存（`site` 标签），否则访客会继续看到旧主题渲染的页面直到 `cache_ttl` 过期。未配置 `CF_API_TOKEN` 时清不了，这是已知的降级模式（`CLOUDFLARE_RESOURCES §6`）。
+Purge the edge cache (the `site` tag) after deploying, or visitors keep seeing
+pages rendered by the old theme until `cache_ttl` expires. Without
+`CF_API_TOKEN` this is not possible, which is the known degraded mode
+(`CLOUDFLARE_RESOURCES §6`).
 
-旧主题的 `theme_options` 仍留在 `site.theme_options` 里但不再生效，换回来时恢复。
+The old theme's `theme_options` stay in `site.theme_options` but stop
+applying, and come back if the theme does.
 
-## 13. 版本与兼容
+## 13. Versions and compatibility
 
-- `version` 用 x.y.z。它出现在资源 URL 里，所以改主题资源时必须一并提版本，否则访客拿到的是缓存里的旧文件。
-- 本文定义的契约有自己的版本号 `themeApi`，0.1 为 `1`。`theme.json` 可选声明 `"themeApi": 1`；缺省视为 `1`。将来契约不兼容变更时，**构建期**据此报错并给出明确提示，不做静默降级。
-- 视图契约（§7）只增不减：0.1 之后新增字段是兼容变更，删改字段是破坏性变更，必须提 `themeApi`。
+- `version` is x.y.z. It appears in asset URLs, so changing a theme asset
+  requires bumping it — otherwise visitors keep the cached old file.
+- The contract in this document has its own version, `themeApi`, which is `1`
+  in 0.1. `theme.json` may declare `"themeApi": 1`; omitting it means `1`.
+  When the contract changes incompatibly, this is what raises a clear error
+  **at build time**. There is no silent degradation.
+- The view contract (§7) only grows: after 0.1, adding a field is a compatible
+  change, while removing or changing one is breaking and must bump
+  `themeApi`.
 
-## 14. 官方主题
+## 14. The official themes
 
-> **2026-08-29 修订**：本节原先写「0.1 交付两个：`trade` 与 `journal`」。设计评审后实际交付五个（产品负责人 2026-08-29 通过设计稿），外贸垂直那一个定名 **`atelier`** 而不是 `trade`——它就是原计划里 `trade` 的位置，改的是名字不是定位。下表是现状。
+> **Revised 2026-08-29**: this section used to say 0.1 ships two themes,
+> `trade` and `journal`. After the design review it ships five (approved by
+> the product owner on 2026-08-29), and the foreign-trade one is named
+> **`atelier`** rather than `trade` — it occupies exactly the position `trade`
+> was planned for; only the name changed. The table below is the current
+> state.
 
-| id | 定位 | kinds |
+| id | Position | kinds |
 | --- | --- | --- |
-| `atelier` | 外贸 B2B 企业站，**0.1 的验收对象**（原计划中的 `trade`） | `page`、`article`、`product`、`category`、`case`、`faq` |
-| `journal` | 资讯 / 博客，当前的 `ACTIVE_THEME` | `page`、`article` |
-| `gazette` | 编辑部风格的资讯站 | `page`、`article` |
-| `manual` | 手册 / 知识库 | `page`、`article` |
-| `folio` | 作品集 | `page`、`article`、`project` |
+| `atelier` | Foreign-trade B2B company site, **what 0.1 is accepted against** (the planned `trade`) | `page`, `article`, `product`, `category`, `case`, `faq` |
+| `journal` | News and blogs; the current `ACTIVE_THEME` | `page`, `article` |
+| `gazette` | An editorial news site | `page`, `article` |
+| `manual` | A handbook or knowledge base | `page`, `article` |
+| `folio` | A portfolio | `page`, `article`, `project` |
 
-全部：0 B 客户端 JS、`clientScripts: []`、至少 `en` 与 `zh` 语言包、通过 `SEO_PERFORMANCE.md` 的性能与 SEO 门。
+All of them: 0 bytes of client-side JavaScript, `clientScripts: []`, at least
+`en` and `zh` language packs, and passing the performance and SEO gates in
+`SEO_PERFORMANCE.md`.
 
-`atelier` 额外满足外贸站的三条：
+`atelier` additionally satisfies three things a trade site needs:
 
-- **移动导航与图集都是纯 CSS**——导航用 checkbox 披露（不是 `<details>`：关闭的 `<details>` 由 UA 行为隐藏内容，CSS 的 `display` 覆盖不了，宽屏上会把导航一起藏掉），图集用 scroll-snap 加锚点圆点；
-- **询盘表单有样式位**：官方插件在第二阶段注入的 `.mallok-inquiry` 由主题样式表接管，不会看起来像外挂的（`PLUGIN_API §11`）；
-- **`product` ↔ `category` 用一条 `reference` 声明双向打通**（§7.5），`case` 可以指向它用到的 `product`。
+- **Mobile navigation and the gallery are pure CSS** — the navigation uses a
+  checkbox disclosure rather than `<details>`, because a closed `<details>`
+  hides its content through UA behaviour that CSS `display` cannot override,
+  which would hide the navigation on wide screens too. The gallery uses
+  scroll-snap with anchor dots.
+- **The inquiry form has a place in the design**: the `.mallok-inquiry` markup
+  the official plugin injects in stage two is styled by the theme's own
+  stylesheet, so it does not look bolted on (`PLUGIN_API §11`).
+- **`product` and `category` are connected in both directions by one
+  `reference` declaration** (§7.5), and a `case` can point at the `product` it
+  used.
 
-## 15. 明确不做
+## 15. Deliberately not done
 
-- **不做运行时安装**：没有 zip 上传、没有在线安装、没有后台的主题管理界面。主题是源码；
-- 主题里不允许任何形式的代码执行，包括 `eval`、动态 `import`、注册过滤器；
-- 不支持主题继承 / 父子主题；
-- 不支持主题自带数据表或路由（那是插件的能力，见 `PLUGIN_API.md`）；
-- 不支持主题在运行时拉取远程资源；
-- 不引入第二个模板引擎（`TECH_STACK §12`）；
-- 不做主题的可视化编辑器（0.1 只有 `theme.json` 声明的 options 表单）；
-- 不做主题市场运行时（1.0 的方向，届时的形态是源码模板的集市，不是在线安装）。
+- **No runtime installation**: no zip upload, no online install, no theme
+  management screen in the admin. A theme is source code.
+- No form of code execution in a theme, including `eval`, dynamic `import` or
+  registering filters.
+- No theme inheritance or parent/child themes.
+- No theme-owned database tables or routes — that is what plugins are for, see
+  `PLUGIN_API.md`.
+- No fetching remote resources at runtime.
+- No second template engine (`TECH_STACK §12`).
+- No visual theme editor; 0.1 has only the options form declared in
+  `theme.json`.
+- No theme marketplace runtime. That is a 1.0 direction, and when it arrives
+  it will be a marketplace of source templates, not online installation.
