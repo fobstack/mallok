@@ -12,7 +12,8 @@ foreign-trade B2B company sites.
 >
 > Translated so far: this index, `CONTENT_FORMAT.md`, `CLOUDFLARE_RESOURCES.md`,
 > `CONVENTIONS.md`, `THEME_FORMAT.md`, `PLUGIN_API.md`, `ARCHITECTURE.md`,
-> `CLI.md`, `SECURITY.md`, `DATA_MODEL.md`, `TECH_STACK.md`.
+> `CLI.md`, `SECURITY.md`, `DATA_MODEL.md`, `TECH_STACK.md`, `TESTING.md`,
+> `SEO_PERFORMANCE.md`, `ADMIN.md`.
 
 ## Design documents
 
@@ -34,9 +35,9 @@ rest are the contracts for individual subsystems.
 | --- | --- |
 | [THEME_FORMAT.md](THEME_FORMAT.md) | Theme package structure, `theme.json`, content kinds and field schemas, the view contract, the restricted Liquid subset, language packs, install and switch semantics |
 | [PLUGIN_API.md](PLUGIN_API.md) | `plugin.json`, the hooks, the capabilities, the context objects, lifecycle, size budget, the official `inquiry` plugin |
-| [ADMIN.md](ADMIN.md) *(zh)* | Admin information architecture, the setup wizard, the content editor, the schema-driven form generator, the media library, the quality gates |
+| [ADMIN.md](ADMIN.md) | Admin information architecture, the setup wizard, the content editor, the schema-driven form generator, the media library, the quality gates |
 | [CLI.md](CLI.md) | Commands, arguments, authentication, idempotence rules, exit codes, error-message rules |
-| [SEO_PERFORMANCE.md](SEO_PERFORMANCE.md) *(zh)* | The SEO output built into the core, hreflang, structured data, the performance budget and how it is measured |
+| [SEO_PERFORMANCE.md](SEO_PERFORMANCE.md) | The SEO output built into the core, hreflang, structured data, the performance budget and how it is measured |
 | [SECURITY.md](SECURITY.md) | Trust levels, credential handling and the encryption format, authentication, sanitisation, upload validation, error hygiene, and **what is deliberately not defended against** |
 
 ## Process documents
@@ -44,7 +45,7 @@ rest are the contracts for individual subsystems.
 | Document | Contents |
 | --- | --- |
 | [CONVENTIONS.md](CONVENTIONS.md) | The boundaries a change is held to: what the product is, what the engineering may not do, style, fact discipline, working rules |
-| [TESTING.md](TESTING.md) *(zh)* | Test layers, the checklist for hard contracts, the coverage gate, the evidence format and its status values |
+| [TESTING.md](TESTING.md) | Test layers, the checklist for hard contracts, the coverage gate, the evidence format and its status values |
 | [ACCEPTANCE.md](ACCEPTANCE.md) *(zh)* | The 0.1 release gate, acceptance criteria grouped and numbered, cross-stage invariants, blockers |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) *(zh)* | The task sequence, the gates, the dependency graph, the definition of done per task |
 | [tasks/](tasks/) | One document per task: what was implemented, the decisions taken, deviations from the design, the evidence, and what is left. Already written in English. |

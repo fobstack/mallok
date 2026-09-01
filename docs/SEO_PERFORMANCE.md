@@ -1,118 +1,160 @@
-# Mallok SEO 与性能
+# Mallok SEO and performance
 
-- 状态：0.1 基线（首次编写）
-- 日期：2026-08-28
-- 地位：定义核心内建的 SEO 输出、性能预算与它们的测量方式。**本文 §7 的数字是首次提出的验收门，需要产品负责人确认后才生效**（标记为「待确认」的条目尤其如此）。
+- Status: 0.1 baseline
+- Date: 2026-08-28
+- Standing: defines the SEO output built into the core, the performance
+  budgets, and how both are measured. **The numbers in §7 are proposed here
+  for the first time and become acceptance gates only once the product owner
+  confirms them** — particularly the entries marked "to be confirmed".
 
-## 1. 为什么这份文档存在
+## 1. Why this document exists
 
-外贸 B2B 站的流量来自搜索。`PRODUCT_VISION §2` 把 Astro 定为「输出质量上的参照物」，意思是：**Mallok 页面的 HTML 质量必须能和一个精心配置的静态站打平**，否则「不用运维 + 不用构建」的价值主张会被「但它 SEO 不行」抵消。
+A foreign-trade B2B site's traffic comes from search. `PRODUCT_VISION §2` names
+Astro as "a reference point for output quality", which means: **a Mallok page's
+HTML must stand level with a carefully configured static site**, or the "no
+operations, no build" proposition is cancelled out by "but its SEO is poor".
 
-同时 `PRODUCT_VISION §5.6` 承诺访客页面默认零客户端 JavaScript。这两件事互相成全：没有 JS 的页面天然容易拿高分。
+`PRODUCT_VISION §5.6` separately promises zero client-side JavaScript on
+visitor pages. The two reinforce each other: a page with no JavaScript scores
+well without trying.
 
-## 2. 核心内建，不是插件
+## 2. Built into the core, not a plugin
 
-以下由核心提供，不依赖主题、不依赖插件（`PRODUCT_VISION §6`）：
+The core provides all of this, depending on neither a theme nor a plugin
+(`PRODUCT_VISION §6`):
 
-| 输出 | 路径 / 位置 | 缓存 |
+| Output | Path or location | Cache |
 | --- | --- | --- |
-| sitemap（含 hreflang） | `/sitemap.xml`（+ 分页 `/sitemap-<n>.xml`） | 边缘缓存 |
-| RSS | `/feed.xml`、`/<locale>/feed.xml` | 边缘缓存 |
-| robots | `/robots.txt` | 边缘缓存 |
-| canonical | 每页 `<head>` | 随页面 |
-| hreflang + x-default | 每页 `<head>` 与 sitemap | 随页面 |
-| Open Graph / Twitter Card | 每页 `<head>` | 随页面 |
-| JSON-LD | 每页 `<head>` | 随页面 |
-| 重定向 | `redirect` 表，404 前查一次 | 命中后缓存 |
+| Sitemap, with hreflang | `/sitemap.xml` (plus `/sitemap-<n>.xml`) | Edge cache |
+| RSS | `/feed.xml`, `/<locale>/feed.xml` | Edge cache |
+| robots | `/robots.txt` | Edge cache |
+| canonical | Each page's `<head>` | With the page |
+| hreflang and x-default | Each page's `<head>` and the sitemap | With the page |
+| Open Graph and Twitter Card | Each page's `<head>` | With the page |
+| JSON-LD | Each page's `<head>` | With the page |
+| Redirects | The `redirect` table, queried once before a 404 | Cached on a hit |
 
-主题**必须**输出 `{{ page.head }}`（`THEME_FORMAT.md §7.1`）——核心生成的 hreflang 与 JSON-LD 都在里面。不输出它的主题过不了 §8 的验收。
+A theme **must** emit `{{ page.head }}` (`THEME_FORMAT.md §7.1`) — the core's
+hreflang and JSON-LD are inside it. A theme that omits it fails the acceptance
+in §8.
 
-## 3. sitemap
+## 3. The sitemap
 
-- 只含 `status = 'published'` 且 `published_at <= now` 的内容；
-- 每个 URL 带该内容全部翻译版本的 `xhtml:link rel="alternate"`，含 `x-default` 指向默认语言（`ARCHITECTURE §9`）；
-- 单文件上限 5000 条，超出分页为 `/sitemap-<n>.xml` 并输出 sitemap index（`DATA_MODEL §3` 已按 `LIMIT 5000` 规划）；
-- `lastmod` 取 `updated_at`；
-- **不含** `changefreq` 与 `priority`——搜索引擎已明确忽略它们，输出它们只是噪音；
-- 草稿、定时未到期、`noindex` 的内容一概不进。
+- Contains only content with `status = 'published'` and
+  `published_at <= now`.
+- Every URL carries an `xhtml:link rel="alternate"` for each translation,
+  including an `x-default` pointing at the default language
+  (`ARCHITECTURE §9`).
+- A single file holds at most 5,000 entries; beyond that it paginates into
+  `/sitemap-<n>.xml` with a sitemap index (`DATA_MODEL §3` already plans for
+  `LIMIT 5000`).
+- `lastmod` comes from `updated_at`.
+- **No `changefreq` and no `priority`** — search engines have said plainly
+  that they ignore them, so emitting them is noise.
+- Drafts, scheduled content whose time has not come, and anything `noindex`
+  never appear.
 
 ## 4. hreflang
 
-规则来自 `ARCHITECTURE §9`：
+The rules come from `ARCHITECTURE §9`:
 
-- 默认语言无前缀（`/products/x`），其他语言前缀 `/<locale>/`（`/de/products/x`）；
-- 每个页面输出它所在 `translation_group` 的全部语言版本；
-- `x-default` 指向默认语言版本；
-- **只有一个语言版本时不输出 hreflang**（当前实现 `src/worker/render.ts` 的 `headTags` 已按 `alts.length > 1` 处理）；
-- **不做自动语言检测跳转**——`ARCHITECTURE §9` 明确列为不做，因为它对 SEO 有害且会让爬虫看到错误内容。
+- The default language has no prefix (`/products/x`); every other language is
+  prefixed `/<locale>/` (`/de/products/x`).
+- Each page emits every language in its `translation_group`.
+- `x-default` points at the default language.
+- **With only one language, no hreflang is emitted** — the current
+  implementation already gates on `alternates.length > 1` in
+  `buildHeadTags` (`src/core/view.ts`).
+- **No automatic language detection or redirection** — `ARCHITECTURE §9`
+  lists it as deliberately not done, because it harms SEO and shows crawlers
+  the wrong content.
 
-## 5. 结构化数据
+## 5. Structured data
 
-0.1 输出四类（`PRODUCT_VISION §6`）：
+0.1 emits four types (`PRODUCT_VISION §6`):
 
-| 类型 | 用在哪 | 来源 |
+| Type | Where | Source |
 | --- | --- | --- |
-| `Organization` | 首页 | `site.seo` 里的公司信息 |
-| `Article` | `article` 类型的内容页 | 标题、发布/修改时间、语言、canonical |
-| `Product` | `product` 类型的内容页 | frontmatter 的 `sku`、`specs`、图片、`category` |
-| `FAQPage` | `faq` 类型的内容页 | frontmatter 的问答对 |
+| `Organization` | The home page | Company details in `site.seo` |
+| `Article` | Content pages of the `article` kind | Title, publication and modification times, language, canonical |
+| `Product` | Content pages of the `product` kind | Front matter's `sku`, `specs`, images and `category` |
+| `FAQPage` | Content pages of the `faq` kind | Front matter's question-and-answer pairs |
 
-两条规则：
+Two rules:
 
-1. **JSON-LD 里的 `<` 必须转义成 `<`**，否则内容可以提前闭合 `<script>`。当前实现已这么做（`src/worker/render.ts` 的 `headTags`），这是安全要求不是风格。
-2. 结构化数据只描述页面上**真实存在**的内容。不为了拿富媒体摘要而输出页面上没有的评分、价格或库存——那会招致人工处罚。
+1. **A `<` inside JSON-LD must be escaped to `\u003c`**, or content can close
+   the `<script>` element early. The implementation already does this —
+   `buildHeadTags` in `src/core/view.ts`. This is a security requirement, not
+   a stylistic one.
+2. Structured data describes only what is **actually on the page**. Never emit
+   a rating, price or stock level that the page does not show in order to win
+   a rich result — that invites a manual penalty.
 
-## 6. Open Graph 与图片
+## 6. Open Graph and images
 
-- `og:title`、`og:description`、`og:url`、`og:type`、`og:locale`、`og:site_name`；
-- `og:image` 取内容的 `cover`，缺省取 `site.seo.default_og_image`；
-- `twitter:card` 为 `summary_large_image`（有图时）；
-- OG 图片走 R2 自定义域，内容寻址所以可以 `max-age=31536000, immutable`（`ARCHITECTURE §8`）。
+- `og:title`, `og:description`, `og:url`, `og:type`, `og:locale`,
+  `og:site_name`.
+- `og:image` comes from the content's `cover`, falling back to
+  `site.seo.default_og_image`.
+- `twitter:card` is `summary_large_image` when there is an image.
+- OG images are served from the R2 custom domain and are content-addressed, so
+  they carry `max-age=31536000, immutable` (`ARCHITECTURE §8`).
 
-**0.1 不做动态 OG 图生成**——那需要在 Worker 里画图，与「Worker 不做图片处理」冲突。
+**0.1 does not generate OG images dynamically** — that would mean drawing in
+the Worker, which contradicts the rule that the Worker does no image
+processing.
 
-## 7. 性能预算（待确认）
+## 7. Performance budgets (to be confirmed)
 
-> 以下数字是本文首次提出的，将成为 `ACCEPTANCE.md` 的验收门。**需要产品负责人确认。** 它们的依据是：官方主题零 JS、图片走 R2 直出、页面由边缘缓存返回。
+> These numbers are proposed here for the first time and will become gates in
+> `ACCEPTANCE.md`. **The product owner must confirm them.** They rest on the
+> official themes shipping no JavaScript, images being served directly from
+> R2, and pages coming from the edge cache.
 
-| 预算项 | 门 | 依据 |
+| Budget | Gate | Basis |
 | --- | --- | --- |
-| 官方主题客户端 JS | **0 B** | `PRODUCT_VISION §5.6`，已是承诺，非新增 |
-| 唯一例外 | 询盘页的 Turnstile 脚本 | 同上，已是承诺 |
-| 单页 HTML（未压缩） | ≤ 100 KB | 待确认 |
-| CSS（gzip） | ≤ 24 KB | 待确认 |
-| LCP 图片 | ≤ 200 KB | 待确认 |
-| 每页图片请求数 | ≤ 20 | 待确认 |
-| 字体 | Google Fonts，每主题至多 2 族、`display=swap`、给出系统回退栈；不自托管 | **已确认**（2026-08-29 设计评审：产品负责人通过带 Google Fonts 的四套主题设计稿） |
+| Client JS in official themes | **0 B** | `PRODUCT_VISION §5.6`; already a promise, not new |
+| The single exception | The Turnstile script on inquiry pages | As above; already a promise |
+| One page's HTML, uncompressed | ≤ 100 KB | To be confirmed |
+| CSS, gzipped | ≤ 24 KB | To be confirmed |
+| The LCP image | ≤ 200 KB | To be confirmed |
+| Image requests per page | ≤ 20 | To be confirmed |
+| Fonts | Google Fonts; at most two families per theme, `display=swap`, with a system fallback stack; not self-hosted | **Confirmed** at the 2026-08-29 design review, where the product owner approved four theme designs using Google Fonts |
 
-Lighthouse（移动端，自定义域，缓存命中）：
+Lighthouse, on mobile, against a custom domain, with the cache warm:
 
-| 分类 | 门 |
+| Category | Gate |
 | --- | --- |
-| Performance | 中位 ≥ 95，单次 ≥ 90（待确认） |
-| SEO | **每次 100**（待确认） |
-| Accessibility | ≥ 95（待确认） |
-| Best Practices | ≥ 95（待确认） |
+| Performance | Median ≥ 95, any single run ≥ 90 (to be confirmed) |
+| SEO | **100 every time** (to be confirmed) |
+| Accessibility | ≥ 95 (to be confirmed) |
+| Best Practices | ≥ 95 (to be confirmed) |
 
-**为什么 SEO 要求满分**：SEO 那一档检查的是 meta、canonical、hreflang、robots、链接文本这类确定性项目，全部由核心生成。拿不到 100 说明核心有 bug，不是环境波动。
+**Why SEO must be perfect**: that category checks deterministic things — meta
+tags, canonical, hreflang, robots, link text — all generated by the core.
+Anything short of 100 means the core has a bug, not that the environment
+wobbled.
 
-## 8. 服务端性能
+## 8. Server-side performance
 
-这些直接由架构决定，不是调优项：
+These follow from the architecture and are not tuning knobs:
 
-| 指标 | 目标 | 来源 |
+| Metric | Target | Source |
 | --- | --- | --- |
-| 缓存命中路径 CPU | < 1 ms | `ARCHITECTURE §4` |
-| 冷渲染的 D1 调用 | 1 次 batch，查询数 ≤ 3 | `ARCHITECTURE §4` |
-| 列表页行读 | `LIMIT n+1`，**永不 `COUNT(*)`** | `DATA_MODEL §3` |
-| 列表页解析 Markdown | **永远不** | `ARCHITECTURE §4` |
-| 内容保存到公开可见 | 数秒 | `PRODUCT_VISION §5.1` |
+| CPU on the cache-hit path | Under 1 ms | `ARCHITECTURE §4` |
+| D1 calls in a cold render | One batch, at most 3 queries | `ARCHITECTURE §4` |
+| Row reads on a list page | `LIMIT n+1`, **never `COUNT(*)`** | `DATA_MODEL §3` |
+| Markdown parsing on a list page | **Never** | `ARCHITECTURE §4` |
+| From saving content to it being publicly visible | Seconds | `PRODUCT_VISION §5.1` |
 
-最后一条的实际延迟取决于清缓存方案（`ARCHITECTURE §6.2` 的 A/B 择一），**在 `TASK-01 §4.5` 实测出结论前不是既定事实**。
+The real latency of that last row depends on which purge plan is chosen (A or
+B in `ARCHITECTURE §6.2`), and **is not an established fact until measured in
+`TASK-01 §4.5`**.
 
-## 9. 图片输出
+## 9. Image output
 
-第一阶段渲染把相对路径替换为 R2 URL 时生成（`ARCHITECTURE §8`）：
+Generated when stage one substitutes R2 URLs for relative paths
+(`ARCHITECTURE §8`):
 
 ```html
 <img src="https://media.example.com/media/<sha>_960.webp"
@@ -122,9 +164,14 @@ Lighthouse（移动端，自定义域，缓存命中）：
      loading="lazy" decoding="async" alt="…">
 ```
 
-- `width` / `height` 来自 `media` 表，**避免布局抖动**（CLS）；
-- `loading="lazy"` 默认，但**首屏图（LCP 候选）应为 `eager`**——0.1 的规则：内容的 `cover` 与正文第一张图用 `eager`，其余 `lazy`；
-- 外链图片原样输出，不代理、不下载（`ARCHITECTURE §8`），因此不受这些优化保护，后台应提示。
+- `width` and `height` come from the `media` table, **which is what prevents
+  layout shift** (CLS).
+- `loading="lazy"` is the default, but **an above-the-fold image, being an LCP
+  candidate, should be `eager`**. The 0.1 rule: a content item's `cover` and
+  the first image in the body are `eager`, everything else is `lazy`.
+- External images are emitted as they are, neither proxied nor downloaded
+  (`ARCHITECTURE §8`), so none of these optimisations protect them. The admin
+  should say so.
 
 ## 10. robots.txt
 
@@ -135,35 +182,46 @@ Disallow: /_mallok/
 Sitemap: https://example.com/sitemap.xml
 ```
 
-- `/_mallok/*` 全部 `Disallow`；
-- 未绑定自定义域时（`.workers.dev` 预览），**输出 `Disallow: /` 并在每页加 `noindex`**——预览地址被索引会造成重复内容，伤害正式域名；
-- 草稿签名预览链接响应 `no-store` 且 `noindex`（`ARCHITECTURE §14`）。
+- Everything under `/_mallok/*` is disallowed.
+- With no custom domain bound — the `.workers.dev` preview — it emits
+  **`Disallow: /` and adds `noindex` to every page**. An indexed preview
+  address creates duplicate content and damages the real domain.
+- Signed draft previews respond `no-store` and `noindex`
+  (`ARCHITECTURE §14`).
 
-## 11. 重定向
+## 11. Redirects
 
-- 改 slug 时自动写一条 `redirect`（301），保证换 slug 不丢外链（`ARCHITECTURE §7`）；
-- 改 `site.default_locale` 会重算全部 `path` 并批量写重定向，**这是需要明确确认的批量操作**（`DATA_MODEL §2.2`）；
-- 404 前查一次 `redirect`（1 行读），命中则返回重定向并缓存。
+- Changing a slug writes a `redirect` (301) automatically, so inbound links
+  survive (`ARCHITECTURE §7`).
+- Changing `site.default_locale` recomputes every `path` and writes the
+  redirects in bulk. **That is an explicit operation requiring confirmation**
+  (`DATA_MODEL §2.2`).
+- One `redirect` row is read before returning a 404; a hit returns the
+  redirect, which is cached.
 
-## 12. 测量方式
+## 12. How each thing is measured
 
-| 项 | 工具 | 何时跑 |
+| Item | Tool | When |
 | --- | --- | --- |
-| Lighthouse | `@lhci/cli`，锁定版本，仅开发期 | 每个涉及主题或渲染的任务 |
-| 无障碍 | `@axe-core/playwright` | 同上 |
-| HTML / CSS 体积 | 构建脚本，对着 §7 的门断言 | 每次构建 |
-| 结构化数据 | 快照测试 + schema.org 校验 | 单元测试 |
-| sitemap / feed | XML 快照测试 | 单元测试 |
-| 服务端 CPU | 真实账号的 Workers Logs | spike 与发布前 |
+| Lighthouse | `@lhci/cli`, pinned, development-only | Every task touching a theme or rendering |
+| Accessibility | `@axe-core/playwright` | As above |
+| HTML and CSS size | A build script, asserting against §7's gates | Every build |
+| Structured data | Snapshot tests plus schema.org validation | Unit tests |
+| Sitemap and feeds | XML snapshot tests | Unit tests |
+| Server CPU | Workers Logs on a real account | The spike, and before a release |
 
-**Lighthouse 必须跑在自定义域且缓存已命中的状态下**——`.workers.dev` 无缓存，测出来的数字没有意义（`ARCHITECTURE §2`）。
+**Lighthouse must run against a custom domain with the cache warm** — there is
+no cache on `.workers.dev`, so numbers measured there mean nothing
+(`ARCHITECTURE §2`).
 
-## 13. 明确不做
+## 13. Deliberately not done
 
-- 不做动态 OG 图生成；
-- 不做 AMP；
-- 不自动生成 meta description（缺省时从正文派生摘要，这是派生不是生成）；
-- 不做关键词 meta 标签（搜索引擎已忽略）；
-- 不做自动语言检测跳转；
-- 不在访客页面注入分析脚本——用 Cloudflare 站点级分析，它不需要客户端 JS（`PRODUCT_VISION §7`）；
-- 不做 service worker 或预取。
+- No dynamic OG image generation.
+- No AMP.
+- No automatically generated meta descriptions. When one is absent an excerpt
+  is derived from the body, which is derivation, not generation.
+- No keyword meta tags; search engines ignore them.
+- No automatic language detection or redirection.
+- No analytics script on visitor pages — Cloudflare's site-level analytics
+  needs no client-side JavaScript (`PRODUCT_VISION §7`).
+- No service worker and no prefetching.

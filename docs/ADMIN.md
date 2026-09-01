@@ -1,243 +1,337 @@
-# Mallok 后台
+# The Mallok admin
 
-- 状态：0.1 基线（首次编写）
-- 日期：2026-08-28
-- 地位：定义后台的信息架构、页面清单、表单生成机制与交付边界。后台是非技术用户唯一会用到的界面，**它的可用性就是产品的可用性**。
+- Status: 0.1 baseline
+- Date: 2026-08-28
+- Standing: defines the admin's information architecture, its pages, the form
+  generation mechanism and the delivery boundary. The admin is the only
+  interface a non-technical user ever touches, so **its usability is the
+  product's usability**.
 
-## 1. 一句话定义
+## 1. In one sentence
 
-**后台是一个跑在浏览器里的 Preact 单页应用，通过 Workers Static Assets 提供，调用与 CLI 完全相同的管理 API。**
+**The admin is a Preact single-page application running in the browser, served
+through Workers Static Assets, calling exactly the same management API the CLI
+does.**
 
-它只呈现运营改得动的东西：**内容、设置、插件面板**。主题与插件的安装属于部署，不在后台（`PRODUCT_VISION §4`）——后台只显示当前装了什么，并提供它们开放的配置项。
+It exposes only what an operator can change: **content, settings and plugin
+panels**. Installing a theme or a plugin is a deployment and is not in the
+admin (`PRODUCT_VISION §4`) — the admin shows what is installed and offers the
+options those things expose.
 
-## 2. 硬约束
+## 2. Hard constraints
 
-| 约束 | 来源 | 后果 |
+| Constraint | Source | Consequence |
 | --- | --- | --- |
-| 后台产物走 Static Assets，**不进 Worker 脚本** | `TECH_STACK §6` | 后台体积不挤占渲染管线的 3 MB 预算 |
-| 静态资源请求免费、不计 Worker 调用 | `TECH_STACK §6` | 后台可以做得重，但仍受 2 万文件 / 单文件 25 MiB 限制 |
-| 路径统一在 `_mallok/app/` 下 | `CLOUDFLARE_RESOURCES.md §5` | 公开站点的任何路径都不会撞上它 |
-| 用户不需要理解 Worker、D1、R2、缓存、迁移 | `PRODUCT_VISION §4` | 这些词不出现在主界面；只在「高级 / 诊断」页出现 |
-| 后台不安装主题或插件 | `PRODUCT_VISION §4` | 没有上传界面；需要部署的操作只给出步骤说明 |
-| 后台与 CLI 没有能力差 | `PRODUCT_VISION §5.9` | 每个后台动作都必须有对应的 API 端点 |
-| 图片处理在浏览器端做 | `ARCHITECTURE §8` | Canvas API 转 WebP，Worker 不碰图片 |
+| The admin build goes through Static Assets and **never into the Worker script** | `TECH_STACK §6` | Its size never eats the render pipeline's 3 MB budget |
+| Static-asset requests are free and are not billed as Worker invocations | `TECH_STACK §6` | The admin can be substantial, but still within 20,000 files at 25 MiB each |
+| Everything lives under `_mallok/app/` | `CLOUDFLARE_RESOURCES.md §5` | No public-site path can ever collide with it |
+| A user need not understand Workers, D1, R2, caching or migrations | `PRODUCT_VISION §4` | Those words do not appear in the main interface, only under Advanced and Diagnostics |
+| The admin installs neither themes nor plugins | `PRODUCT_VISION §4` | There is no upload screen; anything needing a deployment gets instructions instead |
+| The admin and the CLI have identical capability | `PRODUCT_VISION §5.9` | Every admin action has a corresponding API endpoint |
+| Image processing happens in the browser | `ARCHITECTURE §8` | Canvas converts to WebP; the Worker never touches an image |
 
-## 3. 技术选型
+## 3. Technology
 
-来自 `TECH_STACK §6`，此处不重复论证：
+From `TECH_STACK §6`, not re-argued here:
 
-| 领域 | 选择 |
+| Area | Choice |
 | --- | --- |
-| UI | `preact` + `@preact/signals`，**不用 React 兼容层** |
-| 构建 | `vite` + `@preact/preset-vite` |
-| Markdown 编辑 | `codemirror` + `@codemirror/lang-markdown` |
-| 表单 | 仓库内部的 schema 驱动生成器（§7） |
-| 预览 | 复用 `src/core/`，在浏览器里渲染 |
-| 样式 | 仓库内部 CSS 变量与组件，**不引入 Tailwind / CSS-in-JS / 组件库** |
-| 图片处理 | 浏览器 Canvas API |
+| UI | `preact` + `@preact/signals`, **with no React compatibility layer** |
+| Build | `vite` + `@preact/preset-vite` |
+| Markdown editing | `codemirror` + `@codemirror/lang-markdown` |
+| Forms | The in-repository schema-driven generator (§7) |
+| Preview | Reuses `src/core/`, rendering in the browser |
+| Styling | In-repository CSS variables and components; **no Tailwind, no CSS-in-JS, no component library** |
+| Image processing | The browser's Canvas API |
 
-**0.1 不引入 Tiptap。** 可视化编辑是 0.2（`PRODUCT_VISION §9`）。0.1 的正文编辑器只有 CodeMirror 里的 Markdown 源码。
+**0.1 does not include Tiptap.** Visual editing belongs to 0.2
+(`PRODUCT_VISION §9`). The only body editor in 0.1 is Markdown source in
+CodeMirror.
 
-## 4. 信息架构
+## 4. Information architecture
 
-顶层导航三项，加一个用户菜单。**新功能必须归入其中之一**；归不进去时先判断它是不是内部复杂度。
+Three top-level sections plus a user menu. **A new feature must fit one of
+them**; when it does not, the first question is whether it is internal
+complexity that should not be surfaced at all.
 
 ```
-内容 Content     ├ 全部内容（按类型筛选、按语言筛选、搜索）
-                 ├ 编辑器（源码 + 字段表单 + 预览）
-                 └ 媒体库
+Content     ├ All content (filter by kind, filter by language, search)
+            ├ The editor (source + field form + preview)
+            └ The media library
 
-设置 Settings    ├ 站点信息（名称、标语、SEO 默认值）
-                 ├ 语言（启用的语言、默认语言）
-                 ├ 导航（按语言各一份）
-                 ├ 外观（当前主题是什么 + 它开放的配置项表单）
-                 ├ 域名与媒体域名
-                 ├ 邮件（Resend）
-                 └ 高级（缓存时长、用量、备份导出、诊断）
+Settings    ├ Site details (name, tagline, SEO defaults)
+            ├ Languages (which are enabled, which is default)
+            ├ Navigation (one per language)
+            ├ Appearance (what the current theme is, and its options form)
+            ├ Domain and media domain
+            ├ Email (Resend)
+            └ Advanced (cache TTL, usage, backup export, diagnostics)
 
-插件 Plugins     ├ 已装插件列表（开关、版本、影响说明）
-                 ├ 每个插件的设置与密钥表单
-                 └ 每个插件声明的面板（如「询盘」）
+Plugins     ├ Installed plugins (switch, version, what each affects)
+            ├ Each plugin's settings and secrets form
+            └ Each panel a plugin declares, such as Inquiries
 
-用户菜单         ├ 修改密码
-                 ├ API token 管理
-                 └ 退出
+User menu   ├ Change password
+            ├ API token management
+            └ Sign out
 ```
 
-### 4.1 「外观」里没有的东西
+### 4.1 What Appearance does not contain
 
-没有主题列表、没有上传、没有切换按钮。这一页显示：
+No theme list, no upload, no switch button. The page shows:
 
-- 当前主题的名称、版本、它支持哪些内容类型；
-- 它声明的 `clientScripts`（**如实展示「本主题会注入 N 个脚本」**，官方主题恒为 0）；
-- 它开放的配置项表单（`theme.json` 的 `options`），改完即时生效；
-- 一句说明：**换主题需要修改源码并重新部署**，附文档链接。
+- the current theme's name, version and which content kinds it supports;
+- the `clientScripts` it declares — **stated honestly as "this theme injects N
+  scripts"**, which is always zero for the official themes;
+- the options form it exposes (`theme.json`'s `options`), which takes effect
+  immediately;
+- one sentence: **changing themes requires editing source and redeploying**,
+  with a link to the documentation.
 
-这条界线来自 `PRODUCT_VISION §4`：内容和设置是运营的，主题和插件是部署的。把换主题做成一个按钮会是谎言。
+The line comes from `PRODUCT_VISION §4`: content and settings belong to the
+operator; themes and plugins belong to the deployment. Making a theme switch
+into a button would be a lie.
 
-## 5. 首次启动向导
+## 5. The setup wizard
 
-路由 `/_mallok/setup`，完成后**永久关闭**（`site.setup_completed_at` 非空即 404）。步骤来自 `ARCHITECTURE §15`：
+At `/_mallok/setup`, and **permanently closed** once complete — a non-null
+`site.setup_completed_at` makes it a 404. The steps come from
+`ARCHITECTURE §15`:
 
-| 步 | 内容 | 可跳过 |
+| Step | What | Skippable |
 | --- | --- | --- |
-| 1 | 管理员邮箱与密码 | 否 |
-| 2 | 站点名称、默认语言、启用的语言 | 否 |
-| 3 | 选择 Starter | 是（跳过则得到一个空站） |
-| 4 | 域名：检测是否已绑定自定义域 | 是 |
-| 5 | 媒体域名 `media.<域名>`（自动创建 DNS） | 是 |
-| 6 | 邮件：Resend key、发件域名、写入 DNS 记录 | 是 |
-| 7 | 完成 | — |
+| 1 | Administrator email and password | No |
+| 2 | Site name, default language, enabled languages | No |
+| 3 | Choose a starter | Yes; skipping gives an empty site |
+| 4 | Domain: detect whether a custom domain is bound | Yes |
+| 5 | Media domain `media.<domain>`, creating the DNS record | Yes |
+| 6 | Email: the Resend key, sending domain, writing the DNS records | Yes |
+| 7 | Done | — |
 
-每一步都能在设置里补做。两处**必须诚实提示**：
+Every step can be completed later in Settings. Two things **must be stated
+honestly**:
 
-- **第 4 步**：未绑定自定义域时明说「缓存尚未生效，`.workers.dev` 只作预览」（`ARCHITECTURE §2`）。这不是可选的软提示，因为它决定站点性能。
-- **未配置 `CF_API_TOKEN` 时**：向导把 `site.cache_ttl` 临时设为 60 秒，并在后台常驻显示「配置 token 后恢复即时生效」（`CLOUDFLARE_RESOURCES.md §6`）。**这是诚实的降级，不是故障**，措辞要区分开。
+- **Step 4**: with no custom domain bound, say plainly that caching is not in
+  effect and `.workers.dev` is preview only (`ARCHITECTURE §2`). This is not
+  an optional soft hint — it determines the site's performance.
+- **With no `CF_API_TOKEN`**: the wizard sets `site.cache_ttl` to 60 seconds
+  and the admin carries a standing notice that configuring a token restores
+  instant publishing (`CLOUDFLARE_RESOURCES.md §6`). **This is an honest
+  degradation, not a fault**, and the wording must distinguish the two.
 
-## 6. 内容编辑器
+## 6. The content editor
 
-### 6.1 布局
+### 6.1 Layout
 
-三栏，可折叠：
+Three collapsible columns:
 
 ```
 ┌─────────────┬────────────────────────┬──────────────┐
-│ 字段表单     │ Markdown 源码           │ 实时预览      │
-│ (schema)    │ (CodeMirror)           │ (core 渲染)   │
+│ Field form  │ Markdown source        │ Live preview │
+│ (schema)    │ (CodeMirror)           │ (core)       │
 ├─────────────┴────────────────────────┴──────────────┤
-│ 状态：草稿/发布/定时  语言切换  翻译组  保存  查看   │
+│ Status: draft/published/scheduled  language  group   │
+│ translation  Save  View                              │
 └─────────────────────────────────────────────────────┘
 ```
 
-### 6.2 真相是 Markdown
+### 6.2 Markdown is the truth
 
-**`content.markdown` 是唯一真相**（`CONTENT_FORMAT §3`）。字段表单编辑的是 frontmatter，保存时重新序列化 YAML 块并拼回源码。这是用户主动的编辑动作，不是导入导出过程——所以允许改写原文格式。
+**`content.markdown` is the only truth** (`CONTENT_FORMAT §3`). The field form
+edits front matter, and saving re-serialises the YAML block and splices it
+back into the source. That is the user deliberately editing, not an
+import/export path, so rewriting the source's formatting is allowed there.
 
-编辑器不得在用户没有编辑的情况下改写 Markdown。打开再关闭一篇文章，`markdown` 必须逐字节不变。
+The editor must not rewrite Markdown the user has not edited. Opening an item
+and closing it again must leave `markdown` byte-identical.
 
-### 6.3 预览
+### 6.3 Preview
 
-预览调用 `src/core/` 的 `renderFragment` + `renderPage`，**与线上跑的是同一个函数**（`ARCHITECTURE §5` 第 3 条）。这是「所见即所得」的唯一可信实现方式。
+Preview calls `src/core/`'s `renderFragment` and `renderPage` — **the same
+functions production runs** (`ARCHITECTURE §5`, rule 3). That is the only
+trustworthy way to implement what-you-see-is-what-you-get.
 
-预览需要主题模板。模板在 Worker 的产物里（`THEME_FORMAT.md §3.1`），后台通过 `GET /_mallok/api/theme` 取一次当前主题的模板与 manifest 并缓存在内存。
+Preview needs the theme templates, which live in the Worker's artifact
+(`THEME_FORMAT.md §3.1`). The admin fetches the current theme's templates and
+manifest once through `GET /_mallok/api/theme` and caches them in memory.
 
-### 6.4 缺图是正常状态
+### 6.4 A missing image is a normal state
 
-引用了 `assets` 里不存在的相对路径时（`CONTENT_FORMAT §4` 第 6 条）：
+When a relative path is not in `assets` (`CONTENT_FORMAT §4`, rule 6):
 
-- 编辑器在对应行显示「缺图」标记；
-- 顶部显示「缺 N 张图」；
-- **发布时警告但不阻止**；
-- 预览里显示占位框而不是坏图标。
+- the editor marks the line;
+- the header shows "N images missing";
+- **publishing warns without blocking**;
+- the preview shows a placeholder rather than a broken-image icon.
 
-**预览的 iframe 用 `sandbox="allow-same-origin"` 且不给 `allow-scripts`**：完全沙箱化的 `srcdoc` 文档源是 opaque，取不到主题样式表，预览会是无样式的——那就失去了「所见即所得」的意义。不给 `allow-scripts` 意味着框架内不执行任何脚本，这才是沙箱要防的事；两个一起给才是危险组合。
+**The preview iframe uses `sandbox="allow-same-origin"` and deliberately does
+not grant `allow-scripts`**: a fully sandboxed `srcdoc` document has an opaque
+origin and cannot fetch the theme stylesheet, so the preview would render
+unstyled — losing the entire point. Withholding `allow-scripts` means nothing
+executes inside the frame, which is what the sandbox is actually for. Granting
+both together is the dangerous combination.
 
-### 6.5 长度上限
+### 6.5 Size limits
 
-`markdown` 超过 2 MB 时保存失败并给出明确错误（`DATA_MODEL §2.2`）。
+A `markdown` over 2 MB fails to save with a clear error
+(`DATA_MODEL §2.2`).
 
-第一阶段渲染超出 CPU 预算时（Free 计划 10 ms，`ARCHITECTURE §5`），保存请求把 Markdown 存为草稿并返回明确错误：「这篇内容太长，无法在免费计划的时间预算内生成页面。请拆分，或升级到 Workers Paid。」**不静默失败，也不假装成功。**
+When stage-one rendering exceeds the CPU budget — 10 ms on the free plan,
+`ARCHITECTURE §5` — the save request stores the Markdown as a draft and
+returns a clear error: "this item is too long to render within the free plan's
+time budget. Split it, or move to Workers Paid." **It does not fail silently,
+and it does not pretend to have succeeded.**
 
-### 6.6 多语言
+### 6.6 Multiple languages
 
-- 语言切换器在编辑器顶部，切换到尚不存在的翻译版本时提供「创建 `<语言>` 版本」；
-- 翻译版本是独立的内容行，各自有 Markdown、状态、slug（`ARCHITECTURE §9`）；
-- 同一 `translation_group` 的成员在编辑器里互相可见可跳转；
-- **0.1 不做自动翻译**（0.2 的 `onContentSave` 插件）。
+- The language switcher sits at the top of the editor, and switching to a
+  translation that does not exist yet offers "create the `<language>`
+  version".
+- A translation is an independent content row with its own Markdown, status
+  and slug (`ARCHITECTURE §9`).
+- Members of one `translation_group` are visible to each other in the editor
+  and can be jumped between.
+- **0.1 does no automatic translation**; that is a 0.2 `onContentSave` plugin.
 
-## 7. schema 驱动的表单生成器
+## 7. The schema-driven form generator
 
-这是后台唯一值得单独设计的组件。四个地方共用它：
+This is the one admin component worth designing on its own. Four places share
+it:
 
-| 用处 | schema 来源 |
+| Use | Schema source |
 | --- | --- |
-| 内容的类型专属字段 | `theme.json` 的 `kinds[kind].fields`（`THEME_FORMAT.md §5.2`） |
-| 主题配置项 | `theme.json` 的 `options`（`THEME_FORMAT.md §6`） |
-| 插件设置与密钥 | `plugin.json` 的 `settings` / `secrets`（`PLUGIN_API.md §4`） |
-| 插件面板的筛选器 | `plugin.json` 的 `panels[].filters` |
+| A content kind's specific fields | `theme.json`'s `kinds[kind].fields` (`THEME_FORMAT.md §5.2`) |
+| Theme options | `theme.json`'s `options` (`THEME_FORMAT.md §6`) |
+| Plugin settings and secrets | `plugin.json`'s `settings` and `secrets` (`PLUGIN_API.md §4`) |
+| A plugin panel's filters | `plugin.json`'s `panels[].filters` |
 
-**结论：主题作者与插件作者都不写后台代码。** 一旦允许他们写，后台的体积预算与安全边界就都没了。
+**The consequence: neither theme authors nor plugin authors write admin
+code.** The moment they can, the admin's size budget and its security boundary
+are both gone.
 
-字段类型到控件的映射见 `THEME_FORMAT.md §5.2` 的表。三条特殊处理：
+The field-type-to-control mapping is the table in `THEME_FORMAT.md §5.2`.
+Three cases are special:
 
-- `image` / `image[]` / `file` 打开媒体选择器，写回的是**相对路径**（`images/x.jpg`），不是 URL；
-- `reference` 打开内容选择器，写回目标的 **slug**；
-- `secrets` 类型的字段显示为「已设置 / 未设置」加一个「更换」按钮，**永不回显值**（`PLUGIN_API.md §7.3`）。
+- `image`, `image[]` and `file` open the media picker and write back a
+  **relative path** (`images/x.jpg`), never a URL.
+- `reference` opens the content picker and writes back the target's **slug**.
+- A `secrets` field shows "set" or "not set" with a Replace button, and
+  **never echoes the value** (`PLUGIN_API.md §7.3`).
 
-## 8. 媒体库与上传
+## 8. The media library and uploads
 
-上传在浏览器端完成（`ARCHITECTURE §8`）：
+Uploading happens in the browser (`ARCHITECTURE §8`):
 
 ```
-选文件
-  → 按嗅探出的真实类型校验（不看扩展名），只接受白名单（CONTENT_FORMAT §4.1）
-  → 算原图 sha256
-  → 问 API：这个 sha 已存在吗？存在则直接复用，不上传
-  → 不存在：Canvas 转 WebP，按 theme.json 的 imageWidths 生成变体
-  → 逐个 PUT 到 R2（经管理 API 签发的直传或代理）
-  → 写 media 行（尺寸、变体、原始文件名）
+pick a file
+  → validate against the sniffed real type, not the extension; accept only the allow-list (CONTENT_FORMAT §4.1)
+  → compute the original's sha256
+  → ask the API whether that sha exists; if so, reuse it and upload nothing
+  → otherwise: Canvas converts to WebP and generates the variants theme.json's imageWidths declares
+  → PUT each to R2, through the management API
+  → write the media row (dimensions, variants, original filename)
 ```
 
-- **svg 0.1 不接受**（`CONTENT_FORMAT §4.1`）；
-- 原图默认限制最大边长 2560（`site.max_image_edge`），可在设置里关闭以保留真正的原件；
-- 媒体库显示引用计数，`ref_count = 0` 的进「未使用的媒体」；
-- 删除未被引用的媒体是即时的；被引用的媒体不允许删除，提示先改内容。
+- **svg is not accepted in 0.1** (`CONTENT_FORMAT §4.1`).
+- Originals are limited to 2560 px on the longest edge by default
+  (`site.max_image_edge`), which can be turned off in settings to keep true
+  originals.
+- The library shows reference counts, and anything at `ref_count = 0` appears
+  under "unused media".
+- Deleting unreferenced media is immediate. Referenced media cannot be
+  deleted; the admin says to change the content first.
 
-**变体在浏览器与 CLI（`sharp`）两端产出，同规格但不保证逐字节一致**（`ARCHITECTURE §8`）。去重键是原图 sha，所以不影响正确性。
+**Variants produced in the browser and by the CLI's `sharp` match in
+specification but are not guaranteed byte-identical** (`ARCHITECTURE §8`).
+Deduplication keys on the original's sha, so correctness is unaffected.
 
-## 9. 外观页
+## 9. The Appearance page
 
-见 §4.1。补充两点：
+See §4.1. Two additions:
 
-- 配置项表单由 §7 的生成器按 `theme.json` 的 `options` 渲染，与内容字段、插件设置共用同一个组件；
-- 若当前主题不认识站点里已存在的某个内容类型，内容列表要在那些条目上标出「当前主题不支持此类型，按普通页面渲染」（`THEME_FORMAT.md §5.3`），并说明这不影响 URL 与数据。
+- The options form is rendered by §7's generator from `theme.json`'s
+  `options`, sharing one component with content fields and plugin settings.
+- When the current theme does not know a content kind the site already has,
+  the content list marks those items "the current theme does not support this
+  kind; rendered as an ordinary page" (`THEME_FORMAT.md §5.3`), and says that
+  this affects neither URLs nor data.
 
-## 10. 插件界面
+## 10. The plugin interface
 
-- 已装插件：一个开关，**即时生效**；设置与密钥表单，**即时生效**；
-- **安装 / 更新 / 移除插件不在后台**。这一页顶部如实说明「插件随源码部署，安装需要改仓库并重新部署」，并给出具体步骤（`PLUGIN_API.md §2`）。**不得做成点一下就装好的样子。**
-- 每个插件显示：版本、它用了哪些钩子、是否注入客户端 JS、是否影响缓存；
-- 带 `onRequest` 钩子的插件额外提示「本插件会在每个访客请求上运行」（`PLUGIN_API.md §5.1`）；
-- 面板按 `plugin.json` 的 `panels` 渲染（`PLUGIN_API.md §7.5`）。
+- An installed plugin has a switch, **immediate**, and settings and secrets
+  forms, **immediate**.
+- **Installing, updating and removing plugins are not in the admin.** The top
+  of this page says honestly that plugins ship with the source and that
+  installing one means changing the repository and redeploying, with the
+  concrete steps (`PLUGIN_API.md §2`). **It must not be dressed up as a
+  one-click install.**
+- Each plugin shows its version, which hooks it uses, whether it injects
+  client-side JavaScript, and whether it affects the cache.
+- A plugin declaring `onRequest` carries the extra note that it runs on every
+  visitor request (`PLUGIN_API.md §5.1`).
+- Panels render from `plugin.json`'s `panels` (`PLUGIN_API.md §7.5`).
 
-## 11. 设置里的「高级」
+## 11. Advanced, under Settings
 
-这是唯一允许出现底层名词的地方：
+This is the only place lower-level vocabulary is allowed:
 
-- **用量**：D1 行读/行写今日用量与上限、R2 存储、Worker 请求数。**D1 免费档超额当天不可用**（`ARCHITECTURE §2`），所以接近上限时必须显著提醒；
-- **缓存**：`cache_ttl` 设置、「清空全部缓存」（清边缘缓存）、「重建全部页面」（清空 `render_cache`）。两者都不丢东西——页面与片段都是派生数据，下次请求重新生成，代价只是那一次渲染。**无清缓存 token 时如实回报「没有清，缓存会自然过期」，不假装成功。**
-- **备份**：一键导出（`CONTENT_FORMAT §5`），并提示升级 Worker 前先导出（`ARCHITECTURE §15`）；
-- **诊断**：自定义域是否绑定、缓存是否生效、`CF_API_TOKEN` 是否配置、Resend 是否配置、schema 版本。
+- **Usage**: D1 rows read and written today against the limits, R2 storage,
+  Worker request count. **Exceeding D1's free tier makes it unavailable for
+  the day** (`ARCHITECTURE §2`), so approaching the limit must be prominently
+  flagged.
+- **Cache**: the `cache_ttl` setting, "purge all cached pages" (the edge
+  cache) and "rebuild all pages" (empty `render_cache`). Neither loses
+  anything — pages and fragments are both derived data, regenerated on the
+  next request, at the cost of that one render. **Without a purge token, say
+  honestly that nothing was purged and the cache will expire on its own.
+  Never claim success.**
+- **Backup**: one-click export (`CONTENT_FORMAT §5`), with a prompt to export
+  before upgrading the Worker (`ARCHITECTURE §15`).
+- **Diagnostics**: whether a custom domain is bound, whether caching is in
+  effect, whether `CF_API_TOKEN` is configured, whether Resend is configured,
+  and the schema version.
 
-**「需要部署」和「不需要部署」必须在界面上一次讲清**（`ARCHITECTURE §15`）。诊断页放一张对照表：内容、设置、主题配置项、插件开关与设置 = 即时；换主题、装插件、升级 Mallok = 重新部署。
+**"Needs a deployment" and "does not" must be stated in one place**
+(`ARCHITECTURE §15`). Diagnostics carries the table: content, settings, theme
+options, plugin switches and settings are immediate; changing theme,
+installing a plugin and upgrading Mallok need a redeploy.
 
-## 12. 认证界面
+## 12. The authentication interface
 
-见 `SECURITY.md` 的完整规则，界面侧：
+The complete rules are in `SECURITY.md`. On the interface side:
 
-- 登录页：邮箱 + 密码。**登录的 PBKDF2 成本受 Free 计划 10 ms CPU 约束**（`ARCHITECTURE §18` item 5），若实测迭代数低于 OWASP 建议，登录页与文档必须如实说明并给出加固选项（Cloudflare Access）；
-- session cookie `HttpOnly; Secure; SameSite=Strict`；
-- 所有写操作带 CSRF token；
-- API token 管理：生成（**只显示一次**）、命名、作用域、撤销、最后使用时间。
+- The sign-in page takes an email and a password. **The PBKDF2 cost is bound
+  by the free plan's 10 ms of CPU** (`ARCHITECTURE §18`, item 5); if the
+  measured iteration count falls below the OWASP recommendation, the sign-in
+  page and the documentation must say so honestly and offer the hardening
+  option (Cloudflare Access).
+- The session cookie is `HttpOnly; Secure; SameSite=Strict`.
+- Every write carries a CSRF token.
+- API token management: create (**shown once**), name, scopes, revoke, last
+  used.
 
-## 13. 质量门
+## 13. Quality gates
 
-| 项 | 要求 |
+| Item | Requirement |
 | --- | --- |
-| 无障碍 | 键盘可完整操作；表单控件有 label；焦点可见；`@axe-core/playwright` 无 serious/critical |
-| 首屏 | 后台首屏 JS ≤ 150 KB gzip（Preact + signals + 路由 + 表单生成器）。**由 `pnpm admin:size` 断言**，只计 `index.html` 引用的文件；2026-08-30 实测 20.6 KB。 |
-| CodeMirror | 按需分包，只在打开编辑器时加载。**渲染管线（unified/remark/rehype/LiquidJS）同样按需**——预览用的是真渲染器，所以它跟着编辑器一起加载，不进首屏。 |
-| 从 core 取东西 | **首屏加载的页面不要从 `src/core/index.ts` 这个 barrel 导入**，哪怕只取一个常量——barrel 会把整条渲染管线拖进首屏。2026-08-31 就这么中过一次：外观页为了一个字符串常量导入 barrel，首屏从 17 KB 涨到 137 KB，被 `pnpm admin:size` 拦下。无依赖的常量放 `src/core/constants.ts`。 |
-| 离线 | 不做离线支持；网络失败时给明确错误，不静默丢改动 |
-| 未保存改动 | 离开编辑器前拦截并确认 |
+| Accessibility | Fully keyboard operable; every form control has a label; focus is visible; `@axe-core/playwright` reports nothing serious or critical |
+| First load | Admin first-load JS ≤ 150 KB gzip (Preact, signals, the router, the form generator). **Asserted by `pnpm admin:size`**, counting only what `index.html` references; measured at 20.6 KB on 2026-08-30 |
+| CodeMirror | Chunked and loaded only when the editor opens. **The render pipeline — unified, remark, rehype, LiquidJS — is equally on demand**: the preview uses the real renderer, so it loads with the editor rather than on first load |
+| Importing from core | **A page on the first-load path must not import from the `src/core/index.ts` barrel**, not even for a single constant — the barrel drags the whole render pipeline into the first load. This happened once, on 2026-08-31: the Appearance page imported the barrel for one string constant and the first load went from 17 KB to 137 KB, caught by `pnpm admin:size`. Dependency-free constants live in `src/core/constants.ts` |
+| Offline | No offline support. A network failure produces a clear error and never silently discards a change |
+| Unsaved changes | Leaving the editor is intercepted and confirmed |
 
-## 14. 明确不做
+## 14. Deliberately not done
 
-- 不做可视化富文本编辑（0.2 的 Tiptap）；
-- 不做内容修订历史界面（保留 `rev` 字段但无 UI，`ARCHITECTURE §17`）；
-- 不做多人协作编辑；
-- 不做多用户与角色权限（0.1 只有一个管理员，但表结构不做单行假设）；
-- 不做插件注入前端代码的能力；
-- **不做主题或插件的上传安装界面**——它们是源码；
-- 不在后台暴露 SQL 控制台或任意查询；
-- 不做暗色模式之外的主题定制（后台自身的外观不是产品卖点）。
+- No visual rich-text editing; that is Tiptap in 0.2.
+- No revision-history interface; the `rev` column is kept but has no UI
+  (`ARCHITECTURE §17`).
+- No collaborative editing.
+- No multiple users or roles. 0.1 has one administrator, though the schema
+  makes no single-row assumption.
+- No ability for a plugin to inject frontend code.
+- **No upload-and-install interface for themes or plugins** — they are source
+  code.
+- No SQL console or arbitrary query interface in the admin.
+- No customisation of the admin's own appearance beyond dark mode; how the
+  admin looks is not a selling point.
