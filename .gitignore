@@ -13,4 +13,9 @@ coverage/
 
 # Scratch space for things being retired; never part of a release.
 _to_delete/
-.claude/settings.local.json
+
+# Editor and local tooling directories
+.idea/
+.vscode/
+.claude/
+CLAUDE.md

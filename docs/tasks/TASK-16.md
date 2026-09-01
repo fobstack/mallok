@@ -3,7 +3,7 @@
 - Status: **code complete, unverified against a real account.** Every step is
   implemented and the logic is tested; nothing has been run against
   Cloudflare, because creating real resources needs the product owner's
-  authorisation (`CLAUDE.md`, working rules).
+  authorisation (`docs/CONVENTIONS.md`, working rules).
 - Date: 2026-08-30
 - Scope: `mallok create`, `mallok destroy`, the site registry, and the
   per-site wrangler config.

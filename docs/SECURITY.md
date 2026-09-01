@@ -22,7 +22,7 @@
 
 ### 2.1 三个 Worker secret
 
-**Cloudflare 自身的凭据只进 Worker secret，绝不进 D1**（`CLAUDE.md` 工程边界）：
+**Cloudflare 自身的凭据只进 Worker secret，绝不进 D1**（`docs/CONVENTIONS.md` 工程边界）：
 
 | secret | 用途 | 权限范围 |
 | --- | --- | --- |

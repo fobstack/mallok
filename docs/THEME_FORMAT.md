@@ -124,7 +124,7 @@ export const files: ThemeFiles = {
 
 ## 5. `kinds`：内容类型声明
 
-核心只内建 `page` 与 `article`（`CLAUDE.md` 产品边界）。其余类型由主题声明。
+核心只内建 `page` 与 `article`（`docs/CONVENTIONS.md` 产品边界）。其余类型由主题声明。
 
 ```jsonc
 "kinds": {

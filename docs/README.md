@@ -41,6 +41,7 @@ rest are the contracts for individual subsystems.
 
 | Document | Contents |
 | --- | --- |
+| [CONVENTIONS.md](CONVENTIONS.md) | The boundaries a change is held to: what the product is, what the engineering may not do, style, fact discipline, working rules |
 | [TESTING.md](TESTING.md) *(zh)* | Test layers, the checklist for hard contracts, the coverage gate, the evidence format and its status values |
 | [ACCEPTANCE.md](ACCEPTANCE.md) *(zh)* | The 0.1 release gate, acceptance criteria grouped and numbered, cross-stage invariants, blockers |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) *(zh)* | The task sequence, the gates, the dependency graph, the definition of done per task |

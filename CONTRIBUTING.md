@@ -77,3 +77,10 @@ pnpm build && pnpm bundle:size
 ```
 
 All four must pass before a task is considered done.
+
+## Beyond style
+
+This document covers mechanical style. The boundaries a change is held to —
+what the product is and is not, what the engineering may not do, how a claim
+becomes a fact — are in [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md). Read it
+before proposing anything structural.
