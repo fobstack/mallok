@@ -1,0 +1,21 @@
+{% layout "layouts/base" %}
+{% block content %}
+<div class="doc-shell">
+  {% render "partials/sidebar" %}
+  <main id="main" class="doc">
+    <p class="kicker">{{ t.guide }} / {{ content.slug }}</p>
+    <h1 class="doc-title">{{ content.title }}</h1>
+    {% if content.description != "" %}<p class="lede">{{ content.description }}</p>{% endif %}
+    <div class="prose">{{ content.html }}</div>
+  </main>
+  {% if content.headings.size > 1 %}
+  <aside class="toc" aria-label="{{ t.on_this_page }}">
+    <p class="toc-h">{{ t.on_this_page }}</p>
+    <ol>
+      {% for h in content.headings %}{% if h.depth == 2 %}<li>{{ h.text }}</li>{% endif %}{% endfor %}
+    </ol>
+    <p class="toc-meta">{{ content.reading_time }} {{ t.min }}</p>
+  </aside>
+  {% endif %}
+</div>
+{% endblock %}

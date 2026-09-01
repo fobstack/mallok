@@ -1,0 +1,132 @@
+{
+  "id": "inquiry",
+  "name": "Inquiry",
+  "version": "0.1.0",
+  "description": "A zero-JavaScript inquiry form with spam protection, email notification and an admin panel.",
+  "official": true,
+  "pluginApi": 1,
+  "hooks": ["afterRender"],
+  "routes": [
+    {
+      "path": "submit",
+      "method": "POST",
+      "turnstile": true,
+      "rateLimit": {
+        "limit": 5,
+        "period": 60
+      }
+    }
+  ],
+  "settings": {
+    "recipient": {
+      "type": "string",
+      "label": "Recipient email",
+      "required": true
+    },
+    "from_address": {
+      "type": "string",
+      "label": "From address (a verified Resend sender)",
+      "required": true
+    },
+    "autoreply": {
+      "type": "boolean",
+      "label": "Send buyers an automatic confirmation",
+      "default": true
+    },
+    "turnstile_sitekey": {
+      "type": "string",
+      "label": "Turnstile site key (empty disables the widget)"
+    },
+    "thanks_path": {
+      "type": "string",
+      "label": "Thank-you page path",
+      "default": "/thank-you"
+    },
+    "autoreply_subject": {
+      "type": "string",
+      "label": "Autoreply subject (Liquid; empty uses the built-in per-language template)"
+    },
+    "autoreply_body": {
+      "type": "string",
+      "label": "Autoreply body (Liquid; variables: name, site_name, company, message)"
+    },
+    "blocked_countries": {
+      "type": "string[]",
+      "label": "Blocked countries (ISO 3166-1 alpha-2); their inquiries are stored as spam"
+    },
+    "blocked_keywords": {
+      "type": "string[]",
+      "label": "Blocked keywords; matching inquiries are stored as spam"
+    }
+  },
+  "secrets": {
+    "resend_api_key": {
+      "label": "Resend API key",
+      "required": true
+    },
+    "turnstile_secret": {
+      "label": "Turnstile secret key",
+      "required": false
+    }
+  },
+  "panels": [
+    {
+      "id": "inquiries",
+      "label": "Inquiries",
+      "type": "table",
+      "table": "p_inquiry_inquiry",
+      "columns": [
+        {
+          "field": "name",
+          "label": "Name"
+        },
+        {
+          "field": "email",
+          "label": "Email",
+          "type": "email"
+        },
+        {
+          "field": "country",
+          "label": "Country"
+        },
+        {
+          "field": "status",
+          "label": "Status",
+          "type": "badge"
+        },
+        {
+          "field": "created_at",
+          "label": "Received",
+          "type": "datetime"
+        }
+      ],
+      "filters": ["status"],
+      "detail": ["message", "company", "phone", "source_path", "locale"],
+      "orderBy": "created_at",
+      "actions": [
+        {
+          "id": "mark_replied",
+          "label": "Mark replied",
+          "type": "update"
+        },
+        {
+          "id": "mark_spam",
+          "label": "Mark spam",
+          "type": "update"
+        },
+        {
+          "id": "export_csv",
+          "label": "Export CSV",
+          "type": "download"
+        }
+      ]
+    }
+  ],
+  "affectsFragmentCache": false,
+  "clientScripts": [
+    {
+      "src": "https://challenges.cloudflare.com/turnstile/v0/api.js",
+      "purpose": "Turnstile anti-spam widget on the inquiry form"
+    }
+  ]
+}

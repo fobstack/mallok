@@ -1,0 +1,20 @@
+<footer class="footer">
+  <div class="shell">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">{{ site.name }}</div>
+        <p class="footer-note">{{ site.tagline }}</p>
+      </div>
+      <nav class="footer-col" aria-label="{{ t.nav }}">
+        <span class="footer-h">{{ t.sections }}</span>
+        {% for item in site.nav %}<a href="{{ item.href }}">{{ item.label }}</a>{% endfor %}
+      </nav>
+      <div class="footer-col">
+        <span class="footer-h">{{ t.trust }}</span>
+        {% assign certs = theme.options.certifications | split: "," %}
+        {% for cert in certs %}<span>{{ cert | strip }}</span>{% endfor %}
+      </div>
+    </div>
+    <div class="footer-base"><span>© {{ site.name }}</span><span>{{ t.powered_by }} Mallok</span></div>
+  </div>
+</footer>

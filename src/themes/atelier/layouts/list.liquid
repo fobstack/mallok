@@ -1,0 +1,24 @@
+{% layout "layouts/base" %}
+{% block content %}
+<section class="shell detail">
+  <p class="eyebrow">{% if list.tag != "" %}{{ t.tagged }}{% else %}{{ t.index }}{% endif %}</p>
+  <h1 class="detail-title">{{ page.title }}</h1>
+  <div class="card-grid">
+    {% for item in list.items %}
+    <a class="card" href="{{ item.path }}">
+      <div class="card-art card-art-{{ forloop.index | modulo: 3 | plus: 1 }}">
+        {% if item.frontmatter.grade %}<span class="card-tag">{{ item.frontmatter.grade }}</span>{% endif %}
+      </div>
+      <div class="card-body">
+        <h3>{{ item.title }}</h3>
+        {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  <nav class="pager" aria-label="{{ t.pagination }}">
+    {% if list.prev_path != "" %}<a href="{{ list.prev_path }}">← {{ t.prev }}</a>{% endif %}
+    {% if list.has_next %}<a href="{{ list.next_path }}">{{ t.next }} →</a>{% endif %}
+  </nav>
+</section>
+{% endblock %}

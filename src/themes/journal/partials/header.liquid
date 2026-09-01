@@ -1,0 +1,10 @@
+<header class="site-header">
+  <div class="container">
+    <a class="brand" href="{{ site.home_path }}">{{ site.name }}</a>
+    <nav>
+      {% for item in site.nav %}
+        <a href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+</header>

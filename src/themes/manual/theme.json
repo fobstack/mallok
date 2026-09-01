@@ -1,0 +1,56 @@
+{
+  "id": "manual",
+  "name": "Manual",
+  "description": "Premium documentation: centred hero, quick-start cards, guide rows, numbered sections in every article.",
+  "version": "2.0.0",
+  "themeApi": 1,
+  "home": "layouts/home.liquid",
+  "kinds": {
+    "page": {
+      "layout": "layouts/page.liquid",
+      "label": "Page"
+    },
+    "article": {
+      "layout": "layouts/article.liquid",
+      "listLayout": "layouts/list.liquid",
+      "label": "Guide",
+      "base": "guides"
+    }
+  },
+  "options": {
+    "hero_badge": {
+      "type": "string",
+      "label": "Hero badge",
+      "default": ""
+    },
+    "hero_title": {
+      "type": "string",
+      "label": "Hero headline (empty uses the site name)",
+      "default": ""
+    },
+    "help_title": {
+      "type": "string",
+      "label": "Help box title",
+      "default": "Can't find it?"
+    },
+    "help_text": {
+      "type": "string",
+      "label": "Help box text",
+      "default": "Open an issue and we'll write the missing page."
+    },
+    "help_label": {
+      "type": "string",
+      "label": "Help box link label",
+      "default": "Ask on GitHub"
+    },
+    "help_href": {
+      "type": "string",
+      "label": "Help box link (empty hides the box)",
+      "default": ""
+    }
+  },
+  "locales": ["en", "zh"],
+  "defaultLocale": "en",
+  "imageWidths": [480, 960, 1440],
+  "clientScripts": []
+}

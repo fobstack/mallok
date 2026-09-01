@@ -1,0 +1,13 @@
+{% layout "layouts/base" %}
+{% block content %}
+<article class="frame sheet">
+  {% if content.frontmatter.year %}<p class="sheet-kicker">{{ content.frontmatter.year }}</p>{% endif %}
+  <h1>{{ content.title }}</h1>
+  <dl class="facts">
+    {% if content.frontmatter.client %}<div><dt>{{ t.client }}</dt><dd>{{ content.frontmatter.client }}</dd></div>{% endif %}
+    {% if content.frontmatter.discipline %}<div><dt>{{ t.discipline }}</dt><dd>{{ content.frontmatter.discipline }}</dd></div>{% endif %}
+    {% if content.frontmatter.materials %}<div><dt>{{ t.materials }}</dt><dd>{{ content.frontmatter.materials | join: ", " }}</dd></div>{% endif %}
+  </dl>
+  <div class="prose">{{ content.html }}</div>
+</article>
+{% endblock %}

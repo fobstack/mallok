@@ -1,0 +1,8 @@
+{% layout "layouts/base" %}
+{% block content %}
+<article class="frame sheet">
+  <p class="sheet-kicker">{{ content.published_at | date: "%Y" }}</p>
+  <h1>{{ content.title }}</h1>
+  <div class="prose">{{ content.html }}</div>
+</article>
+{% endblock %}

@@ -1,0 +1,63 @@
+{% layout "layouts/base" %}
+{% block content %}
+<section class="col lead-zone">
+  {% for item in recent.article %}
+    {% if forloop.first %}
+    <article class="lead">
+      <a class="lead-art sec-{{ item.frontmatter.section }}" href="{{ item.path }}" aria-hidden="true" tabindex="-1">
+        <span class="lead-art-dots"></span>
+        <span class="lead-art-ring"></span>
+        <span class="lead-chip">{{ item.frontmatter.section | default: t.story }}</span>
+      </a>
+      <h1 class="lead-title"><a href="{{ item.path }}">{{ item.title }}</a></h1>
+      {% if item.description != "" %}<p class="lead-sell">{{ item.description }}</p>{% endif %}
+      <p class="byline">{% if item.frontmatter.byline %}{{ t.by }} <strong>{{ item.frontmatter.byline }}</strong> · {% endif %}<time datetime="{{ item.published_at }}">{{ item.published_at | date: "%d %b %Y" }}</time></p>
+    </article>
+    {% endif %}
+  {% endfor %}
+  {% if recent.article.size > 1 %}
+  <aside class="rail" aria-label="{{ t.latest }}">
+    <h2 class="rail-h">{{ t.latest }}</h2>
+    {% for item in recent.article limit: 5 %}
+      {% unless forloop.first %}
+      <a class="rail-item sec-{{ item.frontmatter.section }}" href="{{ item.path }}">
+        <span>
+          <span class="rail-kicker">{{ item.frontmatter.section | default: t.story }}</span>
+          <span class="rail-title">{{ item.title }}</span>
+        </span>
+        <span class="rail-thumb"></span>
+      </a>
+      {% endunless %}
+    {% endfor %}
+  </aside>
+  {% endif %}
+</section>
+
+{% if recent.article.size > 5 %}
+<section class="col wire">
+  <div class="wire-head"><h2>{{ t.more }}</h2><div class="wire-rule"></div></div>
+  <div class="wire-grid">
+    {% for item in recent.article offset: 5 %}
+    <a class="brief sec-{{ item.frontmatter.section }}" href="{{ item.path }}">
+      <span class="brief-art"></span>
+      <h3>{{ item.title }}</h3>
+      {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+      <time datetime="{{ item.published_at }}">{{ item.published_at | date: "%d %b %Y" }}</time>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if theme.options.newsletter_href != "" %}
+<section class="col">
+  <div class="subscribe">
+    <div>
+      <h2>{{ theme.options.newsletter_title }}</h2>
+      <p>{{ theme.options.newsletter_lede }}</p>
+    </div>
+    <a class="subscribe-btn" href="{{ theme.options.newsletter_href }}">{{ theme.options.accent_label }}</a>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

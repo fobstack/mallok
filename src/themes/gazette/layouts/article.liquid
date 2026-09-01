@@ -1,0 +1,14 @@
+{% layout "layouts/base" %}
+{% block content %}
+<article class="col story sec-{{ content.frontmatter.section }}">
+  <span class="chip">{{ content.frontmatter.section | default: t.story }}</span>
+  <h1>{{ content.title }}</h1>
+  {% if content.description != "" %}<p class="sell">{{ content.description }}</p>{% endif %}
+  <p class="byline story-byline">
+    {% if content.frontmatter.byline %}{{ t.by }} <strong>{{ content.frontmatter.byline }}</strong> · {% endif %}
+    <time datetime="{{ content.published_at }}">{{ content.published_at | date: "%d %b %Y" }}</time>
+    · {{ content.reading_time }} {{ t.min_read }}
+  </p>
+  <div class="prose">{{ content.html }}</div>
+</article>
+{% endblock %}

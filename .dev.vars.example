@@ -1,0 +1,5 @@
+# Copy to .dev.vars for `wrangler dev`. Never commit .dev.vars.
+MALLOK_SECRET=change-me-to-32-random-bytes
+# Optional: enables global cache purge (needs a zone-scoped token).
+# CF_API_TOKEN=
+# CF_ZONE_ID=

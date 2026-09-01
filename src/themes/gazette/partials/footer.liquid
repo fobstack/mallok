@@ -1,0 +1,12 @@
+<footer class="colophon">
+  <div class="col colophon-in">
+    <div>
+      <div class="colophon-name">{{ site.name }}</div>
+      <div class="colophon-note">{{ t.footer_note }}</div>
+    </div>
+    <nav class="colophon-nav" aria-label="{{ t.sections }}">
+      {% for item in site.nav %}<a href="{{ item.href }}">{{ item.label }}</a>{% endfor %}
+      <a href="/feed.xml">RSS</a>
+    </nav>
+  </div>
+</footer>

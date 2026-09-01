@@ -1,0 +1,55 @@
+/**
+ * Default Wrangler configuration for a single Mallok site.
+ *
+ * This file is what the "Deploy to Cloudflare" button reads, so every binding
+ * carries a default resource name. `npx mallok create` writes a per-site copy
+ * of this file to `.mallok/sites/<slug>.jsonc` with real names and ids.
+ * See docs/CLOUDFLARE_RESOURCES.md.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mallok-site",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "minify": true,
+  // Static Assets carries the admin SPA (`_mallok/app/**`) and each theme's
+  // files (`theme/<id>/<version>/**`). Requests that match are served by
+  // Cloudflare without invoking the Worker; everything else falls through.
+  // See docs/CLOUDFLARE_RESOURCES.md §5.
+  "assets": {
+    "directory": "./dist/assets",
+    "binding": "ASSETS",
+    "not_found_handling": "none"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mallok-site-db",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "mallok-site-media"
+    }
+  ],
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    "MALLOK_SITE": "site"
+  },
+  // Theme templates, stylesheets and SQL migrations are bundled as plain text.
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.liquid", "**/*.css", "**/*.sql", "**/*.md"],
+      "fallthrough": true
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

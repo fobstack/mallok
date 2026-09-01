@@ -1,0 +1,25 @@
+{% layout "layouts/base" %}
+{% block content %}
+<div class="doc-shell">
+  {% render "partials/sidebar" %}
+  <main id="main" class="doc">
+    <p class="kicker">{{ t.index }}</p>
+    <h1 class="doc-title">{{ page.title }}</h1>
+    <div class="rows rows-flat">
+      {% for item in list.items %}
+      <a class="row" href="{{ item.path }}">
+        <span class="row-body">
+          <strong>{{ item.title }}</strong>
+          {% if item.description != "" %}<span>{{ item.description }}</span>{% endif %}
+        </span>
+        <svg class="row-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      {% endfor %}
+    </div>
+    <nav class="pager" aria-label="{{ t.pagination }}">
+      {% if list.prev_path != "" %}<a href="{{ list.prev_path }}">← {{ t.prev }}</a>{% endif %}
+      {% if list.has_next %}<a href="{{ list.next_path }}">{{ t.next }} →</a>{% endif %}
+    </nav>
+  </main>
+</div>
+{% endblock %}

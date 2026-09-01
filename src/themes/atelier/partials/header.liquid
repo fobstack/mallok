@@ -1,0 +1,48 @@
+<header class="topbar">
+  <div class="shell topbar-in">
+    <a class="brand" href="{{ site.home_path }}">
+      <svg width="30" height="30" viewBox="0 0 34 34" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="31" height="31" rx="8" stroke="currentColor" stroke-width="3"/><path d="M10 12h14M17 12v11" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+      <span>{{ site.name }}</span>
+    </a>
+    {%- comment -%}
+      The mobile menu is a checkbox and a label, which is the one disclosure
+      pattern that needs no JavaScript and can still be forced open by CSS at
+      wide viewports. A <details> element cannot: a closed one hides its own
+      content through user-agent behaviour that `display` does not override,
+      so the desktop nav would vanish.
+    {%- endcomment -%}
+    <input class="menu-toggle" type="checkbox" id="menu-toggle" aria-label="{{ t.menu }}">
+    <label class="menu-button" for="menu-toggle" aria-hidden="true">
+      <svg class="menu-open" width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 6h16M3 11h16M3 16h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+      <svg class="menu-close" width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M5 5l12 12M17 5L5 17" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+    </label>
+    <nav class="menu-nav" aria-label="{{ t.nav }}">
+      {% for item in site.nav %}<a href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>{% endfor %}
+      {%- comment -%}
+        A <details> disclosure: a real dropdown with no JavaScript, keyboard
+        operable, and it scales — two languages fit inline, eight do not.
+        Unlike the mobile menu this one needs no breakpoint override, so
+        <details> is the right element rather than a checkbox.
+
+        Each language is named in its own words (`language_name` in the
+        theme's locale pack), because a reader looking for their language
+        scans for its own name.
+      {%- endcomment -%}
+      {% if page.alternates.size > 1 %}
+      <details class="langs">
+        <summary aria-label="{{ t.language }}">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.4" stroke="currentColor" stroke-width="1.4"/><path d="M1.6 8h12.8M8 1.6c1.7 1.8 2.6 4 2.6 6.4S9.7 12.6 8 14.4C6.3 12.6 5.4 10.4 5.4 8S6.3 3.4 8 1.6z" stroke="currentColor" stroke-width="1.4"/></svg>
+          {% for alt in page.alternates %}{% if alt.locale == site.locale %}{{ alt.name }}{% endif %}{% endfor %}
+          <svg class="chev" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6.5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <ul>
+          {% for alt in page.alternates %}
+          <li><a href="{{ alt.href }}" hreflang="{{ alt.locale }}"{% if alt.locale == site.locale %} aria-current="true"{% endif %}>{{ alt.name }}</a></li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+      <a class="btn btn-solid btn-sm" href="{{ theme.options.quote_href }}">{{ t.request_quote }}</a>
+    </nav>
+  </div>
+</header>

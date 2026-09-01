@@ -1,0 +1,14 @@
+<div class="utility">
+  <div class="col utility-in">
+    <span>{{ site.tagline }}</span>
+    <a class="utility-cta" href="{{ theme.options.accent_href }}">{{ theme.options.accent_label }}</a>
+  </div>
+</div>
+<header class="mast">
+  <div class="col mast-in">
+    <a class="mast-name" href="{{ site.home_path }}">{{ site.name }}</a>
+    <nav aria-label="{{ t.sections }}">
+      {% for item in site.nav %}<a href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>{% endfor %}
+    </nav>
+  </div>
+</header>

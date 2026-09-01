@@ -1,0 +1,11 @@
+<header class="bar">
+  <div class="bar-in">
+    <a class="logo" href="{{ site.home_path }}">
+      <svg width="28" height="28" viewBox="0 0 30 30" fill="none" aria-hidden="true"><rect x="2" y="2" width="26" height="26" rx="7" fill="currentColor"/><path d="M9 20V10l6 7 6-7v10" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>{{ site.name }}</span>
+    </a>
+    <nav aria-label="{{ t.nav }}">
+      {% for item in site.nav %}<a href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>{% endfor %}
+    </nav>
+  </div>
+</header>

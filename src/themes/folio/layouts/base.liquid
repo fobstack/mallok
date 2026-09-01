@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="{{ page.locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if page.kind == "home" %}{{ site.name }}{% else %}{{ page.title }} — {{ site.name }}{% endif %}</title>
+  {% if page.description != "" %}<meta name="description" content="{{ page.description }}">{% endif %}
+  <link rel="canonical" href="{{ page.canonical }}">
+  {{ page.head }}
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=Instrument+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{{ theme.asset_base }}/style.css">
+</head>
+<body>
+  <a class="skip" href="#main">{{ t.skip }}</a>
+  {% render "partials/header" %}
+  <main id="main">{% block content %}{% endblock %}</main>
+  {% render "partials/footer" %}
+</body>
+</html>

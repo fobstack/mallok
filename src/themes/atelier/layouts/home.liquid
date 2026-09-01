@@ -1,0 +1,135 @@
+{% layout "layouts/base" %}
+{% block content %}
+<section class="hero">
+  <div class="shell hero-grid">
+    <div class="hero-copy">
+      {% if theme.options.hero_badge != "" %}
+      <p class="badge">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1l1.8 3.6L13 5.2l-3 2.9.7 4L7 10.2 3.3 12l.7-4-3-2.9 4.2-.6L7 1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+        {{ theme.options.hero_badge }}
+      </p>
+      {% endif %}
+      <h1>{{ theme.options.hero_title }}</h1>
+      <p class="hero-lede">{{ theme.options.hero_lede }}</p>
+      <div class="hero-actions">
+        <a class="btn btn-solid" href="{{ theme.options.quote_href }}">{{ t.request_quote }}</a>
+        {% for item in site.nav %}{% if forloop.first %}<a class="btn btn-ghost" href="{{ item.href }}">{{ t.browse }} {{ item.label | downcase }}</a>{% endif %}{% endfor %}
+      </div>
+      {% assign stat_items = theme.options.stats | split: ";;" %}
+      {% if stat_items.size > 0 %}
+      <dl class="stats">
+        {% for stat in stat_items %}
+          {% assign bits = stat | split: "|" %}
+          <div class="stat"><dt>{{ bits[1] | strip }}</dt><dd>{{ bits[0] | strip }}</dd></div>
+        {% endfor %}
+      </dl>
+      {% endif %}
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <div class="hero-panel">
+        <div class="hero-grid-lines"></div>
+        <div class="hero-glow"></div>
+        <div class="hero-bar hero-bar-1"></div>
+        <div class="hero-bar hero-bar-2"></div>
+        <div class="hero-bar hero-bar-3"></div>
+        {% for item in recent.product %}{% if forloop.first %}
+        <div class="hero-card">
+          <div>
+            <span class="hero-card-eyebrow">{{ t.in_stock }}</span>
+            <span class="hero-card-title">{{ item.frontmatter.grade }}{% if item.frontmatter.standard %} · {{ item.frontmatter.standard }}{% endif %}</span>
+          </div>
+          {% if item.frontmatter.lead_time %}<span class="hero-card-chip">{{ item.frontmatter.lead_time }}</span>{% endif %}
+        </div>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% assign certs = theme.options.certifications | split: "," %}
+{% if certs.size > 0 %}
+<section class="certs" aria-label="{{ t.trust }}">
+  <span class="certs-label">{{ t.certified }}</span>
+  {% for cert in certs %}<span class="cert-pill">{{ cert | strip }}</span>{% endfor %}
+</section>
+{% endif %}
+
+{% if recent.product.size > 0 %}
+<section class="products shell">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">{{ t.product_range }}</p>
+      <h2>{{ t.products_title }}</h2>
+    </div>
+    {% for item in site.nav %}{% if forloop.first %}
+    <a class="section-link" href="{{ item.href }}">{{ t.all_products }}
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10m0 0L9 4m4 4l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </a>
+    {% endif %}{% endfor %}
+  </div>
+  <div class="card-grid">
+    {% for item in recent.product limit: 3 %}
+    <a class="card" href="{{ item.path }}">
+      <div class="card-art card-art-{{ forloop.index }}">
+        {% if item.frontmatter.grade %}<span class="card-tag">{{ item.frontmatter.grade }}</span>{% endif %}
+      </div>
+      <div class="card-body">
+        <h3>{{ item.title }}</h3>
+        {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+        <div class="card-foot">
+          <span>{% if item.frontmatter.moq %}{{ t.moq }} {{ item.frontmatter.moq }}{% endif %}{% if item.frontmatter.lead_time %} · {{ item.frontmatter.lead_time }}{% endif %}</span>
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10m0 0L9 4m4 4l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="shell">
+  <div class="band">
+    <div>
+      <h2 class="band-title">{{ theme.options.band_title }}</h2>
+      <p class="band-lede">{{ theme.options.band_lede }}</p>
+    </div>
+    <div class="band-features">
+      {% assign features = theme.options.band_features | split: ";;" %}
+      {% for feature in features %}
+        {% assign bits = feature | split: "|" %}
+        <div class="feature">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div><strong>{{ bits[0] | strip }}</strong><span>{{ bits[1] | strip }}</span></div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if recent.article.size > 0 %}
+<section class="notes shell">
+  <div class="section-head">
+    <h2>{{ t.from_the_mill }}</h2>
+  </div>
+  <div class="note-grid">
+    {% for item in recent.article limit: 3 %}
+    <a class="note-card" href="{{ item.path }}">
+      <time datetime="{{ item.published_at }}">{{ item.published_at | date: "%d %b %Y" }}</time>
+      <h3>{{ item.title }}</h3>
+      {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="shell">
+  <div class="cta">
+    <div>
+      <h2>{{ theme.options.cta_title }}</h2>
+      <p>{{ theme.options.cta_lede }}</p>
+    </div>
+    <a class="btn btn-solid btn-lg" href="{{ theme.options.quote_href }}">{{ t.request_quote }}</a>
+  </div>
+</section>
+{% endblock %}

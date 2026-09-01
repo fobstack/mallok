@@ -1,0 +1,71 @@
+{
+  "id": "folio",
+  "name": "Folio",
+  "description": "A light gallery portfolio: oversized serif intro, full-bleed featured project, editorial grid.",
+  "version": "2.0.0",
+  "themeApi": 1,
+  "home": "layouts/home.liquid",
+  "kinds": {
+    "page": {
+      "layout": "layouts/page.liquid",
+      "label": "Page"
+    },
+    "project": {
+      "layout": "layouts/project.liquid",
+      "listLayout": "layouts/list.liquid",
+      "label": "Project",
+      "base": "work",
+      "fields": {
+        "year": {
+          "type": "string",
+          "label": "Year",
+          "required": true
+        },
+        "client": {
+          "type": "string",
+          "label": "Client"
+        },
+        "discipline": {
+          "type": "string",
+          "label": "Discipline"
+        },
+        "materials": {
+          "type": "string[]",
+          "label": "Materials"
+        }
+      }
+    },
+    "article": {
+      "layout": "layouts/article.liquid",
+      "listLayout": "layouts/list.liquid",
+      "label": "Writing",
+      "base": "writing"
+    }
+  },
+  "options": {
+    "intro_note": {
+      "type": "string",
+      "label": "Intro paragraph",
+      "default": ""
+    },
+    "meta_line": {
+      "type": "string",
+      "label": "Meta line (top right of intro)",
+      "default": ""
+    },
+    "enquire_label": {
+      "type": "string",
+      "label": "Enquire link label",
+      "default": "Enquire"
+    },
+    "enquire_href": {
+      "type": "string",
+      "label": "Enquire link target (empty hides it)",
+      "default": "/contact"
+    }
+  },
+  "locales": ["en", "zh"],
+  "defaultLocale": "en",
+  "imageWidths": [480, 960, 1440, 1920],
+  "clientScripts": []
+}

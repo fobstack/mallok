@@ -1,0 +1,9 @@
+<header class="top">
+  <div class="frame top-in">
+    <a class="studio" href="{{ site.home_path }}">{{ site.name }}</a>
+    <nav aria-label="{{ t.nav }}">
+      {% for item in site.nav %}<a href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>{% endfor %}
+      {% if theme.options.enquire_href != "" %}<a class="enquire" href="{{ theme.options.enquire_href }}">{{ theme.options.enquire_label }}</a>{% endif %}
+    </nav>
+  </div>
+</header>

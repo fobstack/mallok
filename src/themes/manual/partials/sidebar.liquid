@@ -1,0 +1,8 @@
+<nav class="side" aria-label="{{ t.sections }}">
+  <p class="side-h">{{ t.sections }}</p>
+  <ul>
+    {% for item in site.nav %}
+    <li><a href="{{ item.href }}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a></li>
+    {% endfor %}
+  </ul>
+</nav>

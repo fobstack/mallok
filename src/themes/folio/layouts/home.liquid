@@ -1,0 +1,55 @@
+{% layout "layouts/base" %}
+{% block content %}
+<section class="frame intro">
+  <h1>{{ site.tagline | default: site.name }}</h1>
+  <div class="intro-row">
+    {% if theme.options.intro_note != "" %}<p class="intro-note">{{ theme.options.intro_note }}</p>{% else %}<span></span>{% endif %}
+    {% if theme.options.meta_line != "" %}<span class="intro-meta">{{ theme.options.meta_line }}</span>{% endif %}
+  </div>
+</section>
+
+{% for item in recent.project %}
+  {% if forloop.first %}
+<section class="frame">
+  <a class="featured mat-1" href="{{ item.path }}">
+    <span class="grain"></span>
+    <span class="featured-shape"></span>
+    <span class="featured-foot">
+      <span>
+        <span class="featured-kicker">{% if item.frontmatter.discipline %}{{ item.frontmatter.discipline }}{% endif %}{% if item.frontmatter.client %} · {{ item.frontmatter.client }}{% endif %}</span>
+        <span class="featured-title">{{ item.title }}</span>
+      </span>
+      <span class="featured-btn">{{ t.view_project }}
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10m0 0L9 4m4 4l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+    </span>
+  </a>
+</section>
+  {% endif %}
+{% endfor %}
+
+{% if recent.project.size > 1 %}
+<section class="frame grid">
+  {% for item in recent.project %}
+    {% unless forloop.first %}
+    <a class="cell" href="{{ item.path }}">
+      <span class="cell-art mat-{{ forloop.index | modulo: 3 | plus: 1 }}"><span class="grain"></span></span>
+      <span class="cell-row"><span class="cell-title">{{ item.title }}</span><span class="cell-year">{{ item.frontmatter.year }}</span></span>
+      <span class="cell-meta">{% if item.frontmatter.discipline %}{{ item.frontmatter.discipline }}{% endif %}{% if item.frontmatter.materials %} · {{ item.frontmatter.materials | join: ", " }}{% endif %}</span>
+    </a>
+    {% endunless %}
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if recent.article.size > 0 %}
+<section class="frame writing">
+  <p class="w-label">{{ t.writing }}</p>
+  <ul>
+    {% for item in recent.article %}
+    <li><a href="{{ item.path }}">{{ item.title }}</a></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

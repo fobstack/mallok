@@ -1,0 +1,22 @@
+{% layout "layouts/base" %}
+{% block content %}
+  <article class="post">
+    <header class="post-header">
+      <h1>{{ content.title }}</h1>
+      <p class="meta">
+        <time datetime="{{ content.published_at }}">{{ content.published_at | date: "%Y-%m-%d" }}</time>
+        {% if theme.options.show_reading_time %}
+          · {{ content.reading_time }} {{ t.min_read }}
+        {% endif %}
+      </p>
+      {% if content.translations.size > 1 %}
+        <p class="translations">
+          {% for alt in content.translations %}
+            {% if alt.locale != content.locale %}<a href="{{ alt.href }}" hreflang="{{ alt.locale }}">{{ alt.locale }}</a>{% endif %}
+          {% endfor %}
+        </p>
+      {% endif %}
+    </header>
+    <div class="prose">{{ content.html }}</div>
+  </article>
+{% endblock %}

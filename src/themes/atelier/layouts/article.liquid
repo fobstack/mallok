@@ -1,0 +1,13 @@
+{% layout "layouts/base" %}
+{% block content %}
+<article class="shell detail detail-narrow">
+  <p class="eyebrow">{{ t.note }} · <time datetime="{{ content.published_at }}">{{ content.published_at | date: "%d %b %Y" }}</time></p>
+  <h1 class="detail-title">{{ content.title }}</h1>
+  <div class="prose">{{ content.html }}</div>
+  {% if content.frontmatter.tags.size > 0 %}
+  <nav class="tag-row" aria-label="{{ t.tags }}">
+    {% for tag in content.frontmatter.tags %}<a href="/tags/{{ tag | url_encode }}">{{ tag }}</a>{% endfor %}
+  </nav>
+  {% endif %}
+</article>
+{% endblock %}

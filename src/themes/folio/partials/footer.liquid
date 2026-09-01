@@ -1,0 +1,8 @@
+<footer class="base">
+  <div class="frame base-in">
+    <span class="base-name">{{ site.name }}</span>
+    <nav aria-label="{{ t.nav }}">
+      {% for item in site.nav %}<a href="{{ item.href }}">{{ item.label }}</a>{% endfor %}
+    </nav>
+  </div>
+</footer>

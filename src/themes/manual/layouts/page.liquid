@@ -1,0 +1,10 @@
+{% layout "layouts/base" %}
+{% block content %}
+<div class="doc-shell">
+  {% render "partials/sidebar" %}
+  <main id="main" class="doc">
+    <h1 class="doc-title">{{ content.title }}</h1>
+    <div class="prose">{{ content.html }}</div>
+  </main>
+</div>
+{% endblock %}

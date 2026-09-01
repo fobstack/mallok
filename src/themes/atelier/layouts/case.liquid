@@ -1,0 +1,69 @@
+{% layout "layouts/base" %}
+{% block content %}
+<article class="shell detail">
+  <p class="eyebrow">{{ t.case_study }}{% if content.frontmatter.year %} · {{ content.frontmatter.year }}{% endif %}</p>
+  <h1 class="detail-title">{{ content.title }}</h1>
+  {% if content.description != "" %}<p class="detail-lede">{{ content.description }}</p>{% endif %}
+
+  <dl class="case-facts">
+    {% if content.frontmatter.client %}<div><dt>{{ t.client }}</dt><dd>{{ content.frontmatter.client }}</dd></div>{% endif %}
+    {% if content.frontmatter.industry %}<div><dt>{{ t.industry }}</dt><dd>{{ content.frontmatter.industry }}</dd></div>{% endif %}
+    {% if content.frontmatter.country %}<div><dt>{{ t.country }}</dt><dd>{{ content.frontmatter.country }}</dd></div>{% endif %}
+    {% if content.refs.product %}<div><dt>{{ t.material }}</dt><dd><a href="{{ content.refs.product.path }}">{{ content.refs.product.title }}</a></dd></div>{% endif %}
+  </dl>
+
+  {% assign shots = content.frontmatter.gallery %}
+  {% if shots.size > 0 %}
+  <figure class="gallery" role="group" aria-label="{{ t.gallery }}">
+    <div class="gallery-strip">
+      {% for path in shots %}
+        {% assign shot = content.images[path] %}
+        {% if shot %}
+        <img id="shot-{{ forloop.index }}" class="gallery-frame" src="{{ shot.url }}"{% if shot.srcset != "" %} srcset="{{ shot.srcset }}" sizes="(max-width: 60rem) 100vw, 52rem"{% endif %}{% if shot.width %} width="{{ shot.width }}" height="{{ shot.height }}"{% endif %} alt="{% if shot.alt != "" %}{{ shot.alt }}{% else %}{{ content.title }} {{ forloop.index }}{% endif %}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" decoding="async">
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% if shots.size > 1 %}
+    <nav class="gallery-dots" aria-label="{{ t.gallery }}">
+      {% for path in shots %}<a href="#shot-{{ forloop.index }}"><span class="visually-hidden">{{ forloop.index }}</span></a>{% endfor %}
+    </nav>
+    {% endif %}
+  </figure>
+  {% endif %}
+
+  <div class="prose">{{ content.html }}</div>
+
+  {% assign outcomes = content.frontmatter.outcomes %}
+  {% if outcomes != blank %}
+  <section class="outcomes">
+    <h2 class="outcomes-title">{{ t.outcome }}</h2>
+    <dl class="outcome-grid">
+      {% for pair in outcomes %}<div class="outcome"><dt>{{ pair[0] }}</dt><dd>{{ pair[1] }}</dd></div>{% endfor %}
+    </dl>
+  </section>
+  {% endif %}
+
+  <div class="cta cta-inline">
+    <div>
+      <h2>{{ theme.options.cta_title }}</h2>
+      <p>{{ theme.options.cta_lede }}</p>
+    </div>
+    <a class="btn btn-solid btn-lg" href="{{ theme.options.quote_href }}">{{ t.discuss_project }}</a>
+  </div>
+
+  {% if content.siblings.size > 0 %}
+  <section class="more">
+    <div class="section-head"><h2>{{ t.more_cases }}</h2></div>
+    <div class="note-grid">
+      {% for item in content.siblings limit: 3 %}
+      <a class="note-card" href="{{ item.path }}">
+        {% if item.frontmatter.industry %}<span class="note-kicker">{{ item.frontmatter.industry }}</span>{% endif %}
+        <h3>{{ item.title }}</h3>
+        {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

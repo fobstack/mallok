@@ -1,0 +1,82 @@
+{
+  "name": "mallok",
+  "version": "0.1.0-dev",
+  "private": true,
+  "description": "Open-source, Cloudflare-native content website. Markdown in D1, instant publishing, no build step.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.34.5",
+  "scripts": {
+    "build": "pnpm run build:themes && pnpm run build:admin && pnpm run build:cli && wrangler deploy --dry-run --outdir dist/worker",
+    "dev": "pnpm run build:themes && pnpm run build:admin && wrangler dev",
+    "deploy": "pnpm run build && node scripts/ensure-secret.mjs && wrangler deploy",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/core/tsconfig.json --noEmit && tsc -p src/admin/tsconfig.json --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "bench:fragment": "pnpm run build:core && node scripts/bench-fragment.mjs",
+    "bench:pbkdf2": "node scripts/bench-pbkdf2.mjs",
+    "bundle:size": "pnpm run build && node scripts/bundle-size.mjs",
+    "build:core": "node scripts/build-core.mjs",
+    "build:themes": "node scripts/build-themes.mjs",
+    "preview": "node scripts/preview.mjs",
+    "build:admin": "vite build",
+    "dev:admin": "vite",
+    "admin:size": "node scripts/admin-size.mjs",
+    "build:cli": "node scripts/build-cli.mjs",
+    "build:site": "pnpm run build:cli && node dist/cli/index.js build . --theme ./src/themes/atelier --out dist/site"
+  },
+  "dependencies": {
+    "hast-util-to-string": "3.0.1",
+    "liquidjs": "10.29.0",
+    "mdast-util-to-string": "4.0.0",
+    "rehype-sanitize": "6.0.0",
+    "rehype-stringify": "10.0.1",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "remark-rehype": "11.1.2",
+    "unified": "11.0.5",
+    "unist-util-visit": "5.1.0",
+    "yaml": "2.9.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.11",
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@cloudflare/workers-types": "5.20260828.1",
+    "@codemirror/commands": "^6.11.0",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.9",
+    "@preact/preset-vite": "^2.10.6",
+    "@preact/signals": "^2.11.1",
+    "@types/hast": "3.0.5",
+    "@types/mdast": "4.0.4",
+    "@types/node": "22.20.1",
+    "codemirror": "^6.0.2",
+    "esbuild": "0.28.1",
+    "fflate": "^0.8.3",
+    "preact": "^10.29.8",
+    "sharp": "^0.35.4",
+    "typescript": "5.9.3",
+    "vite": "^8.2.2",
+    "vitest": "4.1.11",
+    "wrangler": "4.124.0"
+  },
+  "cloudflare": {
+    "bindings": {
+      "MALLOK_SECRET": {
+        "description": "Required. Signs sessions and encrypts plugin API keys. Generate one with `openssl rand -base64 32`. Keep it — changing it signs everyone out and makes stored plugin keys unreadable."
+      },
+      "CF_API_TOKEN": {
+        "description": "Optional. A Cloudflare API token with **Zone → Cache Purge → Purge**, scoped to this site’s zone. Without it the site works, but an edit becomes visible when the cached page expires rather than immediately."
+      },
+      "CF_ZONE_ID": {
+        "description": "Optional, and only useful together with `CF_API_TOKEN`. The Zone ID shown on your domain’s overview page in the Cloudflare dashboard."
+      }
+    }
+  }
+}

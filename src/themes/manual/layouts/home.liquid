@@ -1,0 +1,61 @@
+{% layout "layouts/base" %}
+{% block content %}
+<main id="main">
+  <section class="hero">
+    {% if theme.options.hero_badge != "" %}<p class="hero-badge">{{ theme.options.hero_badge }}</p>{% endif %}
+    <h1>{% if theme.options.hero_title != "" %}{{ theme.options.hero_title }}{% else %}{{ site.name }}{% endif %}</h1>
+    {% if site.tagline != "" %}<p class="hero-lede">{{ site.tagline }}</p>{% endif %}
+  </section>
+
+  {% if recent.article.size > 0 %}
+  <section class="quick shell">
+    <div class="quick-grid">
+      {% for item in recent.article limit: 4 %}
+      <a class="quick-card" href="{{ item.path }}">
+        <span class="quick-icon">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M4 17.5V6a2 2 0 012-2h10a2 2 0 012 2v11.5M4 17.5a1.5 1.5 0 001.5 1.5h11a1.5 1.5 0 001.5-1.5M4 17.5h14M8 8h6M8 11.5h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <strong>{{ item.title }}</strong>
+        {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="index shell">
+    <div class="index-main">
+      <h2>{{ t.guides }}</h2>
+      <div class="rows">
+        {% for item in recent.article %}
+        <a class="row" href="{{ item.path }}">
+          <span class="row-icon">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2l7 3.5v5c0 4-2.8 7.5-7 9-4.2-1.5-7-5-7-9v-5L10 2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="row-body">
+            <strong>{{ item.title }}</strong>
+            {% if item.description != "" %}<span>{{ item.description }}</span>{% endif %}
+          </span>
+          <svg class="row-chev" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    <aside class="index-side">
+      <h2 class="side-title">{{ t.recent }}</h2>
+      <div class="ranked">
+        {% for item in recent.article limit: 5 %}
+        <a href="{{ item.path }}"><span class="rank">{{ forloop.index | prepend: "0" | slice: -2, 2 }}</span><span>{{ item.title }}</span></a>
+        {% endfor %}
+      </div>
+      {% if theme.options.help_href != "" %}
+      <div class="help">
+        <strong>{{ theme.options.help_title }}</strong>
+        <p>{{ theme.options.help_text }}</p>
+        <a href="{{ theme.options.help_href }}">{{ theme.options.help_label }} →</a>
+      </div>
+      {% endif %}
+    </aside>
+  </section>
+  {% endif %}
+</main>
+{% endblock %}

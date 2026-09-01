@@ -1,0 +1,8 @@
+<footer class="end">
+  <div class="end-in">
+    <span>{{ site.name }} · {{ t.footer_note }}</span>
+    <nav aria-label="{{ t.nav }}">
+      {% for item in site.nav %}<a href="{{ item.href }}">{{ item.label }}</a>{% endfor %}
+    </nav>
+  </div>
+</footer>

@@ -1,0 +1,19 @@
+{% layout "layouts/base" %}
+{% block content %}
+<section class="frame intro intro-list">
+  <h1>{{ page.title }}</h1>
+</section>
+<section class="frame grid">
+  {% for item in list.items %}
+  <a class="cell" href="{{ item.path }}">
+    <span class="cell-art mat-{{ forloop.index | modulo: 3 | plus: 1 }}"><span class="grain"></span></span>
+    <span class="cell-row"><span class="cell-title">{{ item.title }}</span>{% if item.frontmatter.year %}<span class="cell-year">{{ item.frontmatter.year }}</span>{% endif %}</span>
+    {% if item.description != "" %}<span class="cell-meta">{{ item.description }}</span>{% endif %}
+  </a>
+  {% endfor %}
+</section>
+<nav class="frame pager" aria-label="{{ t.pagination }}">
+  {% if list.prev_path != "" %}<a href="{{ list.prev_path }}">← {{ t.prev }}</a>{% endif %}
+  {% if list.has_next %}<a href="{{ list.next_path }}">{{ t.next }} →</a>{% endif %}
+</nav>
+{% endblock %}

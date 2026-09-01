@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022"],
+    "types": [
+      "@cloudflare/workers-types",
+      "@cloudflare/vitest-pool-workers/types"
+    ]
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "vitest.config.ts",
+    "text-modules.d.ts",
+    "scripts/**/*.mjs"
+  ],
+  "exclude": ["src/admin", "test/admin"]
+}

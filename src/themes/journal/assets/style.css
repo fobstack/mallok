@@ -1,0 +1,144 @@
+/* Journal theme. No JavaScript, system fonts, one accent color. */
+:root {
+  --bg: #ffffff;
+  --fg: #1f2937;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --accent: #1d4ed8;
+  --measure: 42rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f172a;
+    --fg: #e5e7eb;
+    --muted: #94a3b8;
+    --line: #1e293b;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+html {
+  color-scheme: light dark;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    17px / 1.65 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+}
+.container {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+.site-header {
+  border-bottom: 1px solid var(--line);
+}
+.site-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 3.5rem;
+}
+.site-header .brand {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+.site-header nav a {
+  margin-left: 1rem;
+  color: inherit;
+  text-decoration: none;
+}
+.site-header nav a[aria-current="page"] {
+  color: var(--accent);
+}
+main {
+  padding: 2.5rem 0 4rem;
+}
+.hero h1 {
+  font-size: 2.25rem;
+  margin: 0 0 0.25rem;
+}
+.tagline {
+  color: var(--muted);
+  margin: 0 0 2rem;
+}
+.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.post-list li {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.post-list a {
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+.post-list time,
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  display: block;
+  margin-top: 0.15rem;
+}
+.post-list p {
+  margin: 0.35rem 0 0;
+}
+.post-header h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+}
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.prose pre {
+  overflow-x: auto;
+  padding: 1rem;
+  background: rgba(127, 127, 127, 0.12);
+  border-radius: 6px;
+}
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.prose th,
+.prose td {
+  border: 1px solid var(--line);
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+.prose blockquote {
+  margin: 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
+}
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2rem;
+}
+.site-footer {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.site-footer .container {
+  padding: 1.5rem 1.25rem;
+}

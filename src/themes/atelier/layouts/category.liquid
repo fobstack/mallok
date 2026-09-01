@@ -1,0 +1,51 @@
+{% layout "layouts/base" %}
+{% block content %}
+<article class="shell detail">
+  <p class="eyebrow">{{ t.family }}</p>
+  <h1 class="detail-title">{{ content.title }}</h1>
+  {% if content.frontmatter.summary %}<p class="detail-lede">{{ content.frontmatter.summary }}</p>{% endif %}
+
+  {% if content.frontmatter.applications.size > 0 %}
+  <ul class="chips" aria-label="{{ t.applications }}">
+    {% for use in content.frontmatter.applications %}<li>{{ use }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if content.html != "" %}<div class="prose prose-lede">{{ content.html }}</div>{% endif %}
+
+  {% assign members = content.backrefs.product %}
+  {% if members.size > 0 %}
+  <section class="family-members">
+    <div class="section-head">
+      <h2>{{ t.in_this_family }}</h2>
+      <span class="section-count">{{ members.size }}</span>
+    </div>
+    <div class="card-grid">
+      {% for item in members %}
+      <a class="card" href="{{ item.path }}">
+        <div class="card-art card-art-{{ forloop.index | modulo: 3 | plus: 1 }}">
+          {% if item.frontmatter.grade %}<span class="card-tag">{{ item.frontmatter.grade }}</span>{% endif %}
+        </div>
+        <div class="card-body">
+          <h3>{{ item.title }}</h3>
+          {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+          <div class="card-foot">
+            <span>{% if item.frontmatter.form %}{{ item.frontmatter.form }}{% endif %}{% if item.frontmatter.lead_time %} · {{ item.frontmatter.lead_time }}{% endif %}</span>
+            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10m0 0L9 4m4 4l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <div class="cta cta-inline">
+    <div>
+      <h2>{{ theme.options.cta_title }}</h2>
+      <p>{{ theme.options.cta_lede }}</p>
+    </div>
+    <a class="btn btn-solid btn-lg" href="{{ theme.options.quote_href }}">{{ t.request_quote }}</a>
+  </div>
+</article>
+{% endblock %}

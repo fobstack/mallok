@@ -1,0 +1,32 @@
+{
+  "id": "journal",
+  "name": "Journal",
+  "version": "0.1.0",
+  "description": "A quiet, zero-JavaScript theme for articles and pages.",
+  "home": "layouts/home.liquid",
+  "kinds": {
+    "page": { "layout": "layouts/page.liquid", "label": "Page" },
+    "article": {
+      "layout": "layouts/article.liquid",
+      "listLayout": "layouts/list.liquid",
+      "label": "Article",
+      "base": "news"
+    }
+  },
+  "options": {
+    "accent": {
+      "type": "color",
+      "label": "Accent color",
+      "default": "#1d4ed8"
+    },
+    "show_reading_time": {
+      "type": "boolean",
+      "label": "Show reading time on articles",
+      "default": true
+    }
+  },
+  "locales": ["en", "zh"],
+  "defaultLocale": "en",
+  "imageWidths": [480, 960, 1440, 1920],
+  "clientScripts": []
+}

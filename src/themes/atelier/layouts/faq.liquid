@@ -1,0 +1,37 @@
+{% layout "layouts/base" %}
+{% block content %}
+<article class="shell detail detail-narrow">
+  <p class="eyebrow">{{ t.faq }}</p>
+  <h1 class="detail-title">{{ content.title }}</h1>
+  {% if content.description != "" %}<p class="detail-lede">{{ content.description }}</p>{% endif %}
+
+  {% if content.html != "" %}<div class="prose prose-lede">{{ content.html }}</div>{% endif %}
+
+  {%- comment -%}
+    `content.faq` is normalized by the core from either front-matter shape,
+    and the same pairs become the FAQPage structured data. Rendering them
+    here is what keeps that markup honest.
+  {%- endcomment -%}
+  {% if content.faq.size > 0 %}
+  <div class="qa">
+    {% for pair in content.faq %}
+    <details class="qa-item"{% if forloop.first %} open{% endif %}>
+      <summary>
+        <span>{{ pair.question }}</span>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M4 7l5 5 5-5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </summary>
+      <p>{{ pair.answer }}</p>
+    </details>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="cta cta-inline">
+    <div>
+      <h2>{{ theme.options.cta_title }}</h2>
+      <p>{{ theme.options.cta_lede }}</p>
+    </div>
+    <a class="btn btn-solid btn-lg" href="{{ theme.options.quote_href }}">{{ t.request_quote }}</a>
+  </div>
+</article>
+{% endblock %}

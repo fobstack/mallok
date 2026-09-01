@@ -1,0 +1,63 @@
+{
+  "id": "gazette",
+  "name": "Gazette",
+  "description": "A premium trade-news magazine: serif masthead, lead story with art, latest rail, subscribe band.",
+  "version": "2.0.0",
+  "themeApi": 1,
+  "home": "layouts/home.liquid",
+  "kinds": {
+    "page": {
+      "layout": "layouts/page.liquid",
+      "label": "Page"
+    },
+    "article": {
+      "layout": "layouts/article.liquid",
+      "listLayout": "layouts/list.liquid",
+      "label": "Story",
+      "base": "stories",
+      "fields": {
+        "section": {
+          "type": "select",
+          "label": "Section",
+          "choices": ["markets", "policy", "technology", "operations"],
+          "required": true
+        },
+        "byline": {
+          "type": "string",
+          "label": "Byline"
+        }
+      }
+    }
+  },
+  "options": {
+    "accent_label": {
+      "type": "string",
+      "label": "Masthead link label",
+      "default": "Subscribe"
+    },
+    "accent_href": {
+      "type": "string",
+      "label": "Masthead link target",
+      "default": "/feed.xml"
+    },
+    "newsletter_title": {
+      "type": "string",
+      "label": "Subscribe band title",
+      "default": "The morning wire, 06:30 daily."
+    },
+    "newsletter_lede": {
+      "type": "string",
+      "label": "Subscribe band text",
+      "default": "Every price move and licence change in specialty metals, before your first call."
+    },
+    "newsletter_href": {
+      "type": "string",
+      "label": "Subscribe band link (empty hides the band)",
+      "default": "/feed.xml"
+    }
+  },
+  "locales": ["en", "zh"],
+  "defaultLocale": "en",
+  "imageWidths": [480, 960, 1440, 1920],
+  "clientScripts": []
+}

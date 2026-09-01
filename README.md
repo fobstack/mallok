@@ -1,36 +1,90 @@
 # Mallok
 
-**开源、Cloudflare 原生的内容网站产品。内容存在 D1 里，改完即时生效，不需要构建，随时可以带走。**
+**An open-source, Cloudflare-native content website. Markdown lives in D1, edits go live in seconds, there is no build step, and your content is always one export away from leaving.** The first vertical is B2B foreign-trade company sites: one-click setup, multiple languages, a product catalog, and inquiries delivered straight to your inbox — starting at $0.
 
-> WordPress 的编辑体验，边缘网络的性能，开源且不锁定你的内容。
+> The editing experience of WordPress, the performance of the edge, open source and never locked in.
 
-## 它解决什么
+[中文说明](README.zh-CN.md)
 
-内容网站今天有两条路，各有一个结构性缺陷：
+## The problem
 
-- **CMS（WordPress、Ghost）**：编辑体验好、改完即生效。代价是你得养服务器、数据库和持续的安全更新。
-- **静态生成（Astro、Hugo）**：性能和输出质量极好。代价是改一个错别字要提交、跑 CI、等构建、重新部署，非技术的人根本进不来。
+Content websites today take one of two roads, each with a structural flaw:
 
-Mallok 认为这两个代价都不是必须付的。
+- **CMS (WordPress, Ghost)** — great editing, instant publishing. The price is a server, a database and a never-ending stream of security updates.
+- **Static generators (Astro, Hugo)** — excellent output and performance. The price is that fixing a typo means a commit, a CI run, a build and a redeploy; non-technical people are locked out.
 
-## 它是怎么做的
+Foreign-trade company sites concentrate both flaws: several languages, a product catalog, industry news that changes daily and an inquiry form that must not fail — mostly running on dated WordPress templates or yearly-fee site builders. Mallok's bet is that neither price is necessary.
 
-部署一个 Worker 到你自己的 Cloudflare 账号。内容以标准 Markdown 存在 D1，媒体存在 R2。Worker 在请求时渲染页面并写入边缘缓存，访客请求几乎全部由缓存直接返回。保存文章 = 写一行数据库 + 清一次缓存，几秒内生效。
+## How it works
 
-- 后台可以跑在本地 localhost，也可以跑在线上，同一份代码
-- CLI 可以从本地把 Markdown 提交进去
-- 主题是声明式的，换主题即时生效，不动内容和 URL
-- 插件是真实代码，通过钩子扩展（安装需要重新部署一次）
-- 一键导出成普通 `.md` 文件夹，随时能搬去 Astro、Hugo、Obsidian
+Deploy one Worker into your own Cloudflare account. Content is stored as Markdown in D1; images live in R2 behind an R2 custom domain. When you save, the Worker renders the Markdown into an HTML fragment cached in D1; when a visitor arrives, it only applies the theme template and writes the page to the edge cache, so almost every request is served from cache. Saving an article is one database write and one cache purge — live in seconds.
 
-## 现状
+- Three ways in: `npx mallok create`, a Deploy to Cloudflare button, and (in 1.0) a hosted setup assistant
 
-**仓库目前只有文档，没有可运行的实现。** 详见 [docs/](docs/)：
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/JasonYv/mallok)
 
-- [产品愿景](docs/PRODUCT_VISION.md)
-- [架构](docs/ARCHITECTURE.md)
-- [技术栈](docs/TECH_STACK.md)
+> The button needs a public GitHub or GitLab repository. It reads `wrangler.jsonc` for the database and bucket names, creates them, and prompts for `MALLOK_SECRET` using the description in `package.json`.
 
-## 许可证
+- Multilingual content model: every item has a locale and a translation group, URLs are locale-prefixed, `hreflang` is automatic
+- Content kinds are declared by the theme; the trade starter ships products, categories, cases, FAQs and news
+- Inquiry plugin: native form + Turnstile + database + two-way email via Resend + admin list + CSV export
+- Content, settings, theme options and plugin toggles change instantly; themes, plugins and upgrades live in the source tree and take a redeploy — the UI says so rather than pretending otherwise
+- A CLI publishes content bundles (`index.md` + `images/`) from disk, ready for AI content pipelines
+- Or skip D1 entirely: `pnpm build:site` compiles this repository's `content/` into a static site with the same renderer
+- One-click export to plain `.md` folders plus `inquiries.csv` — take it to Astro, Hugo or Obsidian any time
+- Every dependency has a free tier; the only upgrade is Workers Paid ($5/month) with no architectural change
 
-倾向 MIT，尚未最终确定。
+## Where your content lives
+
+The repository you fork **is** your site. Its content is real files you edit:
+
+```
+site.json               name, languages, content kinds, navigation
+content/
+├── page/about/index.md         ← one directory per item
+├── page/about/index.zh.md      ← its Chinese translation, same directory
+├── product/grade-5-titanium-bar/
+│   ├── index.md
+│   ├── index.zh.md
+│   └── images/hero.png         ← images travel with the item
+├── category/  case/  faq/  article/
+```
+
+Like an Astro collection, one directory per content kind — except each item is
+a directory too, so exporting, importing or emailing an article moves its
+images with it. The kinds are not a fixed list: they come from `site.json`,
+which the theme's declared kinds fill in. Flat `content/article/post.md` files
+work as well, and Astro's `pubDate`/`heroImage` and Hugo's `lastmod`/`summary`
+front matter are mapped on import.
+
+There is one copy of this. The setup wizard imports `content/` into D1 for the
+live site; `pnpm build:site` compiles the same files into a static site. What
+the two paths differ on is spelled out in [`docs/CLI.md §6.7`](docs/CLI.md) —
+a static build has no inquiry form, no admin, and needs rebuilding after edits.
+
+## Status
+
+**Feature complete locally; unproven in production.** The rendering core, database schema, Worker request path, edge cache, management API, media pipeline, SEO endpoints, multilingual model, plugin runtime with the official inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the CLI, and the `trade-b2b` starter with its setup wizard all exist and are covered by 344 tests.
+
+**Nothing has run against a real Cloudflare account yet.** [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the honest status: of 76 acceptance criteria, 48 are verified locally, 28 have no evidence, and **none** are verified on real infrastructure. `mallok create` is written but never executed. Lighthouse has never been run. Nothing is published to npm. Treat this as a codebase to try, not a product to deploy.
+
+```sh
+pnpm install
+pnpm test          # unit tests in Node + integration tests inside workerd
+pnpm dev           # wrangler dev on http://127.0.0.1:8787
+```
+
+Design documents (currently in Chinese; English versions will follow):
+
+- [Product vision](docs/PRODUCT_VISION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Tech stack](docs/TECH_STACK.md)
+- [Content format](docs/CONTENT_FORMAT.md)
+- [Data model](docs/DATA_MODEL.md)
+- [Cloudflare resources](docs/CLOUDFLARE_RESOURCES.md)
+
+Contributing guidelines, including the code style, are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## License
+
+Leaning towards MIT; not finalized.

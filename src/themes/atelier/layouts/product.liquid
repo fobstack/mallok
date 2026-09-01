@@ -1,0 +1,93 @@
+{% layout "layouts/base" %}
+{% block content %}
+<article class="shell detail">
+  <nav class="crumbs" aria-label="{{ t.breadcrumb }}">
+    <a href="{{ site.home_path }}">{{ t.home }}</a>
+    {% if content.refs.category %}<span aria-hidden="true">/</span><a href="{{ content.refs.category.path }}">{{ content.refs.category.title }}</a>{% endif %}
+    <span aria-hidden="true">/</span><span aria-current="page">{{ content.title }}</span>
+  </nav>
+
+  <p class="eyebrow">{{ t.product }}</p>
+  <h1 class="detail-title">{{ content.title }}</h1>
+  {% if content.description != "" %}<p class="detail-lede">{{ content.description }}</p>{% endif %}
+
+  <div class="detail-grid">
+    <aside class="spec-card">
+      <dl>
+        {% if content.frontmatter.grade %}<div><dt>{{ t.grade }}</dt><dd>{{ content.frontmatter.grade }}</dd></div>{% endif %}
+        {% if content.frontmatter.standard %}<div><dt>{{ t.standard }}</dt><dd>{{ content.frontmatter.standard }}</dd></div>{% endif %}
+        {% if content.frontmatter.form %}<div><dt>{{ t.form }}</dt><dd>{{ content.frontmatter.form }}</dd></div>{% endif %}
+        {% if content.frontmatter.moq %}<div><dt>{{ t.moq }}</dt><dd>{{ content.frontmatter.moq }}</dd></div>{% endif %}
+        {% if content.frontmatter.lead_time %}<div><dt>{{ t.lead_time }}</dt><dd>{{ content.frontmatter.lead_time }}</dd></div>{% endif %}
+      </dl>
+      <a class="btn btn-solid btn-block" href="{{ theme.options.quote_href }}">{{ t.request_quote }}</a>
+      {% assign sheet = content.files[content.frontmatter.datasheet] %}
+      {% if sheet %}
+      <a class="datasheet" href="{{ sheet }}" download>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {{ t.datasheet }}
+      </a>
+      {% endif %}
+    </aside>
+
+    <div class="detail-main">
+      {% assign shots = content.frontmatter.gallery %}
+      {% if shots.size > 0 %}
+      <figure class="gallery" role="group" aria-label="{{ t.gallery }}">
+        <div class="gallery-strip">
+          {% for path in shots %}
+            {% assign shot = content.images[path] %}
+            {% if shot %}
+            <img id="shot-{{ forloop.index }}" class="gallery-frame" src="{{ shot.url }}"{% if shot.srcset != "" %} srcset="{{ shot.srcset }}" sizes="(max-width: 60rem) 100vw, 40rem"{% endif %}{% if shot.width %} width="{{ shot.width }}" height="{{ shot.height }}"{% endif %} alt="{% if shot.alt != "" %}{{ shot.alt }}{% else %}{{ content.title }} {{ forloop.index }}{% endif %}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" decoding="async">
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% if shots.size > 1 %}
+        <nav class="gallery-dots" aria-label="{{ t.gallery }}">
+          {% for path in shots %}<a href="#shot-{{ forloop.index }}"><span class="visually-hidden">{{ forloop.index }}</span></a>{% endfor %}
+        </nav>
+        {% endif %}
+      </figure>
+      {% endif %}
+
+      <div class="prose">{{ content.html }}</div>
+
+      {% assign specs = content.frontmatter.specs %}
+      {% if specs != blank %}
+      <section class="specs">
+        <h2 class="specs-title">{{ t.properties }}</h2>
+        <table class="spec-table">
+          <tbody>
+            {% for pair in specs %}<tr><th scope="row">{{ pair[0] }}</th><td>{{ pair[1] }}</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if content.siblings.size > 0 %}
+  <section class="more">
+    <div class="section-head">
+      <h2>{% if content.refs.category %}{{ t.more_in }} {{ content.refs.category.title }}{% else %}{{ t.related_products }}{% endif %}</h2>
+      {% if content.refs.category %}<a class="section-link" href="{{ content.refs.category.path }}">{{ t.see_family }}
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10m0 0L9 4m4 4l-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>{% endif %}
+    </div>
+    <div class="card-grid">
+      {% for item in content.siblings limit: 3 %}
+      <a class="card" href="{{ item.path }}">
+        <div class="card-art card-art-{{ forloop.index }}">
+          {% if item.frontmatter.grade %}<span class="card-tag">{{ item.frontmatter.grade }}</span>{% endif %}
+        </div>
+        <div class="card-body">
+          <h3>{{ item.title }}</h3>
+          {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+</article>
+{% endblock %}

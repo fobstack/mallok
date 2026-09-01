@@ -1,0 +1,21 @@
+{% layout "layouts/base" %}
+{% block content %}
+  <section class="hero">
+    <h1>{{ site.name }}</h1>
+    {% if site.tagline != "" %}<p class="tagline">{{ site.tagline }}</p>{% endif %}
+  </section>
+  {% if recent.article.size > 0 %}
+  <section class="recent">
+    <h2>{{ t.latest }}</h2>
+    <ul class="post-list">
+      {% for item in recent.article %}
+        <li>
+          <a href="{{ item.path }}">{{ item.title }}</a>
+          <time datetime="{{ item.published_at }}">{{ item.published_at | date: "%Y-%m-%d" }}</time>
+          {% if item.description != "" %}<p>{{ item.description }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+{% endblock %}

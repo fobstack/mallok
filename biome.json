@@ -1,0 +1,146 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "includes": ["**", "!dist", "!node_modules", "!.wrangler", "!.mallok"]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "always",
+      "trailingCommas": "all",
+      "arrowParentheses": "always",
+      "bracketSpacing": true,
+      "quoteProperties": "asNeeded"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    },
+    "parser": {
+      "allowComments": true,
+      "allowTrailingCommas": true
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "style": {
+        "noDefaultExport": "error",
+        "useImportType": "error",
+        "useExportType": "error",
+        "noNonNullAssertion": "error",
+        "noParameterAssign": "error",
+        "useConst": "error",
+        "useTemplate": "error",
+        "noNamespace": "error",
+        "useNamingConvention": {
+          "level": "error",
+          "options": {
+            "strictCase": false,
+            "requireAscii": true,
+            "conventions": [
+              {
+                "selector": {
+                  "kind": "objectLiteralProperty"
+                },
+                "formats": ["camelCase", "snake_case", "CONSTANT_CASE"]
+              },
+              {
+                "selector": {
+                  "kind": "typeProperty"
+                },
+                "formats": ["camelCase", "snake_case", "CONSTANT_CASE"]
+              }
+            ]
+          }
+        }
+      },
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noVar": "error"
+      },
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "complexity": {
+        "noForEach": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/core/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUndeclaredVariables": "error"
+          },
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "cloudflare:workers": "src/core must not depend on the Workers runtime.",
+                  "cloudflare:test": "src/core must not depend on the Workers runtime.",
+                  "@cloudflare/workers-types": "src/core must not depend on the Workers runtime."
+                }
+              }
+            },
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "caches": "src/core must not touch the edge cache.",
+                  "HTMLRewriter": "src/core must not use Workers-only APIs.",
+                  "WebSocketPair": "src/core must not use Workers-only APIs.",
+                  "process": "src/core must not use Node-only APIs.",
+                  "Buffer": "src/core must not use Node-only APIs."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "text-modules.d.ts",
+        "vitest.config.ts",
+        "src/worker/index.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["vite.config.ts", "vitest.config.ts", "src/worker/index.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    }
+  ]
+}
