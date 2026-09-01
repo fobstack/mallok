@@ -1,172 +1,243 @@
-# Mallok 0.1 技术栈与依赖边界
+# Mallok 0.1 technology stack and dependency boundaries
 
-- 状态：0.1 技术基线（2026-08-28 第二次修订）
-- 日期：2026-08-28
-- 目标：让实现任务可以直接开始，不把选型决策丢给实现者
+- Status: 0.1 technical baseline (second revision, 2026-08-28)
+- Date: 2026-08-28
+- Purpose: to let implementation start without handing selection decisions to
+  the implementer
 
-本文取代此前的「Bun 自包含桌面 app + Preact Studio + 构建期渲染」技术栈。旧选型的核心前提（渲染在本地机器上跑）已不成立，因此依赖清单基本全部重选。
+This document supersedes the earlier "self-contained Bun desktop app, Preact
+Studio, build-time rendering" stack. That stack's central premise — rendering
+happens on a local machine — no longer holds, so the dependency list was
+essentially reselected.
 
-## 1. 一句话结论
+## 1. The conclusion in one sentence
 
-Mallok 是一个 TypeScript 单仓库项目，产物是一个跑在 Cloudflare Workers 上的 Worker（含公开站点、后台、管理 API、向导与官方插件），外加一个发布到 npm 的 CLI。**最硬的选型约束是：所有进入渲染路径的依赖必须是纯 JavaScript、能在 Workers 运行时里跑、且打包后足够小；产品承诺从 Free 计划起步，所以每一段跑在 Worker 里的代码都要以 10 ms CPU 为预算。** 任何需要原生二进制、Node 内置模块或文件系统的库自动出局——CLI 本地部分除外。
+Mallok is a TypeScript single repository whose output is one Worker running on
+Cloudflare Workers — the public site, the admin, the management API, the
+wizard and the official plugins — plus one CLI published to npm. **The hardest
+constraint on selection is this: every dependency on the render path must be
+pure JavaScript, must run in the Workers runtime, and must be small enough
+once bundled. The product promises to start on the free plan, so every piece
+of code running in the Worker is budgeted against 10 ms of CPU.** Any library
+needing a native binary, a Node built-in module or a filesystem is out
+automatically — the CLI's local half excepted.
 
-## 2. 运行时与仓库
+## 2. Runtime and repository
 
-| 领域 | 0.1 选择 | 理由 |
+| Area | The 0.1 choice | Why |
 | --- | --- | --- |
-| 语言 | TypeScript strict + `noUncheckedIndexedAccess` | 一套类型跨 Worker、CLI 和后台 |
-| 线上运行时 | Cloudflare Workers（`workerd`） | 产品定位如此，不做多云抽象 |
-| 开发运行时 | Node.js 22 LTS | CLI 要发 npm，Node 兼容性最好；不引入第二个运行时 |
-| 包管理 | pnpm + lockfile | 单仓库，锁文件是发行输入 |
-| 模块 | ESM only | Workers 原生 ESM，不维护 CJS 双面 |
-| 仓库结构 | 单仓库，`src/` 下按 ARCHITECTURE §3 分目录；**不采用 monorepo/workspace 布局** | Deploy to Cloudflare 按钮不支持 monorepo；只有 CLI 单独发布 |
-| 构建/部署 | `wrangler` | Cloudflare 官方工具，同时提供本地 D1/R2 模拟与 cron 测试 |
+| Language | TypeScript strict plus `noUncheckedIndexedAccess` | One set of types across the Worker, the CLI and the admin |
+| Production runtime | Cloudflare Workers (`workerd`) | That is the product; no multi-cloud abstraction |
+| Development runtime | Node.js 22 LTS | The CLI ships to npm, where Node compatibility matters most. No second runtime |
+| Package manager | pnpm with a lockfile | One repository; the lockfile is a release input |
+| Modules | ESM only | Workers is natively ESM; no CJS double life |
+| Repository layout | A single repository, split under `src/` per ARCHITECTURE §3; **not a monorepo or workspace layout** | The Deploy to Cloudflare button does not support monorepos, and only the CLI publishes separately |
+| Build and deploy | `wrangler` | Cloudflare's own tool, which also supplies local D1 and R2 simulation and cron testing |
 
-精确版本在第一个 dependency-only 提交中锁定，之后不在功能提交里顺手升级。
+Exact versions are pinned in the first dependency-only commit and are not
+bumped opportunistically inside a feature commit.
 
-## 3. 依赖分层与硬规则
+## 3. Dependency layers and their hard rules
 
-依赖按「能不能进 Worker」分成四层，越界即为架构违规：
+Dependencies are grouped by whether they may enter the Worker. Crossing a
+boundary is an architectural violation:
 
-| 层 | 位置 | 约束 |
+| Layer | Location | Constraint |
 | --- | --- | --- |
-| **渲染层** | `src/core/`，同时被 Worker、CLI 和后台预览使用 | 纯 JS、无 Node 内置模块、无 Cloudflare 全局对象、无 DOM 依赖、体积敏感 |
-| **Worker 层** | `src/worker/`、`src/db/`、`src/plugins/` | 可用 Workers 运行时 API，不可用 Node 内置模块 |
-| **上传端层** | `src/admin/` 的图片处理、`src/cli/` 的图片处理 | 浏览器用 Canvas，CLI 可用 `sharp`；两端产物同规格，不要求逐字节一致 |
-| **构建/开发层** | 构建脚本、测试、CLI 的其余本地部分 | 无限制，但绝不进入 Worker 产物 |
+| **Render** | `src/core/`, used by the Worker, the CLI and the admin preview alike | Pure JS, no Node built-ins, no Cloudflare globals, no DOM dependency, size-sensitive |
+| **Worker** | `src/worker/`, `src/db/`, `src/plugins/` | May use Workers runtime APIs; may not use Node built-ins |
+| **Upload side** | Image processing in `src/admin/` and `src/cli/` | The browser uses Canvas, the CLI may use `sharp`; the two must match in specification, not byte for byte |
+| **Build and development** | Build scripts, tests, the rest of the CLI's local half | Unconstrained, but never present in the Worker artifact |
 
-`src/core/` 不得 import 任何 Cloudflare 类型或全局对象。这是保证「CLI 的本地预览、后台预览和线上渲染逐字节一致」的唯一机制，必须由 lint 规则强制。
+`src/core/` must not import any Cloudflare type or global. That is the only
+mechanism guaranteeing the CLI's local preview, the admin's preview and
+production rendering are byte-identical, and lint rules enforce it.
 
-## 4. 渲染管线依赖
+## 4. Render pipeline dependencies
 
-| 能力 | 选择 | 说明 |
+| Capability | Choice | Notes |
 | --- | --- | --- |
-| Markdown 解析 | `unified` + `remark-parse` + `remark-gfm` | 纯 JS。选 AST 方案而不是 `marked`/`markdown-it`，因为插件的 `beforeRender` 钩子需要操作 AST |
-| frontmatter | `yaml` | 禁用 alias、自定义 tag、重复 key |
-| Markdown → HTML | `remark-rehype` + `rehype-stringify` | 与上游同一生态 |
-| HTML 净化 | `rehype-sanitize` | 白名单模式，内容一律不可信 |
-| 相对路径解析 | 仓库内部的 rehype 步骤 | 把 `images/x.jpg` 按 `content.assets` 替换为 R2 URL 并补 `srcset` 等属性；只做属性替换，不自写解析 |
-| Markdown 序列化 | `mdast-util-to-markdown` + `mdast-util-gfm` | 后台可视编辑（0.2）保存时用，保证导出的是标准 Markdown |
-| 模板引擎 | `liquidjs`（浏览器构建 `dist/liquid.browser.mjs`） | 已核实该包提供无 Node 依赖的浏览器构建；Liquid 语法为 Shopify/Jekyll/11ty 通用，主题作者上手成本低；启用 `ownPropertyOnly`、关闭 `raw` 类输出 |
-| 校验 | `zod` | 内容字段、`theme.json`、`plugin.json`、API 入参、插件路由入参 |
-| 哈希/加密 | WebCrypto（运行时内置） | 内容寻址 sha256、PBKDF2、session token、AES-GCM 加密第三方密钥、HMAC 签名预览链接；不引入第二套 crypto 库 |
+| Markdown parsing | `unified` + `remark-parse` + `remark-gfm` | Pure JS. An AST approach rather than `marked` or `markdown-it`, because a plugin's `beforeRender` hook operates on the AST |
+| Front matter | `yaml` | Aliases, custom tags and duplicate keys are disabled |
+| Markdown → HTML | `remark-rehype` + `rehype-stringify` | The same ecosystem as above |
+| HTML sanitisation | `rehype-sanitize` | Allow-list mode; content is always untrusted |
+| Relative-path resolution | An in-repository rehype step | Substitutes R2 URLs for `images/x.jpg` through `content.assets` and adds `srcset` and friends. Attribute substitution only — nothing hand-parsed |
+| Markdown serialisation | `mdast-util-to-markdown` + `mdast-util-gfm` | For the visual editor's saves in 0.2, keeping exports standard Markdown |
+| Template engine | `liquidjs` (the browser build, `dist/liquid.browser.mjs`) | Verified to provide a build free of Node dependencies. Liquid is the syntax Shopify, Jekyll and 11ty authors already know. `ownPropertyOnly` is enabled and raw-style output is disabled |
+| Validation | `zod` | Content fields, `theme.json`, `plugin.json`, API inputs, plugin route inputs |
+| Hashing and encryption | WebCrypto, built into the runtime | Content-addressing sha256, PBKDF2, session tokens, AES-GCM for third-party keys, HMAC for preview links. No second crypto library |
 
-渲染分两个阶段（ARCHITECTURE §5）：第一阶段（Markdown → 片段）在保存时执行并缓存于 D1，第二阶段（片段 → 页面）在访客请求时执行。两者都在 `core/`，都必须是纯函数。
+Rendering has two stages (ARCHITECTURE §5): stage one, Markdown to a fragment,
+runs on save and is cached in D1; stage two, fragment to page, runs on the
+visitor request. Both live in `core/` and both must be pure.
 
-**体积是一等约束。** remark/rehype 生态方便但不算小，而 Worker 脚本上限是 gzip 后 3 MB（Free）/ 10 MB（Paid），且官方插件预打包在内。第一个实现任务必须给出打包后的实测体积，超标时的处置顺序是：先裁剪 remark 插件 → 再评估换 `markdown-it` → **绝不自写 Markdown 解析器或 HTML 净化器**。
+**Size is a first-class constraint.** The remark and rehype ecosystem is
+convenient but not small, while a Worker script is capped at 3 MB gzip on the
+free plan and 10 MB on Paid, with the official plugins bundled in. The first
+implementation task must report the measured bundled size, and when it is over
+the order of response is: trim remark plugins first, then evaluate
+`markdown-it` — and **never write a Markdown parser or an HTML sanitiser by
+hand**.
 
-同样明确排除：`sharp` 及任何原生图片库进入 Worker（Workers 里跑不了），任何依赖 `fs`/`path`/`child_process` 的模板引擎加载方式（模板从 D1 读取，以字符串形式喂给引擎）。
+Equally excluded: `sharp` or any native image library in the Worker (they
+cannot run there), and any template loading that depends on `fs`, `path` or
+`child_process` — templates reach the engine as strings.
 
-## 5. 外部服务接入
+## 5. External services
 
-全部通过运行时内置的 `fetch` 直接调用 HTTP API，**不引入任何服务商 SDK 进入 Worker**：
+All called directly through the runtime's `fetch` against their HTTP APIs,
+with **no vendor SDK entering the Worker**:
 
-| 服务 | 用途 | 接入方式 |
+| Service | Purpose | How |
 | --- | --- | --- |
-| Cloudflare API | 按标签/URL 清缓存；向导写 DNS 记录 | `fetch` + `CF_API_TOKEN`（Zone 级 Cache Purge + DNS 编辑） |
-| Turnstile | 询盘表单防刷 | 页面嵌入官方 widget 脚本（询盘插件声明的唯一客户端 JS）；服务端 `siteverify` 接口 |
-| Resend | 询盘通知与自动回执 | `fetch` Resend HTTP API；key 加密存 D1 |
-| Workers 限流绑定 | 插件路由防刷 | wrangler 配置的 `ratelimit` 绑定；按数据中心计数、最终一致，只用于防刷 |
+| The Cloudflare API | Purging by tag or URL; the wizard's DNS writes | `fetch` with `CF_API_TOKEN` (zone-level Cache Purge and DNS Edit) |
+| Turnstile | Inquiry-form abuse protection | The official widget script on the page — the inquiry plugin's only declared client JS — plus the server-side `siteverify` endpoint |
+| Resend | Inquiry notifications and auto-acknowledgements | `fetch` against Resend's HTTP API; the key is encrypted in D1 |
+| The Workers rate-limit binding | Plugin-route abuse protection | A `ratelimit` binding in the wrangler configuration. It counts per data centre and is eventually consistent, so it deters abuse only |
 
-## 6. 后台
+## 6. The admin
 
-| 领域 | 选择 | 说明 |
+| Area | Choice | Notes |
 | --- | --- | --- |
-| UI 框架 | `preact` + `@preact/signals` | 体积优先；不使用 React 兼容层 |
-| 构建 | `vite` + `@preact/preset-vite` | 仅构建期依赖 |
-| Markdown 编辑 | `codemirror` + `@codemirror/lang-markdown` | 0.1 唯一的正文编辑器；跑在浏览器里，不进 Worker |
-| 字段表单 | 仓库内部按 zod/JSON schema 生成 | 内容类型字段、主题配置、插件设置、插件面板都由 schema 驱动，不写专用表单 |
-| 实时预览 | 复用 `src/core/` 在浏览器内渲染 | 与线上逐字节一致 |
-| 可视化编辑 | `@tiptap/core` + `@tiptap/pm`（**0.2**） | 0.1 不引入；Tiptap 的 DOM 永远不是内容真相 |
-| 样式 | 仓库内部 CSS 变量与组件 | 不引入 Tailwind、CSS-in-JS 或第三方组件库 |
-| 图片处理 | 浏览器 Canvas API | 上传时在客户端算 sha256、转 WebP 并生成多宽度变体，见 ARCHITECTURE §8 |
+| UI framework | `preact` + `@preact/signals` | Size first; no React compatibility layer |
+| Build | `vite` + `@preact/preset-vite` | A build-time dependency only |
+| Markdown editing | `codemirror` + `@codemirror/lang-markdown` | The only body editor in 0.1. It runs in the browser and never enters the Worker |
+| Field forms | Generated in-repository from zod/JSON schemas | Content-kind fields, theme options, plugin settings and plugin panels are all schema-driven; no bespoke forms |
+| Live preview | Reuses `src/core/` in the browser | Byte-identical to production |
+| Visual editing | `@tiptap/core` + `@tiptap/pm` (**0.2**) | Not in 0.1. Tiptap's DOM is never the truth about content |
+| Styling | In-repository CSS variables and components | No Tailwind, no CSS-in-JS, no third-party component library |
+| Image processing | The browser's Canvas API | On upload the client computes sha256, converts to WebP and generates width variants; see ARCHITECTURE §8 |
 
-**后台产物用 Cloudflare Workers Static Assets 提供，不打进 Worker 脚本。** 已核实静态资源请求免费且不计入 Worker 调用计费，Free 计划上限 2 万文件、单文件 25 MiB，这样后台 UI 的体积不挤占渲染管线的脚本预算。
+**The admin build is served through Cloudflare Workers Static Assets and is
+never bundled into the Worker script.** Static-asset requests are verified to
+be free and not billed as Worker invocations, with a free-plan ceiling of
+20,000 files at 25 MiB each, so the admin's size never eats into the render
+pipeline's script budget.
 
-## 7. 数据与存储
+## 7. Data and storage
 
-- **D1**：内容、片段缓存、媒体元数据、主题、设置、插件状态、会话、待办。schema 迁移由 Worker 在运行时自行执行（ARCHITECTURE §15），迁移文件仍按 `wrangler d1 migrations` 的目录与命名约定组织以便本地开发，不引入 ORM 和迁移框架。SQL 手写、参数化绑定，查询集中在 `src/db/`，不向上层泄漏 D1 类型。
-- **R2**：媒体本体与主题静态资源，内容寻址 key；通过 R2 自定义域直出。
-- **Cache API**：渲染结果缓存，见 ARCHITECTURE §6。
-- **不引入 Workers KV 与 Queues**：KV 免费档每天 1000 次写不够用；Queues 免费档虽有每天 1 万次操作，但 0.1 的重试用 `job` 表 + cron 即可。
+- **D1**: content, the fragment cache, media metadata, settings, plugin state,
+  sessions and pending work. Schema migration runs inside the Worker
+  (ARCHITECTURE §15), while the migration files still follow
+  `wrangler d1 migrations`' directory and naming convention for local
+  development. No ORM and no migration framework. SQL is hand-written and
+  parameterised, kept in `src/db/`, and D1 types do not leak upward.
+- **R2**: media bytes under content-addressed keys, served through an R2
+  custom domain.
+- **The Cache API**: rendered pages, see ARCHITECTURE §6.
+- **No Workers KV and no Queues**: KV's free tier allows 1,000 writes a day,
+  which is not enough; Queues' free tier allows 10,000 operations a day, but
+  0.1's retries need only the `job` table and cron.
 
-## 8. CLI
+## 8. The CLI
 
-- 发布到 npm，`node >= 22`，可 `npx mallok` 直接用。
-- 命令：`create`（部署向导）、`publish <dir>`（发布一个或多个文章包）、`import <dir>`、`export <dir>`、`preview <dir>`（本地渲染）、`media push`。
-- 通过 HTTPS 调管理 API，与后台用同一套接口和同一套 Bearer token。**CLI 不是 Worker 的子进程，也不能有后台没有的能力。**
-- 复用 `src/core/` 做文章包解析、本地预览和导入导出，保证与线上渲染一致。
-- 图片处理用 `sharp`（仅 CLI 依赖，不进 Worker），输出规格与浏览器端一致。
-- 命令行解析用轻量方案，不引入重型 CLI 框架。
-- 可读取 AI 内容管线产出的 `image-slots.json` 报告缺图，但不依赖它。
+- Published to npm, `node >= 22`, usable through `npx mallok`.
+- Commands: `create` (the deployment flow), `publish <dir>`, `import <dir>`,
+  `export <dir>`, `build <dir>`, `preview <dir>` and `media push`.
+- Calls the management API over HTTPS, using the same interface and the same
+  Bearer tokens as the admin. **The CLI is not a Worker subprocess, and may
+  not have a capability the admin lacks.**
+- Reuses `src/core/` for bundle parsing, local preview and import/export, so
+  it matches production rendering.
+- Uses `sharp` for images — a CLI-only dependency, never in the Worker —
+  producing output to the same specification as the browser.
+- Parses arguments with something lightweight; no heavy CLI framework.
+- Can read an `image-slots.json` produced by an AI content pipeline to report
+  missing images, without depending on one.
 
-## 9. 本地开发
+## 9. Local development
 
-`wrangler dev` 直接提供本地的 D1 和 R2 模拟，且 v3 以上默认持久化数据（可用 `--persist-to` 指定位置）；cron 用 `--test-scheduled` 触发。
+`wrangler dev` provides local D1 and R2 simulation directly and, from v3
+onward, persists data by default (relocatable with `--persist-to`). Cron is
+fired with `--test-scheduled`.
 
-因此 **0.1 不自写 dev server**。本地开发就是 `wrangler dev`，跑起来的是和线上完全相同的代码路径，主题、Starter 和插件作者的开发体验与生产一致。
+**0.1 therefore writes no dev server.** Local development is `wrangler dev`,
+running exactly the same code path as production, so theme, starter and plugin
+authors develop against what actually ships.
 
-## 10. 质量工具
+## 10. Quality tooling
 
-| 领域 | 选择 |
+| Area | Choice |
 | --- | --- |
-| 类型检查 | `typescript` strict |
-| lint / 格式化 | `@biomejs/biome`，不同时维护 ESLint + Prettier |
-| 单元测试 | `vitest` |
-| Worker 集成测试 | `@cloudflare/vitest-pool-workers`（在真实 workerd 里跑） |
-| 后台组件测试 | `@testing-library/preact` + `happy-dom` |
-| 属性测试 / 恶意语料 | `fast-check` |
-| 端到端 | `playwright` + `@axe-core/playwright` |
-| 性能门 | `lighthouse` / `@lhci/cli`，锁定版本，仅开发期使用 |
+| Type checking | `typescript` strict |
+| Lint and formatting | `@biomejs/biome`, rather than maintaining ESLint and Prettier together |
+| Unit tests | `vitest` |
+| Worker integration tests | `@cloudflare/vitest-pool-workers`, running in real workerd |
+| Admin component tests | `@testing-library/preact` + `happy-dom` |
+| Property tests and hostile input | `fast-check` |
+| End to end | `playwright` + `@axe-core/playwright` |
+| Performance gate | `lighthouse` / `@lhci/cli`, pinned, development-only |
 
-额外的、工具替代不了的证据：Worker CPU 时间实测（含保存请求）、打包体积实测、缓存命中率与清除延迟实测、真实 Cloudflare 账号上的部署验证、一次真实的询盘邮件收发。
+Evidence no tool can supply: measured Worker CPU time including save requests,
+measured bundle size, measured cache hit rate and purge latency, a verified
+deployment on a real Cloudflare account, and one real inquiry email sent and
+received.
 
-## 11. 依赖 gate
+## 11. The dependency gate
 
-1. 上述是 0.1 唯一批准的直接依赖；未列出的包需先修订本文件。
-2. 每个任务先提交 dependency-only diff：精确版本、锁文件、许可证、安装脚本、传递依赖数、体积、以及归属于渲染层 / Worker 层 / 上传端层 / 构建层的哪一层。
-3. 生产依赖使用精确版本，不用浮动 tag。
-4. 进入渲染层与 Worker 层的依赖必须附一份在真实 `workerd` 里跑通的证据，以及打包后的 gzip 体积。
-5. 依赖无法满足契约时返回 BLOCKED 并说明，不用自写解析器或净化器绕过。
-6. **「不加依赖」不是绕开第 5 条的理由。** 成熟生态已经解决的问题——压缩、解析、净化——一律采纳现成实现，需要时先修订本文件把它加进第 1 条的清单，而不是在仓库里手写一份。
+1. The list above is the only approved set of direct dependencies for 0.1.
+   Anything else requires revising this document first.
+2. Every task begins with a dependency-only diff: exact version, lockfile,
+   licence, install scripts, transitive count, size, and which of the render,
+   Worker, upload-side or build layers it belongs to.
+3. Production dependencies are pinned to exact versions, never a floating tag.
+4. A dependency entering the render or Worker layer must come with evidence of
+   running in real `workerd` and with its bundled gzip size.
+5. When a dependency cannot meet the contract, return BLOCKED and explain.
+   Do not route around it by hand-writing a parser or a sanitiser.
+6. **"Adding no dependency" is not a reason to override rule 5.** Where a
+   mature ecosystem has solved something — compression, parsing, sanitisation
+   — take the existing implementation, revising this document to add it to
+   rule 1's list when needed, rather than writing one into the repository.
 
-### 11.1 已登记的依赖备案
+### 11.1 Registered dependencies
 
-| 包 | 版本 | 许可证 | 层 | 传递依赖 | 打包增量（gzip） | 安装脚本 | 备案原因 |
+| Package | Version | Licence | Layer | Transitive | Bundle delta (gzip) | Install scripts | Reason |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| —— | | | | | | | 暂无。`fflate` 曾为主题 zip 解包短暂加入，随「主题改为构建期打包」一并移除（`tasks/TASK-04.md`） |
+| — | | | | | | | None yet. `fflate` was briefly added to unpack theme zips and removed when themes moved to build-time bundling (`tasks/TASK-04.md`) |
 
-## 12. 明确禁止
+## 12. Explicitly forbidden
 
-- Astro、Next.js、Nuxt、SvelteKit、Gatsby、Eleventy 等站点框架（Mallok 是它们的替代品，不是它们的包装）；
-- 任何原生二进制依赖进入 Worker（`sharp`、`better-sqlite3`、Argon2 原生绑定等）；
-- 需要 Node 内置模块的库进入 Worker 层或渲染层；
-- ORM、通用 CMS 运行时、第二个模板引擎、第二套渲染管线；
-- 运行时动态 `import` 远程代码或任何形式的 `eval`；
-- React 兼容层、通用 UI 组件库；
-- 任何服务商 SDK（Cloudflare、Resend、Stripe 等）进入 Worker，一律直接 `fetch`；
-- Workers KV、Queues、Durable Objects、Cloudflare Images（0.1 用不到）；
-- 为「以后可能支持别的云」提前抽象 provider/adapter 层。
+- Site frameworks — Astro, Next.js, Nuxt, SvelteKit, Gatsby, Eleventy. Mallok
+  is an alternative to them, not a wrapper around one.
+- Any native binary dependency in the Worker (`sharp`, `better-sqlite3`,
+  native Argon2 bindings).
+- Any library requiring a Node built-in in the Worker or render layer.
+- An ORM, a general CMS runtime, a second template engine, a second render
+  pipeline.
+- Dynamic `import` of remote code at runtime, and `eval` in any form.
+- A React compatibility layer, or a general UI component library.
+- Any vendor SDK in the Worker — Cloudflare, Resend, Stripe — where `fetch`
+  will do.
+- Workers KV, Queues, Durable Objects and Cloudflare Images; 0.1 needs none of
+  them.
+- A provider or adapter layer abstracted in advance for a cloud that might be
+  supported one day.
 
-## 13. 外部依据
+## 13. External sources
 
-本文引用的平台事实取自以下官方文档，于 2026-08-28 核对：
+The platform facts cited here come from the following official documentation,
+checked on 2026-08-28:
 
-- Worker 脚本大小、CPU 时间、启动时间、内存、子请求、Cron 数量与静态资源上限：[Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
-- Workers Free/Paid 价格与包含量：[Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)
-- D1 数据库大小、行读写与查询上限：[D1 limits](https://developers.cloudflare.com/d1/platform/limits/)、[D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/)
-- R2 免费额度与价格、自定义域与缓存：[R2 pricing](https://developers.cloudflare.com/r2/pricing/)、[R2 public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/)
-- Cache API 的可用范围与 `cache.delete` 的数据中心局部性：[Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/)
-- 清缓存的速率限制与 Cache API 条目的清除方式：[Purge cache](https://developers.cloudflare.com/cache/how-to/purge-cache/)、[Purge cache key](https://developers.cloudflare.com/cache/how-to/purge-cache/purge-cache-key/)
-- KV 免费档写入上限：[KV limits](https://developers.cloudflare.com/kv/platform/limits/)
-- Queues 免费档：[Queues pricing](https://developers.cloudflare.com/queues/platform/pricing/)
-- 静态资源请求免费且不计费：[Static assets billing and limitations](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)
-- Deploy to Cloudflare 按钮的前提与能力：[Deploy buttons](https://developers.cloudflare.com/workers/platform/deploy-buttons/)
-- Turnstile 免费档：[Turnstile plans](https://developers.cloudflare.com/turnstile/plans/)
-- Workers 限流绑定的语义：[Rate limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
-- Email Workers 发信绑定仅 Paid：[Send emails from Workers](https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/)
-- Resend 免费档与 Pro 价格：[Resend pricing](https://resend.com/pricing)
-- 本地 D1 持久化与迁移命令：[D1 local development](https://developers.cloudflare.com/d1/best-practices/local-development/)
-- `liquidjs` 提供浏览器构建：npm 包 `liquidjs@10.29.0` 的 `browser` 字段映射到 `dist/liquid.browser.mjs`
+- Worker script size, CPU time, startup time, memory, subrequests, cron count
+  and static-asset limits: [Workers limits](https://developers.cloudflare.com/workers/platform/limits/)
+- Workers Free and Paid pricing and inclusions: [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/)
+- D1 database size, row read/write and query limits: [D1 limits](https://developers.cloudflare.com/d1/platform/limits/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/)
+- R2 free allowance, pricing, custom domains and caching: [R2 pricing](https://developers.cloudflare.com/r2/pricing/), [R2 public buckets](https://developers.cloudflare.com/r2/buckets/public-buckets/)
+- Where the Cache API is available and `cache.delete`'s data-centre locality: [Cache API](https://developers.cloudflare.com/workers/runtime-apis/cache/)
+- Purge rate limits and how Cache API entries can be purged: [Purge cache](https://developers.cloudflare.com/cache/how-to/purge-cache/), [Purge cache key](https://developers.cloudflare.com/cache/how-to/purge-cache/purge-cache-key/)
+- KV free-tier write limits: [KV limits](https://developers.cloudflare.com/kv/platform/limits/)
+- Queues free tier: [Queues pricing](https://developers.cloudflare.com/queues/platform/pricing/)
+- Static-asset requests being free and unbilled: [Static assets billing and limitations](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/)
+- The Deploy to Cloudflare button's requirements and capabilities: [Deploy buttons](https://developers.cloudflare.com/workers/platform/deploy-buttons/)
+- Turnstile's free tier: [Turnstile plans](https://developers.cloudflare.com/turnstile/plans/)
+- The semantics of the Workers rate-limit binding: [Rate limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
+- Email Workers' send binding being Paid-only: [Send emails from Workers](https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/)
+- Resend's free tier and Pro pricing: [Resend pricing](https://resend.com/pricing)
+- Local D1 persistence and the migration commands: [D1 local development](https://developers.cloudflare.com/d1/best-practices/local-development/)
+- That `liquidjs` provides a browser build: the npm package `liquidjs@10.29.0` maps its `browser` field to `dist/liquid.browser.mjs`
 
-这些链接只证明平台或依赖具备相关能力，不证明 Mallok 已经锁定版本、打包通过或跑过恶意语料。ARCHITECTURE §18 列出的待验证事项仍是硬门。
+These links establish only that a platform or dependency has the capability in
+question. They do not establish that Mallok has pinned a version, bundled
+successfully, or run hostile input against it. The open items in
+ARCHITECTURE §18 remain a hard gate.
