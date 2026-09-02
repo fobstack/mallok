@@ -34,7 +34,7 @@ Mallok 是一个开源、Cloudflare 原生的内容网站产品：内容以 Mark
 | 文档 | 内容 |
 | --- | --- |
 | [TESTING.md](../TESTING.md) | 测试分层、硬性契约的测试清单、覆盖率门、证据格式与状态取值 |
-| [ACCEPTANCE.md](../ACCEPTANCE.md) | 0.1 的发布门、按组编号的验收标准、跨阶段不变量、阻塞项 |
+| [ACCEPTANCE.md](ACCEPTANCE.md) | 0.1 的发布门、按组编号的验收标准、跨阶段不变量、阻塞项 |
 | [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) | Task 02–17 的任务序列、两道门、依赖图、每个任务的完成定义 |
 | [tasks/TASK-01.md](../tasks/TASK-01.md) | Walking skeleton：已实现范围、spike 捷径、本地基准数据、真实账号实测步骤与结果表（英文） |
 | [tasks/TASK-02.md](../tasks/TASK-02.md) | 认证与管理 API：API 面、决策记录、证据链、未完成项与已知风险（英文） |

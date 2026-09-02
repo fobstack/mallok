@@ -1,227 +1,252 @@
-# Mallok 0.1 验收标准
+# Mallok 0.1 acceptance criteria
 
-- 状态：0.1 基线（首次编写）
-- 日期：2026-08-28
-- 地位：定义「0.1 完成了」的唯一判据。**每一条都是可观察的行为，不是工程里程碑。** 证据格式与状态取值见 `TESTING.md §6`。
+- Status: 0.1 baseline
+- Date: 2026-08-28
+- Standing: the only test of "0.1 is done". **Every criterion is an observable
+  behaviour, not an engineering milestone.** The evidence format and the
+  status values are in `TESTING.md §6`.
 
-## 1. 发布门
+## 1. The release gate
 
-0.1 只有一个验收对象：**一个真实的外贸 B2B 站在 Mallok 上跑起来并收到询盘**（`PRODUCT_VISION §2.1`）。
+0.1 is accepted against exactly one thing: **a real foreign-trade B2B site
+running on Mallok and receiving an inquiry** (`PRODUCT_VISION §2.1`).
 
-`PRODUCT_VISION §8` 的九步「成功画面」是发布门。**九步全部通过才叫 0.1**，任何单项工程里程碑都不能单独宣布发布：
+The nine steps of `PRODUCT_VISION §8` are the release gate. **All nine must
+pass**, and no single engineering milestone may declare a release on its own:
 
-> 只完成渲染内核、只完成 CLI、只有本地能跑，或者收不到询盘，都不等于完成 0.1。
+> Finishing only the render core, only the CLI, only running locally, or not
+> receiving the inquiry, is not finishing 0.1.
 
-## 2. 编号体系
+## 2. Numbering
 
 ```
-AC-<组>-<序号>
+AC-<GROUP>-<NUMBER>
 ```
 
-| 组 | 范围 |
+| Group | Covers |
 | --- | --- |
-| `AC-DEPLOY` | 部署与首次启动向导 |
-| `AC-CONTENT` | 内容录入、编辑、发布、多语言 |
-| `AC-MEDIA` | 媒体上传与图片输出 |
-| `AC-THEME` | 主题安装、切换、配置 |
-| `AC-PLUGIN` | 插件开关与询盘链路 |
-| `AC-SEO` | SEO 输出与性能门 |
-| `AC-EXPORT` | 导入导出与不锁定 |
-| `AC-CLI` | 命令行 |
-| `AC-INV` | 跨阶段不变量（每个任务都要复验） |
+| `AC-DEPLOY` | Deployment and the setup wizard |
+| `AC-CONTENT` | Entering, editing and publishing content, and languages |
+| `AC-MEDIA` | Media upload and image output |
+| `AC-THEME` | Installing, switching and configuring a theme |
+| `AC-PLUGIN` | The plugin switch and the inquiry path |
+| `AC-SEO` | SEO output and the performance gates |
+| `AC-EXPORT` | Import, export and no lock-in |
+| `AC-CLI` | The command line |
+| `AC-INV` | Cross-stage invariants, re-verified by every task |
 
-状态取值：
+Status values:
 
-| 状态 | 含义 |
+| Status | Meaning |
 | --- | --- |
-| `VERIFIED_LOCAL` | **能指出 `文件:行号` 的自动化断言。** 手工走一遍不算——`TESTING §1` 第 3 条：不可复现的测试等于没有测试 |
-| `VERIFIED_HUMAN` | 已在真实 Cloudflare 账号上由人验过 |
-| `NOT_RUN` | 有实现，但没有可复现的证据 |
-| `PENDING_DECISION` | 实现没问题，**是条目本身写错了**，等产品负责人裁决。卡住它的是我们，不是平台 |
-| `NOT_AVAILABLE` | 需要真实账号或外部服务，本地无从取证 |
+| `VERIFIED_LOCAL` | **An automated assertion at a nameable `file:line`.** Walking through it by hand does not count — `TESTING §1`, rule 3: a test that cannot be reproduced is not a test |
+| `VERIFIED_HUMAN` | Verified by a person on a real Cloudflare account |
+| `NOT_RUN` | Implemented, but with no reproducible evidence |
+| `PENDING_DECISION` | The implementation is fine; **the criterion itself is wrong** and awaits the product owner. What blocks it is us, not the platform |
+| `NOT_AVAILABLE` | Needs a real account or an external service; no evidence is obtainable locally |
 
-**每条的状态与证据写在下面各组的表里，总数是从表里数出来的，不是写上去的。**
-这是 2026-09-01 重核后的结构改动：此前只有 `AC-INV` 一组带状态列，其余 57 条没有，
-总数只能手工维护，于是漂成了三个互相矛盾的数字（详见 §14.0）。
+**Each criterion's status and evidence live in its group's table below, and
+the totals are counted from those tables rather than written above them.**
+That is the structural change from the 2026-09-01 recount: previously only the
+`AC-INV` group carried a status column and the other 57 criteria did not, so
+the totals were maintained by hand and drifted into three mutually
+contradictory figures (§14.0).
 
 ## 3. AC-DEPLOY
 
-| ID | 验收 | 状态 | 证据 / 对应 |
+| ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-DEPLOY-01` | `npx mallok create` 在一个干净的 Cloudflare 账号上创建全部资源并部署成功，打印可访问的 `.workers.dev` 地址 | `NOT_AVAILABLE` | 需真实账号。命名与顺序有单元测试（`test/cli/provision.test.ts`），但命令从未执行过 |
-| `AC-DEPLOY-02` | Deploy to Cloudflare 按钮走通一次，资源自动创建，`MALLOK_SECRET` 按 `CLOUDFLARE_RESOURCES.md §7` 的方案之一落地 | `NOT_AVAILABLE` | 需公开仓库与真实账号。按钮从未点过 |
-| `AC-DEPLOY-03` | 首次启动向导七步全部可完成，完成后 `/_mallok/setup` 返回 404 | `PENDING_DECISION` | 实现是**四步**，媒体域名与 Resend/DNS 两步需账号级 token（`TASK-16.md §6`）。四步部分有证据：`test/worker/setup.test.ts:53`、`:81`、`:181`。要么补齐两步，要么改条目 —— 见 §14.2 |
-| `AC-DEPLOY-04` | 绑定自定义域后站点正常服务，且**缓存命中**（`x-mallok-cache: HIT`） | `NOT_AVAILABLE` | 需自定义域。`ARCHITECTURE §18` item 1 |
-| `AC-DEPLOY-05` | 未绑定自定义域时，向导明确提示缓存尚未生效，且 `robots.txt` 输出 `Disallow: /` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:152`、`:161` |
-| `AC-DEPLOY-06` | 未配置 `CF_API_TOKEN` 时站点照常工作，`cache_ttl` 降为 60 秒并在后台常驻提示 | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:81`、`test/worker/cache-admin.test.ts:94`、`test/worker/setup.test.ts:35` |
-| `AC-DEPLOY-07a` | 并发首请求在 workerd 里只应用一次迁移，锁最终释放 | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:42` |
-| `AC-DEPLOY-07b` | 同上，在真实基础设施上成立 | `NOT_AVAILABLE` | 平台行为，`TESTING §6`。`ARCHITECTURE §18` item 8 |
-| `AC-DEPLOY-08` | 升级 Worker 版本后站点不中断，schema 自动迁移，旧版本在迁移期间仍能服务 | `NOT_AVAILABLE` | 需真实账号上的两次部署 |
+| `AC-DEPLOY-01` | `npx mallok create` creates every resource on a clean Cloudflare account, deploys successfully, and prints a reachable `.workers.dev` address | `NOT_AVAILABLE` | Needs a real account. Naming and ordering have unit tests (`test/cli/provision.test.ts`), but the command has never been executed |
+| `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_AVAILABLE` | Needs a public repository and a real account. The button has never been clicked |
+| `AC-DEPLOY-03` | Every step of the setup wizard completes, and `/_mallok/setup` returns 404 afterwards | `PENDING_DECISION` | The implementation has **four** steps; the media domain and Resend/DNS steps need an account-scoped token and belong to what Task 16 did not do (`TASK-16.md §6`). The four have evidence: `test/worker/setup.test.ts:53`, `:81`, `:181`. Either build the other two or change the criterion — see §14.2 |
+| `AC-DEPLOY-04` | With a custom domain bound, the site serves normally and **the cache hits** (`x-mallok-cache: HIT`) | `NOT_AVAILABLE` | Needs a custom domain. `ARCHITECTURE §18` item 1 |
+| `AC-DEPLOY-05` | With no custom domain bound, the wizard says plainly that caching is not in effect, and `robots.txt` emits `Disallow: /` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:152`, `:161` |
+| `AC-DEPLOY-06` | Without `CF_API_TOKEN` the site works normally, `cache_ttl` drops to 60 seconds, and the admin carries a standing notice | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:81`, `test/worker/cache-admin.test.ts:94`, `test/worker/setup.test.ts:35` |
+| `AC-DEPLOY-07a` | Concurrent first requests apply the migration exactly once in workerd, and the lock is released | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:42` |
+| `AC-DEPLOY-07b` | The same holds on real infrastructure | `NOT_AVAILABLE` | Platform behaviour, `TESTING §6`. `ARCHITECTURE §18` item 8 |
+| `AC-DEPLOY-08` | Upgrading the Worker does not interrupt the site; the schema migrates itself and the old version keeps serving during it | `NOT_AVAILABLE` | Needs two deployments on a real account |
 
 ## 4. AC-CONTENT
 
-| ID | 验收 | 状态 | 证据 / 对应 |
+| ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-CONTENT-01` | 在后台录入 10 个产品（含参数表与图片）并发布 | `NOT_RUN` | 只在 `wrangler dev` 里手工走过（原 §14.3「手工验证」）。**没有自动化断言，不可复现** |
-| `AC-CONTENT-02a` | 保存内容时确实按标签发出清缓存请求 | `VERIFIED_LOCAL` | `test/worker/cache-admin.test.ts:94` |
-| `AC-CONTENT-02b` | 发布一篇新闻，**数秒内**在公开 URL 上看到 | `NOT_AVAILABLE` | 依赖真实 Purge API 的生效延迟，`ARCHITECTURE §18` item 3 |
-| `AC-CONTENT-03` | 启用第二种语言，为一个产品创建翻译版本，两个版本各有正确的 URL | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:69`、`:107` |
-| `AC-CONTENT-04` | 两个语言版本各自输出正确的 `hreflang`，含 `x-default` | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:134`、`:271` |
-| `AC-CONTENT-05` | 草稿不出现在公开 URL、不进缓存、不进 sitemap | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:213`、`test/worker/seo.test.ts:92` |
-| `AC-CONTENT-06a` | 到期内容被 `publishDue` 改状态并触发清缓存 | `VERIFIED_LOCAL` | `test/core/paths.test.ts`（`schedules a future date and publishes a past one`）、`src/worker/scheduled.ts` |
-| `AC-CONTENT-06b` | Cron Trigger 在真实环境按分钟触发上述流程 | `NOT_AVAILABLE` | 平台行为，需真实账号 |
-| `AC-CONTENT-07` | 改 slug 后旧 URL 301 到新 URL | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:234` |
-| `AC-CONTENT-08` | 打开一篇内容再关闭，`markdown` 逐字节不变 | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:269`、`test/worker/roundtrip.test.ts:140` |
-| `AC-CONTENT-09` | 超 2 MB 的正文保存失败并给出明确错误，不静默截断 | `VERIFIED_LOCAL` | `src/worker/admin-content.ts:38`、`test/worker/roundtrip.test.ts:289`（`handles hostile content without crashing or leaking`，正文含 2 MB+ 用例） |
-| `AC-CONTENT-10` | 第一阶段超 CPU 预算时存为草稿并返回明确错误，**不静默失败** | `NOT_AVAILABLE` | 需真实 CPU 计量，`ARCHITECTURE §18` item 2 |
-| `AC-CONTENT-11` | 引用缺失文件的内容可以保存、可以发布，后台显示「缺 N 张图」 | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:228`、`test/cli/scan.test.ts:78` |
+| `AC-CONTENT-01` | Enter ten products in the admin, with specification tables and images, and publish them | `NOT_RUN` | Only walked through by hand under `wrangler dev`. **No automated assertion, and not reproducible** |
+| `AC-CONTENT-02a` | Saving content does issue the tag purge | `VERIFIED_LOCAL` | `test/worker/cache-admin.test.ts:94` |
+| `AC-CONTENT-02b` | Publish a news item and see it on the public URL **within seconds** | `NOT_AVAILABLE` | Depends on the real Purge API's latency, `ARCHITECTURE §18` item 3 |
+| `AC-CONTENT-03` | Enable a second language, create a translation of a product, and both have correct URLs | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:69`, `:107` |
+| `AC-CONTENT-04` | Both languages emit correct `hreflang`, including `x-default` | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:134`, `:271` |
+| `AC-CONTENT-05` | Drafts do not appear on a public URL, do not enter the cache, and do not enter the sitemap | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:213`, `test/worker/seo.test.ts:92` |
+| `AC-CONTENT-06a` | Due content is published by `publishDue`, which triggers the purge | `VERIFIED_LOCAL` | `test/core/paths.test.ts` (`schedules a future date and publishes a past one`), `src/worker/scheduled.ts` |
+| `AC-CONTENT-06b` | The Cron Trigger drives that flow every minute in a real environment | `NOT_AVAILABLE` | Platform behaviour; needs a real account |
+| `AC-CONTENT-07` | After a slug change the old URL 301s to the new one | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:234` |
+| `AC-CONTENT-08` | Opening an item and closing it leaves `markdown` byte-identical | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:269`, `test/worker/roundtrip.test.ts:140` |
+| `AC-CONTENT-09` | A body over 2 MB fails to save with a clear error, and is never silently truncated | `VERIFIED_LOCAL` | `src/worker/admin-content.ts:38`, `test/worker/roundtrip.test.ts:289` (`handles hostile content without crashing or leaking`, whose corpus includes a 2 MB+ body) |
+| `AC-CONTENT-10` | When stage one exceeds the CPU budget the item is stored as a draft with a clear error, **never failing silently** | `NOT_AVAILABLE` | Needs real CPU measurement, `ARCHITECTURE §18` item 2 |
+| `AC-CONTENT-11` | Content referencing missing files can be saved and published, and the admin shows "N images missing" | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:228`, `test/cli/scan.test.ts:78` |
 
 ## 5. AC-MEDIA
 
-| ID | 验收 | 状态 | 证据 / 对应 |
+| ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-MEDIA-01` | 后台上传图片，浏览器端转 WebP 并生成多宽度变体，Worker 不处理图片 | `VERIFIED_LOCAL` | `test/worker/media.test.ts:142`、`test/admin/media.test.ts` |
-| `AC-MEDIA-02` | 相同文件重复上传不重复存储（sha 去重） | `VERIFIED_LOCAL` | `test/worker/media.test.ts:111` |
-| `AC-MEDIA-03` | 正文图片输出带 `srcset`、`sizes`、`width`、`height`、`loading`、`decoding` | `VERIFIED_LOCAL` | `test/core/fragment.test.ts:69`、`test/worker/media.test.ts:176` |
-| `AC-MEDIA-04` | 媒体经 R2 自定义域直出，不计入 Worker 请求数 | `NOT_AVAILABLE` | 需 R2 自定义域，`ARCHITECTURE §18` item 6 |
-| `AC-MEDIA-05` | 非白名单类型被拒绝，按嗅探类型而非扩展名判断；svg 被拒绝 | `VERIFIED_LOCAL` | `test/worker/media.test.ts:125`、`test/core/media.test.ts`（`rejects SVG`、`ignores a lying extension`） |
-| `AC-MEDIA-06a` | `ref_count` 归零的媒体进入「未使用」，宽限期内不回收 | `VERIFIED_LOCAL` | `test/worker/media.test.ts:254`、`:279` |
-| `AC-MEDIA-06b` | cron 在真实环境按 7 天窗口执行回收 | `NOT_AVAILABLE` | 平台行为，需真实账号 |
+| `AC-MEDIA-01` | Uploading an image in the admin converts it to WebP with width variants in the browser; the Worker processes no image | `VERIFIED_LOCAL` | `test/worker/media.test.ts:142`, `test/admin/media.test.ts` |
+| `AC-MEDIA-02` | Uploading the same file twice stores it once (sha deduplication) | `VERIFIED_LOCAL` | `test/worker/media.test.ts:111` |
+| `AC-MEDIA-03` | Body images emit `srcset`, `sizes`, `width`, `height`, `loading` and `decoding` | `VERIFIED_LOCAL` | `test/core/fragment.test.ts:69`, `test/worker/media.test.ts:176` |
+| `AC-MEDIA-04` | Media is served directly from an R2 custom domain and does not count against Worker requests | `NOT_AVAILABLE` | Needs an R2 custom domain, `ARCHITECTURE §18` item 6 |
+| `AC-MEDIA-05` | Types outside the allow-list are refused, judged by signature rather than extension; svg is refused | `VERIFIED_LOCAL` | `test/worker/media.test.ts:125`, `test/core/media.test.ts` (`rejects SVG`, `ignores a lying extension`) |
+| `AC-MEDIA-06a` | Media at `ref_count` zero appears under "unused" and is not collected during the grace period | `VERIFIED_LOCAL` | `test/worker/media.test.ts:254`, `:279` |
+| `AC-MEDIA-06b` | Cron performs the collection on a real seven-day window | `NOT_AVAILABLE` | Platform behaviour; needs a real account |
 
 ## 6. AC-THEME
 
-| ID | 验收 | 状态 | 证据 / 对应 |
+| ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-THEME-01` | 把主题目录放进 `src/themes/`、改一行导出、部署，站点即用新主题渲染 | `VERIFIED_LOCAL` | `test/core/themes.test.ts`（`renders every layout it declares`） |
-| `AC-THEME-02` | 换主题后**所有 URL 不变、内容 id 不变、媒体不变** | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:259` |
-| `AC-THEME-03` | 后台按 `theme.json` 自动生成配置项表单，改完**即时生效**，主题作者不写后台 | `VERIFIED_LOCAL` | `test/admin/form.test.ts:51`、`test/worker/plugins.test.ts:115` |
-| `AC-THEME-04` | 主题不支持某内容类型时，该类型降级到 `page` 布局，内容与 URL 不丢失 | `VERIFIED_LOCAL` | `test/core/theme-package.test.ts:96` |
-| `AC-THEME-05` | 含未声明 `<script>` 或 `on*=` 的主题**构建失败**，错误指出是哪个文件 | `VERIFIED_LOCAL` | `test/core/theme-package.test.ts:121`、`:132`。**2026-09-01 更正**：原 §14.1 说这条「未测」，是错的 |
-| `AC-THEME-06` | 五个官方主题（`atelier`、`journal`、`gazette`、`manual`、`folio`）的客户端 JS 均为 **0 B** | `VERIFIED_LOCAL` | `test/core/themes.test.ts`、`test/cli/build.test.ts:195` |
-| `AC-THEME-07` | 主题资源经 Static Assets 直出，路径带版本、`immutable`、`nosniff` | `VERIFIED_LOCAL` | `test/core/media.test.ts:126`、`test/core/themes.test.ts`（`links the stylesheet to Static Assets`） |
-| `AC-THEME-08` | 后台没有任何主题上传或切换入口，且明确说明换主题需要重新部署 | `NOT_RUN` | 界面文案，无自动化断言。这是 THEME 组真正的缺口 |
+| `AC-THEME-01` | Putting a theme directory in `src/themes/`, changing one export and deploying makes the site render with it | `VERIFIED_LOCAL` | `test/core/themes.test.ts` (`renders every layout it declares`) |
+| `AC-THEME-02` | After a theme switch **every URL, content id and media reference is unchanged** | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:259` |
+| `AC-THEME-03` | The admin generates the options form from `theme.json`, changes take effect **immediately**, and the theme author writes no admin code | `VERIFIED_LOCAL` | `test/admin/form.test.ts:51`, `test/worker/plugins.test.ts:115` |
+| `AC-THEME-04` | A content kind the theme does not support falls back to the `page` layout, losing neither content nor URLs | `VERIFIED_LOCAL` | `test/core/theme-package.test.ts:96` |
+| `AC-THEME-05` | A theme containing an undeclared `<script>` or `on*=` **fails the build**, and the error names the file | `VERIFIED_LOCAL` | `test/core/theme-package.test.ts:121`, `:132`. **Corrected 2026-09-01**: §14.1 previously recorded this as untested, which was wrong |
+| `AC-THEME-06` | All five official themes (`atelier`, `journal`, `gazette`, `manual`, `folio`) emit **0 B** of client-side JavaScript | `VERIFIED_LOCAL` | `test/core/themes.test.ts`, `test/cli/build.test.ts:195` |
+| `AC-THEME-07` | Theme assets are served from Static Assets, versioned, `immutable` and `nosniff` | `VERIFIED_LOCAL` | `test/core/media.test.ts:126`, `test/core/themes.test.ts` (`links the stylesheet to Static Assets`) |
+| `AC-THEME-08` | The admin has no theme upload or switch control, and says plainly that switching needs a redeploy | `NOT_RUN` | Interface copy, with no automated assertion. This is the group's real gap |
 
 ## 7. AC-PLUGIN
 
-| ID | 验收 | 状态 | 证据 / 对应 |
+| ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-PLUGIN-01` | 已装的 `inquiry` 插件用开关启用/停用、改设置与密钥，**均即时生效** | `VERIFIED_LOCAL` | `test/worker/plugins.test.ts:60`、`:115` |
-| `AC-PLUGIN-02a` | 提交被校验、入库，并排入通知站主的 job（Reply-To 为买家邮箱） | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts`（`accepts a valid submission, stores it and queues both emails`） |
-| `AC-PLUGIN-02b` | 站主**几秒内真的收到邮件** | `NOT_AVAILABLE` | 需真实 Resend，测试里是桩 |
-| `AC-PLUGIN-03a` | 自动回执按提交页语言选模板并排入 job | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts`（`renders an operator Liquid template for the autoreply`） |
-| `AC-PLUGIN-03b` | 买家**真的收到**回执 | `NOT_AVAILABLE` | 需真实 Resend |
-| `AC-PLUGIN-04` | 后台询盘面板可看列表、看详情、标记垃圾、导出 CSV | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts:359`、`:385` |
-| `AC-PLUGIN-05a` | 蜜罐、限流、服务端 Turnstile 校验三层在代码路径上生效 | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts`（`silently drops a submission that filled the honeypot`、`verifies Turnstile server-side once a secret is configured`） |
-| `AC-PLUGIN-05b` | 真实 Turnstile 下有效，且提交在 Free 的 CPU 与子请求预算内 | `NOT_AVAILABLE` | 需真实 Turnstile 与 CPU 计量，`ARCHITECTURE §18` item 9 |
-| `AC-PLUGIN-06` | 邮件发送失败时由 cron 重试，状态在后台可见 | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts:339` |
-| `AC-PLUGIN-07` | 界面如实说明**安装 / 更新 / 移除插件需要重新部署**，且后台没有上传入口 | `NOT_RUN` | 界面文案，无自动化断言 |
+| `AC-PLUGIN-01` | The installed `inquiry` plugin's switch, settings and secrets all take effect **immediately** | `VERIFIED_LOCAL` | `test/worker/plugins.test.ts:60`, `:115` |
+| `AC-PLUGIN-02a` | A submission is validated, stored, and queued as a job notifying the owner with Reply-To set to the buyer | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts` (`accepts a valid submission, stores it and queues both emails`) |
+| `AC-PLUGIN-02b` | The owner **actually receives the email within seconds** | `NOT_AVAILABLE` | Needs real Resend; the tests use a stub |
+| `AC-PLUGIN-03a` | The acknowledgement picks its template by the submitting page's locale and is queued | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts` (`renders an operator Liquid template for the autoreply`) |
+| `AC-PLUGIN-03b` | The buyer **actually receives** the acknowledgement | `NOT_AVAILABLE` | Needs real Resend |
+| `AC-PLUGIN-04` | The admin panel lists inquiries, shows detail, marks spam and exports CSV | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts:359`, `:385` |
+| `AC-PLUGIN-05a` | The honeypot, rate limiting and server-side Turnstile verification are all on the code path | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts` (`silently drops a submission that filled the honeypot`, `verifies Turnstile server-side once a secret is configured`) |
+| `AC-PLUGIN-05b` | They hold against real Turnstile, and a submission fits the free plan's CPU and subrequest budget | `NOT_AVAILABLE` | Needs real Turnstile and CPU measurement, `ARCHITECTURE §18` item 9 |
+| `AC-PLUGIN-06` | A failed send is retried by cron and its status is visible in the admin | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts:339` |
+| `AC-PLUGIN-07` | The interface states plainly that **installing, updating and removing plugins need a redeploy**, and has no upload control | `NOT_RUN` | Interface copy, with no automated assertion |
 
 ## 8. AC-SEO
 
-| ID | 验收 | 状态 | 证据 / 对应 |
+| ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-SEO-01a` | `/sitemap.xml` 输出全部已发布内容，含 hreflang 与 `x-default` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:92`、`carries hreflang alternates and x-default in the sitemap` |
-| `AC-SEO-01b` | 超 5000 条自动分页为 `/sitemap-<n>.xml` 并输出 index | `NOT_RUN` | 实现存在，无针对分页的断言 |
-| `AC-SEO-02` | `/feed.xml` 按语言输出有效 RSS | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:128` |
-| `AC-SEO-03` | 每页输出正确的 canonical、OG、Twitter Card | `VERIFIED_LOCAL` | `test/core/view.test.ts`（`never overrides a canonical field the author wrote`、`fills canonical fields from the aliases other tools use`） |
-| `AC-SEO-04` | JSON-LD 输出 Organization / Article / Product / FAQPage，且 `<` 已转义为 `\u003c` | `VERIFIED_LOCAL` | `test/core/view.test.ts:117`、`:144`、`still emits Article and Product` |
-| `AC-SEO-05` | Lighthouse 移动端 SEO **每次 100** | `NOT_AVAILABLE` | 需自定义域且缓存命中，`SEO_PERFORMANCE §12` |
-| `AC-SEO-06` | Lighthouse 移动端 Performance 中位 ≥ 95、单次 ≥ 90 | `NOT_AVAILABLE` | 同上 |
-| `AC-SEO-07` | 页面体积与图片预算达标 | `NOT_AVAILABLE` | 预算数字本身还待产品负责人确认（`SEO_PERFORMANCE §7`） |
+| `AC-SEO-01a` | `/sitemap.xml` lists all published content with hreflang and `x-default` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:92`, and `carries hreflang alternates and x-default in the sitemap` |
+| `AC-SEO-01b` | Past 5,000 entries it paginates into `/sitemap-<n>.xml` with an index | `NOT_RUN` | Implemented, with no assertion covering the pagination |
+| `AC-SEO-02` | `/feed.xml` emits valid RSS per language | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:128` |
+| `AC-SEO-03` | Every page emits correct canonical, OG and Twitter Card tags | `VERIFIED_LOCAL` | `test/core/view.test.ts` (`never overrides a canonical field the author wrote`, `fills canonical fields from the aliases other tools use`) |
+| `AC-SEO-04` | JSON-LD emits Organization, Article, Product and FAQPage, with `<` escaped to `\u003c` | `VERIFIED_LOCAL` | `test/core/view.test.ts:117`, `:144`, and `still emits Article and Product` |
+| `AC-SEO-05` | Lighthouse mobile SEO is **100 every time** | `NOT_AVAILABLE` | Needs a custom domain with the cache warm, `SEO_PERFORMANCE §12` |
+| `AC-SEO-06` | Lighthouse mobile Performance is ≥ 95 median and ≥ 90 in any run | `NOT_AVAILABLE` | As above |
+| `AC-SEO-07` | The page-size and image budgets are met | `NOT_AVAILABLE` | The budget numbers themselves still await the product owner (`SEO_PERFORMANCE §7`) |
 
 ## 9. AC-EXPORT
 
-| ID | 验收 | 状态 | 证据 / 对应 |
+| ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-EXPORT-01` | 一键导出全部内容与询盘，产出 `CONTENT_FORMAT §5` 的目录 | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:378`、`test/worker/inquiry.test.ts:385` |
-| `AC-EXPORT-02` | `CONTENT_FORMAT §9` 的七条往返一致性断言全部通过 | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts` 全文 |
-| `AC-EXPORT-03` | 导出的 `index*.md` 逐字节等于 D1 里的 `markdown` | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:140`、`:378` |
-| `AC-EXPORT-04` | 导出包**不含**任何密钥、会话、token、`render_cache` | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:359` |
-| `AC-EXPORT-05` | 导出的目录能被 Astro 或 Hugo 直接读取（人工验证一次） | `NOT_RUN` | 导入方向的别名有测试（`roundtrip.test.ts:173`），**反方向从未人工验证** |
+| `AC-EXPORT-01` | One action exports all content and inquiries into the directory from `CONTENT_FORMAT §5` | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:378`, `test/worker/inquiry.test.ts:385` |
+| `AC-EXPORT-02` | All seven round-trip assertions in `CONTENT_FORMAT §9` pass | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts` throughout |
+| `AC-EXPORT-03` | Each exported `index*.md` is byte-identical to `markdown` in D1 | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:140`, `:378` |
+| `AC-EXPORT-04` | An export contains **no** secret, session, token or `render_cache` | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:359` |
+| `AC-EXPORT-05` | The exported directory can be read directly by Astro or Hugo (verified once by hand) | `NOT_RUN` | The import direction's aliases are tested (`roundtrip.test.ts:173`); **the reverse has never been verified by hand** |
 
 ## 10. AC-CLI
 
-| ID | 验收 | 状态 | 证据 / 对应 |
+| ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-CLI-01` | `mallok publish <dir>` 把本地文章包（含 `images/`）批量发布进站点 | `VERIFIED_LOCAL` | `test/cli/scan.test.ts`（`reads a bundle with its translations and assets`）、`test/worker/flow.test.ts:204` |
-| `AC-CLI-02` | 重复发布未修改的目录是空操作：**不写 D1、不清缓存** | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:204`、`test/worker/roundtrip.test.ts:249` |
-| `AC-CLI-03` | `mallok preview` 本地渲染结果与线上**逐字节一致** | `PENDING_DECISION` | 正文与结构确实逐字节一致（同一个 `renderFragment`/`renderPage`），但预览离线、无媒体表，图片仍是相对路径。措辞需加限定 —— 见 §14.2 |
-| `AC-CLI-04` | CLI 没有后台没有的能力，反之亦然 | `VERIFIED_LOCAL` | 结构性：两者走同一套管理 API（`src/cli/client.ts`），无 CLI 专属端点 |
-| `AC-CLI-05` | 缺图被报告，`--fail-on-missing` 在 CI 中生效 | `VERIFIED_LOCAL` | `test/cli/scan.test.ts:78`、`treats a referenced file that is absent as missing, not an error` |
+| `AC-CLI-01` | `mallok publish <dir>` publishes local bundles, `images/` included, into a site | `VERIFIED_LOCAL` | `test/cli/scan.test.ts` (`reads a bundle with its translations and assets`), `test/worker/flow.test.ts:204` |
+| `AC-CLI-02` | Republishing an unmodified directory is a no-op: **no D1 write, no cache purge** | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:204`, `test/worker/roundtrip.test.ts:249` |
+| `AC-CLI-03` | `mallok preview`'s local render is **byte-identical** to production | `PENDING_DECISION` | The body and structure are byte-identical — the same `renderFragment` and `renderPage` — but the preview is offline with no media table, so images stay relative paths. The wording needs qualifying — see §14.2 |
+| `AC-CLI-04` | The CLI has no capability the admin lacks, and the reverse | `VERIFIED_LOCAL` | Structural: both go through the same management API (`src/cli/client.ts`), with no CLI-only endpoint |
+| `AC-CLI-05` | Missing images are reported, and `--fail-on-missing` works in CI | `VERIFIED_LOCAL` | `test/cli/scan.test.ts:78`, and `treats a referenced file that is absent as missing, not an error` |
 
-## 11. AC-INV：跨阶段不变量
+## 11. AC-INV: cross-stage invariants
 
-**每个任务结束前都要复验这几条**，不是只在最后查一次：
+Re-verified by every task (`IMPLEMENTATION_PLAN §5`, item 4).
 
-| ID | 不变量 | 当前状态 |
+| ID | Criterion | Status |
 | --- | --- | --- |
-| `AC-INV-01` | `src/core/` 不 import 任何 Cloudflare 或 Node API，`tsc -p src/core/tsconfig.json` 通过 | `VERIFIED_LOCAL` |
-| `AC-INV-02` | 同一输入渲染出逐字节相同的 HTML | `VERIFIED_LOCAL` |
-| `AC-INV-03` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size` 全绿 | `VERIFIED_LOCAL` |
-| `AC-INV-04` | Worker 打包 gzip 体积在 Free 3 MB 之内 | `VERIFIED_LOCAL`（2026-08-30：229.2 KiB，7.5%） |
-| `AC-INV-05` | 单页冷渲染是 1 次 D1 batch，查询数 ≤ 3，行读有界 | `PENDING_DECISION`——**实测 2 次 batch**（最重的页面也是 2 次），措辞需修订，见 §14.2。证据：`test/worker/budget.test.ts` |
-| `AC-INV-06` | 列表页不解析正文、不查 `render_cache`、不执行 `COUNT(*)` | `VERIFIED_LOCAL`（`listPublished` 只取标量列、`LIMIT n+1`） |
-| `AC-INV-07` | 错误响应不泄露 SQL、bucket 名、id 或堆栈 | `VERIFIED_LOCAL` |
-| `AC-INV-08` | 访客页面客户端 JS 为 0 B（询盘页的 Turnstile 除外） | `VERIFIED_LOCAL`（`test/core/themes.test.ts` 对五个主题的每个布局断言除 JSON-LD 外无 `<script>`） |
-| `AC-INV-09` | 改内容、改设置、改主题配置项、开关插件，**均不需要构建或部署** | `VERIFIED_LOCAL` |
-| `AC-INV-10` | 换主题、装插件**确实需要部署**，且界面如实这么说——不做成假的一键操作 | `NOT_RUN`——界面文案，无自动化断言；与 `AC-THEME-08`、`AC-PLUGIN-07` 同一缺口 |
+| `AC-INV-01` | `src/core/` imports no Cloudflare or Node API, and `tsc -p src/core/tsconfig.json` passes | `VERIFIED_LOCAL` |
+| `AC-INV-02` | The same input renders byte-identical HTML | `VERIFIED_LOCAL` |
+| `AC-INV-03` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size` is green | `VERIFIED_LOCAL` |
+| `AC-INV-04` | The Worker's gzipped bundle fits the free plan's 3 MB | `VERIFIED_LOCAL` (2026-08-30: 229.2 KiB, 7.5%) |
+| `AC-INV-05` | A single-page cold render is one D1 batch, at most 3 queries, with bounded row reads | `PENDING_DECISION` — **measured at 2 batches** (even on the heaviest page); the wording needs revising, see §14.2. Evidence: `test/worker/budget.test.ts` |
+| `AC-INV-06` | A list page parses no body, queries no `render_cache`, and runs no `COUNT(*)` | `VERIFIED_LOCAL` (`listPublished` reads scalar columns only, with `LIMIT n+1`) |
+| `AC-INV-07` | Error responses leak no SQL, bucket name, id or stack trace | `VERIFIED_LOCAL` |
+| `AC-INV-08` | Visitor pages carry 0 B of client-side JavaScript, the inquiry page's Turnstile excepted | `VERIFIED_LOCAL` (`test/core/themes.test.ts` asserts no `<script>` beyond JSON-LD in every layout of all five themes) |
+| `AC-INV-09` | Changing content, settings, theme options or a plugin switch **needs neither a build nor a deployment** | `VERIFIED_LOCAL` |
+| `AC-INV-10` | Switching themes and installing plugins **do need a deployment**, and the interface says so — never dressed up as one click | `NOT_RUN` — interface copy, no automated assertion; the same gap as `AC-THEME-08` and `AC-PLUGIN-07` |
 
-`AC-INV-09` 是产品的立身之本（`PRODUCT_VISION §5.1`）。**任何让它不成立的设计一律否决**，无论其他方面多有吸引力。
+`AC-INV-09` is what the product stands on (`PRODUCT_VISION §5.1`). **Any design
+that breaks it is rejected**, however attractive it is otherwise.
 
-`AC-INV-10` 是它的另一半：需要部署的事就说需要部署。把「不需要构建」扩大成「什么都不需要构建」会在用户第一次换主题时崩塌，代价比一开始就说清楚大得多。
+`AC-INV-10` is its other half: what needs a deployment is said to need one.
+Stretching "no build" into "nothing ever needs building" collapses the first
+time a user switches themes, and costs more than saying it plainly would have.
 
-## 12. 阻塞项
+## 12. Blockers
 
-这些不解决就无法宣布 0.1，但它们不是代码问题：
+None of these is a code problem, and 0.1 cannot be declared until they are
+resolved:
 
-| # | 项 | 归属 |
+| # | Item | Owner |
 | --- | --- | --- |
-| 1 | `ARCHITECTURE §18` 的九项实测（`TASK-01 §4`） | 产品负责人执行 |
-| 2 | Markdown 引擎决策（`TASK-01 §6`） | 产品负责人 |
-| 3 | 内联 HTML 保留与否（`SECURITY.md §4`） | 产品负责人，与 #2 一并 |
-| 4 | `SEO_PERFORMANCE.md §7` 的性能数字确认 | 产品负责人 |
-| 5 | 许可证最终确定（`PRODUCT_VISION §12`） | `JasonYv`，实现者不得代选 |
-| 6 | 仓库 `JasonYv/mallok` 创建与远端归属核验 | 产品负责人 |
+| 1 | The nine measurements in `ARCHITECTURE §18` (`TASK-01 §4`) | The product owner runs them |
+| 2 | ~~The Markdown engine decision~~ **Settled 2026-08-29: stay with unified** (`TASK-01 §6`) | Cleared |
+| 3 | Whether to keep inline HTML (`SECURITY.md §4`) | The product owner |
+| 4 | Confirming the performance numbers in `SEO_PERFORMANCE.md §7` | The product owner |
+| 5 | ~~Settling the licence~~ **Settled 2026-09-01: Apache-2.0.** A separate trademark policy keeping the `Mallok` name is still outstanding | Cleared |
+| 6 | ~~Creating `JasonYv/mallok` and verifying its ownership~~ **Done 2026-09-01**, currently private | Cleared |
 
-## 13. 不属于 0.1
+## 13. Not part of 0.1
 
-以下出现在需求里就是范围蔓延（`PRODUCT_VISION §10`）：Mallok 托管、账号体系、计费、多租户、购物车、支付、会员、评论、在线协作编辑、内容修订历史界面、字段级翻译、自动语言跳转、WordPress 导入器、产品 CSV/Excel 导入、可视化编辑器、AI 自动翻译。
+Any of these appearing in a requirement is scope creep
+(`PRODUCT_VISION §10`): Mallok hosting, an account system, billing,
+multi-tenancy, a cart, payment, membership, comments, collaborative editing, a
+revision-history interface, field-level translation, automatic language
+redirection, a WordPress importer, product CSV/Excel import, the visual
+editor, and AI translation.
 
-## 14. 逐条盘点
+## 14. The criterion-by-criterion account
 
-### 14.0 2026-09-01 重核：为什么要重核
+### 14.0 The 2026-09-01 recount, and why it was needed
 
-本节此前公布过**三个互相矛盾的总数**：
+This section had published **three mutually contradictory totals**:
 
-| 出处 | 说法 |
+| Where | What it said |
 | --- | --- |
-| §2 结论句 | 76 条 = 48 `VERIFIED_LOCAL` + 28 `NOT_AVAILABLE` |
-| §14 标题下 | 76 条 = 56 `VERIFIED_LOCAL` + 20 `NOT_AVAILABLE` |
-| §14.1 分组表 | 67 条 = 50 `VERIFIED_LOCAL` + 17 `NOT_AVAILABLE` |
+| §2's conclusion | 76 criteria = 48 `VERIFIED_LOCAL` + 28 `NOT_AVAILABLE` |
+| Under §14's heading | 76 criteria = 56 `VERIFIED_LOCAL` + 20 `NOT_AVAILABLE` |
+| §14.1's group table | 67 criteria = 50 `VERIFIED_LOCAL` + 17 `NOT_AVAILABLE` |
 
-**根因不是谁算错了，是结构问题**：当时只有 `AC-INV` 一组的定义表带状态列，
-其余 57 条没有。总数只能手工维护，于是必然漂移。
+**The cause was structural, not arithmetic**: only the `AC-INV` group's table
+carried a status column, and the other 57 criteria had none. The totals could
+only be maintained by hand, so they were always going to drift.
 
-**总数原本就是 67**，两种独立方法都得这个数：唯一 `AC-` 编号计数 = 67；
-§14.1 分组表求和 = 67。「76」应是 67 的笔误，出现了两次。
+**The count was always 67.** Two independent methods agree: counting unique
+`AC-` identifiers gives 67, and summing §14.1's group table gives 67. "76" was
+a transposition, and it appeared twice.
 
-重核做了四件事：
+The recount did four things:
 
-1. **给每条加状态列与证据指针**（`文件:行号`）。总数从此是**数出来的**，不是写上去的。
-2. **拆开「一半能测、一半测不了」的条目**。原来它们整条算无证据，
-   已经做完的工作被隐形了。拆成 `-a` / `-b`，编号不重排，旧引用不失效。
-3. **加 `NOT_RUN` 与 `PENDING_DECISION` 两档**。前者是「有实现但没有可复现证据」
-   （手工走过一遍不算，`TESTING §1` 第 3 条）；后者是「条目本身写错了，等裁决」——
-   把它和 `NOT_AVAILABLE` 分开，才看得出**卡住它的是我们，不是平台**。
-4. **修了两处错**：`AC-THEME-05` 原记「构建期脚本检查未测」，实际有
-   `test/core/theme-package.test.ts:121`、`:132`；`AC-DEPLOY-07` 原被 §14.1 记为已验、
-   又被 §14.4 记为需真实账号，现拆成 `-07a`（workerd 里已验）与 `-07b`（平台行为）。
+1. **Added a status and a `file:line` evidence pointer to every criterion.**
+   The totals are now **counted** rather than asserted.
+2. **Split the criteria that bundled a testable half with an untestable one.**
+   As written, those counted as no-evidence in full, hiding work that was
+   done. They are `-a` and `-b`; identifiers were not renumbered, so existing
+   references still resolve.
+3. **Added `NOT_RUN` and `PENDING_DECISION`.** The first is "implemented but
+   with no reproducible evidence" — walking through it by hand does not count
+   (`TESTING §1`, rule 3). The second is "the criterion itself is wrong",
+   which separates the items *we* are blocking from the ones the platform is.
+4. **Corrected two errors.** `AC-THEME-05` was recorded as untested; it has
+   `test/core/theme-package.test.ts:121` and `:132`. `AC-DEPLOY-07` was
+   counted as verified in §14.1 and as needing a real account in §14.4; it is
+   now `-07a` (verified in workerd) and `-07b` (platform behaviour).
 
-### 14.1 按组的状态（数字来自各组定义表）
+### 14.1 Status by group (counted from the group tables)
 
-拆分后共 **75 行**（67 条原始验收，其中 8 条各拆成两半）：
+After the splits there are **75 rows**: 67 original criteria, eight of which
+became two halves each.
 
-| 组 | 行数 | `VERIFIED_LOCAL` | `NOT_RUN` | `PENDING_DECISION` | `NOT_AVAILABLE` |
+| Group | Rows | `VERIFIED_LOCAL` | `NOT_RUN` | `PENDING_DECISION` | `NOT_AVAILABLE` |
 | --- | --- | --- | --- | --- | --- |
 | `AC-DEPLOY` | 9 | 3 | 0 | 1 | 5 |
 | `AC-CONTENT` | 13 | 9 | 1 | 0 | 3 |
@@ -232,77 +257,107 @@ AC-<组>-<序号>
 | `AC-EXPORT` | 5 | 4 | 1 | 0 | 0 |
 | `AC-CLI` | 5 | 4 | 0 | 1 | 0 |
 | `AC-INV` | 10 | 8 | 1 | 1 | 0 |
-| **合计** | **75** | **50** | **6** | **3** | **16** |
+| **Total** | **75** | **50** | **6** | **3** | **16** |
 
-**`VERIFIED_HUMAN` 仍然是 0。** 这是本节最重要的一句话，重核没有改变它：
-**从未在真实 Cloudflare 账号上运行过任何东西。** 所有「本地已验」都是在
-workerd 模拟环境或 `wrangler dev` 里跑出来的。
+**`VERIFIED_HUMAN` is still 0.** That is this section's most important
+sentence, and the recount did not change it: **nothing has ever run against a
+real Cloudflare account.** Everything marked verified locally was verified in
+simulated workerd or under `wrangler dev`.
 
-### 14.1.1 六条 `NOT_RUN` 是什么
+### 14.1.1 What the six `NOT_RUN` items are
 
-有实现、但没有可复现的断言。它们不需要真实账号，**写个测试就能关掉**：
+Implemented, but with no reproducible assertion. None of them needs a real
+account — **writing a test closes each one**:
 
-| 条目 | 缺什么 |
+| Criterion | What is missing |
 | --- | --- |
-| `AC-CONTENT-01` | 「后台录入 10 个产品」只手工走过 |
-| `AC-THEME-08`、`AC-PLUGIN-07`、`AC-INV-10` | 界面文案断言：后台没有上传入口，且如实说明需重新部署 |
-| `AC-SEO-01b` | sitemap 超 5000 条的分页 |
-| `AC-EXPORT-05` | 导出目录被 Astro/Hugo 直读，人工验证一次 |
+| `AC-CONTENT-01` | "Enter ten products in the admin" has only been walked through by hand |
+| `AC-THEME-08`, `AC-PLUGIN-07`, `AC-INV-10` | An assertion on the interface copy: no upload control, and an honest statement that a redeploy is needed |
+| `AC-SEO-01b` | Sitemap pagination past 5,000 entries |
+| `AC-EXPORT-05` | An exported directory read directly by Astro or Hugo, once, by hand |
 
-### 14.2 待产品负责人裁决的（三条 `PENDING_DECISION`，外加一项范围说明）
+### 14.2 Awaiting the product owner (three `PENDING_DECISION` items, plus one note on scope)
 
-**1. `AC-INV-05` 的措辞与实测不符。** 条目要求「1 次 D1 batch、查询数 ≤ 3」。实测（`test/worker/budget.test.ts`，冷渲染、绕过缓存）：
+**1. `AC-INV-05`'s wording does not match the measurement.** The criterion
+asks for one D1 batch and at most 3 queries. Measured in
+`test/worker/budget.test.ts`, on a cold render bypassing the cache:
 
-| 页面 | D1 调用 | 组成 |
+| Page | D1 calls | Composition |
 | --- | --- | --- |
-| 普通文章页（无媒体、无关联） | **2** | `batch(5)` + `batch(1)` |
-| 产品页（有分类关联、有同类推荐、有图片引用） | **2** | `batch(5)` + `batch(3)` |
+| A plain article, no media, no relations | **2** | `batch(5)` + `batch(1)` |
+| A product page with a category relation, siblings and image references | **2** | `batch(5)` + `batch(3)` |
 
-有已解析媒体的页面再加 1 次（`loadMediaBySha`），关联条目带封面时再加 1 次，上限 4。
+A page with resolved media adds one (`loadMediaBySha`), and related items with
+covers add one more, to a ceiling of four.
 
-**为什么做不到 1 次 batch**：关联内容与媒体都依赖第一次 batch 返回的 content 行（slug、kind、frontmatter、assets），所以它们必然是第二个往返。这不是实现偷懒，是数据依赖。
+**Why one batch is impossible**: related content and media both depend on the
+content row the first batch returns — its slug, kind, front matter and assets
+— so they are necessarily a second round trip. This is a data dependency, not
+a lazy implementation.
 
-建议把条目改成「**冷渲染的 D1 往返 ≤ 4 次，每次查询数常数级，行读有界**」，实测数字写进 `ARCHITECTURE §4`。**但这是架构不变量，由产品负责人改。**
+The suggested rewording is "**a cold render makes at most 4 D1 round trips,
+each with a constant number of queries and bounded row reads**", with the
+measured figures written into `ARCHITECTURE §4`. **But this is an
+architectural invariant, and the product owner changes it.**
 
-**2. `AC-DEPLOY-03` 说向导七步，实现是四步。** 媒体域名与 Resend/DNS 两步需要账号级 Cloudflare API token，属 Task 16 未做的部分（`TASK-16.md §6`）；两者都能在设置里补做，没有功能不可达。要么补齐两步，要么把条目改成四步加「其余在设置里完成」。
+**2. `AC-DEPLOY-03` says the wizard has seven steps; the implementation has
+four.** The media domain and the Resend/DNS steps need an account-scoped
+Cloudflare API token and belong to what Task 16 did not do
+(`TASK-16.md §6`). Both can be completed later in settings, so no
+functionality is unreachable. Either build the two steps, or change the
+criterion to four plus "the rest is completed in settings".
 
-**3. `AC-CLI-03` 的「逐字节一致」需要一句限定。** `mallok preview` 与线上跑的是**同一个** `renderFragment` / `renderPage`，所以给定相同输入产出相同字节。但预览是离线的，没有媒体表，因此图片仍是相对路径（`images/hero.png`），线上是 R2 URL。**正文与结构逐字节一致，媒体 URL 必然不同**——建议条目改成「同一份 Markdown 在两处产出相同的正文片段」。
+**3. `AC-CLI-03`'s "byte-identical" needs one qualification.**
+`mallok preview` runs the **same** `renderFragment` and `renderPage` as
+production, so identical input produces identical bytes. But the preview is
+offline with no media table, so images stay relative paths
+(`images/hero.png`) where production has R2 URLs. **The body and structure are
+byte-identical; the media URLs necessarily differ.** The suggested rewording
+is "the same Markdown produces the same body fragment in both places".
 
-**4. `src/worker/spike.ts` 还在。** Task 17 要求删掉它。**没有删**：它是 `TASK-01 §4` 那九项实测的量具，而实测还没做（§12 阻塞项 1）。先删量具再测量是本末倒置。测完再删。
+**4. `src/worker/spike.ts` is still there.** Task 17 asked for its removal.
+**It has not been removed**: it is the instrument for the nine measurements in
+`TASK-01 §4`, and those have not been taken (§12, blocker 1). Removing the
+instrument before measuring is backwards. It goes once the measurements are
+done.
 
-### 14.3 证据索引
+### 14.3 Evidence index
 
-| 证据类型 | 文件 |
+| Kind of evidence | File |
 | --- | --- |
-| 往返一致性（`AC-EXPORT-02`，七条） | `test/worker/roundtrip.test.ts` |
-| 零客户端 JS（`AC-THEME-06`、`AC-INV-08`） | `test/core/themes.test.ts` |
-| 询盘全链路（`AC-PLUGIN-01..06`，邮件与 Turnstile 用桩） | `test/worker/inquiry.test.ts` |
-| 插件即时生效与密钥加密（`AC-PLUGIN-01`） | `test/worker/plugins.test.ts` |
-| 向导与 Starter（`AC-DEPLOY-03` 的四步部分） | `test/worker/setup.test.ts` |
-| SEO 端点（`AC-SEO-01..04`） | `test/worker/seo.test.ts`、`test/core/view.test.ts` |
-| 多语言与 hreflang（`AC-CONTENT-03/04/07`） | `test/worker/locale.test.ts` |
-| 媒体去重与类型嗅探（`AC-MEDIA-02/05`） | `test/worker/media.test.ts` |
-| 关联内容与冷渲染预算（`AC-INV-05`） | `test/worker/relations.test.ts`、`test/worker/budget.test.ts` |
-| CLI 参数、站点解析、扫描（`AC-CLI-01/02/05`） | `test/cli/*.test.ts` |
-| 源文本不被改写（`AC-CONTENT-08`、`AC-EXPORT-03`） | `test/core/frontmatter.test.ts`、`test/worker/roundtrip.test.ts` |
-| 手工验证（`wrangler dev`，步骤见各 TASK 文档 §5） | 后台三栏编辑器、插件面板、CLI publish/export/import 往返、Starter 安装 |
+| Round-trip fidelity (`AC-EXPORT-02`, all seven) | `test/worker/roundtrip.test.ts` |
+| Zero client JavaScript (`AC-THEME-06`, `AC-INV-08`) | `test/core/themes.test.ts` |
+| The whole inquiry path (`AC-PLUGIN-01..06`, with email and Turnstile stubbed) | `test/worker/inquiry.test.ts` |
+| Plugins taking effect immediately, and secret encryption (`AC-PLUGIN-01`) | `test/worker/plugins.test.ts` |
+| The wizard and the starter (`AC-DEPLOY-03`'s four steps) | `test/worker/setup.test.ts` |
+| The SEO endpoints (`AC-SEO-01..04`) | `test/worker/seo.test.ts`, `test/core/view.test.ts` |
+| Languages and hreflang (`AC-CONTENT-03/04/07`) | `test/worker/locale.test.ts` |
+| Media deduplication and type sniffing (`AC-MEDIA-02/05`) | `test/worker/media.test.ts` |
+| Related content and the cold-render budget (`AC-INV-05`) | `test/worker/relations.test.ts`, `test/worker/budget.test.ts` |
+| CLI arguments, site resolution, scanning (`AC-CLI-01/02/05`) | `test/cli/*.test.ts` |
+| The source text never being rewritten (`AC-CONTENT-08`, `AC-EXPORT-03`) | `test/core/frontmatter.test.ts`, `test/worker/roundtrip.test.ts` |
+| Walked through by hand under `wrangler dev` (steps in each TASK document's §5) — **not evidence under the current status vocabulary**, see §14.1.1 | The three-column editor, plugin panels, the CLI publish/export/import round trip, installing the starter |
 
-### 14.4 需要真实账号才能推进的（§12 阻塞项 1 的具体清单）
+### 14.4 What needs a real account (§12, blocker 1, itemised)
 
-**2026-09-01 重生成。** 旧版本手写了一份清单，与 §14.1 的分组数在九组里有六组
-对不上——两份都是手工维护的，各自漂了。现在这份就是各组定义表里状态为
-`NOT_AVAILABLE` 的全部条目，共 **16** 条：
+**Regenerated 2026-09-01.** The previous version was a hand-written list that
+disagreed with §14.1's per-group counts in six of nine groups — both were
+maintained by hand and each drifted on its own. This list is now exactly the
+criteria whose status in the group tables is `NOT_AVAILABLE`, all **16** of
+them:
 
-| 组 | 条目 | 卡在哪 |
+| Group | Criteria | What blocks them |
 | --- | --- | --- |
-| `AC-DEPLOY` | `01`、`02`、`04`、`07b`、`08` | 真实账号：建资源、Deploy 按钮、自定义域缓存、并发迁移、滚动升级 |
-| `AC-CONTENT` | `02b`、`06b`、`10` | 清缓存生效延迟、cron 真实触发、CPU 预算 |
-| `AC-MEDIA` | `04`、`06b` | R2 自定义域、cron 回收 |
-| `AC-PLUGIN` | `02b`、`03b`、`05b` | 真实 Resend 投递、真实 Turnstile 与 CPU 预算 |
-| `AC-SEO` | `05`、`06`、`07` | Lighthouse 三条（需自定义域且缓存命中） |
+| `AC-DEPLOY` | `01`, `02`, `04`, `07b`, `08` | A real account: creating resources, the Deploy button, caching on a custom domain, concurrent migration, a rolling upgrade |
+| `AC-CONTENT` | `02b`, `06b`, `10` | Purge latency, cron firing for real, the CPU budget |
+| `AC-MEDIA` | `04`, `06b` | An R2 custom domain, cron collection |
+| `AC-PLUGIN` | `02b`, `03b`, `05b` | Real Resend delivery, real Turnstile and the CPU budget |
+| `AC-SEO` | `05`, `06`, `07` | The three Lighthouse criteria, which need a custom domain with the cache warm |
 
-`AC-THEME`、`AC-EXPORT`、`AC-CLI`、`AC-INV` 四组**没有**需要真实账号的条目——
-它们剩下的缺口是 `NOT_RUN`（补个测试就行）或 `PENDING_DECISION`（等裁决）。
+`AC-THEME`, `AC-EXPORT`, `AC-CLI` and `AC-INV` have **no** criteria needing a
+real account — their remaining gaps are `NOT_RUN` (write a test) or
+`PENDING_DECISION` (make a call).
 
-对照 `ARCHITECTURE §18` 的九项实测：跑完那九项，上表 16 条里的 15 条可以关掉；
-剩下 `AC-DEPLOY-02`（Deploy 按钮）另需一个公开仓库。
+Against the nine measurements in `ARCHITECTURE §18`: running those closes 15
+of the 16 above. The remaining one, `AC-DEPLOY-02`, additionally needs a
+public repository.

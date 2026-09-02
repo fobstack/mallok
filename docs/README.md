@@ -5,15 +5,9 @@ Markdown in D1, an edit is live immediately, there is no build step, and the
 content can be taken elsewhere at any time. The first vertical is
 foreign-trade B2B company sites.
 
-> **Translation is in progress.** English is authoritative for a document
-> once it has been translated; the Chinese original then moves to
-> [`zh/`](zh/). Documents still marked below as *not yet translated* are
-> Chinese at their canonical path, and are the authority until they are.
->
-> Translated so far: this index, `CONTENT_FORMAT.md`, `CLOUDFLARE_RESOURCES.md`,
-> `CONVENTIONS.md`, `THEME_FORMAT.md`, `PLUGIN_API.md`, `ARCHITECTURE.md`,
-> `CLI.md`, `SECURITY.md`, `DATA_MODEL.md`, `TECH_STACK.md`, `TESTING.md`,
-> `SEO_PERFORMANCE.md`, `ADMIN.md`, `PRODUCT_VISION.md`, `IMPLEMENTATION_PLAN.md`.
+> **English is authoritative.** Every document here has been translated; the
+> Chinese originals are kept under [`zh/`](zh/) for reference. Where the two
+> disagree, the English is what the code is held to.
 
 ## Design documents
 
@@ -46,7 +40,7 @@ rest are the contracts for individual subsystems.
 | --- | --- |
 | [CONVENTIONS.md](CONVENTIONS.md) | The boundaries a change is held to: what the product is, what the engineering may not do, style, fact discipline, working rules |
 | [TESTING.md](TESTING.md) | Test layers, the checklist for hard contracts, the coverage gate, the evidence format and its status values |
-| [ACCEPTANCE.md](ACCEPTANCE.md) *(zh)* | The 0.1 release gate, acceptance criteria grouped and numbered, cross-stage invariants, blockers |
+| [ACCEPTANCE.md](ACCEPTANCE.md) | The 0.1 release gate, acceptance criteria grouped and numbered, cross-stage invariants, blockers |
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The task sequence, the gates, the dependency graph, the definition of done per task |
 | [tasks/](tasks/) | One document per task: what was implemented, the decisions taken, deviations from the design, the evidence, and what is left. Already written in English. |
 
