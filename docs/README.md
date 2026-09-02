@@ -13,7 +13,7 @@ foreign-trade B2B company sites.
 > Translated so far: this index, `CONTENT_FORMAT.md`, `CLOUDFLARE_RESOURCES.md`,
 > `CONVENTIONS.md`, `THEME_FORMAT.md`, `PLUGIN_API.md`, `ARCHITECTURE.md`,
 > `CLI.md`, `SECURITY.md`, `DATA_MODEL.md`, `TECH_STACK.md`, `TESTING.md`,
-> `SEO_PERFORMANCE.md`, `ADMIN.md`.
+> `SEO_PERFORMANCE.md`, `ADMIN.md`, `PRODUCT_VISION.md`, `IMPLEMENTATION_PLAN.md`.
 
 ## Design documents
 
@@ -22,7 +22,7 @@ rest are the contracts for individual subsystems.
 
 | Document | Contents |
 | --- | --- |
-| [PRODUCT_VISION.md](PRODUCT_VISION.md) *(zh)* | What Mallok is, the first vertical, who it is for, the promises, what 0.1 delivers, the cost ladder, the success pictures, the roadmap, the non-goals, the known risks |
+| [PRODUCT_VISION.md](PRODUCT_VISION.md) | What Mallok is, the first vertical, who it is for, the promises, what 0.1 delivers, the cost ladder, the success pictures, the roadmap, the non-goals, the known risks |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Hard constraints, system parts, the request path, two-stage rendering, the three cache layers, the content model, media, multilingual, themes, starters, plugin capabilities, the inquiry path, security boundaries, deployment and migration, what is still unmeasured |
 | [TECH_STACK.md](TECH_STACK.md) | Runtime, the four dependency layers and their hard rules, external services, the admin app, the CLI, the dependency gate, what is explicitly forbidden, external sources |
 | [CONTENT_FORMAT.md](CONTENT_FORMAT.md) | The content bundle format, relative-path rules, common front-matter fields, the import/export contract, missing-image state |
@@ -47,7 +47,7 @@ rest are the contracts for individual subsystems.
 | [CONVENTIONS.md](CONVENTIONS.md) | The boundaries a change is held to: what the product is, what the engineering may not do, style, fact discipline, working rules |
 | [TESTING.md](TESTING.md) | Test layers, the checklist for hard contracts, the coverage gate, the evidence format and its status values |
 | [ACCEPTANCE.md](ACCEPTANCE.md) *(zh)* | The 0.1 release gate, acceptance criteria grouped and numbered, cross-stage invariants, blockers |
-| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) *(zh)* | The task sequence, the gates, the dependency graph, the definition of done per task |
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The task sequence, the gates, the dependency graph, the definition of done per task |
 | [tasks/](tasks/) | One document per task: what was implemented, the decisions taken, deviations from the design, the evidence, and what is left. Already written in English. |
 
 ## Status

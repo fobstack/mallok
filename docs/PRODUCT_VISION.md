@@ -1,220 +1,383 @@
-# Mallok 产品愿景
+# The Mallok product vision
 
-- 产品方向：0.1 基线（2026-08-28 第二次修订：确立外贸 B2B 为首个垂直）
-- 文档日期：2026-08-28
-- 首个产品版本：0.1
-- 计划开源仓库：`JasonYv/mallok`
-- 计划许可证：MIT（待 `JasonYv` 最终确认，见 §12）
+- Direction: 0.1 baseline (second revision, 2026-08-28: the foreign-trade B2B
+  vertical established as the first)
+- Document date: 2026-08-28
+- First product release: 0.1
+- Repository: `JasonYv/mallok`
+- Licence: Apache-2.0 (§12)
 
-## 1. 一句话定义
+## 1. In one sentence
 
-**Mallok 是一个开源、Cloudflare 原生的内容网站产品：内容以 Markdown 存在 D1 中，改完即时生效，不需要构建，不需要服务器，内容随时可以带走。首个垂直是外贸 B2B 企业站：一键建站、多语言、产品目录、询盘直达邮箱，从 0 元起步，有量再付费。**
+**Mallok is an open-source, Cloudflare-native content website: content lives
+as Markdown in D1, an edit is live immediately, there is no build step, there
+is no server, and the content can be taken away at any time. The first
+vertical is foreign-trade B2B company sites — one deployment, several
+languages, a product catalogue, inquiries straight to an inbox, starting at
+zero cost and paying only once there is volume.**
 
-## 2. 战略判断
+## 2. The strategic judgement
 
-内容网站今天有两条路，各有一个结构性缺陷：
+A content website today takes one of two paths, and each has a structural
+defect:
 
-- **CMS 路线（WordPress、Ghost）**：编辑体验好、改完即生效、有主题和插件生态。代价是你得养一台服务器、一个数据库、一套持续的安全更新，性能还要靠一层层缓存插件去救。
-- **静态生成路线（Astro、Hugo、Eleventy）**：性能和输出质量极好、部署便宜。代价是内容变成了源码仓库的一部分——改一个错别字要提交、跑 CI、等构建、重新部署，而且非技术的人根本进不来。
+- **The CMS path (WordPress, Ghost)**: good editing, edits live immediately, a
+  theme and plugin ecosystem. The price is a server, a database, a running
+  stream of security updates, and performance rescued by layer upon layer of
+  caching plugins.
+- **The static-generation path (Astro, Hugo, Eleventy)**: excellent
+  performance and output quality, cheap deployment. The price is that content
+  becomes part of a source repository — fixing a typo means a commit, a CI
+  run, a build and a redeploy, and non-technical people cannot get in at all.
 
-Mallok 认为这两个代价都不是必须付的。Cloudflare 的 Worker + D1 + R2 让「数据库里的内容」和「边缘直出的静态字节」第一次可以是同一件事。
+Mallok's position is that neither price is necessary. Cloudflare's Worker, D1
+and R2 make "content in a database" and "static bytes from the edge" the same
+thing for the first time.
 
-> WordPress 的编辑体验，边缘网络的性能，开源且不锁定你的内容。
+> WordPress's editing experience, an edge network's performance, open source,
+> and no lock-in on your content.
 
-对照关系要说清楚：**Mallok 的直接竞品是 WordPress 和 Ghost**，Astro 是性能与输出质量上的参照物，不是要打赢的对象。
+The comparisons should be stated precisely: **Mallok's direct competitors are
+WordPress and Ghost.** Astro is a reference point for performance and output
+quality, not something to beat.
 
-### 2.1 为什么首个垂直是外贸 B2B
+### 2.1 Why the first vertical is foreign-trade B2B
 
-通用 CMS 的需求是发散的，外贸企业站的需求是收敛的：多语言、产品目录、公司资质、行业动态、一个询盘表单。这一类站点今天大多跑在过时的 WordPress 模板或按年收费的建站 SaaS 上，既慢又贵，内容还搬不走。Mallok 的三个承诺（不运维、不构建、不锁定）在这里价值最高，而且产品负责人自己就在运营这类站群，需求全部是真实的、可验证的。
+A general-purpose CMS faces diverging requirements; a trade company site faces
+converging ones — several languages, a product catalogue, company
+credentials, industry news, and one inquiry form. Sites of this kind mostly
+run today on dated WordPress templates or on annually-billed website SaaS:
+slow, expensive, and with content that cannot be moved. Mallok's three
+promises — no operations, no build, no lock-in — are worth most here, and the
+product owner runs sites of exactly this kind, so every requirement is real
+and verifiable.
 
-选定垂直不改变架构，只改变 0.1 的验收对象：**0.1 完成的标志是一个真实外贸站在 Mallok 上跑起来并收到询盘**，而不是「WordPress 用户愿意搬过来」这种无法验收的画面。通用博客、文档站、公司官网仍然是同一套产品，只是不作为 0.1 的验收对象。
+Choosing a vertical does not change the architecture; it changes what 0.1 is
+accepted against. **0.1 is done when a real trade site runs on Mallok and
+receives an inquiry** — not when "WordPress users would want to move", which
+cannot be accepted against. General blogs, documentation sites and company
+sites remain the same product; they are simply not what 0.1 is judged by.
 
-## 3. 核心用户
+## 3. Who it is for
 
-### 3.1 首要用户
+### 3.1 Primary
 
-1. **产品负责人自己的外贸站群**：多个行业站、每日由 AI 管线产出的多语种新闻、产品目录、询盘。这是 0.1 的第一个也是最严格的验收方。
-2. **初创外贸公司**：没有技术人员，有一个域名和一个 Cloudflare 账号（或愿意注册一个），要一个能收询盘的多语言企业站，预算接近零。
-3. **技术团队与服务商**：为客户交付外贸站或内容站，交付后客户能自己更新内容，服务商不想为每个客户养一台服务器。
+1. **The product owner's own portfolio of trade sites**: several industry
+   sites, multilingual news produced daily by an AI pipeline, product
+   catalogues, inquiries. This is 0.1's first and strictest reviewer.
+2. **A new trade company**: no technical staff, one domain and one Cloudflare
+   account (or willing to create one), needing a multilingual company site
+   that can receive inquiries, on a budget near zero.
+3. **Technical teams and agencies** delivering trade or content sites for
+   clients, where the client updates the content afterwards and the agency
+   does not want to run a server per client.
 
-### 3.2 次要用户
+### 3.2 Secondary
 
-- 从 WordPress 出走、受够了主机、插件冲突和安全更新的站点所有者；
-- 用 Astro/Hugo 建了站，但受不了「改内容要走 Git 和 CI」的作者；
-- 部署后只负责写内容、不接触基础设施的编辑与运营；
-- 为 Mallok 写主题、Starter 和插件的设计者与开发者。
+- Site owners leaving WordPress, tired of hosting, plugin conflicts and
+  security updates.
+- Authors who built on Astro or Hugo and cannot live with editing content
+  through Git and CI.
+- Editors and operators who only write content after deployment and never
+  touch infrastructure.
+- Designers and developers writing themes, starters and plugins for Mallok.
 
-### 3.3 不服务的用户
+### 3.3 Not for
 
-Mallok 0.1 不面向需要自由编写服务端业务逻辑的应用、会员与权限体系、复杂表单流程和后台管理系统。电商交易是明确的**后续方向**（见 §9），但 0.1 只做到询盘，不做购物车和支付。
+Mallok 0.1 is not for applications needing freely written server-side business
+logic, membership and permission systems, complex form flows, or admin
+back-office systems. E-commerce is an explicit **later direction** (§9), but
+0.1 goes as far as inquiries and no further — no cart, no payment.
 
-## 4. 产品模型
+## 4. The product model
 
-产品有两条时间线，边界必须一眼可辨：
+The product has two timelines, and the boundary must be visible at a glance:
 
-| | 谁改 | 怎么生效 |
+| | Who changes it | How it takes effect |
 | --- | --- | --- |
-| **内容**：页面、文章、产品、媒体 | 非技术用户，在后台 | **改完即时生效，不需要构建、不需要部署** |
-| **设置**：站点名称、语言、导航、域名、SEO 默认值、主题配置项、插件设置与密钥 | 非技术用户，在后台 | 同上 |
-| **主题**：网站长什么样、支持哪些内容类型 | 技术人员，在源码目录 | 改源码 → 提交 → 重新部署 |
-| **插件**：扩展能力，例如询盘表单 | 技术人员，在源码目录 | 同上 |
+| **Content**: pages, articles, products, media | A non-technical user, in the admin | **Immediately — no build, no deployment** |
+| **Settings**: site name, languages, navigation, domain, SEO defaults, theme options, plugin settings and secrets | A non-technical user, in the admin | As above |
+| **Themes**: how the site looks, which content kinds exist | Someone technical, in the source tree | Edit source, commit, redeploy |
+| **Plugins**: added capability, such as the inquiry form | Someone technical, in the source tree | As above |
 
-**日常运营只碰上面两行。** 主题和插件是站点的框架，它们随源码走、随部署生效——和 Astro、Hugo 这类工具对待模板的方式一样，只不过 Mallok 把「内容」从这条线里拿了出来。
+**Day-to-day operation only touches the first two rows.** Themes and plugins
+are the site's frame; they travel with the source and take effect on
+deployment — the same way Astro and Hugo treat templates, except that Mallok
+has taken *content* out of that line.
 
-这是本产品最重要的一条线：**内容不需要构建，框架需要。** 界面上必须把它讲清楚，不得让用户以为换主题也是点一下的事。
+This is the product's single most important boundary: **content needs no
+build; the frame does.** The interface must say so, and must never let a user
+believe switching themes is also one click.
 
-**Starter（站点模板）** 是你 fork 的那个仓库：它已经把主题选好、插件装好，外加一批示例内容和一份设置预设。创建站点 = 用这个仓库部署一次，示例内容在首次启动向导里导入。用户嘴里的「外贸模板」指的就是它。
+**A starter** is the repository you forked: the theme already chosen, the
+plugins already present, plus example content and a settings preset. Creating
+a site means deploying that repository once, and the setup wizard imports the
+example content. When a user says "the trade template", this is what they
+mean.
 
-底层仍然有 Worker、D1、R2、缓存、schema 迁移和版本，但后台界面不得要求用户理解它们。
+Underneath there are still Workers, D1, R2, caching, schema migrations and
+versions — and the admin must never require a user to understand any of them.
 
-## 5. 产品承诺
+## 5. The promises
 
-### 5.1 改完即时生效，不需要构建
+### 5.1 An edit is live immediately, with no build
 
-保存一篇文章 = 写一行 D1 + 精准清除对应缓存。没有构建队列、没有 CI、没有重新部署、没有「等两分钟看看生效没有」。**这是 Mallok 相对所有静态生成器最核心的差异，任何设计都不得牺牲它。**
+Saving an article is one D1 write plus a precise cache purge. No build queue,
+no CI, no redeploy, no "wait two minutes and see". **This is Mallok's central
+difference from every static generator, and no design may trade it away.**
 
-### 5.2 内容是标准 Markdown，随时可以带走
+### 5.2 Content is standard Markdown and can be taken away
 
-D1 中存的是 Markdown 原文加 YAML frontmatter，图片引用是 `images/xxx.jpg` 这样的相对路径，不是渲染后的 HTML，也不是私有结构。一次导出就得到一个个普通的文章包（`index.md` + `images/`），可以直接喂给 Astro、Hugo、Obsidian 或任何别的工具。询盘等业务数据同样可导出。**不锁定不是营销话术，是可执行的导出功能，且必须有测试覆盖往返一致性。** 格式定义见 [CONTENT_FORMAT.md](CONTENT_FORMAT.md)。
+D1 holds Markdown source with YAML front matter, images referenced as
+relative paths like `images/xxx.jpg` — not rendered HTML, and not a private
+structure. One export produces ordinary content bundles (`index.md` plus
+`images/`) that can be fed directly to Astro, Hugo, Obsidian or anything else.
+Business data such as inquiries exports too. **No lock-in is not marketing
+copy; it is an export feature, and round-trip fidelity must be covered by
+tests.** The format is in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
 
-### 5.3 部署到你自己的 Cloudflare 账号，从 0 元起步
+### 5.3 Deployed into your own Cloudflare account, starting at zero
 
-Mallok 不托管任何东西。站点、数据库、图片、域名全部在用户自己的 Cloudflare 账号下，Mallok 拿不到也管不着。0.1 没有 Mallok 账号体系，没有计费，没有多租户控制面。
+Mallok hosts nothing. The site, the database, the images and the domain all
+live in the user's own Cloudflare account, where Mallok can neither reach them
+nor manage them. 0.1 has no Mallok account system, no billing and no
+multi-tenant control plane.
 
-所有依赖的 Cloudflare 产品都有免费档，付费只有一档 Workers Paid（每账号每月 5 美元），升级不改架构、不迁移数据。成本阶梯见 §7。
+Every Cloudflare product it depends on has a free tier, and there is exactly
+one paid step — Workers Paid at $5 per account per month — which changes
+neither the architecture nor the data. The cost ladder is §7.
 
-### 5.4 一键建站是分级的，且诚实
+### 5.4 One-click deployment comes in tiers, stated honestly
 
-「一键」对不同用户是不同的事，产品按三级提供，每一级都如实说明前提：
+"One click" means different things to different users. The product offers
+three tiers and states each one's prerequisite plainly:
 
-| 入口 | 面向 | 前提 | 版本 |
+| Entry point | For | Prerequisite | Release |
 | --- | --- | --- | --- |
-| `npx mallok create` | 技术团队、站群 | 装了 Node，能登录 Cloudflare | 0.1 |
-| 官网上的「Deploy to Cloudflare」按钮 | 有 GitHub/GitLab 账号的人 | GitHub 或 GitLab 账号 + Cloudflare 账号 | 0.1 |
-| 官网托管部署助手 | 纯非技术的外贸老板 | Cloudflare 账号，一次性授权 | 1.0 |
+| `npx mallok create` | Technical teams, portfolios | Node installed, able to sign in to Cloudflare | 0.1 |
+| The "Deploy to Cloudflare" button | Anyone with a GitHub or GitLab account | A GitHub or GitLab account plus a Cloudflare account | 0.1 |
+| A hosted setup assistant on the project site | A non-technical trade company owner | A Cloudflare account and a one-time authorisation | 1.0 |
 
-三条路最后都进入 Worker 内置的首次启动向导，完成管理员、公司信息、语言、邮件和域名的配置。**必须绑定自定义域**是缓存生效的前提（见 ARCHITECTURE §2），向导要明确提示，`.workers.dev` 只作预览。
+All three converge on the setup wizard built into the Worker, which configures
+the administrator, company details, languages, email and domain. **Binding a
+custom domain is a precondition for caching to work at all** (ARCHITECTURE
+§2); the wizard must say so, and `.workers.dev` is preview only.
 
-### 5.5 多语言是内容模型的一部分
+### 5.5 Multiple languages are part of the content model
 
-外贸站的多语言不是「装个翻译插件」。每条内容有自己的语言和翻译组，URL 按语言分前缀，sitemap 自动带 hreflang，主题界面文案跟随站点语言。0.1 交付内容模型、URL 规则和最简的翻译管理；AI 自动翻译作为插件在 0.2 提供。
+Multilingual on a trade site is not "install a translation plugin". Every item
+has its own language and translation group, URLs are prefixed by language, the
+sitemap carries hreflang automatically, and a theme's interface strings follow
+the site's language. 0.1 delivers the content model, the URL rules and the
+simplest translation management; AI translation arrives as a plugin in 0.2.
 
-### 5.6 访客页面默认零客户端 JavaScript
+### 5.6 Visitor pages ship no client-side JavaScript
 
-后台的复杂度不进入访客页面。官方主题默认输出语义化 HTML 和 CSS，客户端 JavaScript 为 0 B；移动端导航、图集用纯 CSS 实现，WhatsApp 按钮是一个链接。需要交互时由主题或插件显式增加，并在后台说明代价。0.1 唯一的例外是询盘插件为防垃圾提交注入的 Turnstile 脚本。
+The admin's complexity does not reach visitor pages. The official themes emit
+semantic HTML and CSS with 0 bytes of client-side JavaScript; mobile
+navigation and galleries are pure CSS, and a WhatsApp button is a link. Where
+interaction is needed, a theme or plugin adds it explicitly and the admin
+states the cost. The one exception in 0.1 is the Turnstile script the inquiry
+plugin injects against spam.
 
-### 5.7 换主题不动内容
+### 5.7 Switching themes does not touch content
 
-主题是声明式的模板，放在源码目录里，随部署打进产物。**换主题要改源码并重新部署**——它是站点框架的一部分，不是后台的一个开关。
+A theme is a declarative set of templates in the source tree, bundled into the
+artifact at deployment. **Switching themes means editing source and
+redeploying** — it is part of the site's frame, not a switch in the admin.
 
-换主题**不迁移内容、不改变内容 ID、默认不改变公开 URL**：内容在 D1 里，主题只决定它长什么样。切换到不支持某内容类型的主题时，该类型退回 `page` 布局渲染，内容和 URL 一概不动。
+A theme switch **migrates no content, changes no content id, and by default
+changes no public URL**: the content is in D1 and the theme only decides how
+it looks. Switching to a theme that does not know a content kind renders that
+kind through the `page` layout, leaving the content and its URLs untouched.
 
-主题里没有任意 JavaScript。装一个陌生主题不等于在自己站上跑陌生人的代码，但它确实进入了你的构建产物，所以审阅它和审阅任何一段进仓库的代码是一回事。
+There is no arbitrary JavaScript in a theme. Installing an unfamiliar theme is
+not the same as running a stranger's code on your site, but it does enter your
+build artifact, so reviewing it is the same act as reviewing any other code
+that enters the repository.
 
-分发方式因此是**源码**：fork 一个 Starter 仓库，或把主题目录复制进自己的仓库。这比 zip 上传朴素，但它让「主题能做什么」在构建期就能被检查，也让主题和插件走同一条路。
+Distribution is therefore **source**: fork a starter repository, or copy a
+theme directory into your own. That is plainer than a zip upload, but it means
+what a theme can do is checkable at build time, and it puts themes and plugins
+on one path.
 
-### 5.8 插件的边界是诚实的
+### 5.8 A plugin's boundary is stated honestly
 
-插件是真正的 JavaScript 代码，通过声明式的钩子介入，拥有自己的数据表、路由、设置、定时任务、后台面板和发邮件能力。
+A plugin is real JavaScript that hooks in declaratively, with its own tables,
+routes, settings, scheduled work, admin panels and the ability to send email.
 
-**官方插件与第三方插件走同一条路**：源码进仓库，构建期打包，**安装或更新需要重新部署一次**。界面必须如实说明，不得做成「点一下就装好」的样子。
+**Official and third-party plugins take the same path**: source into the
+repository, bundled at build time, and **installing or updating one requires a
+redeploy**. The interface must say so and must never look like a one-click
+install.
 
-已经装进产物的插件，它的**设置与密钥在后台随时可改、即时生效**（比如询盘的收件邮箱、Resend key）；**是否启用也是一个即时开关**——那只决定要不要跑，不改变打进产物的是什么代码。
+Once a plugin is in the artifact, its **settings and secrets are editable in
+the admin at any time and take effect immediately** — the inquiry recipient
+address, the Resend key. **Whether it is enabled is an immediate switch too**;
+that decides only whether the code runs, not what code is in the artifact.
 
-插件跑在用户自己的账号里，风险边界与 WordPress 插件一致，产品要如实说明而不是掩盖。
+A plugin runs in the user's own account. The risk boundary is a WordPress
+plugin's, and the product states that rather than concealing it.
 
-### 5.9 本地和线上是同一套东西
+### 5.9 Local and production are the same thing
 
-后台可以跑在本地 localhost，也可以部署在 Cloudflare 上，是同一份代码、同一套 API。CLI 是第三个入口，同样调这套 API。三者之间不存在能力差。
+The admin runs on localhost or deployed to Cloudflare: the same code, the same
+API. The CLI is a third entry point calling that same API. There is no
+capability gap between the three.
 
-### 5.10 开源，且社区能真正参与
+### 5.10 Open source, with a community that can genuinely take part
 
-主题、Starter 和插件有公开、文档化、有版本的契约，第三方写的和官方写的用同一套机制。没有只有官方能用的私有接口。Mallok 官网自己跑在 Mallok 上。
+Themes, starters and plugins have public, documented, versioned contracts, and
+what a third party writes uses the same mechanism as what the project writes.
+There is no private interface only the official code can reach. The Mallok
+project site runs on Mallok.
 
-## 6. 0.1 交付内容
+## 6. What 0.1 delivers
 
-按四个对象列出，凡不在此表的都不属于 0.1：
+Listed by the four objects; anything absent from this table is not in 0.1:
 
-| 对象 | 0.1 交付 |
+| Object | 0.1 delivers |
 | --- | --- |
-| 内容 | 内容类型由主题声明（官方外贸 Starter 提供 page、article、product、category、case、faq）；Markdown 源码编辑器 + 按类型 schema 自动生成的字段表单；媒体上传（浏览器端转 WebP 与多宽度变体）；多语言与翻译组；草稿 / 发布 / 定时发布；文章包导入导出；CLI `publish` / `import` / `export` |
-| 主题 | 官方主题 `trade`（外贸 B2B）与 `journal`（资讯/博客）；源码目录内，构建期打包；`theme.json` 声明内容类型与配置项；**换主题需重新部署**，后台可改它开放的配置项 |
-| 设置 | 站点信息、启用语言与默认语言、导航、SEO 默认值、域名状态、Resend 邮件、缓存时长 |
-| 插件 | 官方 `inquiry` 询盘插件（表单、Turnstile、落库、Resend 双向邮件、后台询盘列表、CSV 导出）；插件启用开关与设置面板（即时生效）；**安装 / 更新插件需重新部署**；第三方插件契约与文档 |
-| 核心内建 | sitemap（含 hreflang）、RSS、canonical/OG、JSON-LD（Organization / Article / Product / FAQ）、草稿签名预览链接、重定向、Cloudflare 站点级访问统计说明 |
-| 部署 | `npx mallok create`、Deploy to Cloudflare 按钮、首次启动向导、运行时自迁移、升级流程与备份提示 |
+| Content | Content kinds declared by the theme (the official trade starter provides page, article, product, category, case, faq); a Markdown source editor plus a field form generated from the kind's schema; media upload converting to WebP with width variants in the browser; languages and translation groups; draft, published and scheduled; bundle import and export; CLI `publish`, `import`, `export` |
+| Themes | The official themes, source in the tree and bundled at build time; `theme.json` declaring content kinds and options; **switching themes needs a redeploy**, while the options it exposes are editable in the admin |
+| Settings | Site details, enabled and default languages, navigation, SEO defaults, domain status, Resend email, cache lifetime |
+| Plugins | The official `inquiry` plugin (form, Turnstile, storage, Resend in both directions, an admin inquiry list, CSV export); the enable switch and settings panel, both immediate; **installing and updating a plugin needs a redeploy**; the third-party plugin contract and its documentation |
+| Built into the core | The sitemap with hreflang, RSS, canonical and OG, JSON-LD (Organization, Article, Product, FAQ), signed draft preview links, redirects, and a note on Cloudflare's site-level analytics |
+| Deployment | `npx mallok create`, the Deploy to Cloudflare button, the setup wizard, runtime self-migration, the upgrade path and its backup prompt |
 
-## 7. 成本阶梯
+## 7. The cost ladder
 
-「前期免费、有量再付」要成立，前提是每个依赖都有免费档，且升级不换架构。下表取自官方文档（2026-08-28 核对，实测前不作为既定事实）：
+"Free at first, pay once there is volume" holds only if every dependency has a
+free tier and the upgrade changes no architecture. The table is from the
+official documentation, checked 2026-08-28, and is not an established fact
+until measured:
 
-| 用途 | 产品 | 免费档 | 超出后 |
+| Purpose | Product | Free tier | Beyond it |
 | --- | --- | --- | --- |
-| 渲染 + 后台 + API | Workers | 10 万请求/天，10 ms CPU/次，脚本 3 MB | Workers Paid 5 美元/月：1000 万请求、3000 万 CPU-ms、默认 30 s CPU、10 MB |
-| 内容、询盘 | D1 | 5 GB 总量，500 万行读/天，10 万行写/天；超出当天不可用 | 随 Paid：250 亿行读/月，5000 万行写/月，5 GB 后 0.75 美元/GB |
-| 图片、附件 | R2 | 10 GB-月，100 万次写、1000 万次读/月，出站流量永久免费 | 0.015 美元/GB-月 |
-| 后台 SPA | Workers Static Assets | 请求免费不限量，2 万文件，单文件 25 MiB | 随 Paid 放大到 10 万文件 |
-| 页面缓存与清除 | Cache API + Purge API | 免费；单文件清除额度充足，按标签/主机/全站清除 5 次/分钟 | 随 Pro/Business 提升 |
-| 定时发布、邮件重试 | Cron Triggers | **每账号 5 个** | 随 Paid 250 个 |
-| 表单防刷 | Turnstile | 免费，20 个 widget，每个 10 个主机名 | 企业版 |
-| 域名与 DNS | Registrar + DNS | 成本价买域名，DNS 免费 | 无 |
-| 访客统计 | Cloudflare 站点分析 | 免费 | 无 |
-| 发邮件 | Resend | 3000 封/月，100 封/天，3 个域名 | Pro 20 美元/月，5 万封 |
+| Rendering, admin, API | Workers | 100k requests/day, 10 ms CPU each, a 3 MB script | Workers Paid at $5/month: 10M requests, 30M CPU-ms, 30 s CPU by default, 10 MB |
+| Content, inquiries | D1 | 5 GB total, 5M rows read/day, 100k rows written/day; exceeding it makes it unavailable for the day | With Paid: 25B rows read/month, 50M written/month, $0.75/GB past 5 GB |
+| Images, attachments | R2 | 10 GB-month, 1M writes and 10M reads/month, egress permanently free | $0.015/GB-month |
+| The admin app | Workers Static Assets | Unlimited free requests, 20k files, 25 MiB each | With Paid, up to 100k files |
+| Page caching and purging | Cache API + Purge API | Free; ample single-file purge quota, 5 tag/host/everything purges per minute | Higher on Pro and Business |
+| Scheduled publishing, email retries | Cron Triggers | **5 per account** | 250 with Paid |
+| Form abuse protection | Turnstile | Free, 20 widgets, 10 hostnames each | Enterprise |
+| Domain and DNS | Registrar + DNS | Domains at cost, DNS free | — |
+| Visitor analytics | Cloudflare site analytics | Free | — |
+| Sending email | Resend | 3,000/month, 100/day, 3 domains | Pro at $20/month for 50,000 |
 
-刻意不用的：Workers KV（免费档每天只能写 1000 次）、Cloudflare Images（付费）、Email Workers 发信绑定（仅 Paid 且只能发给已验证地址）。Queues 免费档有每天 1 万次操作，0.1 不用，邮件重试用 Cron 即可；商城订单阶段再评估。
+Deliberately unused: Workers KV (1,000 writes a day on the free tier),
+Cloudflare Images (paid), and the Email Workers send binding (Paid-only, and
+only to verified addresses). Queues' free tier allows 10,000 operations a day
+but 0.1 does not need it — cron covers email retries — and it will be
+re-evaluated at the storefront stage.
 
-两条对产品形态有直接影响的免费档限制：**Cron Triggers 每账号 5 个**意味着同一个免费账号最多 5 个站有定时任务，站群超过 5 个站需要 Paid；**D1 免费档超额当天不可用**，后台必须显示用量并在接近上限时提醒。
+Two free-tier limits shape the product directly: **5 Cron Triggers per
+account** means one free account carries scheduled work for at most five
+sites, so a larger portfolio needs Paid; and **exceeding D1's free tier makes
+it unavailable for the day**, so the admin must show usage and warn as the
+limit approaches.
 
-## 8. 0.1 成功画面
+## 8. What success looks like for 0.1
 
-一个此前没用过 Mallok 的外贸公司负责人（或代其操作的技术人员）可以：
+Someone running a trade company who has never used Mallok — or a technical
+person acting for them — can:
 
-1. 用 CLI 或 Deploy 按钮把 Mallok 装进自己的 Cloudflare 账号，完成首次启动向导；
-2. 绑定自己的域名，站点在自定义域上正常服务且缓存命中；
-3. 选择外贸 Starter，填公司信息，站点首页、关于、联系页即刻可访问；
-4. 录入 10 个产品（含参数表和图片），发布一篇行业新闻，几秒内在公开 URL 上看到；
-5. 启用英语之外的第二种语言，为一个产品创建翻译版本，两个语言版本各自有正确的 URL 和 hreflang；
-6. 换一个主题：改一行配置、重新部署，所有内容与 URL 原样保留；
-7. 用 CLI 把本地一个文章包目录（含 `images/`）批量发布进去；
-8. 一位买家从产品页提交询盘：负责人几秒内收到邮件，买家收到自动回执，后台能看到这条询盘并导出 CSV；
-9. 一键把全部内容和询盘导出，确认自己随时能走。
+1. Install Mallok into their own Cloudflare account with the CLI or the Deploy
+   button and complete the setup wizard;
+2. Bind their own domain and have the site serve from it with the cache
+   hitting;
+3. Choose the trade starter, fill in the company details, and immediately have
+   a working home page, about page and contact page;
+4. Enter ten products with specification tables and images, publish an
+   industry news item, and see it on the public URL within seconds;
+5. Enable a second language, create a translation of one product, and have
+   both languages carry correct URLs and hreflang;
+6. Switch themes by changing one line and redeploying, with all content and
+   URLs preserved;
+7. Publish a local directory of bundles, images included, through the CLI;
+8. Receive an inquiry a buyer submitted from a product page — the owner gets
+   the email within seconds, the buyer gets an acknowledgement, and the admin
+   shows the inquiry and can export it as CSV;
+9. Export all content and inquiries in one action, confirming they can leave
+   whenever they want.
 
-只完成渲染内核、只完成 CLI、只有本地能跑，或者收不到询盘，都不等于完成 0.1。
+Finishing only the render core, only the CLI, only running locally, or not
+receiving the inquiry, is not finishing 0.1.
 
-## 9. 路线图（0.1 之后）
+## 9. The roadmap after 0.1
 
-以下是方向，不是承诺，也不得提前进入 0.1：
+Directions, not commitments, and none of it may enter 0.1 early:
 
-- **0.2**：可视化编辑器（Tiptap）；产品 CSV/Excel 导入；AI 自动翻译插件（`onContentSave`）；询盘车（多产品合并成一份 RFQ，这才是外贸买家的真实动作）；WordPress 导入器；内容修订历史界面。
-- **0.3**：样品与小额订单支付（Stripe Checkout / PayPal 托管收银页，Worker 只创建 session 与接收 webhook，不碰卡号）；询盘 webhook 推送到 CRM / 飞书 / 企业微信。
-- **1.0**：官网托管部署助手；主题、Starter 与插件市场；完整商城插件（变体、库存、订单、订单邮件）。
+- **0.2**: the visual editor (Tiptap); product CSV/Excel import; an AI
+  translation plugin (`onContentSave`); an inquiry cart (several products
+  combined into one RFQ, which is what a trade buyer actually does); a
+  WordPress importer; a revision-history interface.
+- **0.3**: payment for samples and small orders (Stripe Checkout or PayPal's
+  hosted page, with the Worker only creating a session and receiving a
+  webhook, never touching card details); inquiry webhooks pushed to a CRM.
+- **1.0**: the hosted setup assistant; marketplaces for themes, starters and
+  plugins; a full storefront plugin with variants, stock, orders and order
+  email.
 
-从询盘到商城是一条直线：商城需要的数据表、写路由、密钥、定时任务、后台面板和邮件，全部是 0.1 为询盘插件建立的六种插件能力，核心不需要新增概念。
+The line from inquiries to a storefront is straight: the tables, write routes,
+secrets, scheduled work, admin panels and email a storefront needs are exactly
+the six plugin capabilities 0.1 built for the inquiry plugin. The core needs
+no new concept.
 
-## 10. 非目标
+## 10. Non-goals
 
-- 不做 Mallok 托管服务、账号体系、计费或多租户（1.0 之后的方向，不属于 0.1）；
-- 不做购物车、支付、会员、评论（0.2 起由插件承担）；
-- 不做在线多人协作编辑；
-- 不成为 Astro/Next.js/WordPress 的兼容层，也不实现 PHP 或 WordPress 主题格式；
-- 不要求用户理解 Worker、D1、R2、缓存或 schema 迁移；
-- 不用隐藏费用、账号归属、失败状态或数据删除影响来伪造「一键」。
+- No Mallok hosting service, account system, billing or multi-tenancy — a
+  direction beyond 1.0, not part of 0.1.
+- No cart, payment, membership or comments; from 0.2 those are plugins.
+- No collaborative editing.
+- Not a compatibility layer for Astro, Next.js or WordPress, and no
+  implementation of PHP or the WordPress theme format.
+- No requirement that a user understand Workers, D1, R2, caching or schema
+  migrations.
+- No faking "one click" by hiding costs, account ownership, failure states or
+  what deleting data does.
 
-## 11. 已知风险
+## 11. Known risks
 
-必须写在愿景里，因为它们会决定产品成败：
+These belong in the vision because they decide whether the product works:
 
-1. **Free 计划的 10 ms CPU 限制**。产品承诺从免费档起步，所以这不是「建议升级」就能绕开的问题。缓存命中路径必须极廉价；冷渲染靠 D1 派生片段缓存把 Markdown 解析移出请求路径，只剩模板渲染；列表页永远不解析正文。见 ARCHITECTURE §5、§6。
-2. **缓存只在自定义域上可靠**。官方文档写明自定义域上的 Cache API 是可用的，`.workers.dev` 的行为需实测。对外贸站而言域名本来就是必需品，这个门槛可以接受，但向导必须把它讲清楚。
-3. **生态从零开始**。0.1 只有两个官方主题、一个 Starter 和一个官方插件。策略是先在一个垂直里赢「不用运维 + 不用构建 + 不锁定 + 能收询盘」，生态靠时间。
-4. **依赖单一云厂商与一个邮件服务商**。缓解手段是内容与询盘随时可导出，邮件通过一个 `sendEmail` 抽象接入，Resend 只是 0.1 唯一的实现，不是假装支持多云。
-5. **AI 内容管线的合规与质量**不是 Mallok 的职责。Mallok 只保证「给什么发什么、几秒生效、缺图有提示」。
+1. **The free plan's 10 ms of CPU.** The product promises to start on the free
+   tier, so this cannot be waved away with "upgrade". The cache-hit path must
+   be extremely cheap; a cold render moves Markdown parsing off the request
+   path through the derived fragment cache in D1, leaving only template
+   rendering; and a list page never parses a body. See ARCHITECTURE §5 and §6.
+2. **Caching is only reliable on a custom domain.** The official documentation
+   states the Cache API works on custom domains; `.workers.dev` behaviour must
+   be measured. A trade site needs a domain anyway, so the bar is acceptable —
+   but the wizard has to say it plainly.
+3. **The ecosystem starts at zero.** 0.1 has a handful of official themes, one
+   starter and one official plugin. The strategy is to win one vertical on "no
+   operations, no build, no lock-in, and inquiries arrive"; the ecosystem
+   takes time.
+4. **A single cloud vendor and a single email provider.** The mitigation is
+   that content and inquiries export at any time, and that email goes through
+   one `sendEmail` boundary where Resend is 0.1's only implementation — not a
+   pretence of multi-cloud.
+5. **The compliance and quality of an AI content pipeline** are not Mallok's
+   responsibility. Mallok guarantees only that what is given is published,
+   that it is live within seconds, and that missing images are reported.
 
-## 12. 当前事实
+## 12. Current facts
 
-截至 2026-08-28，本仓库只有文档，没有任何已交付的实现、发行版或公开仓库。本文所述全部为已确定的产品方向，不是已验证的结论。
+**Updated 2026-09-01.** This section previously recorded the state on
+2026-08-28, when the repository held documentation only. What has changed:
 
-- 计划仓库 `JasonYv/mallok` 尚未创建，远端归属未核验；
-- 许可证倾向 MIT 加独立商标政策（保住 `Mallok` 名称，代码可自由 fork），最终决定由 `JasonYv` 作出，实现者不得代选；
-- §7 引用的平台限额取自官方文档，仍需在首个实现任务中用真实 spike 复核，不得直接当作实现依据；
-- 三项此前待拍板的决定已于 2026-08-28 由产品负责人确认：多语言进内容模型、第三方密钥加密存 D1 由后台配置、官方插件预打包用开关启用。
+- **The repository exists.** `JasonYv/mallok`, currently private.
+- **The licence is settled: Apache-2.0**, chosen over MIT for its explicit
+  patent grant and patent-retaliation clause. A separate trademark policy
+  keeping the `Mallok` name is still outstanding.
+- **The implementation exists** — all seventeen tasks, 344 tests passing.
+  See [ACCEPTANCE.md §14](ACCEPTANCE.md) for what that is and is not evidence
+  of.
+- **Nothing has run against a real Cloudflare account.** No acceptance
+  criterion is verified on real infrastructure, and the platform limits quoted
+  in §7 still come from documentation rather than measurement.
+- Three decisions the product owner confirmed on 2026-08-28 stand: multiple
+  languages belong to the content model; third-party keys are encrypted into
+  D1 and configured from the admin; official plugins are pre-bundled and
+  enabled by a switch.

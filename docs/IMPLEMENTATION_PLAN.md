@@ -1,206 +1,284 @@
-# Mallok 0.1 实施计划
+# The Mallok 0.1 implementation plan
 
-- 状态：0.1 基线（首次编写）
-- 日期：2026-08-29
-- 地位：把 `PRODUCT_VISION §6` 的交付清单拆成有依赖顺序的任务。每个任务一个可演示闭环加测试证据（`docs/CONVENTIONS.md` 工作规则）。**本文是顺序的合同，不是工期承诺——这里不写时间估算。**
+- Status: 0.1 baseline
+- Date: 2026-08-29
+- Standing: breaks `PRODUCT_VISION §6`'s delivery list into tasks with a
+  dependency order. Each task is one demonstrable user path plus test evidence
+  (`docs/CONVENTIONS.md`, working rules). **This is a contract about order,
+  not a schedule — no time estimates appear here.**
 
-## 1. 现状
+## 1. Where things stand
 
-| | 状态 |
+| | Status |
 | --- | --- |
-| Task 01 walking skeleton | 代码完成，本地全绿 |
-| Task 02 认证与管理 API | **已完成**，本地全绿 |
-| Task 03 媒体 | **服务端已完成**；浏览器端转换留到 Task 11 |
-| Task 04 主题格式 | **已完成**（按构建期模型重做） |
-| Task 06 多语言 | **已完成** |
-| Task 05 SEO 端点 | **已完成**（清缓存实测写回除外） |
-| Task 07 插件运行时 | **已完成** |
-| Task 08 `inquiry` 插件 | **已完成**；对 `ARCHITECTURE §13` 的三处偏差待批（`tasks/TASK-08.md §4`） |
-| Task 09 外贸主题 | **已完成**，交付为 `atelier` 2.1（六种内容类型） |
-| Task 10–12 后台 | **已完成**：骨架与表单生成器、三栏编辑器与媒体库、插件面板与诊断页 |
-| Task 13 导入导出 | **已完成**；`CONTENT_FORMAT §9` 七条往返断言全部通过 |
-| Task 14 CLI | **内容命令已完成**（publish / import / export / media push）；`create`、`destroy`、`preview` 命令未接 |
-| Task 15 Starter 与向导 | **已完成**；`ACTIVE_THEME` 改为 `atelier`，向导四步（媒体域名与邮件步骤待 Task 16） |
-| Task 16 部署入口 | **代码完成、未经真实账号验证**；`create` / `destroy` 已实现并有单元测试，未在真实 Cloudflare 账号上跑过 |
-| Task 17 验收收口 | **部分完成**：67 条 AC 逐条取证，2026-09-01 重核后拆成 75 行（50 本地已验 / 6 未跑 / 3 待裁决 / 16 需真实账号 / **0 真实账号已验**），见 `ACCEPTANCE.md §14` |
-| 主题 ×5 | **已完成**：设计稿经产品负责人评审后 1:1 落地（atelier/gazette/manual/folio + journal） |
-| `ARCHITECTURE §18` 九项实测 | **未做**（`TASK-01 §4` 待产品负责人执行） |
-| 设计文档 | 全部就位（本文是最后一份） |
-| 已实现 | 渲染内核、schema 与自迁移、公开路径与边缘缓存、完整认证与管理 API、媒体存储与响应式图片输出、SEO 端点、多语言、插件运行时与 `inquiry` 插件、五个官方主题、完整后台 SPA |
-| 未开始 | 无（全部任务已推进；剩余的是门 A 实测、产品负责人裁决项与英文文档） |
+| Task 01 walking skeleton | Code complete, green locally |
+| Task 02 authentication and the management API | **Done**, green locally |
+| Task 03 media | **Server side done**; browser-side conversion deferred to Task 11 |
+| Task 04 theme format | **Done**, rebuilt around the build-time model |
+| Task 06 multiple languages | **Done** |
+| Task 05 SEO endpoints | **Done**, except writing the purge measurement back |
+| Task 07 plugin runtime | **Done** |
+| Task 08 the `inquiry` plugin | **Done**; three deviations from `ARCHITECTURE §13` await approval (`tasks/TASK-08.md §4`) |
+| Task 09 the trade theme | **Done**, delivered as `atelier` 2.1 with six content kinds |
+| Tasks 10–12 the admin | **Done**: the shell and form generator, the three-column editor and media library, plugin panels and diagnostics |
+| Task 13 import and export | **Done**; all seven round-trip assertions in `CONTENT_FORMAT §9` pass |
+| Task 14 the CLI | **Content commands done** (publish / import / export / media push); `create`, `destroy` and `preview` belong to Task 16 |
+| Task 15 the starter and setup wizard | **Done**; `ACTIVE_THEME` is `atelier`, and the wizard is four steps (media domain and email await Task 16) |
+| Task 16 deployment entry points | **Code complete, unverified against a real account**; `create` and `destroy` are implemented with unit tests but have never run on a real Cloudflare account |
+| Task 17 acceptance close-out | **Partly done**: evidence recorded for all 67 acceptance criteria, recounted 2026-09-01 into 75 rows (50 verified locally, 6 not run, 3 awaiting a decision, 16 needing a real account, **0 verified on a real account**). See `ACCEPTANCE.md §14` |
+| Five themes | **Done**: the approved designs implemented one to one (atelier, gazette, manual, folio, journal) |
+| The nine measurements in `ARCHITECTURE §18` | **Not done** — `TASK-01 §4`, for the product owner to run |
+| Design documents | All in place |
+| Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
+| Not started | Nothing. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
 
-## 2. 两道门
+## 2. The two gates
 
-**在这两道门通过之前，Task 02 之后的任务不得开工：**
+**No task after Task 02 may begin until these are cleared:**
 
-| 门 | 内容 | 谁来解 |
+| Gate | What | Who clears it |
 | --- | --- | --- |
-| **门 A** | `ARCHITECTURE §18` 的九项实测完成并写回 | 产品负责人执行 `TASK-01 §4` |
-| ~~**门 B**~~ | ~~Markdown 引擎决策~~ **已定（2026-08-29）：保持 unified**，理由与代价见 `TASK-01 §6` | 已解 |
-| **门 B'** | 内联 HTML 保留与否（是否引入 `rehype-raw`） | 产品负责人（`SECURITY.md §4`） |
+| **Gate A** | The nine measurements in `ARCHITECTURE §18`, taken and written back | The product owner runs `TASK-01 §4` |
+| ~~**Gate B**~~ | ~~The Markdown engine decision~~ **Settled 2026-08-29: stay with unified.** The reasoning and its cost are in `TASK-01 §6` | Cleared |
+| **Gate B'** | Whether to keep inline HTML (whether to add `rehype-raw`) | The product owner (`SECURITY.md §4`) |
 
-门 A 卡住的是：PBKDF2 迭代数（Task 02）、清缓存方案 A/B（Task 05）、内容长度上限（Task 03）、自定义域是否硬前提（Task 14）。
+Gate A blocks: the PBKDF2 iteration count (Task 02), the purge plan A or B
+(Task 05), the content-length ceiling (Task 03), and whether a custom domain
+is a hard precondition (Task 14).
 
-门 B 已解：`beforeRender` 的公开签名按 mdast 固定（`PLUGIN_API.md §5.2`）。
-门 B' 只卡净化面与 `CONTENT_FORMAT §3.4` 的措辞（是否引入 `rehype-raw`）；插件运行时与它正交，Task 07/08 已在门 B' 未解的情况下完成，不含内联 HTML 相关改动。
+Gate B is cleared: `beforeRender`'s public signature is fixed against mdast
+(`PLUGIN_API.md §5.2`).
 
-> 门 A 未过时可以做的：Task 02、03、04、06 —— **均已完成**。剩下不受门 A 影响的只有 Task 10/11 的后台骨架与编辑器。
+Gate B' blocks only the sanitisation surface and the wording of
+`CONTENT_FORMAT §3.4` — whether to add `rehype-raw`. The plugin runtime is
+orthogonal to it, so Tasks 07 and 08 completed with B' still open and contain
+no inline-HTML changes.
 
-## 3. 任务序列
+> What could proceed with gate A open: Tasks 02, 03, 04 and 06 — **all done**.
+> The only remaining work unaffected by gate A is the admin shell and editor
+> in Tasks 10 and 11.
 
-### 阶段一：基础设施
+## 3. The task sequence
 
-**Task 02 — 认证与管理 API 正式化** ✅ **已完成（2026-08-29，见 `tasks/TASK-02.md`）**
-替换 Task 01 的 spike 捷径（`Bearer MALLOK_SECRET`）。
-- `admin_user`、`session`、`api_token` 的完整实现；PBKDF2 派生（迭代数由门 A 决定，支持登录时自动升级）；session cookie 与 CSRF；有作用域的 Bearer token。
-- 管理 API 从两个端点扩到完整 CRUD：内容列表/详情/保存/删除、设置读写、健康与用量。
-- 闭环：登录 → 创建 token → 用 token 从命令行发布 → 撤销 token 后失效。
-- 依赖：无（PBKDF2 参数依赖门 A，当前取 50 000 并可在登录时自动升级）。契约：`SECURITY.md §3`。
+### Phase one: foundations
 
-**Task 03 — 媒体** ✅ **服务端已完成（2026-08-29，见 `tasks/TASK-03.md`）**
-- `media` 表的完整读写、R2 内容寻址、变体、`ref_count` 与 GC。
-- 浏览器端上传管线（Canvas 转 WebP + 多宽度变体 + sha 去重）。**顺延到 Task 11**——它属于 `src/admin/`，该目录在 Task 10 之前不存在；两端共享的规则已落在 `src/core/media.ts` 并有测试。
-- 图片输出属性（`srcset`/`sizes`/`width`/`height`/`loading`/`decoding`），首屏图 `eager`。
-- 上传校验按嗅探类型，svg 拒绝。
-- 闭环：上传一张图 → 在内容里引用 → 公开页面输出正确的响应式图片。
-- 依赖：Task 02。契约：`ARCHITECTURE §8`、`SEO_PERFORMANCE.md §9`、`SECURITY.md §6`。
+**Task 02 — authentication and the management API, properly** ✅ **Done (2026-08-29, `tasks/TASK-02.md`)**
+Replaces Task 01's spike shortcut (`Bearer MALLOK_SECRET`).
+- Full `admin_user`, `session` and `api_token`; PBKDF2 derivation with the
+  iteration count from gate A and automatic upgrade on login; session cookies
+  and CSRF; scoped Bearer tokens.
+- The management API grows from two endpoints to full CRUD: content list,
+  detail, save and delete; settings read and write; health and usage.
+- The path: sign in → create a token → publish from the command line with it →
+  revoke it and see it stop working.
+- Depends on: nothing (the PBKDF2 parameters depend on gate A; 50,000 is used
+  for now and upgrades on login). Contract: `SECURITY.md §3`.
 
-**Task 04 — 主题格式** ✅ **已完成（2026-08-29，见 `tasks/TASK-04.md`）**
-- `theme.json` 的 `kinds[].fields` 字段类型全集、`themeApi` 版本检查。
-- 校验在**构建期**执行（`scripts/build-themes.mjs`），不通过就构建失败。
-- 主题模板作为文本模块打进产物；`assets/` 复制到 Static Assets 的 `theme/<id>/<version>/`，附 `_headers` 设 `immutable` 与 `nosniff`。
-- 删除：`theme`/`theme_file` 两张表、`site.theme_id`、zip 读取器、上传/切换/卸载端点、`/themes/*` 代理、`fflate` 依赖。
-- `GET /_mallok/api/theme` 供后台预览与表单生成使用（只读）。
-- 闭环：改 `src/themes/index.ts` 的 `ACTIVE_THEME` → 构建部署 → 站点换了主题，URL 与内容一行未动。
+**Task 03 — media** ✅ **Server side done (2026-08-29, `tasks/TASK-03.md`)**
+- Full read and write of the `media` table, content-addressed R2, variants,
+  `ref_count` and GC.
+- The browser upload pipeline — Canvas to WebP, width variants, sha
+  deduplication. **Deferred to Task 11**, because it belongs to `src/admin/`,
+  which does not exist before Task 10. The rules both sides share already live
+  in `src/core/media.ts` with tests.
+- Image output attributes (`srcset`, `sizes`, `width`, `height`, `loading`,
+  `decoding`), with the above-the-fold image `eager`.
+- Upload validation against the sniffed type; svg refused.
+- The path: upload an image → reference it in content → the public page emits
+  correct responsive markup.
+- Depends on: Task 02. Contracts: `ARCHITECTURE §8`, `SEO_PERFORMANCE.md §9`,
+  `SECURITY.md §6`.
 
-### 阶段二：公开输出
+**Task 04 — the theme format** ✅ **Done (2026-08-29, `tasks/TASK-04.md`)**
+- The full field-type set of `theme.json`'s `kinds[].fields`, and the
+  `themeApi` version check.
+- Validation runs **at build time** (`scripts/build-themes.mjs`); a failure
+  fails the build.
+- Theme templates are bundled as text modules; `assets/` is copied to Static
+  Assets under `theme/<id>/<version>/` with a `_headers` file setting
+  `immutable` and `nosniff`.
+- Removed: the `theme` and `theme_file` tables, `site.theme_id`, the zip
+  reader, the upload/switch/uninstall endpoints, the `/themes/*` proxy, and
+  the `fflate` dependency.
+- `GET /_mallok/api/theme` serves the admin's preview and form generation,
+  read-only.
+- The path: change `ACTIVE_THEME` in `src/themes/index.ts` → build and deploy
+  → the site has a new theme with not one URL or item touched.
 
-**Task 05 — SEO 端点与缓存收口** ✅ **已完成（2026-08-29，见 `tasks/TASK-05.md`；门 A 的实测写回除外）**
-- `/sitemap.xml`（分页 + hreflang）、`/feed.xml`、`/robots.txt`。
-- canonical、OG、Twitter Card、JSON-LD 四类。
-- `redirect` 表的完整读写与改 slug 自动写入。
-- **落地门 A 选定的清缓存方案**（`ARCHITECTURE §6.2` 的 A 或 B）。
-- 闭环：发布内容 → sitemap 与 feed 立即包含它 → 改 slug → 旧 URL 301。
-- 依赖：门 A、Task 04。契约：`SEO_PERFORMANCE.md`。
+### Phase two: public output
 
-**Task 06 — 多语言完整** ✅ **已完成（2026-08-29，见 `tasks/TASK-06.md`）**
-- 启用多语言、`translation_group` 的完整管理、语言切换器上下文。
-- 改 `default_locale` 的批量路径重算与重定向（需明确确认的操作）。
-- 各语言的列表页、首页、feed 分别缓存。
-- 闭环：为一篇内容创建第二语言版本 → 两个 URL 各自正确 → hreflang 互指 → 切换默认语言后旧 URL 重定向。
-- 依赖：无（原计划写的 Task 05 依赖只涉及 feed，已拆出留给 Task 05）。契约：`ARCHITECTURE §9`。
+**Task 05 — SEO endpoints and closing out caching** ✅ **Done (2026-08-29, `tasks/TASK-05.md`, except writing gate A's measurement back)**
+- `/sitemap.xml` with pagination and hreflang, `/feed.xml`, `/robots.txt`.
+- canonical, OG, Twitter Card, and the four JSON-LD types.
+- Full read and write of the `redirect` table, written automatically on a slug
+  change.
+- **Implements whichever purge plan gate A selects** (A or B in
+  `ARCHITECTURE §6.2`).
+- The path: publish content → the sitemap and feed include it at once → change
+  the slug → the old URL 301s.
+- Depends on: gate A, Task 04. Contract: `SEO_PERFORMANCE.md`.
 
-### 阶段三：产品能力
+**Task 06 — multiple languages, complete** ✅ **Done (2026-08-29, `tasks/TASK-06.md`)**
+- Enabling languages, full `translation_group` management, the language
+  switcher context.
+- Recomputing every path and writing redirects when `default_locale` changes —
+  an operation requiring explicit confirmation.
+- List pages, home pages and feeds cached per language.
+- The path: create a second language of an item → both URLs are correct →
+  hreflang points each at the other → switching the default locale redirects
+  the old URLs.
+- Depends on: nothing. Contract: `ARCHITECTURE §9`.
 
-**Task 07 — 插件运行时** ✅ **已完成（2026-08-29，见 `tasks/TASK-07.md`）**
-- 五个钩子的调度、`plugin.json` 校验（构建期）、插件迁移器、路由分发。
-- 六种能力：数据表、路由（含 zod/Turnstile/限流）、设置与加密密钥、`scheduled`、声明式面板的 API 侧、`sendEmail`。
-- `affectsFragmentCache` 的校验与缓存键接入。
-- 闭环：一个最小示例插件建表、注册路由、写设置、被开关控制、即时生效。**安装它需要重新部署，界面如实这么说。**
-- 依赖：**门 B**、Task 02。契约：`PLUGIN_API.md`。
+### Phase three: product capability
 
-**Task 08 — `inquiry` 询盘插件** ✅ **已完成（2026-08-29，见 `tasks/TASK-08.md`；对 `ARCHITECTURE §13` 的偏差待批，见其 §4）**
-- 完整链路（`ARCHITECTURE §13`）：表单片段注入、提交路由、蜜罐与耗时检测、Turnstile、限流、落库、两条 job、Resend 发送与重试、感谢页。
-- 后台面板声明（列表、详情、标记、CSV 导出）。
-- 邮件模板（按 locale，走受限 Liquid）。
-- 闭环：**从产品页提交一次询盘，站主收到邮件，买家收到回执，后台能看到并导出。** 这是 0.1 的核心验收。
-- 依赖：Task 07、Task 06。契约：`PLUGIN_API.md §11`。
+**Task 07 — the plugin runtime** ✅ **Done (2026-08-29, `tasks/TASK-07.md`)**
+- Dispatch for the five hooks, `plugin.json` validation at build time, the
+  plugin migrator, route dispatch.
+- The six capabilities: tables, routes (with zod, Turnstile and rate
+  limiting), settings and encrypted secrets, `scheduled`, the API side of
+  declarative panels, and `sendEmail`.
+- `affectsFragmentCache` validation and its entry into the cache key.
+- The path: a minimal example plugin creates a table, registers a route,
+  stores settings, is controlled by the switch, and takes effect immediately.
+  **Installing it requires a redeploy, and the interface says so.**
+- Depends on: **gate B**, Task 02. Contract: `PLUGIN_API.md`.
 
-**Task 09 — 外贸主题（交付为 `atelier`，见 `THEME_FORMAT §14` 的定名说明）** ✅ **已完成（2026-08-29，见 `tasks/TASK-09.md`）**
-- 六种内容类型的布局与字段 schema：`page`、`article`、`product`、`category`、`case`、`faq`。
-- 零客户端 JS，纯 CSS 的移动导航与图集。
-- `en` / `zh` 语言包，询盘表单片段位。
-- 闭环：用 `trade` 主题渲染一套完整的外贸站页面，通过 `SEO_PERFORMANCE.md §7` 的门。
-- 依赖：Task 04、Task 08（询盘 CTA 位）。契约：`THEME_FORMAT.md §14`。
+**Task 08 — the `inquiry` plugin** ✅ **Done (2026-08-29, `tasks/TASK-08.md`; three deviations from `ARCHITECTURE §13` await approval, see its §4)**
+- The full path per `ARCHITECTURE §13`: injecting the form markup, the
+  submission route, honeypot and timing checks, Turnstile, rate limiting,
+  storage, the two jobs, Resend delivery with retries, the thank-you page.
+- The admin panel declaration: list, detail, marking, CSV export.
+- Email templates per locale, through the restricted Liquid engine.
+- The path: **submit one inquiry from a product page; the owner receives the
+  email, the buyer receives the acknowledgement, and the admin shows it and
+  can export it.** This is 0.1's central acceptance.
+- Depends on: Tasks 07 and 06. Contract: `PLUGIN_API.md §11`.
 
-### 阶段四：界面
+**Task 09 — the trade theme** (delivered as `atelier`; see `THEME_FORMAT §14` on the naming) ✅ **Done (2026-08-29, `tasks/TASK-09.md`)**
+- Layouts and field schemas for six content kinds: `page`, `article`,
+  `product`, `category`, `case`, `faq`.
+- Zero client-side JavaScript, with pure-CSS mobile navigation and gallery.
+- `en` and `zh` language packs, and a place in the design for the inquiry
+  form.
+- The path: render a complete trade site through the theme, passing the gates
+  in `SEO_PERFORMANCE.md §7`.
+- Depends on: Task 04, Task 08 (for the inquiry call to action). Contract:
+  `THEME_FORMAT.md §14`.
 
-**Task 10 — 后台骨架与表单生成器** ✅ **已完成（2026-08-30，见 `tasks/TASK-10.md`）**
-- Preact + signals + 路由 + Static Assets 承载（`_mallok/app/`）。
-- **schema 驱动的表单生成器**（`ADMIN.md §7`）——四处共用，是后台唯一值得单独设计的组件。
-- 登录、四个顶层区域的壳、设置页。
-- 闭环：登录 → 改站点设置 → 改主题配置项 → 都通过同一个生成器。
-- 依赖：Task 02、Task 04。契约：`ADMIN.md`。
+### Phase four: the interface
 
-**Task 11 — 后台内容编辑器与媒体库** ✅ **已完成（2026-08-30，见 `tasks/TASK-11.md`）**
-- 三栏编辑器（字段表单 + CodeMirror + 实时预览）。
-- 预览复用 `src/core/`，与线上逐字节一致。
-- 媒体库、上传界面、媒体选择器、缺图提示。
-- 多语言切换与翻译组管理。
-- 闭环：**不碰终端，从零录入一个产品（含图）并发布，几秒后在公开 URL 看到。**
-- 依赖：Task 10、Task 03、Task 06。契约：`ADMIN.md §6`、`§8`。
+**Task 10 — the admin shell and the form generator** ✅ **Done (2026-08-30, `tasks/TASK-10.md`)**
+- Preact, signals, routing, served from Static Assets at `_mallok/app/`.
+- **The schema-driven form generator** (`ADMIN.md §7`) — shared by four
+  places, and the one admin component worth designing on its own.
+- Sign-in, the shells of the top-level sections, the settings pages.
+- The path: sign in → change a site setting → change a theme option → both go
+  through the same generator.
+- Depends on: Tasks 02 and 04. Contract: `ADMIN.md`.
 
-**Task 12 — 后台插件面板与外观页** ✅ **已完成（2026-08-30，见 `tasks/TASK-12.md`）**
-- 按 `plugin.json` 的 `panels` 渲染表格面板、筛选、详情、actions。
-- 外观页：当前主题信息 + 配置项表单 + 如实展示 `clientScripts` + 「换主题需重新部署」说明（`ADMIN.md §4.1`）。**没有上传与切换入口。**
-- 用量与诊断页，含「需要部署 / 不需要部署」对照表。
-- 闭环：在后台看到询盘列表、标记、导出 CSV；改主题配置项即时生效。
-- 依赖：Task 10、Task 08、Task 09。契约：`ADMIN.md §9`、`§10`、`§11`。
+**Task 11 — the content editor and media library** ✅ **Done (2026-08-30, `tasks/TASK-11.md`)**
+- The three-column editor: field form, CodeMirror, live preview.
+- The preview reuses `src/core/` and is byte-identical to production.
+- The media library, the upload interface, the media picker, missing-image
+  reporting.
+- Language switching and translation-group management.
+- The path: **without touching a terminal, enter a product with images from
+  scratch, publish it, and see it on the public URL seconds later.**
+- Depends on: Tasks 10, 03 and 06. Contracts: `ADMIN.md §6` and `§8`.
 
-### 阶段五：进出与部署
+**Task 12 — plugin panels and the appearance page** ✅ **Done (2026-08-30, `tasks/TASK-12.md`)**
+- Table panels, filters, detail views and actions rendered from
+  `plugin.json`'s `panels`.
+- The appearance page: the current theme's details, its options form, an
+  honest display of `clientScripts`, and the statement that switching themes
+  needs a redeploy (`ADMIN.md §4.1`). **No upload and no switch control.**
+- The usage and diagnostics pages, including the "needs a deployment / does
+  not" table.
+- The path: see the inquiry list in the admin, mark items, export CSV; change
+  a theme option and see it take effect immediately.
+- Depends on: Tasks 10, 08 and 09. Contracts: `ADMIN.md §9`, `§10`, `§11`.
 
-**Task 13 — 导入导出** ✅ **已完成（2026-08-30，见 `tasks/TASK-13.md`）**
-- 导出：`CONTENT_FORMAT §5` 的完整目录、`mallok.json`、`site.json`、`redirects.csv`、`inquiries.csv`。
-- 导入：三种布局识别、别名归一化、身份与冲突、幂等、分批。
-- **`CONTENT_FORMAT §9` 的七条往返一致性断言全部通过**——这是硬性项。
-- 闭环：导出 → 导入到空站 → 再导出 → 逐字节一致。
-- 依赖：Task 03、Task 06。契约：`CONTENT_FORMAT §7`、`§8`、`§9`。
+### Phase five: moving content in and out, and deploying
 
-**Task 14 — CLI** ✅ **内容命令已完成（2026-08-30，见 `tasks/TASK-14.md`）；`create` / `destroy` 属 Task 16**
-- `publish` / `import` / `export` / `preview` / `media push`。
-- `sharp` 图片管线，与浏览器端同规格。
-- 退出码、`--json`、缺图报告、`image-slots.json`。
-- 闭环：`mallok publish ./articles` 把一个含图的目录批量发布；重复执行是空操作。
-- 依赖：Task 13。契约：`CLI.md`。
+**Task 13 — import and export** ✅ **Done (2026-08-30, `tasks/TASK-13.md`)**
+- Export: the complete directory from `CONTENT_FORMAT §5`, plus
+  `mallok.json`, `site.json`, `redirects.csv` and `inquiries.csv`.
+- Import: detecting the three layouts, normalising aliases, identity and
+  conflicts, idempotence, batching.
+- **All seven round-trip assertions in `CONTENT_FORMAT §9` pass** — a
+  mandatory item.
+- The path: export → import into an empty site → export again → byte-identical.
+- Depends on: Tasks 03 and 06. Contracts: `CONTENT_FORMAT §7`, `§8`, `§9`.
 
-**Task 15 — Starter 与首次启动向导** ✅ **已完成（2026-08-30，见 `tasks/TASK-15.md`）；向导为四步，媒体域名与邮件两步待 Task 16**
-- `trade-b2b` Starter：主题 + 示例内容 + 设置预设 + 预启用插件。
-- 向导七步，完成后永久关闭。
-- Starter 应用后分解回四个对象。
-- 闭环：全新部署 → 走完向导 → 得到一个有首页、产品、关于、联系页的可用外贸站。
-- 依赖：Task 12、Task 09。契约：`ARCHITECTURE §11`、`§15`、`ADMIN.md §5`。
+**Task 14 — the CLI** ✅ **Content commands done (2026-08-30, `tasks/TASK-14.md`); `create` and `destroy` belong to Task 16**
+- `publish`, `import`, `export`, `preview`, `media push`.
+- The `sharp` image pipeline, to the same specification as the browser's.
+- Exit codes, `--json`, missing-image reporting, `image-slots.json`.
+- The path: `mallok publish ./articles` publishes a directory with images;
+  running it again is a no-op.
+- Depends on: Task 13. Contract: `CLI.md`.
 
-**Task 16 — 部署入口** ⚠️ **代码完成、未经真实账号验证（2026-08-30，见 `tasks/TASK-16.md`）**
-- `mallok create`（`CLOUDFLARE_RESOURCES.md §6` 的十步）、`mallok destroy`（§10 的九步）。
-- Deploy to Cloudflare 按钮路径与 `MALLOK_SECRET` 方案。
-- 站群登记 `.mallok/sites.json`。
-- 闭环：在一个干净账号上 `npx mallok create` 一路到向导。
-- 依赖：门 A、Task 15。契约：`CLOUDFLARE_RESOURCES.md`。
+**Task 15 — the starter and the setup wizard** ✅ **Done (2026-08-30, `tasks/TASK-15.md`); the wizard is four steps, with media domain and email awaiting Task 16**
+- The `trade-b2b` starter: theme, example content, settings preset,
+  pre-enabled plugin.
+- The wizard, closing permanently once complete.
+- Applying a starter decomposes back into the four objects.
+- The path: a fresh deployment → complete the wizard → a working trade site
+  with a home page, products, an about page and a contact page.
+- Depends on: Tasks 12 and 09. Contracts: `ARCHITECTURE §11`, `§15`,
+  `ADMIN.md §5`.
 
-**Task 17 — 验收收口** ⚠️ **部分完成（2026-08-30，见 `tasks/TASK-17.md`）：67 条逐条取证已做（2026-09-01 重核）；Lighthouse/axe、spike 删除、英文文档均待前置条件**
-- `ACCEPTANCE.md` 全部 AC 逐条取证。
-- Lighthouse、axe、体积预算。
-- 删除 `src/worker/spike.ts` 及其路由。
-- 文档英文版（`CONTRIBUTING.md` 要求 `docs/` 补英文）。
-- 依赖：全部。
+**Task 16 — deployment entry points** ⚠️ **Code complete, unverified against a real account (2026-08-30, `tasks/TASK-16.md`)**
+- `mallok create` (the ten steps in `CLOUDFLARE_RESOURCES.md §6`) and
+  `mallok destroy` (the nine steps in §10).
+- The Deploy to Cloudflare path and its `MALLOK_SECRET` approach.
+- The portfolio registry, `.mallok/sites.json`.
+- The path: `npx mallok create` on a clean account, through to the wizard.
+- Depends on: gate A, Task 15. Contract: `CLOUDFLARE_RESOURCES.md`.
 
-## 4. 依赖图
+**Task 17 — acceptance close-out** ⚠️ **Partly done (2026-08-30, `tasks/TASK-17.md`): evidence recorded for all 67 criteria, recounted 2026-09-01; Lighthouse and axe, removing the spike, and the English documentation all await their preconditions**
+- Evidence for every criterion in `ACCEPTANCE.md`.
+- Lighthouse, axe, the size budgets.
+- Removing `src/worker/spike.ts` and its routes — **deliberately not done
+  yet**: it is the instrument for gate A's measurements, and removing the
+  instrument before measuring is backwards.
+- English versions of the documentation (`CONTRIBUTING.md` requires English
+  throughout).
+- Depends on: everything.
+
+## 4. The dependency graph
 
 ```
-门A ─┬─────────────────────────────► Task 05 ──► Task 06 ──┐
-     └────────────────────────────► Task 16              │
-门B ──────────────► Task 07 ──► Task 08 ──┐               │
-                                          ▼               ▼
-Task 02 ──► Task 03 ──► Task 04 ──────► Task 09      Task 13 ──► Task 14
-   │           │           │               │               │
+Gate A ─┬────────────────────────────► Task 05 ──► Task 06 ──┐
+        └───────────────────────────► Task 16               │
+Gate B ─────────────► Task 07 ──► Task 08 ──┐                │
+                                            ▼                ▼
+Task 02 ──► Task 03 ──► Task 04 ────────► Task 09       Task 13 ──► Task 14
+   │           │           │                 │                │
    └───────────┴───────────┴──► Task 10 ──► Task 11 ──► Task 12 ──► Task 15 ──► Task 16 ──► Task 17
 ```
 
-## 5. 每个任务的完成定义
+## 5. What "done" means for a task
 
-沿用通用 DoD 加本项目的加项：
+The general definition of done, plus this project's additions:
 
-1. 实现了任务描述的全部范围，被砍的部分显式说明；
-2. `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size` 全绿；
-3. 新增逻辑有测试，覆盖率达 `TESTING.md §5` 的门；
-4. `AC-INV-01..09` 全部复验（`ACCEPTANCE.md §11`）；
-5. 本任务覆盖的 AC 按 `TESTING.md §6` 的格式给出证据；
-6. 无 `TODO` 占位、无注释掉的死代码、无调试打印；
-7. 报告：变更文件、验证结果、未完成项、已知风险。
+1. The full scope described is implemented, and anything cut is stated
+   explicitly.
+2. `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size`
+   is green.
+3. New logic has tests, meeting the coverage gate in `TESTING.md §5`.
+4. `AC-INV-01..09` are re-verified (`ACCEPTANCE.md §11`).
+5. The criteria this task covers carry evidence in `TESTING.md §6`'s format.
+6. No `TODO` placeholders, no commented-out dead code, no debug printing.
+7. The report states: files changed, how it was verified, what is unfinished,
+   and the known risks.
 
-## 6. 不做的事
+## 6. What is not done here
 
-- 不为「以后可能需要」提前抽象（`ARCHITECTURE §17`）；
-- 不在任务里「顺便完善」无关部分（`docs/CONVENTIONS.md` 工作规则）；
-- 不跳过门 A、门 B 去抢进度；
-- 不合并任务——一个任务一个可演示闭环是刻意的，它保证每一步都能被验收，而不是最后一次性交付一堆无法验证的代码。
+- No abstraction built ahead of a need (`ARCHITECTURE §17`).
+- No "improving things while I am here" inside a task
+  (`docs/CONVENTIONS.md`, working rules).
+- No skipping gate A or gate B to make progress.
+- No merging tasks. One task, one demonstrable path is deliberate: it keeps
+  every step acceptable rather than delivering a pile of unverifiable code at
+  the end.
