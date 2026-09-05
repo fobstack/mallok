@@ -145,7 +145,15 @@ contradictory figures (§14.0).
 | `AC-EXPORT-02` | All seven round-trip assertions in `CONTENT_FORMAT §9` pass | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts` throughout |
 | `AC-EXPORT-03` | Each exported `index*.md` is byte-identical to `markdown` in D1 | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:140`, `:378` |
 | `AC-EXPORT-04` | An export contains **no** secret, session, token or `render_cache` | `VERIFIED_LOCAL` | `test/worker/roundtrip.test.ts:359` |
-| `AC-EXPORT-05` | The exported directory can be read directly by Astro or Hugo (verified once by hand) | `NOT_RUN` | The import direction's aliases are tested (`roundtrip.test.ts:173`); **the reverse has never been verified by hand** |
+
+`AC-EXPORT-05` (reading an export directly with Astro or Hugo) **was removed
+2026-09-02 by product decision.** Astro and Hugo are, per `CONVENTIONS.md`'s
+own boundary, "a reference point for output quality, not something to be
+compatible with" — 0.1 was never meant to promise third-party read
+compatibility, only that an export round-trips into a fresh Mallok deployment
+(`AC-EXPORT-01`/`02`, both `VERIFIED_LOCAL`). A structural regression test for
+this had briefly landed the same day and was removed with it; see §14.2 item
+5 for the full history.
 
 ## 10. AC-CLI
 

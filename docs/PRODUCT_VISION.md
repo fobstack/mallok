@@ -131,10 +131,15 @@ difference from every static generator, and no design may trade it away.**
 D1 holds Markdown source with YAML front matter, images referenced as
 relative paths like `images/xxx.jpg` — not rendered HTML, and not a private
 structure. One export produces ordinary content bundles (`index.md` plus
-`images/`) that can be fed directly to Astro, Hugo, Obsidian or anything else.
-Business data such as inquiries exports too. **No lock-in is not marketing
-copy; it is an export feature, and round-trip fidelity must be covered by
-tests.** The format is in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
+`images/`), a shape chosen because it echoes the bundle convention static-site
+generators use — not to promise those specific tools can read it (Astro is a
+reference point for output quality, not a compatibility target, per
+[CONVENTIONS.md](CONVENTIONS.md)). **What is promised, and what round-trip
+fidelity must cover, is narrower and concrete: an export re-imports into a
+fresh Mallok deployment byte-identically.** Business data such as inquiries
+exports too. **No lock-in is not marketing copy; it is an export feature, and
+round-trip fidelity must be covered by tests.** The format is in
+[CONTENT_FORMAT.md](CONTENT_FORMAT.md).
 
 ### 5.3 Deployed into your own Cloudflare account, starting at zero
 
