@@ -178,11 +178,18 @@ both together is the dangerous combination.
 A `markdown` over 2 MB fails to save with a clear error
 (`DATA_MODEL §2.2`).
 
-When stage-one rendering exceeds the CPU budget — 10 ms on the free plan,
-`ARCHITECTURE §5` — the save request stores the Markdown as a draft and
-returns a clear error: "this item is too long to render within the free plan's
-time budget. Split it, or move to Workers Paid." **It does not fail silently,
-and it does not pretend to have succeeded.**
+Past that, a second, much lower threshold protects stage-one rendering
+itself: real measurement against a Cloudflare account put a 2–128 KB body at
+60–726 ms of CPU (`ARCHITECTURE §18` item 2, `docs/tasks/TASK-01.md §5`) —
+already past the free plan's 10 ms budget at every size tested, and a real
+CPU-limit kill is not something the save request's own code can catch and
+turn into a clean error. So past `MAX_SAFE_RENDER_BYTES` (50 KB,
+`src/worker/admin-content.ts`), the save **skips rendering rather than risk
+it**: the body is stored as a draft regardless of the status requested, and
+the response carries a warning explaining why, shown in the editor. Nothing
+is lost — shortening the body and saving again renders and publishes
+normally. **It does not fail silently, and it does not pretend to have
+succeeded** (`AC-CONTENT-10`, `docs/ACCEPTANCE.md §14.2` item 7).
 
 ### 6.6 Multiple languages
 

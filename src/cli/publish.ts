@@ -21,6 +21,9 @@ export interface PublishOutcome {
   readonly path?: string;
   readonly error?: string;
   readonly missing: readonly string[];
+  /** Set when the server saved the item but skipped rendering it — too long
+   * to render safely, saved as a draft instead (`AC-CONTENT-10`). */
+  readonly warning?: string;
 }
 
 /** Options a publish run takes. */
@@ -42,6 +45,7 @@ interface SaveResponse {
   readonly path: string;
   readonly unchanged?: boolean;
   readonly missingAssets?: readonly string[];
+  readonly warning?: string;
 }
 
 /**
@@ -162,6 +166,7 @@ export async function publishBundles(
           missing: [
             ...new Set([...document.missing, ...(result.missingAssets ?? [])]),
           ],
+          ...(result.warning === undefined ? {} : { warning: result.warning }),
         });
       } catch (error) {
         if (error instanceof CliError && error.code === EXIT.auth) {
@@ -261,5 +266,17 @@ export function reportMissing(
       EXIT.user,
       'Some referenced files are missing and --fail-on-missing was set.',
     );
+  }
+}
+
+/** Surfaces server-side save warnings, such as a skipped-render draft. */
+export function reportWarnings(
+  outcomes: readonly PublishOutcome[],
+  report: Reporter,
+): void {
+  for (const row of outcomes) {
+    if (row.warning !== undefined) {
+      report.warn(`    ${row.bundle} (${row.locale}): ${row.warning}`);
+    }
   }
 }

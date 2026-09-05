@@ -143,7 +143,7 @@ existing item is an error and nothing is overwritten.
 D1 caps a statement at 100 KB and a call at 50 queries (`ARCHITECTURE §2`).
 The CLI batches accordingly and **never submits a whole directory at once**.
 
-### 6.6 Reporting missing images
+### 6.6 Reporting missing images, and oversized content
 
 Referencing a file that is not in the bundle is a normal state
 (`CONTENT_FORMAT §4`, rule 6). The CLI:
@@ -153,6 +153,12 @@ Referencing a file that is not in the bundle is a normal state
   slots have no file yet (`CONTENT_FORMAT §7.5`);
 - **warns on publish without blocking**;
 - offers `--fail-on-missing` so CI can be strict.
+
+The same "warn, do not block" shape applies to a body past
+`MAX_SAFE_RENDER_BYTES` (`ADMIN.md §6.5`, `AC-CONTENT-10`): the item still
+publishes into the site as a draft, and the CLI prints the server's warning
+against that bundle rather than failing the whole run — a large AI content
+pipeline should see the warning, not stop.
 
 Mallok does not interpret other files such as `image-requirements.md`, and
 does not upload them.

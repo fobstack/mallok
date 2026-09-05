@@ -217,7 +217,11 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
     setBusy(true);
     setSaved(false);
     try {
-      const result = await api<{ id: string; path: string }>('/content', {
+      const result = await api<{
+        id: string;
+        path: string;
+        warning?: string;
+      }>('/content', {
         method: 'POST',
         body: {
           ...(loaded === null ? {} : { id: loaded.id }),
@@ -234,6 +238,11 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
       });
       setDirty(false);
       setSaved(true);
+      // The save still succeeded — this is the server saying it skipped
+      // rendering and stored a draft instead, not a failure to report as one.
+      if (result.warning !== undefined) {
+        notice.value = result.warning;
+      }
       if (loaded === null) {
         navigate(`/content/${result.id}`, true);
       }

@@ -12,6 +12,7 @@ import {
   deriveFrontmatter,
   normalizeRelativePath,
   PIPELINE_VERSION,
+  type RenderedFragment,
   renderFragment,
   sha256Hex,
   slugify,
@@ -36,6 +37,19 @@ import { resolveAssets } from './render.js';
 import { parseSiteSettings } from './site.js';
 
 const MAX_MARKDOWN_BYTES = 2 * 1024 * 1024;
+/**
+ * Body length past which rendering is skipped rather than attempted.
+ *
+ * Real-account measurement (docs/tasks/TASK-01.md §5, 2026-09-03) put
+ * stage-one rendering at 60–726 ms across 2–128 KB of body text — already
+ * past the Free plan's documented 10 ms budget at every size tested, so no
+ * length threshold can guarantee a render fits. This is a coarse safety net,
+ * not a precise predictor: past this length, skip the expensive render
+ * entirely rather than risk the platform killing the request mid-write
+ * (`AC-CONTENT-10`, docs/ACCEPTANCE.md §14.2 item 7). 50 KB is comfortably
+ * past any article this product's themes render as a single page.
+ */
+const MAX_SAFE_RENDER_BYTES = 50 * 1024;
 const DEFAULT_PAGE_SIZE = 50;
 const MAX_PAGE_SIZE = 200;
 
@@ -160,6 +174,11 @@ export async function saveContent(
     const message = error instanceof Error ? error.message : 'Invalid input.';
     return problem(400, message);
   }
+  // Past this length, rendering itself is the risk — skip it rather than
+  // attempt it (see MAX_SAFE_RENDER_BYTES). The content is still saved, as a
+  // draft, so nothing is lost; it renders normally once shortened.
+  const tooLongToRenderSafely = document.body.length > MAX_SAFE_RENDER_BYTES;
+
   // Aliases from Astro, Hugo and common CMS exports are derived into the
   // stored view; the Markdown itself is never rewritten
   // (docs/CONTENT_FORMAT.md §3.3).
@@ -199,7 +218,11 @@ export async function saveContent(
 
   const now = new Date().toISOString();
   const markdownSha = await sha256Hex(input.markdown);
-  const status = resolveStatus(input.status, fm, now);
+  // Too long to render safely overrides whatever was requested: saving must
+  // never publish content stage one hasn't actually rendered.
+  const status = tooLongToRenderSafely
+    ? 'draft'
+    : resolveStatus(input.status, fm, now);
   const publishedAt = resolvePublishedAt(fm, existing, now);
   const assetsJson = JSON.stringify(assets);
 
@@ -221,16 +244,30 @@ export async function saveContent(
     base: kindConfig.base,
   });
 
-  const siteData = await loadSiteRenderData(env.DB);
-  const resolved = await resolveAssets(env.DB, assetsJson);
-  const fragment = await renderFragment({
-    body: document.body,
-    frontmatter: fm,
-    assets: resolved,
-    mediaBaseUrl: settings.mediaBaseUrl,
-    pluginHash: await fragmentPluginHash(siteData.plugins),
-    hooks: beforeRenderHooks(siteData.plugins),
-  });
+  const fragment: RenderedFragment = tooLongToRenderSafely
+    ? {
+        html: '',
+        meta: {
+          headings: [],
+          excerpt: '',
+          readingTimeMinutes: 0,
+          refs: [],
+          missing: [],
+        },
+        cacheKey: `too-long:${markdownSha}`,
+      }
+    : await (async () => {
+        const siteData = await loadSiteRenderData(env.DB);
+        const resolved = await resolveAssets(env.DB, assetsJson);
+        return renderFragment({
+          body: document.body,
+          frontmatter: fm,
+          assets: resolved,
+          mediaBaseUrl: settings.mediaBaseUrl,
+          pluginHash: await fragmentPluginHash(siteData.plugins),
+          hooks: beforeRenderHooks(siteData.plugins),
+        });
+      })();
 
   const description =
     typeof fm.description === 'string' ? fm.description : fragment.meta.excerpt;
@@ -286,6 +323,15 @@ export async function saveContent(
       publishedAt: row.published_at,
       missingAssets: fragment.meta.missing,
       purgeQueued: env.CF_API_TOKEN !== undefined,
+      ...(tooLongToRenderSafely
+        ? {
+            warning:
+              `Saved as a draft without rendering: this item's body is ` +
+              `over ${MAX_SAFE_RENDER_BYTES / 1024} KB, long enough that ` +
+              `rendering it risks exceeding the Free plan's CPU limit. ` +
+              `Nothing was lost — shorten it and save again to publish.`,
+          }
+        : {}),
     },
     { status: existing === null ? 201 : 200 },
   );

@@ -34,7 +34,7 @@ import {
   MANUAL_CLEANUP,
   runWrangler,
 } from './provision.js';
-import { publishBundles, reportMissing } from './publish.js';
+import { publishBundles, reportMissing, reportWarnings } from './publish.js';
 import { readRegistry, resourceNames, writeRegistry } from './registry.js';
 import { scanDirectory } from './scan.js';
 
@@ -182,6 +182,7 @@ async function runPublish(
     report,
     boolFlag(args, 'fail-on-missing'),
   );
+  reportWarnings(outcomes, report);
 
   const failed = outcomes.filter((row) => row.status === 'failed');
   report.done(
