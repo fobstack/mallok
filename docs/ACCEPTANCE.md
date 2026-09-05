@@ -249,46 +249,79 @@ The recount did four things:
    counted as verified in §14.1 and as needing a real account in §14.4; it is
    now `-07a` (verified in workerd) and `-07b` (platform behaviour).
 
+**2026-09-02 addendum**: the count below moved from 67 to 66 active
+criteria — not another counting bug, a product decision. `AC-EXPORT-05`
+was removed; see §14.2 item 5.
+
 ### 14.1 Status by group (counted from the group tables)
 
-After the splits there are **75 rows**: 67 original criteria, eight of which
-became two halves each.
+After the splits, the 2026-09-02 removal of `AC-EXPORT-05`, that day's three
+wording decisions (§14.2), the 2026-09-03/04 Gate A run against a real
+account (`docs/tasks/TASK-01.md §5`), and the 2026-09-05 length-based safety
+net for `AC-CONTENT-10`, there are **74 rows**: 66 active criteria, eight of
+which became two halves each.
 
-| Group | Rows | `VERIFIED_LOCAL` | `NOT_RUN` | `PENDING_DECISION` | `NOT_AVAILABLE` |
-| --- | --- | --- | --- | --- | --- |
-| `AC-DEPLOY` | 9 | 3 | 0 | 1 | 5 |
-| `AC-CONTENT` | 13 | 9 | 1 | 0 | 3 |
-| `AC-MEDIA` | 7 | 5 | 0 | 0 | 2 |
-| `AC-THEME` | 8 | 7 | 1 | 0 | 0 |
-| `AC-PLUGIN` | 10 | 6 | 1 | 0 | 3 |
-| `AC-SEO` | 8 | 4 | 1 | 0 | 3 |
-| `AC-EXPORT` | 5 | 4 | 1 | 0 | 0 |
-| `AC-CLI` | 5 | 4 | 0 | 1 | 0 |
-| `AC-INV` | 10 | 8 | 1 | 1 | 0 |
-| **Total** | **75** | **50** | **6** | **3** | **16** |
+| Group | Rows | `VERIFIED_LOCAL` | `VERIFIED_HUMAN` | `NOT_RUN` | `PENDING_DECISION` | `NOT_AVAILABLE` |
+| --- | --- | --- | --- | --- | --- | --- |
+| `AC-DEPLOY` | 9 | 4 | 3 | 0 | 0 | 2 |
+| `AC-CONTENT` | 13 | 11 | 0 | 0 | 1 | 1 |
+| `AC-MEDIA` | 7 | 5 | 1 | 0 | 0 | 1 |
+| `AC-THEME` | 8 | 8 | 0 | 0 | 0 | 0 |
+| `AC-PLUGIN` | 10 | 7 | 0 | 0 | 0 | 3 |
+| `AC-SEO` | 8 | 5 | 0 | 0 | 0 | 3 |
+| `AC-EXPORT` | 4 | 4 | 0 | 0 | 0 | 0 |
+| `AC-CLI` | 5 | 5 | 0 | 0 | 0 | 0 |
+| `AC-INV` | 10 | 10 | 0 | 0 | 0 | 0 |
+| **Total** | **74** | **59** | **4** | **0** | **1** | **10** |
 
-**`VERIFIED_HUMAN` is still 0.** That is this section's most important
-sentence, and the recount did not change it: **nothing has ever run against a
-real Cloudflare account.** Everything marked verified locally was verified in
-simulated workerd or under `wrangler dev`.
+**`VERIFIED_HUMAN` was 0 from 2026-08-28 until 2026-09-03/04.** Gate A
+(`ARCHITECTURE §18`, `TASK-01.md §4`–`§5`) ran for real against a Cloudflare
+account for the first time and gave four criteria genuine real-account
+evidence: `AC-DEPLOY-01` (`mallok create` end to end — which also surfaced and
+fixed a real deploy-breaking bug), `AC-DEPLOY-04` (cache on a custom domain),
+`AC-DEPLOY-07b` (migration concurrency on real infrastructure) and
+`AC-MEDIA-04` (R2 custom domain serving). Two criteria briefly moved from
+`NOT_AVAILABLE` to `PENDING_DECISION` because the run produced real numbers
+that called the wording itself into question rather than simply confirming
+it: `AC-CONTENT-02b` (purge propagation measured at ≈ 20 seconds, not
+obviously "seconds" — still open, see §14.2 item 6) and `AC-CONTENT-10`
+(stage-one CPU measured at 6×–73× the budget, with no code path that caught
+an overrun and stored a draft) — the second was settled and implemented
+2026-09-05, a length-based check ahead of rendering (§14.2 item 7). The
+remaining ten `NOT_AVAILABLE` criteria still need a public repository
+(`AC-DEPLOY-02`), a second real deployment (`AC-DEPLOY-08`), elapsed real
+time or cron (`AC-CONTENT-06b`, `AC-MEDIA-06b`), a Resend account
+(`AC-PLUGIN-02b`, `03b`), Turnstile (`AC-PLUGIN-05b`), or Lighthouse against a
+warm cache (`AC-SEO-05/06/07`). Everything still marked `VERIFIED_LOCAL` was
+verified in simulated workerd or under `wrangler dev`, not on real
+infrastructure.
 
-### 14.1.1 What the six `NOT_RUN` items are
+### 14.1.1 The `NOT_RUN` items, closed 2026-09-02
 
-Implemented, but with no reproducible assertion. None of them needs a real
-account — **writing a test closes each one**:
+Each was implemented but had no reproducible assertion. None needed a real
+account, so each was closed by writing a test rather than by any product
+decision — except the last, which was closed and then removed the same day
+once it turned out the product decision behind it had never actually been
+made:
 
-| Criterion | What is missing |
-| --- | --- |
-| `AC-CONTENT-01` | "Enter ten products in the admin" has only been walked through by hand |
-| `AC-THEME-08`, `AC-PLUGIN-07`, `AC-INV-10` | An assertion on the interface copy: no upload control, and an honest statement that a redeploy is needed |
-| `AC-SEO-01b` | Sitemap pagination past 5,000 entries |
-| `AC-EXPORT-05` | An exported directory read directly by Astro or Hugo, once, by hand |
+| Criterion | What was missing | Closed by |
+| --- | --- | --- |
+| `AC-CONTENT-01` | "Enter ten products in the admin" had only been walked through by hand | `test/worker/product-catalog.test.ts:119` |
+| `AC-THEME-08`, `AC-PLUGIN-07`, `AC-INV-10` | An assertion on the interface copy: no upload control, and an honest statement that a redeploy is needed | `test/admin/redeploy-notice.test.ts` |
+| `AC-SEO-01b` | Sitemap pagination past 5,000 entries | `test/worker/sitemap-pagination.test.ts` |
+| ~~`AC-EXPORT-05`~~ | An exported directory read directly by Astro or Hugo, once, by hand | Closed with a structural regression test, then the criterion itself was **removed** the same day — see §14.2 item 5 |
 
-### 14.2 Awaiting the product owner (three `PENDING_DECISION` items, plus one note on scope)
+### 14.2 Decisions and their history
 
-**1. `AC-INV-05`'s wording does not match the measurement.** The criterion
-asks for one D1 batch and at most 3 queries. Measured in
-`test/worker/budget.test.ts`, on a cold render bypassing the cache:
+One decision is open (item 6), raised by the 2026-09-03/04 Gate A run.
+Everything else here — three wording questions settled 2026-09-02, the
+`AC-EXPORT-05` removal, and item 7's CPU-overrun handling, settled and
+implemented 2026-09-05 — is closed history, kept for the record.
+
+**1. `AC-INV-05`'s wording did not match the measurement — settled: reword
+to match reality.** The criterion asked for one D1 batch and at most 3
+queries. Measured in `test/worker/budget.test.ts`, on a cold render bypassing
+the cache:
 
 | Page | D1 calls | Composition |
 | --- | --- | --- |
@@ -301,33 +334,104 @@ covers add one more, to a ceiling of four.
 **Why one batch is impossible**: related content and media both depend on the
 content row the first batch returns — its slug, kind, front matter and assets
 — so they are necessarily a second round trip. This is a data dependency, not
-a lazy implementation.
+a lazy implementation. The criterion now reads "**at most 4 D1 round trips,
+each with a constant number of queries and bounded row reads**" — the wording
+above, adopted as-is.
 
-The suggested rewording is "**a cold render makes at most 4 D1 round trips,
-each with a constant number of queries and bounded row reads**", with the
-measured figures written into `ARCHITECTURE §4`. **But this is an
-architectural invariant, and the product owner changes it.**
+**2. `AC-DEPLOY-03` said the wizard has seven steps; the implementation has
+four — settled: reword to four plus Settings.** The media domain and the
+Resend/DNS steps need an account-scoped Cloudflare API token and belong to
+what Task 16 did not do (`TASK-16.md §6`); writing that code now would not
+make it verifiable before Gate A either, the same position `mallok create` and
+`destroy` are already in. Both remain reachable in Settings after the wizard
+closes, so nothing is unreachable — only not part of the guided first run.
+`ARCHITECTURE §15` and `ADMIN.md §5` were corrected to describe four steps.
 
-**2. `AC-DEPLOY-03` says the wizard has seven steps; the implementation has
-four.** The media domain and the Resend/DNS steps need an account-scoped
-Cloudflare API token and belong to what Task 16 did not do
-(`TASK-16.md §6`). Both can be completed later in settings, so no
-functionality is unreachable. Either build the two steps, or change the
-criterion to four plus "the rest is completed in settings".
+**3. `AC-CLI-03`'s "byte-identical" needed one qualification — settled:
+adopt the qualified wording.** `mallok preview` runs the **same**
+`renderFragment` and `renderPage` as production, so identical input produces
+identical bytes. But the preview is offline with no media table, so images
+stay relative paths (`images/hero.png`) where production has R2 URLs. **The
+body and structure are byte-identical; the media URLs necessarily differ.**
+The criterion now reads "the same Markdown produces the same body fragment in
+both places", and `test/cli/preview.test.ts` asserts it directly — the claim
+had rested on both call sites sharing code, with nothing pinning that they
+actually agreed on one input.
 
-**3. `AC-CLI-03`'s "byte-identical" needs one qualification.**
-`mallok preview` runs the **same** `renderFragment` and `renderPage` as
-production, so identical input produces identical bytes. But the preview is
-offline with no media table, so images stay relative paths
-(`images/hero.png`) where production has R2 URLs. **The body and structure are
-byte-identical; the media URLs necessarily differ.** The suggested rewording
-is "the same Markdown produces the same body fragment in both places".
+**4. ~~`src/worker/spike.ts` is still there.~~ Done 2026-09-03.** Task 17
+asked for its removal; it stayed as the instrument for the nine measurements
+in `TASK-01 §4` until they were actually taken. They have been — `TASK-01.md
+§5` — so the file, its route in `src/worker/index.ts`, and the test that
+exercised it (`test/worker/flow.test.ts`) were all removed the same day.
 
-**4. `src/worker/spike.ts` is still there.** Task 17 asked for its removal.
-**It has not been removed**: it is the instrument for the nine measurements in
-`TASK-01 §4`, and those have not been taken (§12, blocker 1). Removing the
-instrument before measuring is backwards. It goes once the measurements are
-done.
+**5. `AC-EXPORT-05` (Astro/Hugo read compatibility) was removed, not
+closed.** It was briefly closed 2026-09-02 with a structural regression test
+in `test/worker/roundtrip.test.ts` — asserting the export uses `index.md`
+(not `_index.md`), plain-YAML front matter and colocated images, which is
+what Astro's page bundles and Hugo's leaf bundles require. Asked directly,
+the product owner clarified the same day that this was never the intended
+promise: **`CONVENTIONS.md`** already states Astro is "a reference point for
+output quality, not something to be compatible with", and the bundle shape
+(`index.md` plus `images/`) was chosen *because* it resembles that
+convention, not to guarantee those specific tools can read it. The tested,
+promised guarantee is narrower and already met: an export round-trips into a
+fresh Mallok deployment byte-identically (`AC-EXPORT-01`/`02`). The test and
+the criterion were both removed the same day — see `PRODUCT_VISION.md §5.2`
+for the corrected wording.
+
+**6. `AC-CONTENT-02b`'s "within seconds" — open.** Gate A measured the real
+purge round trip (save → `purgeQueued: true` → the edit visible on a fresh
+request) at **≈ 20 seconds** (`TASK-01.md §5`). That is a huge improvement
+over an unpurged page's TTL, and the purge mechanism itself works — but 20
+seconds is a stretch for what "seconds" plural usually implies. Options: keep
+the wording and treat 20 s as within tolerance; reword to something like "well
+under a minute"; or treat this as a target to optimise (the 2-second debounce
+window in `cache.ts` is one lever, though the real API round trip is likely
+the bigger cost). This is the product owner's call, not an engineering one.
+
+**7. `AC-CONTENT-10`'s CPU-overrun handling — settled 2026-09-05: a
+pre-flight length check, option (a) below.** Real stage-one CPU measured at
+60–726 ms across 2–128 KB of Markdown (`TASK-01.md §5`) — already past the
+Free plan's 10 ms budget at every size tested, with no length that
+guarantees a render fits (see the note below on what this measurement does
+and does not prove). `src/worker/admin-content.ts` had no CPU-budget check at
+all: nothing measured elapsed time or pre-estimated cost and stored a draft
+with a clear message before rendering. A real overrun is Cloudflare's own
+CPU-limit kill (error 1102), which terminates the isolate outright — not a
+`try`/`catch`-able condition stage one's own code can turn into the promised
+graceful draft, so the fix has to happen *before* rendering starts, not
+around it. Two options were on the table: **(a) a pre-flight length check**
+— reject or draft anything over a threshold before rendering, cheap to add,
+adopted; **(b)** accept `markdown-it` or another faster engine
+(`TASK-01.md §6`, `TECH_STACK.md §4`) so the budget is met in the first place
+— a bigger change (plugin hook surface, sanitisation), left for a separate
+decision.
+
+**What was built**: `MAX_SAFE_RENDER_BYTES` (50 KB) in
+`src/worker/admin-content.ts`. Past it, `renderFragment` is never called —
+the item saves as a draft regardless of the requested status, nothing is
+lost, and the response carries a `warning` field explaining why, surfaced in
+the admin editor (`src/admin/pages/editor.tsx`) and in `mallok publish`'s
+output (`src/cli/publish.ts`, `reportWarnings`).
+`test/worker/content-length-safety.test.ts` covers both the oversized-draft
+path and the normal-size regression case.
+
+**One honest caveat on the underlying measurement**: while building this,
+CPU behaviour was probed directly on the same real account Gate A used, with
+a throwaway Worker doing fixed, deliberate CPU-bound work (not the
+`Date.now()`-based approach tried first — wall-clock time does not advance
+during synchronous execution in a Worker, which made that attempt
+meaningless). That probe found the account tolerating roughly 700 ms–2
+seconds of CPU before error 1102, not 10 ms, on a plan the product owner
+confirmed is Workers Free. Current Cloudflare documentation states the Free
+plan's CPU limit as a fixed, non-configurable 10 ms with no exceptions, which
+this specific account's behaviour contradicts for reasons this session did
+not chase down further. `MAX_SAFE_RENDER_BYTES` is deliberately sized off the
+**documented** 10 ms figure regardless — Mallok deploys onto other people's
+Cloudflare accounts, and there is no basis for assuming a typical new Free
+signup shares whatever this one account's headroom comes from. The
+throwaway probe Worker was deleted after use and left no trace in this
+codebase.
 
 ### 14.3 Evidence index
 
@@ -344,28 +448,42 @@ done.
 | Related content and the cold-render budget (`AC-INV-05`) | `test/worker/relations.test.ts`, `test/worker/budget.test.ts` |
 | CLI arguments, site resolution, scanning (`AC-CLI-01/02/05`) | `test/cli/*.test.ts` |
 | The source text never being rewritten (`AC-CONTENT-08`, `AC-EXPORT-03`) | `test/core/frontmatter.test.ts`, `test/worker/roundtrip.test.ts` |
+| A full product catalogue: specification tables and gallery images, entered and published (`AC-CONTENT-01`) | `test/worker/product-catalog.test.ts` |
+| Sitemap pagination past 5,000 entries (`AC-SEO-01b`) | `test/worker/sitemap-pagination.test.ts` |
+| No theme-switch or plugin-install control, and the honest copy saying so (`AC-THEME-08`, `AC-PLUGIN-07`, `AC-INV-10`) | `test/admin/redeploy-notice.test.ts` |
+| Inline HTML sanitised and kept, not dropped (`SECURITY.md §4`, Gate B') | `test/core/fragment.test.ts` |
+| `mallok preview` and production agreeing on one input (`AC-CLI-03`) | `test/cli/preview.test.ts` |
 | Walked through by hand under `wrangler dev` (steps in each TASK document's §5) — **not evidence under the current status vocabulary**, see §14.1.1 | The three-column editor, plugin panels, the CLI publish/export/import round trip, installing the starter |
+| `mallok create` end to end on a real account, including the bug it found (`AC-DEPLOY-01`) | `docs/tasks/TASK-01.md §5`, `src/cli/provision.ts`, `test/cli/provision.test.ts` |
+| The Cache API on a real custom domain (`AC-DEPLOY-04`) | `docs/tasks/TASK-01.md §5` |
+| Migration concurrency on real infrastructure, two independent runs (`AC-DEPLOY-07b`) | `docs/tasks/TASK-01.md §5` |
+| An R2 custom domain serving real objects (`AC-MEDIA-04`) | `docs/tasks/TASK-01.md §5` |
+| Oversized content saved as a draft without rendering, and a normal-size regression case (`AC-CONTENT-10`) | `test/worker/content-length-safety.test.ts` |
 
-### 14.4 What needs a real account (§12, blocker 1, itemised)
+### 14.4 What still needs a real account (§12, blocker 1, itemised)
 
-**Regenerated 2026-09-01.** The previous version was a hand-written list that
-disagreed with §14.1's per-group counts in six of nine groups — both were
-maintained by hand and each drifted on its own. This list is now exactly the
-criteria whose status in the group tables is `NOT_AVAILABLE`, all **16** of
-them:
+**Regenerated 2026-09-04, after Gate A.** Gate A ran for real 2026-09-03/04
+(`docs/tasks/TASK-01.md §5`) and closed six of the sixteen criteria this
+section used to list: four became `VERIFIED_HUMAN`
+(`AC-DEPLOY-01`/`04`/`07b`, `AC-MEDIA-04`) and two became `PENDING_DECISION`
+because the real numbers raised a wording or implementation question rather
+than settling one (`AC-CONTENT-02b`, `AC-CONTENT-10` — see §14.2 items 6–7).
+`AC-CONTENT-10` was itself settled and implemented the next day, 2026-09-05,
+leaving `AC-CONTENT-02b` as the one open item. This list is exactly the
+criteria whose status in the group tables is still `NOT_AVAILABLE`, all
+**10** of them — unaffected by either change, since neither criterion was
+ever `NOT_AVAILABLE`:
 
-| Group | Criteria | What blocks them |
+| Group | Criteria | What still blocks them |
 | --- | --- | --- |
-| `AC-DEPLOY` | `01`, `02`, `04`, `07b`, `08` | A real account: creating resources, the Deploy button, caching on a custom domain, concurrent migration, a rolling upgrade |
-| `AC-CONTENT` | `02b`, `06b`, `10` | Purge latency, cron firing for real, the CPU budget |
-| `AC-MEDIA` | `04`, `06b` | An R2 custom domain, cron collection |
-| `AC-PLUGIN` | `02b`, `03b`, `05b` | Real Resend delivery, real Turnstile and the CPU budget |
+| `AC-DEPLOY` | `02`, `08` | The Deploy to Cloudflare button needs a public repository; a rolling upgrade needs two real deployments |
+| `AC-CONTENT` | `06b` | Cron firing for real (needs elapsed real time, not just a mocked clock) |
+| `AC-MEDIA` | `06b` | Cron collection on a real seven-day window |
+| `AC-PLUGIN` | `02b`, `03b`, `05b` | Real Resend delivery, real Turnstile, and the inquiry path's CPU/subrequest budget |
 | `AC-SEO` | `05`, `06`, `07` | The three Lighthouse criteria, which need a custom domain with the cache warm |
 
 `AC-THEME`, `AC-EXPORT`, `AC-CLI` and `AC-INV` have **no** criteria needing a
-real account — their remaining gaps are `NOT_RUN` (write a test) or
-`PENDING_DECISION` (make a call).
-
-Against the nine measurements in `ARCHITECTURE §18`: running those closes 15
-of the 16 above. The remaining one, `AC-DEPLOY-02`, additionally needs a
-public repository.
+real account and none `PENDING_DECISION` either — every row in those four
+groups is closed. `AC-DEPLOY-02` is the only one of the ten that Gate A's own
+measurements could never have closed regardless — it needs a public
+repository, which is a separate decision (§12, blocker 6 territory).

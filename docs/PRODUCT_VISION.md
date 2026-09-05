@@ -376,7 +376,7 @@ These belong in the vision because they decide whether the product works:
 - **The licence is settled: Apache-2.0**, chosen over MIT for its explicit
   patent grant and patent-retaliation clause. A separate trademark policy
   keeping the `Mallok` name is still outstanding.
-- **The implementation exists** — all seventeen tasks, 344 tests passing.
+- **The implementation exists** — all seventeen tasks, 357 tests passing.
   See [ACCEPTANCE.md §14](ACCEPTANCE.md) for what that is and is not evidence
   of.
 - **Nothing has run against a real Cloudflare account.** No acceptance

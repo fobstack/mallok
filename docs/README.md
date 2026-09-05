@@ -45,24 +45,42 @@ rest are the contracts for individual subsystems.
 
 ## Status
 
-- **Implementation**: all seventeen tasks are implemented; 344 tests pass;
-  the Worker is 232.3 KiB gzip, 7.6% of the free-plan ceiling.
-- **Verification**: **nothing has ever run against a real Cloudflare
-  account.** See [ACCEPTANCE.md §14](ACCEPTANCE.md) for the criterion-by-criterion
-  evidence. `mallok create` and `destroy` are written but never executed.
+- **Implementation**: all seventeen tasks are implemented; 357 tests pass;
+  the Worker is 284.7 KiB gzip, 9.3% of the free-plan ceiling.
+- **Verification**: **Gate A ran for real 2026-09-03/04** — seven of the nine
+  `ARCHITECTURE.md §18` measurements against a real Cloudflare account, the
+  other two needing a public repository and Turnstile/Resend accounts.
+  `mallok create` ran end to end and found a real deploy-breaking bug (fixed).
+  See [ACCEPTANCE.md §14](ACCEPTANCE.md) for the criterion-by-criterion
+  evidence: 4 criteria are now `VERIFIED_HUMAN`, one moved to
+  `PENDING_DECISION` because the real numbers raised a question rather than
+  settling it, one that did the same was settled and implemented the next day
+  (a content-length safety net, `AC-CONTENT-10`), and 10 still need a real
+  account for other reasons.
 - **Distribution**: nothing published to npm; the repository is private.
 - **Licence**: Apache-2.0.
 
 ## Open gates
 
-1. **The nine measurements in [ARCHITECTURE.md §18](ARCHITECTURE.md)** — to be
-   taken on a real Cloudflare account following [tasks/TASK-01.md §4](tasks/TASK-01.md).
-   Seventeen acceptance criteria are waiting on this.
-2. **Whether to keep inline HTML** (whether to add `rehype-raw`) — see
-   [tasks/TASK-01.md §6](tasks/TASK-01.md) and [SECURITY.md §4](SECURITY.md).
+Gate A is done — see [tasks/TASK-01.md §5](tasks/TASK-01.md) for the full
+results and [ARCHITECTURE.md §18](ARCHITECTURE.md) for what they mean. Ten
+acceptance criteria remain `NOT_AVAILABLE` for reasons Gate A could never have
+closed: a public repository, a second real deployment, elapsed real time or
+cron, and Resend/Turnstile/Lighthouse accounts
+([ACCEPTANCE.md §14.4](ACCEPTANCE.md)). One of Gate A's own findings is still
+an open product decision — purge latency (≈ 20 s) against the "within
+seconds" wording. The other, stage-one CPU routinely running past the Free
+plan's budget, was settled 2026-09-05: `saveContent` now skips rendering and
+saves a draft instead, past a conservative length threshold
+([ACCEPTANCE.md §14.2](ACCEPTANCE.md), items 6–7).
 
 The Markdown engine question was settled on 2026-08-29: **stay with unified**.
-The reasoning and its cost are in [tasks/TASK-01.md §6](tasks/TASK-01.md).
+The reasoning and its cost are in [tasks/TASK-01.md §6](tasks/TASK-01.md) —
+Gate A's real CPU numbers now make this a live decision again (item 7 above).
+
+Whether to keep inline HTML was settled on 2026-09-02: **keep it, sanitised**
+— `rehype-raw` was added ([SECURITY.md §4](SECURITY.md),
+[TECH_STACK.md §11.1](TECH_STACK.md)).
 
 The earlier "macOS desktop Studio plus build-time prerendering" design was
 abandoned in full. It survives in git commit `2e775cb` for reference only and
