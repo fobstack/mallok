@@ -6,9 +6,6 @@ import { ACTIVE_THEME } from '../../src/themes/index.js';
 const THEME = ACTIVE_THEME.manifest;
 
 const ORIGIN = 'https://site.example';
-/** Value of the `MALLOK_SECRET` binding; only the spike routes still use it. */
-const SPIKE_SECRET = 'test-secret-do-not-use';
-const SPIKE_AUTH = { authorization: `Bearer ${SPIKE_SECRET}` };
 
 const ADMIN_EMAIL = 'owner@example.com';
 const ADMIN_PASSWORD = 'correct horse battery staple';
@@ -350,30 +347,5 @@ describe('walking skeleton', () => {
     expect(missing.status).toBe(404);
     expect(await missing.text()).toBe('{"error":"Not found."}');
     expect((await get('/_mallok/whatever')).status).toBe(404);
-  });
-
-  it('exposes the spike probes behind the deploy secret', async () => {
-    expect((await get('/_mallok/spike/cache-probe')).status).toBe(401);
-    const probe = await get('/_mallok/spike/cache-probe', SPIKE_AUTH);
-    expect((await probe.json()) as object).toMatchObject({
-      cacheApiWorks: true,
-    });
-
-    const fragment = await get('/_mallok/spike/fragment?kb=8', SPIKE_AUTH);
-    const report = (await fragment.json()) as {
-      markdownBytes: number;
-      htmlBytes: number;
-    };
-    expect(report.markdownBytes).toBeGreaterThan(8 * 1024);
-    expect(report.htmlBytes).toBeGreaterThan(0);
-
-    const render = await get(
-      '/_mallok/spike/render?path=/news/titanium-prices-in-august',
-      SPIKE_AUTH,
-    );
-    expect((await render.json()) as object).toMatchObject({
-      status: 200,
-      fragment: 'CACHED',
-    });
   });
 });

@@ -30,7 +30,7 @@ import { getCompiledTheme } from './theme-cache.js';
 const LIST_PAGE_SIZE = 20;
 const HOME_RECENT = 10;
 
-/** Options that the spike uses to bypass the cache. */
+/** Options for measuring a cold render, bypassing the cache (test/worker/budget.test.ts). */
 export interface PublicOptions {
   /** Skip cache lookup and storage; render every time. */
   readonly bypassCache?: boolean;

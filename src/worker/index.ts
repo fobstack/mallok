@@ -4,7 +4,6 @@
  *   /_mallok/api/*    management API (bearer token)
  *   /_mallok/app/*    admin SPA shell (files come from Static Assets)
  *   /_mallok/setup    first-run wizard page; 404s for good once setup completes
- *   /_mallok/spike/*  Task 01 measurement endpoints (bearer token)
  *   /robots.txt, /sitemap*.xml, /feed.xml   core SEO endpoints
  *   /media/*          R2 proxy for uploaded media
  *   /*                public site
@@ -31,7 +30,6 @@ import { handleScheduled } from './scheduled.js';
 import { handleSeo, isSeoPath } from './seo-routes.js';
 import { handleSetup } from './setup.js';
 import { parseSiteSettings } from './site.js';
-import { handleSpike } from './spike.js';
 
 async function fetchHandler(
   request: Request,
@@ -69,9 +67,6 @@ async function fetchHandler(
         ctx,
         step === '' ? 'status' : step,
       );
-    }
-    if (pathname.startsWith('/_mallok/spike/')) {
-      return await handleSpike(request, env, ctx, pathname);
     }
     if (pathname.startsWith('/_mallok/p/')) {
       const data = await loadSiteRenderData(env.DB);

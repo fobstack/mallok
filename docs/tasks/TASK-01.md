@@ -336,8 +336,12 @@ The two remaining unmeasured items (7, 9) need a public repository and Turnstile
 ## 6. Clean-up after the spike
 
 - Delete the spike resources (`docs/CLOUDFLARE_RESOURCES.md §10` order),
-  including `mallok-spike2-db` from step 4.7.
-- Remove `src/worker/spike.ts` and its route once §18 is updated.
+  including `mallok-spike2-db` and `mallok-spike3-db` from step 4.7, and
+  `mallok-spike2`/`mallok-spike3` (the two extra Workers created for that
+  test), and the `media.mallok.dev` R2 custom domain and the
+  `CF_API_TOKEN`/`CF_ZONE_ID` secrets' backing API token — **done 2026-09-03**.
+- ~~Remove `src/worker/spike.ts` and its route once §18 is updated.~~ **Done
+  2026-09-03**, alongside this results table.
 - ~~Decide the Markdown engine question before Task 02 starts.~~
   **Decided 2026-08-29**: keep `unified`. The instruction was to follow
   Astro's Markdown engine, and Astro's default processor is still
