@@ -30,14 +30,17 @@ interface Diagnostics {
   readonly quotaUsageNote: string;
 }
 
-const INSTANT = [
+/** Exported for `AC-INV-10` (docs/ACCEPTANCE.md §11): the interface's own
+ * words for what is instant and what needs a deploy, asserted directly
+ * rather than re-derived from rendered markup. */
+export const INSTANT = [
   'Content: create, edit, publish, delete',
   'Site settings, languages, navigation',
   'Theme options this theme declares',
   'Plugin on/off switches, settings and secrets',
 ];
 
-const NEEDS_DEPLOY = [
+export const NEEDS_DEPLOY = [
   'Switching to a different theme',
   'Installing, updating or removing a plugin',
   'Upgrading Mallok itself',

@@ -70,7 +70,7 @@ contradictory figures (§14.0).
 
 | ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-CONTENT-01` | Enter ten products in the admin, with specification tables and images, and publish them | `NOT_RUN` | Only walked through by hand under `wrangler dev`. **No automated assertion, and not reproducible** |
+| `AC-CONTENT-01` | Enter ten products in the admin, with specification tables and images, and publish them | `VERIFIED_LOCAL` | `test/worker/product-catalog.test.ts:119` |
 | `AC-CONTENT-02a` | Saving content does issue the tag purge | `VERIFIED_LOCAL` | `test/worker/cache-admin.test.ts:94` |
 | `AC-CONTENT-02b` | Publish a news item and see it on the public URL **within seconds** | `NOT_AVAILABLE` | Depends on the real Purge API's latency, `ARCHITECTURE §18` item 3 |
 | `AC-CONTENT-03` | Enable a second language, create a translation of a product, and both have correct URLs | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:69`, `:107` |
@@ -107,7 +107,7 @@ contradictory figures (§14.0).
 | `AC-THEME-05` | A theme containing an undeclared `<script>` or `on*=` **fails the build**, and the error names the file | `VERIFIED_LOCAL` | `test/core/theme-package.test.ts:121`, `:132`. **Corrected 2026-09-01**: §14.1 previously recorded this as untested, which was wrong |
 | `AC-THEME-06` | All five official themes (`atelier`, `journal`, `gazette`, `manual`, `folio`) emit **0 B** of client-side JavaScript | `VERIFIED_LOCAL` | `test/core/themes.test.ts`, `test/cli/build.test.ts:195` |
 | `AC-THEME-07` | Theme assets are served from Static Assets, versioned, `immutable` and `nosniff` | `VERIFIED_LOCAL` | `test/core/media.test.ts:126`, `test/core/themes.test.ts` (`links the stylesheet to Static Assets`) |
-| `AC-THEME-08` | The admin has no theme upload or switch control, and says plainly that switching needs a redeploy | `NOT_RUN` | Interface copy, with no automated assertion. This is the group's real gap |
+| `AC-THEME-08` | The admin has no theme upload or switch control, and says plainly that switching needs a redeploy | `VERIFIED_LOCAL` | `test/admin/redeploy-notice.test.ts:38`, `:47` |
 
 ## 7. AC-PLUGIN
 
@@ -122,14 +122,14 @@ contradictory figures (§14.0).
 | `AC-PLUGIN-05a` | The honeypot, rate limiting and server-side Turnstile verification are all on the code path | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts` (`silently drops a submission that filled the honeypot`, `verifies Turnstile server-side once a secret is configured`) |
 | `AC-PLUGIN-05b` | They hold against real Turnstile, and a submission fits the free plan's CPU and subrequest budget | `NOT_AVAILABLE` | Needs real Turnstile and CPU measurement, `ARCHITECTURE §18` item 9 |
 | `AC-PLUGIN-06` | A failed send is retried by cron and its status is visible in the admin | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts:339` |
-| `AC-PLUGIN-07` | The interface states plainly that **installing, updating and removing plugins need a redeploy**, and has no upload control | `NOT_RUN` | Interface copy, with no automated assertion |
+| `AC-PLUGIN-07` | The interface states plainly that **installing, updating and removing plugins need a redeploy**, and has no upload control | `VERIFIED_LOCAL` | `test/admin/redeploy-notice.test.ts:58`, `:69` |
 
 ## 8. AC-SEO
 
 | ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
 | `AC-SEO-01a` | `/sitemap.xml` lists all published content with hreflang and `x-default` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:92`, and `carries hreflang alternates and x-default in the sitemap` |
-| `AC-SEO-01b` | Past 5,000 entries it paginates into `/sitemap-<n>.xml` with an index | `NOT_RUN` | Implemented, with no assertion covering the pagination |
+| `AC-SEO-01b` | Past 5,000 entries it paginates into `/sitemap-<n>.xml` with an index | `VERIFIED_LOCAL` | `test/worker/sitemap-pagination.test.ts:59`, `:70`, `:80` |
 | `AC-SEO-02` | `/feed.xml` emits valid RSS per language | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:128` |
 | `AC-SEO-03` | Every page emits correct canonical, OG and Twitter Card tags | `VERIFIED_LOCAL` | `test/core/view.test.ts` (`never overrides a canonical field the author wrote`, `fills canonical fields from the aliases other tools use`) |
 | `AC-SEO-04` | JSON-LD emits Organization, Article, Product and FAQPage, with `<` escaped to `\u003c` | `VERIFIED_LOCAL` | `test/core/view.test.ts:117`, `:144`, and `still emits Article and Product` |
@@ -172,7 +172,7 @@ Re-verified by every task (`IMPLEMENTATION_PLAN §5`, item 4).
 | `AC-INV-07` | Error responses leak no SQL, bucket name, id or stack trace | `VERIFIED_LOCAL` |
 | `AC-INV-08` | Visitor pages carry 0 B of client-side JavaScript, the inquiry page's Turnstile excepted | `VERIFIED_LOCAL` (`test/core/themes.test.ts` asserts no `<script>` beyond JSON-LD in every layout of all five themes) |
 | `AC-INV-09` | Changing content, settings, theme options or a plugin switch **needs neither a build nor a deployment** | `VERIFIED_LOCAL` |
-| `AC-INV-10` | Switching themes and installing plugins **do need a deployment**, and the interface says so — never dressed up as one click | `NOT_RUN` — interface copy, no automated assertion; the same gap as `AC-THEME-08` and `AC-PLUGIN-07` |
+| `AC-INV-10` | Switching themes and installing plugins **do need a deployment**, and the interface says so — never dressed up as one click | `VERIFIED_LOCAL` (`test/admin/redeploy-notice.test.ts:28`) |
 
 `AC-INV-09` is what the product stands on (`PRODUCT_VISION §5.1`). **Any design
 that breaks it is rejected**, however attractive it is otherwise.
