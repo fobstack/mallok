@@ -187,7 +187,7 @@ In order:
    converts most of the 20 blocked criteria and settles the numbers in
    `ARCHITECTURE §18`.
 2. The three decisions above, plus the six in `ACCEPTANCE.md §12` — of which
-   the licence and the repository are `JasonYv`'s alone.
+   the licence and the repository are `FobStack`'s alone.
 3. Lighthouse and axe, once there is a deployed site on a custom domain.
 4. Delete `src/worker/spike.ts` and its route.
 5. The English documentation set.

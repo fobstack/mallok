@@ -21,7 +21,7 @@ Deploy one Worker into your own Cloudflare account. Content is stored as Markdow
 
 - Three ways in: `npx mallok create`, a Deploy to Cloudflare button, and (in 1.0) a hosted setup assistant
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/JasonYv/mallok)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/FobStack/mallok)
 
 > The button needs a public GitHub or GitLab repository. It reads `wrangler.jsonc` for the database and bucket names, creates them, and prompts for `MALLOK_SECRET` using the description in `package.json`.
 
@@ -95,5 +95,5 @@ prefer it.
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) has the code style and the checks a
 change has to pass. Report security problems privately through
-[a security advisory](https://github.com/JasonYv/mallok/security/advisories/new),
+[a security advisory](https://github.com/FobStack/mallok/security/advisories/new),
 never a public issue — see [`SECURITY.md`](SECURITY.md).

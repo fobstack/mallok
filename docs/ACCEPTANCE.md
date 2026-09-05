@@ -201,7 +201,7 @@ resolved:
 | 3 | ~~Whether to keep inline HTML~~ **Settled 2026-09-02: keep it, sanitised** (`rehype-raw`, `SECURITY.md §4`) | Cleared |
 | 4 | Confirming the performance numbers in `SEO_PERFORMANCE.md §7` | The product owner |
 | 5 | ~~Settling the licence~~ **Settled 2026-09-01: Apache-2.0.** A separate trademark policy keeping the `Mallok` name is still outstanding | Cleared |
-| 6 | ~~Creating `JasonYv/mallok` and verifying its ownership~~ **Done 2026-09-01**, currently private | Cleared |
+| 6 | ~~Creating `FobStack/mallok` and verifying its ownership~~ **Done 2026-09-01**, currently private | Cleared |
 
 ## 13. Not part of 0.1
 

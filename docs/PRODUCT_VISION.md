@@ -4,7 +4,7 @@
   vertical established as the first)
 - Document date: 2026-08-28
 - First product release: 0.1
-- Repository: `JasonYv/mallok`
+- Repository: `FobStack/mallok`
 - Licence: Apache-2.0 (§12)
 
 ## 1. In one sentence
@@ -372,7 +372,7 @@ These belong in the vision because they decide whether the product works:
 **Updated 2026-09-01.** This section previously recorded the state on
 2026-08-28, when the repository held documentation only. What has changed:
 
-- **The repository exists.** `JasonYv/mallok`, currently private.
+- **The repository exists.** `FobStack/mallok`, currently private.
 - **The licence is settled: Apache-2.0**, chosen over MIT for its explicit
   patent grant and patent-retaliation clause. A separate trademark policy
   keeping the `Mallok` name is still outstanding.

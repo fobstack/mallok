@@ -3,14 +3,14 @@
   "version": "0.1.0-dev",
   "description": "Open-source, Cloudflare-native content website. Markdown in D1, instant publishing, no build step.",
   "license": "Apache-2.0",
-  "author": "JasonYv",
+  "author": "FobStack",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JasonYv/mallok.git"
+    "url": "git+https://github.com/FobStack/mallok.git"
   },
-  "homepage": "https://github.com/JasonYv/mallok#readme",
+  "homepage": "https://github.com/FobStack/mallok#readme",
   "bugs": {
-    "url": "https://github.com/JasonYv/mallok/issues"
+    "url": "https://github.com/FobStack/mallok/issues"
   },
   "keywords": [
     "cms",

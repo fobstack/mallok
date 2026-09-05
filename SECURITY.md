@@ -5,7 +5,7 @@
 **Do not open a public issue for a security problem.**
 
 Report it through GitHub's private advisory form:
-<https://github.com/JasonYv/mallok/security/advisories/new>
+<https://github.com/FobStack/mallok/security/advisories/new>
 
 Include what you need to reproduce it: the request, the version or commit,
 and what an attacker gets out of it. You will get an acknowledgement within

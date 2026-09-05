@@ -19,7 +19,7 @@ else someone is representing the project.
 ## Reporting
 
 Report a problem to the maintainer through a
-[private security advisory](https://github.com/JasonYv/mallok/security/advisories/new),
+[private security advisory](https://github.com/FobStack/mallok/security/advisories/new),
 which is the only private channel this repository has. Reports are handled
 confidentially.
 
