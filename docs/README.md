@@ -52,11 +52,12 @@ rest are the contracts for individual subsystems.
   other two needing a public repository and Turnstile/Resend accounts.
   `mallok create` ran end to end and found a real deploy-breaking bug (fixed).
   See [ACCEPTANCE.md §14](ACCEPTANCE.md) for the criterion-by-criterion
-  evidence: 4 criteria are now `VERIFIED_HUMAN`, one moved to
-  `PENDING_DECISION` because the real numbers raised a question rather than
-  settling it, one that did the same was settled and implemented the next day
-  (a content-length safety net, `AC-CONTENT-10`), and 10 still need a real
-  account for other reasons.
+  evidence: 5 criteria are now `VERIFIED_HUMAN` and 10 still need a real
+  account for other reasons. Two findings briefly raised a wording or
+  implementation question rather than settling one — a content-length safety
+  net for `AC-CONTENT-10` (2026-09-05) and a purge-latency reword for
+  `AC-CONTENT-02b` (2026-09-06) — both are now closed and no criterion is
+  `PENDING_DECISION`.
 - **Distribution**: nothing published to npm; the repository is private.
 - **Licence**: Apache-2.0.
 
@@ -67,11 +68,12 @@ results and [ARCHITECTURE.md §18](ARCHITECTURE.md) for what they mean. Ten
 acceptance criteria remain `NOT_AVAILABLE` for reasons Gate A could never have
 closed: a public repository, a second real deployment, elapsed real time or
 cron, and Resend/Turnstile/Lighthouse accounts
-([ACCEPTANCE.md §14.4](ACCEPTANCE.md)). One of Gate A's own findings is still
-an open product decision — purge latency (≈ 20 s) against the "within
-seconds" wording. The other, stage-one CPU routinely running past the Free
-plan's budget, was settled 2026-09-05: `saveContent` now skips rendering and
-saves a draft instead, past a conservative length threshold
+([ACCEPTANCE.md §14.4](ACCEPTANCE.md)). Both of Gate A's own findings that
+raised a wording or implementation question are now settled: stage-one CPU
+routinely running past the Free plan's budget was settled 2026-09-05 —
+`saveContent` now skips rendering and saves a draft instead, past a
+conservative length threshold — and purge latency (≈ 20 s) was settled
+2026-09-06, reworded from "within seconds" to "within a minute"
 ([ACCEPTANCE.md §14.2](ACCEPTANCE.md), items 6–7).
 
 The Markdown engine question was settled on 2026-08-29: **stay with unified**.

@@ -1,6 +1,6 @@
 # Mallok
 
-**An open-source, Cloudflare-native content website. Markdown lives in D1, edits go live in seconds, there is no build step, and your content is always one export away from leaving.** The first vertical is B2B foreign-trade company sites: one-click setup, multiple languages, a product catalog, and inquiries delivered straight to your inbox — starting at $0.
+**An open-source, Cloudflare-native content website. Markdown lives in D1, edits go live within a minute, there is no build step, and your content is always one export away from leaving.** The first vertical is B2B foreign-trade company sites: one-click setup, multiple languages, a product catalog, and inquiries delivered straight to your inbox — starting at $0.
 
 > The editing experience of WordPress, the performance of the edge, open source and never locked in.
 
@@ -15,7 +15,7 @@ Foreign-trade company sites concentrate both flaws: several languages, a product
 
 ## How it works
 
-Deploy one Worker into your own Cloudflare account. Content is stored as Markdown in D1; images live in R2 behind an R2 custom domain. When you save, the Worker renders the Markdown into an HTML fragment cached in D1; when a visitor arrives, it only applies the theme template and writes the page to the edge cache, so almost every request is served from cache. Saving an article is one database write and one cache purge — live in seconds.
+Deploy one Worker into your own Cloudflare account. Content is stored as Markdown in D1; images live in R2 behind an R2 custom domain. When you save, the Worker renders the Markdown into an HTML fragment cached in D1; when a visitor arrives, it only applies the theme template and writes the page to the edge cache, so almost every request is served from cache. Saving an article is one database write and one cache purge — live within a minute.
 
 - Three ways in: `npx mallok create`, a Deploy to Cloudflare button, and (in 1.0) a hosted setup assistant
 
@@ -64,7 +64,7 @@ a static build has no inquiry form, no admin, and needs rebuilding after edits.
 
 **Feature complete locally; Gate A run for real, not yet released.** The rendering core, database schema, Worker request path, edge cache, management API, media pipeline, SEO endpoints, multilingual model, plugin runtime with the official inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the CLI, and the `trade-b2b` starter with its setup wizard all exist and are covered by 357 tests.
 
-**Gate A ran for real 2026-09-03/04** — seven of the nine `ARCHITECTURE.md §18` measurements against a real Cloudflare account, including `mallok create` end to end (which found and fixed a real deploy-breaking bug). [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the honest status: of 66 acceptance criteria — split into 74 rows where a criterion bundled a testable half with an untestable one — 59 are verified locally, 4 are verified on a real account, 1 is waiting on a product decision (purge latency's "within seconds" wording), and 10 still need a real account for reasons Gate A itself could not close (a public repository, a second real deployment, elapsed real time or cron, and Resend/Turnstile/Lighthouse accounts). `mallok create` is proven; the release-gate walkthrough — deploy, wizard, real content, a real inquiry received — has not. Nothing is published to npm, and the repository is private. Treat this as a codebase to try, not a product to deploy.
+**Gate A ran for real 2026-09-03/04** — seven of the nine `ARCHITECTURE.md §18` measurements against a real Cloudflare account, including `mallok create` end to end (which found and fixed a real deploy-breaking bug). [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the honest status: of 66 acceptance criteria — split into 74 rows where a criterion bundled a testable half with an untestable one — 59 are verified locally, 5 are verified on a real account, and 10 still need a real account for reasons Gate A itself could not close (a public repository, a second real deployment, elapsed real time or cron, and Resend/Turnstile/Lighthouse accounts). No criterion is waiting on a product decision. `mallok create` is proven; the release-gate walkthrough — deploy, wizard, real content, a real inquiry received — has not. Nothing is published to npm, and the repository is private. Treat this as a codebase to try, not a product to deploy.
 
 ```sh
 pnpm install

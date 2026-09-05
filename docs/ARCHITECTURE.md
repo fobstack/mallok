@@ -236,7 +236,9 @@ Three layers, each solving one problem:
 
 There are two goals, and they pull against each other: nearly every visitor
 request should hit the edge cache, and a saved edit should appear on the
-public page within seconds.
+public page within a minute (`AC-CONTENT-02b`, `docs/ACCEPTANCE.md §14.2`
+item 6 — reworded from "within seconds" against the real ≈ 20 s purge
+round trip, `§18` item 3).
 
 ### 6.1 Writing to the cache
 

@@ -294,7 +294,7 @@ person acting for them — can:
 3. Choose the trade starter, fill in the company details, and immediately have
    a working home page, about page and contact page;
 4. Enter ten products with specification tables and images, publish an
-   industry news item, and see it on the public URL within seconds;
+   industry news item, and see it on the public URL within a minute;
 5. Enable a second language, create a translation of one product, and have
    both languages carry correct URLs and hreflang;
 6. Switch themes by changing one line and redeploying, with all content and
@@ -365,7 +365,7 @@ These belong in the vision because they decide whether the product works:
    pretence of multi-cloud.
 5. **The compliance and quality of an AI content pipeline** are not Mallok's
    responsibility. Mallok guarantees only that what is given is published,
-   that it is live within seconds, and that missing images are reported.
+   that it is live within a minute, and that missing images are reported.
 
 ## 12. Current facts
 

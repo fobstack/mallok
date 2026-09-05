@@ -72,7 +72,7 @@ contradictory figures (§14.0).
 | --- | --- | --- | --- |
 | `AC-CONTENT-01` | Enter ten products in the admin, with specification tables and images, and publish them | `VERIFIED_LOCAL` | `test/worker/product-catalog.test.ts:119` |
 | `AC-CONTENT-02a` | Saving content does issue the tag purge | `VERIFIED_LOCAL` | `test/worker/cache-admin.test.ts:94` |
-| `AC-CONTENT-02b` | Publish a news item and see it on the public URL **within seconds** | `PENDING_DECISION` | Measured 2026-09-03: real purge round trip is **≈ 20 seconds** (`TASK-01.md §5`, `ARCHITECTURE §18` item 3) — real, and far better than an unpurged page's TTL, but "within seconds" plural at the low end is a stretch at 20. The product owner should confirm the wording still holds or adjust it |
+| `AC-CONTENT-02b` | Publish a news item and see it on the public URL **within a minute** — settled 2026-09-06, correcting "within seconds", which a 20-second real purge round trip could not honestly claim; see §14.2 item 6 | `VERIFIED_HUMAN` | Measured 2026-09-03: real purge round trip is **≈ 20 seconds** (`TASK-01.md §5`, `ARCHITECTURE §18` item 3) — comfortable margin under a minute, and far better than an unpurged page's TTL |
 | `AC-CONTENT-03` | Enable a second language, create a translation of a product, and both have correct URLs | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:69`, `:107` |
 | `AC-CONTENT-04` | Both languages emit correct `hreflang`, including `x-default` | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:134`, `:271` |
 | `AC-CONTENT-05` | Drafts do not appear on a public URL, do not enter the cache, and do not enter the sitemap | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:213`, `test/worker/seo.test.ts:92` |
@@ -257,14 +257,15 @@ was removed; see §14.2 item 5.
 
 After the splits, the 2026-09-02 removal of `AC-EXPORT-05`, that day's three
 wording decisions (§14.2), the 2026-09-03/04 Gate A run against a real
-account (`docs/tasks/TASK-01.md §5`), and the 2026-09-05 length-based safety
-net for `AC-CONTENT-10`, there are **74 rows**: 66 active criteria, eight of
-which became two halves each.
+account (`docs/tasks/TASK-01.md §5`), the 2026-09-05 length-based safety net
+for `AC-CONTENT-10`, and the 2026-09-06 purge-latency wording for
+`AC-CONTENT-02b`, there are **74 rows**: 66 active criteria, eight of which
+became two halves each.
 
 | Group | Rows | `VERIFIED_LOCAL` | `VERIFIED_HUMAN` | `NOT_RUN` | `PENDING_DECISION` | `NOT_AVAILABLE` |
 | --- | --- | --- | --- | --- | --- | --- |
 | `AC-DEPLOY` | 9 | 4 | 3 | 0 | 0 | 2 |
-| `AC-CONTENT` | 13 | 11 | 0 | 0 | 1 | 1 |
+| `AC-CONTENT` | 13 | 11 | 1 | 0 | 0 | 1 |
 | `AC-MEDIA` | 7 | 5 | 1 | 0 | 0 | 1 |
 | `AC-THEME` | 8 | 8 | 0 | 0 | 0 | 0 |
 | `AC-PLUGIN` | 10 | 7 | 0 | 0 | 0 | 3 |
@@ -272,7 +273,7 @@ which became two halves each.
 | `AC-EXPORT` | 4 | 4 | 0 | 0 | 0 | 0 |
 | `AC-CLI` | 5 | 5 | 0 | 0 | 0 | 0 |
 | `AC-INV` | 10 | 10 | 0 | 0 | 0 | 0 |
-| **Total** | **74** | **59** | **4** | **0** | **1** | **10** |
+| **Total** | **74** | **59** | **5** | **0** | **0** | **10** |
 
 **`VERIFIED_HUMAN` was 0 from 2026-08-28 until 2026-09-03/04.** Gate A
 (`ARCHITECTURE §18`, `TASK-01.md §4`–`§5`) ran for real against a Cloudflare
@@ -284,17 +285,19 @@ fixed a real deploy-breaking bug), `AC-DEPLOY-04` (cache on a custom domain),
 `NOT_AVAILABLE` to `PENDING_DECISION` because the run produced real numbers
 that called the wording itself into question rather than simply confirming
 it: `AC-CONTENT-02b` (purge propagation measured at ≈ 20 seconds, not
-obviously "seconds" — still open, see §14.2 item 6) and `AC-CONTENT-10`
-(stage-one CPU measured at 6×–73× the budget, with no code path that caught
-an overrun and stored a draft) — the second was settled and implemented
-2026-09-05, a length-based check ahead of rendering (§14.2 item 7). The
-remaining ten `NOT_AVAILABLE` criteria still need a public repository
-(`AC-DEPLOY-02`), a second real deployment (`AC-DEPLOY-08`), elapsed real
-time or cron (`AC-CONTENT-06b`, `AC-MEDIA-06b`), a Resend account
-(`AC-PLUGIN-02b`, `03b`), Turnstile (`AC-PLUGIN-05b`), or Lighthouse against a
-warm cache (`AC-SEO-05/06/07`). Everything still marked `VERIFIED_LOCAL` was
-verified in simulated workerd or under `wrangler dev`, not on real
-infrastructure.
+obviously "seconds") and `AC-CONTENT-10` (stage-one CPU measured at 6×–73×
+the budget, with no code path that caught an overrun and stored a draft).
+`AC-CONTENT-10` was settled and implemented 2026-09-05, a length-based check
+ahead of rendering (§14.2 item 7); `AC-CONTENT-02b` was settled 2026-09-06,
+reworded to "within a minute" and promoted straight to `VERIFIED_HUMAN` on
+the same Gate A measurement (§14.2 item 6) — no `PENDING_DECISION` rows
+remain. The remaining ten `NOT_AVAILABLE` criteria still need a public
+repository (`AC-DEPLOY-02`), a second real deployment (`AC-DEPLOY-08`),
+elapsed real time or cron (`AC-CONTENT-06b`, `AC-MEDIA-06b`), a Resend
+account (`AC-PLUGIN-02b`, `03b`), Turnstile (`AC-PLUGIN-05b`), or Lighthouse
+against a warm cache (`AC-SEO-05/06/07`). Everything still marked
+`VERIFIED_LOCAL` was verified in simulated workerd or under `wrangler dev`,
+not on real infrastructure.
 
 ### 14.1.1 The `NOT_RUN` items, closed 2026-09-02
 
@@ -379,15 +382,21 @@ fresh Mallok deployment byte-identically (`AC-EXPORT-01`/`02`). The test and
 the criterion were both removed the same day — see `PRODUCT_VISION.md §5.2`
 for the corrected wording.
 
-**6. `AC-CONTENT-02b`'s "within seconds" — open.** Gate A measured the real
-purge round trip (save → `purgeQueued: true` → the edit visible on a fresh
-request) at **≈ 20 seconds** (`TASK-01.md §5`). That is a huge improvement
-over an unpurged page's TTL, and the purge mechanism itself works — but 20
-seconds is a stretch for what "seconds" plural usually implies. Options: keep
-the wording and treat 20 s as within tolerance; reword to something like "well
-under a minute"; or treat this as a target to optimise (the 2-second debounce
-window in `cache.ts` is one lever, though the real API round trip is likely
-the bigger cost). This is the product owner's call, not an engineering one.
+**6. `AC-CONTENT-02b`'s "within seconds" — settled 2026-09-06: reword to
+"within a minute".** Gate A measured the real purge round trip (save →
+`purgeQueued: true` → the edit visible on a fresh request) at **≈ 20
+seconds** (`TASK-01.md §5`). That is a huge improvement over an unpurged
+page's TTL, and the purge mechanism itself works — but 20 seconds is a
+stretch for what "seconds" plural usually implies, and treating it as an
+optimisation target was not realistic: the 2-second debounce window in
+`cache.ts` is a small fraction of the total, and the rest is Cloudflare's own
+purge-API round trip and edge propagation, which Mallok does not control and
+cannot promise to speed up. "Within a minute" is honest, carries real margin
+against measurement variance across regions and load, and is still a
+meaningfully differentiated promise against the static-generator
+commit-build-redeploy cycle this product competes against. The existing Gate
+A measurement already satisfies the reworded criterion, so it moves straight
+to `VERIFIED_HUMAN` rather than needing a further run.
 
 **7. `AC-CONTENT-10`'s CPU-overrun handling — settled 2026-09-05: a
 pre-flight length check, option (a) below.** Real stage-one CPU measured at
@@ -468,11 +477,12 @@ section used to list: four became `VERIFIED_HUMAN`
 (`AC-DEPLOY-01`/`04`/`07b`, `AC-MEDIA-04`) and two became `PENDING_DECISION`
 because the real numbers raised a wording or implementation question rather
 than settling one (`AC-CONTENT-02b`, `AC-CONTENT-10` — see §14.2 items 6–7).
-`AC-CONTENT-10` was itself settled and implemented the next day, 2026-09-05,
-leaving `AC-CONTENT-02b` as the one open item. This list is exactly the
-criteria whose status in the group tables is still `NOT_AVAILABLE`, all
-**10** of them — unaffected by either change, since neither criterion was
-ever `NOT_AVAILABLE`:
+`AC-CONTENT-10` was settled and implemented the next day, 2026-09-05;
+`AC-CONTENT-02b` was settled 2026-09-06 (§14.2 item 6). Both are now
+`VERIFIED_HUMAN`, and no `PENDING_DECISION` rows remain. This list is
+exactly the criteria whose status in the group tables is still
+`NOT_AVAILABLE`, all **10** of them — unaffected by either change, since
+neither criterion was ever `NOT_AVAILABLE`:
 
 | Group | Criteria | What still blocks them |
 | --- | --- | --- |

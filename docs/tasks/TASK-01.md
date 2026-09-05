@@ -2,7 +2,7 @@
 
 - Status: **code complete, awaiting real-account measurements**
 - Scope: one demonstrable loop — publish Markdown through the API, see it on a
-  public URL within seconds, serve repeat visits from the edge cache — plus
+  public URL within a minute, serve repeat visits from the edge cache — plus
   the measurements listed in `docs/ARCHITECTURE.md §18`.
 - Out of scope: admin UI, media upload, sessions/API tokens, plugins, CLI,
   multi-locale UI, the `trade` theme and starter. Everything here is the
@@ -319,7 +319,7 @@ resources are deleted per §6); this table is the record.
 | 2 | Stage-one CPU at 2 / 8 / 32 / 128 KB | 60 ms / 150 ms / 528 ms / 726 ms (`wrangler tail`, real workerd) | Far above the 10 ms budget at every size tested, and far above the local warm-JIT numbers in §3.2 too (2 KB: 60 ms real vs 6.1 ms local warm, though the local **cold**-process estimate was also ≈60 ms). **This is the load-bearing number**: even a short article's save request cannot fit the Free plan's CPU budget with the current `unified` pipeline. The `markdown-it` fallback in `TECH_STACK.md §4` needs a real decision, not just a local recommendation |
 | 2 | Any 1102 (CPU-limit) errors | None observed directly | The PBKDF2 failures below are a **different**, harder platform limit, not a CPU-time kill (`cpuTime` was 1 ms on those, not near any budget ceiling) |
 | 3 | Purge by tag: status | `{"attempted":true,"ok":true,"status":200}` from the purge endpoint | Works |
-| 3 | Purge by tag: propagation delay | ≈ 20 s from save (`purgeQueued:true`) to the edit being visible on a fresh request | Real, but not "seconds" in the sense of "one or two" — `AC-CONTENT-02b`'s wording should be checked against this number by the product owner |
+| 3 | Purge by tag: propagation delay | ≈ 20 s from save (`purgeQueued:true`) to the edit being visible on a fresh request | Real, but not "seconds" in the sense of "one or two" — settled 2026-09-06, `AC-CONTENT-02b` reworded to "within a minute" (`docs/ACCEPTANCE.md §14.2` item 6) |
 | 3 | Purge by tag: rate-limit behaviour | 6 calls 2 s apart, then 10 calls back-to-back with no delay — **all 16 succeeded**, no throttled or error response seen | Contradicts `cache.ts`'s own comment ("the Free plan allows only five tag purges per minute"); that comment is corrected below. Does not by itself prove there is no limit — only that it is not hit at this volume |
 | 4 | Bundle gzip size | 285.5 KiB (was 232.3 KiB before `rehype-raw`, added 2026-09-02) | 9.3% of the Free plan's 3 MB; the `198.8 KiB` this row previously carried was stale — see `docs/ACCEPTANCE.md AC-INV-04` |
 | 5 | PBKDF2 iterations within 10 ms | 50 000 → 10 ms CPU; 100 000 → 35 ms CPU | 50 000 (the current default, `PBKDF2_ITERATIONS`) sits right at the 10 ms edge on real hardware, not comfortably under it as the 7.8 ms local Node estimate suggested |
