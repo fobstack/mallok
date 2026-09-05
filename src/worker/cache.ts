@@ -5,7 +5,7 @@
 
 import type { Env } from './env.js';
 
-/** Header that tells the spike (and curious operators) what happened. */
+/** Header that tells operators (and tests) whether a request hit the cache. */
 export const CACHE_STATUS_HEADER = 'x-mallok-cache';
 
 const PURGE_DEBOUNCE_MS = 2_000;
@@ -78,7 +78,7 @@ export function tagsForContent(
 let pendingTags = new Set<string>();
 let pendingFlush: Promise<PurgeResult> | undefined;
 
-/** Outcome of a purge call, for logging and the spike report. */
+/** Outcome of a purge call, for logging and diagnostics. */
 export interface PurgeResult {
   readonly attempted: boolean;
   readonly ok: boolean;
@@ -89,8 +89,15 @@ export interface PurgeResult {
 
 /**
  * Schedules a purge-by-tag call. Calls within a short window are coalesced
- * into one request because the Free plan allows only five tag purges per
- * minute. Returns the shared promise so callers can `waitUntil` it.
+ * into one request to keep purge volume down under heavy edit traffic.
+ *
+ * The "five tag purges per minute" Free-plan ceiling this comment used to
+ * cite was not confirmed against a real account: 16 direct purge calls (six
+ * spaced two seconds apart, then ten back-to-back) all succeeded with no
+ * throttling observed (docs/ARCHITECTURE.md §18 item 3, 2026-09-03). The
+ * debounce here is still worth keeping — it reduces call volume regardless
+ * of where the real ceiling turns out to be — but do not cite a specific
+ * number without measuring it again.
  */
 export function purgeTags(
   env: Env,

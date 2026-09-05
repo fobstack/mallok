@@ -27,7 +27,7 @@
 | Task 16 deployment entry points | **Code complete, unverified against a real account**; `create` and `destroy` are implemented with unit tests but have never run on a real Cloudflare account |
 | Task 17 acceptance close-out | **Partly done**: evidence recorded for all 67 acceptance criteria, recounted 2026-09-01 into 75 rows (50 verified locally, 6 not run, 3 awaiting a decision, 16 needing a real account, **0 verified on a real account**). See `ACCEPTANCE.md §14` |
 | Five themes | **Done**: the approved designs implemented one to one (atelier, gazette, manual, folio, journal) |
-| The nine measurements in `ARCHITECTURE §18` | **Not done** — `TASK-01 §4`, for the product owner to run |
+| The nine measurements in `ARCHITECTURE §18` | **Run 2026-09-03/04** — `TASK-01.md §5`. Seven of nine measured against a real account; items 7 (Deploy button) and 9 (Turnstile/Resend) still need a public repository and those accounts |
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
@@ -38,13 +38,20 @@
 
 | Gate | What | Who clears it |
 | --- | --- | --- |
-| **Gate A** | The nine measurements in `ARCHITECTURE §18`, taken and written back | The product owner runs `TASK-01 §4` |
+| **Gate A** | The nine measurements in `ARCHITECTURE §18`, taken and written back | **Mostly cleared 2026-09-03/04** — 7 of 9 run against a real account (`TASK-01.md §4`–`§5`) by Claude Code under the product owner's authorization, with the product owner completing the dashboard-only steps. Items 7 and 9 remain: a public repository, and Turnstile/Resend accounts |
 | ~~**Gate B**~~ | ~~The Markdown engine decision~~ **Settled 2026-08-29: stay with unified.** The reasoning and its cost are in `TASK-01 §6` | Cleared |
 | ~~**Gate B'**~~ | ~~Whether to keep inline HTML~~ **Settled 2026-09-02: keep it, sanitised.** `rehype-raw` added (`+53.2 KiB` gzip); reasoning in `SECURITY.md §4`, `TECH_STACK.md §11.1` | Cleared |
 
-Gate A blocks: the PBKDF2 iteration count (Task 02), the purge plan A or B
-(Task 05), the content-length ceiling (Task 03), and whether a custom domain
-is a hard precondition (Task 14).
+Gate A blocked: the PBKDF2 iteration count (Task 02) — real data exists now
+(`TASK-01.md §5`), the current 50,000 default costs ≈ 10 ms on real hardware
+and 100,000 is a hard platform ceiling, not just a CPU-budget one; the purge
+plan A or B (Task 05) — **plan A confirmed workable** for real, no need for
+plan B; whether a custom domain is a hard precondition (Task 14) — **it is
+not**, the Cache API works on `.workers.dev` too. The content-length ceiling
+(Task 03) is settled: real stage-one CPU (60–726 ms across 2–128 KB) fed
+directly into `AC-CONTENT-10`, closed 2026-09-05 with a pre-flight length
+check (`MAX_SAFE_RENDER_BYTES`, `src/worker/admin-content.ts`,
+`ACCEPTANCE.md §14.2` item 7).
 
 Gate B is cleared: `beforeRender`'s public signature is fixed against mdast
 (`PLUGIN_API.md §5.2`).

@@ -14,7 +14,7 @@
 import { spawn } from 'node:child_process';
 import { webcrypto } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, posix, relative } from 'node:path';
 import { CliError, EXIT, type Reporter } from './output.js';
 import {
   nextNamespace,
@@ -74,10 +74,25 @@ export async function buildSiteConfig(
 ): Promise<string> {
   const names = resourceNames(slug);
   const base = await readFile('wrangler.jsonc', 'utf8');
+  // wrangler resolves `main` and `assets.directory` relative to the config
+  // file's own location, not the working directory — the repository's
+  // wrangler.jsonc has them relative to the repo root, so writing the base
+  // file verbatim into the nested `.mallok/sites/<slug>.jsonc` breaks both
+  // paths. Rewrite them relative to where this file actually lands.
+  const toRepoRoot = posix.join(relative(dirname(names.config), '.'), '/');
   // The base config is JSONC; the substitutions below are all on quoted
   // string values, so the comments survive untouched.
   let config = base
     .replace(/"name":\s*"[^"]*"/, `"name": "${names.worker}"`)
+    .replace(
+      /"main":\s*"([^"]*)"/,
+      (_match, value: string) => `"main": "${posix.join(toRepoRoot, value)}"`,
+    )
+    .replace(
+      /("assets":\s*{\s*"directory":\s*)"([^"]*)"/,
+      (_match, prefix: string, value: string) =>
+        `${prefix}"${posix.join(toRepoRoot, value)}"`,
+    )
     .replace(
       /"database_name":\s*"[^"]*"/,
       `"database_name": "${names.database}"`,

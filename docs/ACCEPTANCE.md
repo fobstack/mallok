@@ -56,14 +56,14 @@ contradictory figures (§14.0).
 
 | ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-DEPLOY-01` | `npx mallok create` creates every resource on a clean Cloudflare account, deploys successfully, and prints a reachable `.workers.dev` address | `NOT_AVAILABLE` | Needs a real account. Naming and ordering have unit tests (`test/cli/provision.test.ts`), but the command has never been executed |
+| `AC-DEPLOY-01` | `npx mallok create` creates every resource on a clean Cloudflare account, deploys successfully, and prints a reachable `.workers.dev` address | `VERIFIED_HUMAN` | Run for real 2026-09-03/04 (`TASK-01.md §5`): D1 and R2 created, config written, deployed, `.workers.dev` address returned `200`. **Found and fixed a real bug on this run**: `buildSiteConfig` did not adjust `main`/`assets.directory` for the nested config path, so the deploy step failed until `src/cli/provision.ts` was corrected — see `test/cli/provision.test.ts` for the regression test |
 | `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_AVAILABLE` | Needs a public repository and a real account. The button has never been clicked |
 | `AC-DEPLOY-03` | Every step of the setup wizard completes, and `/_mallok/setup` returns 404 afterwards. **The wizard is four steps** (`ARCHITECTURE §15`, `ADMIN.md §5`); media domain and email are configured afterward in Settings, not folded into it — settled 2026-09-02, see §14.2 item 2 | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:53`, `:81`, `:181` |
-| `AC-DEPLOY-04` | With a custom domain bound, the site serves normally and **the cache hits** (`x-mallok-cache: HIT`) | `NOT_AVAILABLE` | Needs a custom domain. `ARCHITECTURE §18` item 1 |
+| `AC-DEPLOY-04` | With a custom domain bound, the site serves normally and **the cache hits** (`x-mallok-cache: HIT`) | `VERIFIED_HUMAN` | Real custom domain (`spike.mallok.dev`) bound 2026-09-03: first request `MISS`, second `HIT`, identical to the `.workers.dev` behaviour. `TASK-01.md §5`, `ARCHITECTURE §18` item 1 |
 | `AC-DEPLOY-05` | With no custom domain bound, the wizard says plainly that caching is not in effect, and `robots.txt` emits `Disallow: /` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:152`, `:161` |
 | `AC-DEPLOY-06` | Without `CF_API_TOKEN` the site works normally, `cache_ttl` drops to 60 seconds, and the admin carries a standing notice | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:81`, `test/worker/cache-admin.test.ts:94`, `test/worker/setup.test.ts:35` |
 | `AC-DEPLOY-07a` | Concurrent first requests apply the migration exactly once in workerd, and the lock is released | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:42` |
-| `AC-DEPLOY-07b` | The same holds on real infrastructure | `NOT_AVAILABLE` | Platform behaviour, `TESTING §6`. `ARCHITECTURE §18` item 8 |
+| `AC-DEPLOY-07b` | The same holds on real infrastructure | `VERIFIED_HUMAN` | Two independent runs against fresh real D1 databases 2026-09-03, ten parallel first requests each: exactly one row per migration, lock released both times. `TASK-01.md §5`, `ARCHITECTURE §18` item 8 |
 | `AC-DEPLOY-08` | Upgrading the Worker does not interrupt the site; the schema migrates itself and the old version keeps serving during it | `NOT_AVAILABLE` | Needs two deployments on a real account |
 
 ## 4. AC-CONTENT
@@ -72,7 +72,7 @@ contradictory figures (§14.0).
 | --- | --- | --- | --- |
 | `AC-CONTENT-01` | Enter ten products in the admin, with specification tables and images, and publish them | `VERIFIED_LOCAL` | `test/worker/product-catalog.test.ts:119` |
 | `AC-CONTENT-02a` | Saving content does issue the tag purge | `VERIFIED_LOCAL` | `test/worker/cache-admin.test.ts:94` |
-| `AC-CONTENT-02b` | Publish a news item and see it on the public URL **within seconds** | `NOT_AVAILABLE` | Depends on the real Purge API's latency, `ARCHITECTURE §18` item 3 |
+| `AC-CONTENT-02b` | Publish a news item and see it on the public URL **within seconds** | `PENDING_DECISION` | Measured 2026-09-03: real purge round trip is **≈ 20 seconds** (`TASK-01.md §5`, `ARCHITECTURE §18` item 3) — real, and far better than an unpurged page's TTL, but "within seconds" plural at the low end is a stretch at 20. The product owner should confirm the wording still holds or adjust it |
 | `AC-CONTENT-03` | Enable a second language, create a translation of a product, and both have correct URLs | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:69`, `:107` |
 | `AC-CONTENT-04` | Both languages emit correct `hreflang`, including `x-default` | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:134`, `:271` |
 | `AC-CONTENT-05` | Drafts do not appear on a public URL, do not enter the cache, and do not enter the sitemap | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:213`, `test/worker/seo.test.ts:92` |
@@ -91,7 +91,7 @@ contradictory figures (§14.0).
 | `AC-MEDIA-01` | Uploading an image in the admin converts it to WebP with width variants in the browser; the Worker processes no image | `VERIFIED_LOCAL` | `test/worker/media.test.ts:142`, `test/admin/media.test.ts` |
 | `AC-MEDIA-02` | Uploading the same file twice stores it once (sha deduplication) | `VERIFIED_LOCAL` | `test/worker/media.test.ts:111` |
 | `AC-MEDIA-03` | Body images emit `srcset`, `sizes`, `width`, `height`, `loading` and `decoding` | `VERIFIED_LOCAL` | `test/core/fragment.test.ts:69`, `test/worker/media.test.ts:176` |
-| `AC-MEDIA-04` | Media is served directly from an R2 custom domain and does not count against Worker requests | `NOT_AVAILABLE` | Needs an R2 custom domain, `ARCHITECTURE §18` item 6 |
+| `AC-MEDIA-04` | Media is served directly from an R2 custom domain and does not count against Worker requests | `VERIFIED_HUMAN` | Real R2 custom domain (`media.mallok.dev`) connected 2026-09-04: fetched an uploaded object twice, `200`, byte-identical, never touching the Worker (true by construction — the domain resolves straight to R2). **New finding**: `cf-cache-status: DYNAMIC` on both fetches — Cloudflare's edge does **not** cache R2 custom-domain objects by default; an explicit Cache Rule would be needed for that, which this run did not configure. `TASK-01.md §5`, `ARCHITECTURE §18` item 6 |
 | `AC-MEDIA-05` | Types outside the allow-list are refused, judged by signature rather than extension; svg is refused | `VERIFIED_LOCAL` | `test/worker/media.test.ts:125`, `test/core/media.test.ts` (`rejects SVG`, `ignores a lying extension`) |
 | `AC-MEDIA-06a` | Media at `ref_count` zero appears under "unused" and is not collected during the grace period | `VERIFIED_LOCAL` | `test/worker/media.test.ts:254`, `:279` |
 | `AC-MEDIA-06b` | Cron performs the collection on a real seven-day window | `NOT_AVAILABLE` | Platform behaviour; needs a real account |
@@ -196,7 +196,7 @@ resolved:
 
 | # | Item | Owner |
 | --- | --- | --- |
-| 1 | The nine measurements in `ARCHITECTURE §18` (`TASK-01 §4`) | The product owner runs them |
+| 1 | ~~The nine measurements in `ARCHITECTURE §18`~~ **Run 2026-09-03/04** (`TASK-01.md §4`–`§5`). Seven of nine measured against a real Cloudflare account, executed by Claude Code under the product owner's direct authorization, with the product owner completing the dashboard-only steps (an API token, an R2 custom domain) by hand. Items 7 (Deploy to Cloudflare button) and 9 (Turnstile/Resend) still need a public repository and those services' accounts respectively | Mostly cleared — 7/9 |
 | 2 | ~~The Markdown engine decision~~ **Settled 2026-08-29: stay with unified** (`TASK-01 §6`) | Cleared |
 | 3 | ~~Whether to keep inline HTML~~ **Settled 2026-09-02: keep it, sanitised** (`rehype-raw`, `SECURITY.md §4`) | Cleared |
 | 4 | Confirming the performance numbers in `SEO_PERFORMANCE.md §7` | The product owner |

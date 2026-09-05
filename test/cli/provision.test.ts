@@ -1,6 +1,6 @@
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   buildSiteConfig,
@@ -140,6 +140,35 @@ describe('buildSiteConfig', () => {
     const config = await buildSiteConfig('acme', 'id', 'acme.com', 1001);
     expect(config).toContain('"pattern": "acme.com"');
     expect(config).toContain('"custom_domain": true');
+  });
+
+  // wrangler resolves `main` and `assets.directory` relative to the config
+  // file, not the working directory. This file is written to
+  // `.mallok/sites/<slug>.jsonc` (registry.ts, `resourceNames`), two
+  // directories below the repo root the base paths are written for —
+  // deploying the base file unmodified from there fails with "entry-point
+  // file ... was not found" (found running Gate A for real, 2026-09-03).
+  it('rewrites main and assets.directory to resolve from .mallok/sites/', async () => {
+    const base = await readFile('wrangler.jsonc', 'utf8');
+    const baseMain = /"main":\s*"([^"]*)"/.exec(base)?.[1];
+    const baseAssetsDir = /"assets":\s*{\s*"directory":\s*"([^"]*)"/.exec(
+      base,
+    )?.[1];
+
+    const config = await buildSiteConfig('acme', 'id', null, 1001);
+    const rewrittenMain = /"main":\s*"([^"]*)"/.exec(config)?.[1];
+    const rewrittenAssetsDir = /"assets":\s*{\s*"directory":\s*"([^"]*)"/.exec(
+      config,
+    )?.[1];
+
+    // Resolved from `.mallok/sites/acme.jsonc`, these must land back on the
+    // exact files the base config (resolved from the repo root) points at.
+    expect(resolve('.mallok/sites', rewrittenMain ?? '')).toBe(
+      resolve(baseMain ?? ''),
+    );
+    expect(resolve('.mallok/sites', rewrittenAssetsDir ?? '')).toBe(
+      resolve(baseAssetsDir ?? ''),
+    );
   });
 });
 

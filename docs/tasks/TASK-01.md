@@ -304,20 +304,34 @@ lock must be released.
 
 ## 5. Results
 
-Fill in and copy the conclusions back into `docs/ARCHITECTURE.md §18`.
+**Run 2026-09-03, real account (`jasoon.yee@gmail.com`), zone `mallok.dev`.**
+Spike Worker `mallok-spike` on `spike.mallok.dev` plus `.workers.dev`; two
+extra empty databases (`mallok-spike2-db`, `mallok-spike3-db`) for the
+migration-concurrency test. Full command transcript is not preserved (the
+resources are deleted per §6); this table is the record.
 
 | # | Question | Result | Conclusion |
 | --- | --- | --- | --- |
-| 1 | Cache API on `.workers.dev` | | |
-| 1 | Cache API on custom domain | | |
-| 2 | Stage-two cold render CPU (warm isolate / cold isolate) | | |
-| 2 | Stage-one CPU at 2 / 8 / 32 / 128 KB | | |
-| 2 | Any 1102 errors on Free | | |
-| 3 | Purge by tag: status, propagation delay, rate-limit behaviour | | |
-| 4 | Bundle gzip size | 198.8 KiB | pass |
-| 5 | PBKDF2 iterations within 10 ms | | |
-| 6 | R2 custom domain: works, cached | | |
-| 8 | Concurrent first boot | | |
+| 1 | Cache API on `.workers.dev` | First request `MISS`, second `HIT` | Works with no custom domain bound |
+| 1 | Cache API on custom domain | Same `MISS` → `HIT` pattern on `spike.mallok.dev` | Works identically; a custom domain is not a precondition for the Cache API itself |
+| 1 | Cloudflare Access on `/_mallok/*` | **Not tested** | Needs a Zero Trust application configured in the dashboard; out of scope for this run |
+| 2 | Stage-two cold render CPU | 75 ms CPU / 281 ms wall (cache bypassed); a cache hit measured 25 ms CPU / 176 ms wall | The cache-hit figure is higher than expected for a bare `cache.match()` and likely includes isolate start-up rather than the lookup itself — not isolated further this run |
+| 2 | Stage-one CPU at 2 / 8 / 32 / 128 KB | 60 ms / 150 ms / 528 ms / 726 ms (`wrangler tail`, real workerd) | Far above the 10 ms budget at every size tested, and far above the local warm-JIT numbers in §3.2 too (2 KB: 60 ms real vs 6.1 ms local warm, though the local **cold**-process estimate was also ≈60 ms). **This is the load-bearing number**: even a short article's save request cannot fit the Free plan's CPU budget with the current `unified` pipeline. The `markdown-it` fallback in `TECH_STACK.md §4` needs a real decision, not just a local recommendation |
+| 2 | Any 1102 (CPU-limit) errors | None observed directly | The PBKDF2 failures below are a **different**, harder platform limit, not a CPU-time kill (`cpuTime` was 1 ms on those, not near any budget ceiling) |
+| 3 | Purge by tag: status | `{"attempted":true,"ok":true,"status":200}` from the purge endpoint | Works |
+| 3 | Purge by tag: propagation delay | ≈ 20 s from save (`purgeQueued:true`) to the edit being visible on a fresh request | Real, but not "seconds" in the sense of "one or two" — `AC-CONTENT-02b`'s wording should be checked against this number by the product owner |
+| 3 | Purge by tag: rate-limit behaviour | 6 calls 2 s apart, then 10 calls back-to-back with no delay — **all 16 succeeded**, no throttled or error response seen | Contradicts `cache.ts`'s own comment ("the Free plan allows only five tag purges per minute"); that comment is corrected below. Does not by itself prove there is no limit — only that it is not hit at this volume |
+| 4 | Bundle gzip size | 285.5 KiB (was 232.3 KiB before `rehype-raw`, added 2026-09-02) | 9.3% of the Free plan's 3 MB; the `198.8 KiB` this row previously carried was stale — see `docs/ACCEPTANCE.md AC-INV-04` |
+| 5 | PBKDF2 iterations within 10 ms | 50 000 → 10 ms CPU; 100 000 → 35 ms CPU | 50 000 (the current default, `PBKDF2_ITERATIONS`) sits right at the 10 ms edge on real hardware, not comfortably under it as the 7.8 ms local Node estimate suggested |
+| 5 | PBKDF2 hard ceiling | **`iteration counts above 100000 are not supported`** — 200 000 and 600 000 both fail instantly (workerd's WebCrypto, not a Mallok check) | This is a **platform ceiling**, independent of the CPU budget question. `PBKDF2_RECOMMENDED_ITERATIONS = 600_000` (OWASP's figure, shown to users as a disclosure) is **unreachable on this runtime** — the honest ceiling to disclose is 100 000, and even that is well over the CPU budget. `credentials.ts`'s comment is corrected below; whether to change the constant itself is for the product owner |
+| 6 | R2 custom domain: works | 200, bytes byte-identical to the uploaded file | Works |
+| 6 | R2 custom domain: cached | `cf-cache-status: DYNAMIC` on both the first and second fetch | **Not cached by Cloudflare's edge by default.** Serving media efficiently through `media.<domain>` needs an explicit Cache Rule (or equivalent) that this run did not configure — flagged, not fixed, here |
+| 7 | Deploy to Cloudflare button | **Not tested** | Needs a public repository; `FobStack/mallok` is currently private, so this is unchanged by this run |
+| 8 | Concurrent first boot | Two independent runs against fresh empty databases: exactly 2 rows in `migration` (core + the `inquiry` plugin), lock released (`locked_by`/`locked_at` both `NULL`) both times | Confirms `ensureMigrated`'s lock design holds under real concurrent cold starts across isolates, not just in simulated workerd. One run's 10 parallel requests returned 9× `200` + 1× `404`; a second, independently-monitored run on a third fresh database returned 10× `200`. The `404` did not reproduce and is recorded as an unexplained, likely transient anomaly rather than a confirmed defect |
+| 9 | Turnstile + Resend latency | **Not tested** | Needs a Turnstile site key and a Resend account with a verified sending domain; out of scope for this run |
+| — | `mallok create`'s per-site config (found while setting up this spike, not one of the nine) | Copying `wrangler.jsonc` into `.mallok/sites/<slug>.jsonc` and deploying with `-c` fails: `main`/`assets.directory` are relative paths, and wrangler resolves them **relative to the config file**, not the working directory. `buildSiteConfig` (`src/cli/provision.ts`) never adjusts them | **Confirmed bug** — `mallok create` would fail at the deploy step on a real account. Fixed in this session; see the code changes below |
+
+The two remaining unmeasured items (7, 9) need a public repository and Turnstile/Resend accounts respectively — neither is a CLI-only step like the rest of this list.
 
 ## 6. Clean-up after the spike
 
@@ -334,7 +348,11 @@ Fill in and copy the conclusions back into `docs/ARCHITECTURE.md §18`.
   while Mallok runs stage one inside a save request under a 10 ms CPU budget,
   so §3.2's curve caps article length on the Free plan until §4.4 says
   otherwise. `PLUGIN_API.md §5.2` binds `beforeRender` to mdast accordingly.
-- **Still open**: whether to keep inline HTML by adding `rehype-raw`
-  (shortcut 3 above). It affects the sanitizer surface and the bundle, and
-  `CONTENT_FORMAT.md §3.4` currently promises behaviour the code does not
-  implement. Blocks Task 07 (`SECURITY.md §4`).
+- ~~**Still open**: whether to keep inline HTML by adding `rehype-raw`~~
+  **Settled 2026-09-02**: keep it, sanitised. See `docs/ACCEPTANCE.md §12`
+  blocker 3 and `SECURITY.md §4`. This was decided before this spike ran and
+  is unrelated to its measurements.
+- **New, from this run**: `markdown-it` vs `unified` for stage one is no
+  longer just a local recommendation — §5 row 2 above measured the current
+  pipeline at 6–73× the CPU budget on real hardware. This is now a decision
+  the product owner needs to make, not a "local data suggests" note.

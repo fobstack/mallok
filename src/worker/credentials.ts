@@ -14,18 +14,31 @@ import { sha256Hex } from '../core/index.js';
 /**
  * PBKDF2 iterations for new passwords.
  *
- * The local benchmark (docs/tasks/TASK-01.md §3.3) puts 50 000 iterations at
- * roughly 7.8 ms of CPU in Node, which is the most that fits the Free plan's
- * 10 ms budget for a login request. That is well below the OWASP 2023
- * guidance of 600 000 and must be disclosed rather than glossed over; the
- * real number comes from the spike (docs/ARCHITECTURE.md §18 item 5).
+ * Measured for real on workerd (docs/ARCHITECTURE.md §18 item 5,
+ * docs/tasks/TASK-01.md §5, 2026-09-03): 50 000 iterations costs ≈ 10 ms of
+ * CPU — right at the Free plan's 10 ms budget for a login request, not
+ * comfortably under it the way the earlier local Node estimate (7.8 ms)
+ * suggested.
  *
  * Raising this constant is safe: {@link passwordNeedsUpgrade} re-derives a
- * stored hash with the current parameters on the next successful login.
+ * stored hash with the current parameters on the next successful login. But
+ * there is a hard ceiling to raise it towards, not just a CPU-budget one:
+ * see {@link PBKDF2_RECOMMENDED_ITERATIONS}.
  */
 export const PBKDF2_ITERATIONS = 50_000;
 
-/** OWASP's 2023 recommendation, for the disclosure the admin UI must show. */
+/**
+ * OWASP's 2023 recommendation, for the disclosure the admin UI must show.
+ *
+ * **This value is unreachable on this runtime.** workerd's WebCrypto
+ * implementation rejects any PBKDF2 call above 100 000 iterations outright
+ * ("iteration counts above 100000 are not supported") — confirmed against a
+ * real account, not a CPU-time question at all (docs/ARCHITECTURE.md §18
+ * item 5). The honest ceiling to disclose is 100 000, itself well past the
+ * CPU budget above. Kept at OWASP's figure so the disclosure names the
+ * target rather than silently substituting a weaker one; whether to change
+ * that is a product decision, not an engineering one.
+ */
 export const PBKDF2_RECOMMENDED_ITERATIONS = 600_000;
 
 const SALT_BYTES = 16;

@@ -256,11 +256,17 @@ the home page also carry the `c:<id>` tag of every item they display.
   six tags for one save. **The limit counts calls, not tags, so an extra tag
   costs nothing.** Changing theme, navigation or site settings purges `site`.
   The official documentation confirms tag purges are unaffected by custom
-  cache keys, so this also stays compatible with the fallback in §6.3. The
-  cost: the free plan allows **five tag purges per minute**, so purges must be
-  **coalesced and debounced** — one call per two-second window within a
-  Worker, carrying several tags — and a news site saving repeatedly will queue
-  for tens of seconds, which the interface must show as "cache purge queued".
+  cache keys, so this also stays compatible with the fallback in §6.3.
+  **Purges are still coalesced and debounced** — one call per two-second
+  window within a Worker, carrying several tags — to keep call volume down
+  under heavy edit traffic, and a news site saving repeatedly will queue for
+  tens of seconds, which the interface must show as "cache purge queued".
+  The "five tag purges per minute" ceiling this used to cite as the reason
+  was not confirmed against a real account: 16 direct purge calls in quick
+  succession all succeeded with no throttling observed (§18 item 3,
+  2026-09-03) — the debounce is worth keeping regardless of where the real
+  ceiling turns out to be, but no specific number should be asserted without
+  measuring it again.
 - **Plan B: purge by URL.** The cache key must then be the raw request URL
   with no customisation, and the management API computes the affected URLs —
   the item, each page of its lists, the home page, the sitemap, the feed;
@@ -721,30 +727,72 @@ The format contract is in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
 
 ## 18. Open items
 
-Each of the following must be measured in the Task 01 spike and written back
-here. **Until then none of it may be implemented as established fact:**
+**Measured 2026-09-03 against a real Cloudflare account** (`tasks/TASK-01.md
+§4`, §5 for the full table and raw numbers). Items 7 and 9 still need a
+public repository and Turnstile/Resend accounts respectively and remain
+unmeasured; everything else below is real-account fact, not a projection.
 
-1. Whether the Cache API works on `.workers.dev`; whether a custom domain is a
-   hard precondition; and whether the Cache API still works on public paths
-   when Cloudflare Access protects `/_mallok/*`.
-2. The actual CPU time of a stage-two cold render (a D1 batch plus Liquid) on
-   a typical product page and article page; the curve of stage-one fragment
-   generation against Markdown length within a save request; and the
-   acceptable content-length ceiling on the free plan.
-3. Whether tag purging (plan A) affects entries the Cache API wrote, its real
-   latency, and whether a debounce strategy is acceptable under five calls per
-   minute; and whether URL purging (plan B) works without a custom cache key.
-   Pick one and write it back into §6.
-4. The real gzipped size of the render pipeline, the template engine and the
-   official plugins together, against the 3 MB ceiling.
-5. How many PBKDF2 iterations fit in a 10 ms CPU budget, and whether that
-   strength is acceptable.
-6. R2 custom domains on the free plan: availability, caching behaviour, and
-   the token permissions the wizard needs to create the DNS record.
-7. One real run of the Deploy to Cloudflare button: automatic resource
-   creation, how `MALLOK_SECRET` is generated and set on that path, and how
-   long a Workers Build takes.
-8. Whether runtime self-migration is correct under concurrent cold starts —
-   whether the lock row is sufficient.
-9. The latency of Turnstile verification and of a Resend send, confirming that
-   an inquiry submission fits the free plan's CPU and subrequest budgets.
+1. **The Cache API works on `.workers.dev`, with no custom domain
+   precondition**, and identically on a bound custom domain (`MISS` then
+   `HIT` in both cases). **Not tested**: whether it still works on public
+   paths when Cloudflare Access protects `/_mallok/*` — needs a Zero Trust
+   application, out of scope for this run.
+2. **The current pipeline does not fit the CPU budget, at any size tested.**
+   Stage-one fragment generation on real workerd: 60 ms (2 KB), 150 ms
+   (8 KB), 528 ms (32 KB), 726 ms (128 KB) — 6× to 73× the Free plan's 10 ms,
+   even for a short article. This is worse than the local warm-JIT estimate
+   in `TASK-01.md §3.2` suggested, and confirms that estimate's own
+   cold-process figure (≈ 60 ms at 2 KB) rather than its warm one. **The
+   `markdown-it` fallback `TECH_STACK.md §4` names is no longer a
+   recommendation to consider — it is what the numbers say is needed**,
+   unless the product owner accepts that saving content routinely exceeds
+   the Free plan's CPU budget. Stage-two cold render measured 75 ms CPU;
+   no error 1102 (CPU-limit kill) was observed in any test this run.
+3. **Tag purging affects entries the Cache API wrote, and works.** A direct
+   purge call returns `200`/`ok:true`. Real propagation delay from a save to
+   the edit being visible: **≈ 20 seconds** — real and far better than an
+   unpurged page's TTL, but worth checking against `AC-CONTENT-02b`'s
+   "seconds" wording. Rate-limiting: 16 purge calls (6 spaced 2 s apart, then
+   10 back-to-back) all succeeded with no throttling observed — this
+   contradicts the "five per minute" figure `cache.ts` asserted in a comment,
+   which has been corrected to state only what was actually observed. Plan A
+   is confirmed workable; plan B (URL purging) was not separately tested
+   since plan A works.
+4. **285.5 KiB gzip** (232.3 KiB before `rehype-raw`, added 2026-09-02 —
+   `docs/ACCEPTANCE.md AC-INV-04`), 9.3% of the Free plan's 3 MB.
+5. **50,000 iterations costs ≈ 10 ms CPU** on real workerd — at the edge of
+   the 10 ms budget, not comfortably under it. **100,000 costs ≈ 35 ms**, and
+   iteration counts above 100,000 are **rejected outright by workerd's
+   WebCrypto implementation** ("iteration counts above 100000 are not
+   supported") — a hard platform ceiling, not a CPU-budget question.
+   `PBKDF2_RECOMMENDED_ITERATIONS = 600_000` (OWASP's figure, shown to users
+   as a disclosure) is **unreachable on this runtime**; `credentials.ts`'s
+   comment now says so. Whether to change the constant, and what to disclose
+   instead, is for the product owner.
+6. **R2 custom domains work and serve byte-identical content, but are not
+   cached by Cloudflare's edge by default** — `cf-cache-status: DYNAMIC` on
+   both a first and a second fetch of the same object. Serving media
+   efficiently through `media.<domain>` needs an explicit Cache Rule this run
+   did not configure. Token permissions for the wizard to create the DNS
+   record were not separately isolated — the account-scoped token used here
+   also covered the R2 custom-domain connect step, which was done by hand in
+   the dashboard rather than via API.
+7. **Not tested.** Needs a public repository; `FobStack/mallok` is currently
+   private.
+8. **Confirmed correct under real concurrent cold starts, on two independent
+   fresh databases**: ten parallel first requests each time, exactly one
+   `migration` row per migration (core plus the `inquiry` plugin) with no
+   duplicates, and the lock released (`locked_by`/`locked_at` both `NULL`)
+   both times. One run additionally returned a single `404` among ten `200`s
+   that did not reproduce on the second run; recorded as an unexplained,
+   likely transient anomaly rather than a confirmed defect.
+9. **Not tested.** Needs a Turnstile site key and a Resend account with a
+   verified sending domain.
+
+**Also found while setting up this spike, not one of the nine**: copying
+`wrangler.jsonc` into `.mallok/sites/<slug>.jsonc` and deploying with `-c`
+fails, because `main` and `assets.directory` are relative paths that wrangler
+resolves against the config file's own location, not the working directory —
+and `buildSiteConfig` (`src/cli/provision.ts`) never adjusted them. This is a
+confirmed bug: `mallok create` would fail at the deploy step on a real
+account. Fixed 2026-09-03 (`src/cli/provision.ts`).
