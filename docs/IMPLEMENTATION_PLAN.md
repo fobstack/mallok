@@ -40,7 +40,7 @@
 | --- | --- | --- |
 | **Gate A** | The nine measurements in `ARCHITECTURE §18`, taken and written back | The product owner runs `TASK-01 §4` |
 | ~~**Gate B**~~ | ~~The Markdown engine decision~~ **Settled 2026-08-29: stay with unified.** The reasoning and its cost are in `TASK-01 §6` | Cleared |
-| **Gate B'** | Whether to keep inline HTML (whether to add `rehype-raw`) | The product owner (`SECURITY.md §4`) |
+| ~~**Gate B'**~~ | ~~Whether to keep inline HTML~~ **Settled 2026-09-02: keep it, sanitised.** `rehype-raw` added (`+53.2 KiB` gzip); reasoning in `SECURITY.md §4`, `TECH_STACK.md §11.1` | Cleared |
 
 Gate A blocks: the PBKDF2 iteration count (Task 02), the purge plan A or B
 (Task 05), the content-length ceiling (Task 03), and whether a custom domain
@@ -49,10 +49,11 @@ is a hard precondition (Task 14).
 Gate B is cleared: `beforeRender`'s public signature is fixed against mdast
 (`PLUGIN_API.md §5.2`).
 
-Gate B' blocks only the sanitisation surface and the wording of
-`CONTENT_FORMAT §3.4` — whether to add `rehype-raw`. The plugin runtime is
-orthogonal to it, so Tasks 07 and 08 completed with B' still open and contain
-no inline-HTML changes.
+Gate B' is cleared: `rehype-raw` parses inline HTML into the tree instead of
+letting it drop, `rehype-sanitize` then runs over the whole tree as before, and
+`CONTENT_FORMAT §3.4`'s wording is now true rather than aspirational. The
+plugin runtime was orthogonal to it throughout, so Tasks 07 and 08 needed no
+changes now that it is settled.
 
 > What could proceed with gate A open: Tasks 02, 03, 04 and 06 — **all done**.
 > The only remaining work unaffected by gate A is the admin shell and editor

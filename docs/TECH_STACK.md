@@ -60,7 +60,8 @@ production rendering are byte-identical, and lint rules enforce it.
 | Markdown parsing | `unified` + `remark-parse` + `remark-gfm` | Pure JS. An AST approach rather than `marked` or `markdown-it`, because a plugin's `beforeRender` hook operates on the AST |
 | Front matter | `yaml` | Aliases, custom tags and duplicate keys are disabled |
 | Markdown → HTML | `remark-rehype` + `rehype-stringify` | The same ecosystem as above |
-| HTML sanitisation | `rehype-sanitize` | Allow-list mode; content is always untrusted |
+| Inline HTML | `rehype-raw` | Parses the raw HTML `remark-rehype`'s `allowDangerousHtml` hands it into the tree, so `rehype-sanitize` runs over it too, rather than dropping it outright. Settled 2026-09-02 (Gate B', `SECURITY.md §4`) |
+| HTML sanitisation | `rehype-sanitize` | Allow-list mode; content is always untrusted. Runs after `rehype-raw`, over the whole tree including what it added |
 | Relative-path resolution | An in-repository rehype step | Substitutes R2 URLs for `images/x.jpg` through `content.assets` and adds `srcset` and friends. Attribute substitution only — nothing hand-parsed |
 | Markdown serialisation | `mdast-util-to-markdown` + `mdast-util-gfm` | For the visual editor's saves in 0.2, keeping exports standard Markdown |
 | Template engine | `liquidjs` (the browser build, `dist/liquid.browser.mjs`) | Verified to provide a build free of Node dependencies. Liquid is the syntax Shopify, Jekyll and 11ty authors already know. `ownPropertyOnly` is enabled and raw-style output is disabled |
@@ -194,7 +195,9 @@ received.
 
 | Package | Version | Licence | Layer | Transitive | Bundle delta (gzip) | Install scripts | Reason |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| — | | | | | | | None yet. `fflate` was briefly added to unpack theme zips and removed when themes moved to build-time bundling (`tasks/TASK-04.md`) |
+| `rehype-raw` | `7.0.0` | MIT | Render | 9 new: `entities` (BSD-2-Clause), `hast-util-from-parse5`, `hast-util-parse-selector`, `hast-util-raw`, `hast-util-to-parse5`, `hastscript`, `parse5`, `vfile-location`, `web-namespaces` (all MIT). None carry an `install`/`postinstall`/`preinstall` script | +53.2 KiB (Worker: 232.3 → 285.5 KiB, 7.6% → 9.3% of the Free plan) | None, across all 10 packages | Gate B', settled 2026-09-02: makes `CONTENT_FORMAT §3.4`'s promise true — inline HTML is sanitised and kept, not dropped outright (`SECURITY.md §4`) |
+
+Before this, the table had no rows: `fflate` was briefly added to unpack theme zips and removed when themes moved to build-time bundling (`tasks/TASK-04.md`).
 
 ## 12. Explicitly forbidden
 

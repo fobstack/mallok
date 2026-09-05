@@ -174,7 +174,7 @@ Re-verified by every task (`IMPLEMENTATION_PLAN §5`, item 4).
 | `AC-INV-01` | `src/core/` imports no Cloudflare or Node API, and `tsc -p src/core/tsconfig.json` passes | `VERIFIED_LOCAL` |
 | `AC-INV-02` | The same input renders byte-identical HTML | `VERIFIED_LOCAL` |
 | `AC-INV-03` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size` is green | `VERIFIED_LOCAL` |
-| `AC-INV-04` | The Worker's gzipped bundle fits the free plan's 3 MB | `VERIFIED_LOCAL` (2026-08-30: 229.2 KiB, 7.5%) |
+| `AC-INV-04` | The Worker's gzipped bundle fits the free plan's 3 MB | `VERIFIED_LOCAL` (2026-09-02: 285.5 KiB, 9.3%, after `rehype-raw`; was 229.2 KiB, 7.5% on 2026-08-30) |
 | `AC-INV-05` | A single-page cold render is one D1 batch, at most 3 queries, with bounded row reads | `PENDING_DECISION` — **measured at 2 batches** (even on the heaviest page); the wording needs revising, see §14.2. Evidence: `test/worker/budget.test.ts` |
 | `AC-INV-06` | A list page parses no body, queries no `render_cache`, and runs no `COUNT(*)` | `VERIFIED_LOCAL` (`listPublished` reads scalar columns only, with `LIMIT n+1`) |
 | `AC-INV-07` | Error responses leak no SQL, bucket name, id or stack trace | `VERIFIED_LOCAL` |
@@ -198,7 +198,7 @@ resolved:
 | --- | --- | --- |
 | 1 | The nine measurements in `ARCHITECTURE §18` (`TASK-01 §4`) | The product owner runs them |
 | 2 | ~~The Markdown engine decision~~ **Settled 2026-08-29: stay with unified** (`TASK-01 §6`) | Cleared |
-| 3 | Whether to keep inline HTML (`SECURITY.md §4`) | The product owner |
+| 3 | ~~Whether to keep inline HTML~~ **Settled 2026-09-02: keep it, sanitised** (`rehype-raw`, `SECURITY.md §4`) | Cleared |
 | 4 | Confirming the performance numbers in `SEO_PERFORMANCE.md §7` | The product owner |
 | 5 | ~~Settling the licence~~ **Settled 2026-09-01: Apache-2.0.** A separate trademark policy keeping the `Mallok` name is still outstanding | Cleared |
 | 6 | ~~Creating `JasonYv/mallok` and verifying its ownership~~ **Done 2026-09-01**, currently private | Cleared |

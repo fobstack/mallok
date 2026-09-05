@@ -15,6 +15,7 @@ import type { Root as HastRoot } from 'hast';
 import { toString as hastToString } from 'hast-util-to-string';
 import type { Root as MdastRoot } from 'mdast';
 import { toString as mdastToString } from 'mdast-util-to-string';
+import rehypeRaw from 'rehype-raw';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import remarkGfm from 'remark-gfm';
@@ -133,7 +134,12 @@ export async function renderFragment(
       excerpt = extractExcerpt(tree);
       readingTimeMinutes = estimateReadingTime(mdastToString(tree));
     })
-    .use(remarkRehype)
+    // `allowDangerousHtml` hands inline HTML to `rehypeRaw` as raw nodes
+    // instead of dropping it; `rehypeSanitize` then runs over the whole tree,
+    // raw nodes included, so nothing dangerous survives either step
+    // (docs/SECURITY.md §4).
+    .use(remarkRehype, { allowDangerousHtml: true })
+    .use(rehypeRaw)
     .use(rehypeSanitize, sanitizeSchema)
     .use(() => (tree: HastRoot) => {
       collectHeadings(tree, headings);

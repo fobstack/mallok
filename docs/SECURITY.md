@@ -154,21 +154,22 @@ is an unauthenticated administrator-creation endpoint.
   `rehype-sanitize` in allow-list mode (`ARCHITECTURE §5`).
 - It **does not modify the Markdown source** — `markdown` in D1 must be
   exportable verbatim (`CONTENT_FORMAT §8`).
+- Inline HTML is parsed into the tree by `rehype-raw` (`remark-rehype`'s
+  `allowDangerousHtml`) rather than dropped, then sanitised like everything
+  else — settled 2026-09-02, **Gate B'**. `test/core/fragment.test.ts` (`keeps
+  benign inline HTML instead of dropping it`) asserts a `<div>`, a `<span>`
+  and a `<br>` survive, and that Markdown inside a raw block still renders.
 - Removed: `<script>`, event attributes (`on*`), `javascript:` links,
-  `<style>`, `<iframe>`, `<object>`, `<embed>`, `<form>`.
+  `<style>`, `<iframe>`, `<object>`, `<embed>`, `<form>`. This is
+  `rehype-sanitize`'s `defaultSchema` (the same list GitHub's own renderer
+  uses) — it is also more conservative than a first guess might assume: it
+  drops tags outside its allow-list entirely (`<mark>`, for one) and strips
+  attributes like `class` that are not on its per-tag list, rather than
+  passing them through. Widening that schema is a separate decision from
+  Gate B' and has not been asked for.
 - The allowed `img` attributes extend the default list with `srcSet`, `sizes`,
   `width`, `height`, `loading` and `decoding` (`src/core/fragment.ts`),
   because the core adds those itself.
-
-> **Open in 0.1**: the Task 01 implementation **strips inline HTML entirely**
-> rather than sanitising and keeping it, because `rehype-raw` was not on the
-> approved dependency list (`TASK-01 §2`, item 3). Keeping inline HTML means
-> adding a parse5-based HTML parser, at a size cost. This decision is tied to
-> the Markdown engine and is **for the product owner to settle before Task
-> 02**. `CONTENT_FORMAT §3.4` promises that inline HTML is allowed but
-> sanitised, so if stripping is kept, **the wording in `CONTENT_FORMAT §3.4`
-> must change** — the documentation must not say one thing while the code does
-> another.
 
 ## 5. Relative paths
 

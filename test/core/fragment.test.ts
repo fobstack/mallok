@@ -66,6 +66,24 @@ describe('renderFragment', () => {
     expect(html).not.toContain('javascript:');
   });
 
+  it('keeps benign inline HTML instead of dropping it (docs/SECURITY.md §4)', async () => {
+    const body = [
+      '<div>',
+      '',
+      'A **note** worth calling out.',
+      '',
+      '</div>',
+      '',
+      'Plain text with an inline <span>wrapper</span> and a <br> break.',
+    ].join('\n');
+    const { html } = await render(body);
+    expect(html).toContain('<div>');
+    expect(html).toContain('<span>wrapper</span>');
+    expect(html).toContain('<br>');
+    // The Markdown inside the raw block still renders, not just passes through.
+    expect(html).toContain('<strong>note</strong>');
+  });
+
   it('rewrites relative images to media URLs with srcset', async () => {
     const { html, meta } = await render('![Furnace](images/hero.jpg)');
     expect(html).toContain(
