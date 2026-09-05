@@ -58,7 +58,7 @@ contradictory figures (§14.0).
 | --- | --- | --- | --- |
 | `AC-DEPLOY-01` | `npx mallok create` creates every resource on a clean Cloudflare account, deploys successfully, and prints a reachable `.workers.dev` address | `NOT_AVAILABLE` | Needs a real account. Naming and ordering have unit tests (`test/cli/provision.test.ts`), but the command has never been executed |
 | `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_AVAILABLE` | Needs a public repository and a real account. The button has never been clicked |
-| `AC-DEPLOY-03` | Every step of the setup wizard completes, and `/_mallok/setup` returns 404 afterwards | `PENDING_DECISION` | The implementation has **four** steps; the media domain and Resend/DNS steps need an account-scoped token and belong to what Task 16 did not do (`TASK-16.md §6`). The four have evidence: `test/worker/setup.test.ts:53`, `:81`, `:181`. Either build the other two or change the criterion — see §14.2 |
+| `AC-DEPLOY-03` | Every step of the setup wizard completes, and `/_mallok/setup` returns 404 afterwards. **The wizard is four steps** (`ARCHITECTURE §15`, `ADMIN.md §5`); media domain and email are configured afterward in Settings, not folded into it — settled 2026-09-02, see §14.2 item 2 | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:53`, `:81`, `:181` |
 | `AC-DEPLOY-04` | With a custom domain bound, the site serves normally and **the cache hits** (`x-mallok-cache: HIT`) | `NOT_AVAILABLE` | Needs a custom domain. `ARCHITECTURE §18` item 1 |
 | `AC-DEPLOY-05` | With no custom domain bound, the wizard says plainly that caching is not in effect, and `robots.txt` emits `Disallow: /` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:152`, `:161` |
 | `AC-DEPLOY-06` | Without `CF_API_TOKEN` the site works normally, `cache_ttl` drops to 60 seconds, and the admin carries a standing notice | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:81`, `test/worker/cache-admin.test.ts:94`, `test/worker/setup.test.ts:35` |
@@ -161,7 +161,7 @@ this had briefly landed the same day and was removed with it; see §14.2 item
 | --- | --- | --- | --- |
 | `AC-CLI-01` | `mallok publish <dir>` publishes local bundles, `images/` included, into a site | `VERIFIED_LOCAL` | `test/cli/scan.test.ts` (`reads a bundle with its translations and assets`), `test/worker/flow.test.ts:204` |
 | `AC-CLI-02` | Republishing an unmodified directory is a no-op: **no D1 write, no cache purge** | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:204`, `test/worker/roundtrip.test.ts:249` |
-| `AC-CLI-03` | `mallok preview`'s local render is **byte-identical** to production | `PENDING_DECISION` | The body and structure are byte-identical — the same `renderFragment` and `renderPage` — but the preview is offline with no media table, so images stay relative paths. The wording needs qualifying — see §14.2 |
+| `AC-CLI-03` | **The same Markdown produces the same body fragment** in `mallok preview` and in production — settled 2026-09-02, correcting the earlier "byte-identical" wording, which the preview's offline media handling could never literally satisfy (relative paths vs. R2 URLs); see §14.2 item 3 | `VERIFIED_LOCAL` | `test/cli/preview.test.ts:17` |
 | `AC-CLI-04` | The CLI has no capability the admin lacks, and the reverse | `VERIFIED_LOCAL` | Structural: both go through the same management API (`src/cli/client.ts`), with no CLI-only endpoint |
 | `AC-CLI-05` | Missing images are reported, and `--fail-on-missing` works in CI | `VERIFIED_LOCAL` | `test/cli/scan.test.ts:78`, and `treats a referenced file that is absent as missing, not an error` |
 
@@ -175,7 +175,7 @@ Re-verified by every task (`IMPLEMENTATION_PLAN §5`, item 4).
 | `AC-INV-02` | The same input renders byte-identical HTML | `VERIFIED_LOCAL` |
 | `AC-INV-03` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size` is green | `VERIFIED_LOCAL` |
 | `AC-INV-04` | The Worker's gzipped bundle fits the free plan's 3 MB | `VERIFIED_LOCAL` (2026-09-02: 285.5 KiB, 9.3%, after `rehype-raw`; was 229.2 KiB, 7.5% on 2026-08-30) |
-| `AC-INV-05` | A single-page cold render is one D1 batch, at most 3 queries, with bounded row reads | `PENDING_DECISION` — **measured at 2 batches** (even on the heaviest page); the wording needs revising, see §14.2. Evidence: `test/worker/budget.test.ts` |
+| `AC-INV-05` | A cold render makes **at most 4 D1 round trips**, each with a constant number of queries and bounded row reads — settled 2026-09-02, correcting "one batch, ≤3 queries", which a related-content-plus-media page cannot meet by construction (§14.2 item 1) | `VERIFIED_LOCAL` (measured at 2, on every page tried so far, ceiling of 4 by the architecture) | `test/worker/budget.test.ts` |
 | `AC-INV-06` | A list page parses no body, queries no `render_cache`, and runs no `COUNT(*)` | `VERIFIED_LOCAL` (`listPublished` reads scalar columns only, with `LIMIT n+1`) |
 | `AC-INV-07` | Error responses leak no SQL, bucket name, id or stack trace | `VERIFIED_LOCAL` |
 | `AC-INV-08` | Visitor pages carry 0 B of client-side JavaScript, the inquiry page's Turnstile excepted | `VERIFIED_LOCAL` (`test/core/themes.test.ts` asserts no `<script>` beyond JSON-LD in every layout of all five themes) |

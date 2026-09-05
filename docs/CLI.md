@@ -10,8 +10,10 @@
 
 **`mallok` is a Node command-line tool published to npm. It calls exactly the
 same management API over HTTPS that the admin does, and reuses `src/core/` for
-bundle parsing and local preview, so its output is byte-identical to
-production.**
+bundle parsing and local preview, so the same Markdown produces the same body
+fragment as production — the preview's media URLs differ, since it runs
+offline with no media table (`AC-CLI-03`, `docs/ACCEPTANCE.md §14.2` item
+3).**
 
 ## 2. Hard constraints
 
@@ -252,9 +254,13 @@ mallok preview ./articles/titanium-price-2026-08 --theme ./src/themes/atelier
 - Reads the theme from a local directory.
 - Exists so theme authors and content authors can check before publishing.
 
-Because it runs the same `src/core/`, the preview is **byte-identical** to
-production — which is the entire point of `core/` being forbidden to import
-Cloudflare or Node APIs (`CONTRIBUTING.md`, the layering rule).
+Because it runs the same `src/core/`, **the same Markdown produces the same
+body fragment** as production (`test/cli/preview.test.ts` asserts this
+directly) — which is the entire point of `core/` being forbidden to import
+Cloudflare or Node APIs (`CONTRIBUTING.md`, the layering rule). The rendered
+page is not byte-for-byte identical, though: with no media table to resolve
+against, images stay relative paths (`images/hero.png`) instead of the R2
+URLs production emits.
 
 ## 9. `mallok media push`
 

@@ -115,8 +115,9 @@ looks up rows without rendering belongs to that dead design.
   management API's save requests included, is budgeted against the free
   plan's 10 ms of CPU. Exceeding it must produce a clear error, never a silent
   failure.
-- A single cold render issues one D1 batch, a constant number of queries and a
-  bounded number of row reads. **A list page never parses body Markdown.**
+- A single cold render issues **at most 4 D1 round trips**, each a constant
+  number of queries and a bounded number of row reads (`AC-INV-05`,
+  `ARCHITECTURE §4`). **A list page never parses body Markdown.**
 - The same Markdown, pipeline version and theme version must render
   byte-identical HTML. Render functions and `beforeRender` hooks may not read
   the clock, a random source, or anything about the request.

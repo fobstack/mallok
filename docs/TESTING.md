@@ -117,7 +117,10 @@ Each of the seven assertions maps to one test:
 
 ### 4.6 The D1 budget (`DATA_MODEL §3`)
 
-- A single-page cold render issues **one D1 batch**.
+- A single-page cold render issues **at most 4 D1 round trips**
+  (`ARCHITECTURE §4`, `AC-INV-05` — corrected 2026-09-02 from "one batch",
+  which a page with both media and related content cannot meet by
+  construction).
 - A list page **does not query `render_cache` and does not read `markdown`**.
 - Pagination **does not run `COUNT(*)`**.
 

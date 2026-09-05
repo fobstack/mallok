@@ -142,7 +142,7 @@ These follow from the architecture and are not tuning knobs:
 | Metric | Target | Source |
 | --- | --- | --- |
 | CPU on the cache-hit path | Under 1 ms | `ARCHITECTURE §4` |
-| D1 calls in a cold render | One batch, at most 3 queries | `ARCHITECTURE §4` |
+| D1 calls in a cold render | At most 4 round trips, each a constant number of queries | `ARCHITECTURE §4` |
 | Row reads on a list page | `LIMIT n+1`, **never `COUNT(*)`** | `DATA_MODEL §3` |
 | Markdown parsing on a list page | **Never** | `ARCHITECTURE §4` |
 | From saving content to it being publicly visible | Seconds | `PRODUCT_VISION §5.1` |

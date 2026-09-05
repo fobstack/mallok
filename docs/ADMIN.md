@@ -96,20 +96,22 @@ into a button would be a lie.
 
 At `/_mallok/setup`, and **permanently closed** once complete — a non-null
 `site.setup_completed_at` makes it a 404. The steps come from
-`ARCHITECTURE §15`:
+`ARCHITECTURE §15`. **0.1's wizard is four steps** (`AC-DEPLOY-03`,
+`docs/ACCEPTANCE.md §14.2` item 2, settled 2026-09-02):
 
 | Step | What | Skippable |
 | --- | --- | --- |
 | 1 | Administrator email and password | No |
 | 2 | Site name, default language, enabled languages | No |
 | 3 | Choose a starter | Yes; skipping gives an empty site |
-| 4 | Domain: detect whether a custom domain is bound | Yes |
-| 5 | Media domain `media.<domain>`, creating the DNS record | Yes |
-| 6 | Email: the Resend key, sending domain, writing the DNS records | Yes |
-| 7 | Done | — |
+| 4 | Domain: detect whether a custom domain is bound, then done | Yes |
 
-Every step can be completed later in Settings. Two things **must be stated
-honestly**:
+**Media domain (`media.<domain>`) and email (the Resend key, the sending
+domain, the DNS records) are not wizard steps in 0.1** — deliberately: both
+need an account-scoped Cloudflare API token, a different credential from the
+one the wizard runs under. Configure them afterward in Settings; nothing is
+unreachable, they are simply not part of the guided first run. Two things
+**must be stated honestly**:
 
 - **Step 4**: with no custom domain bound, say plainly that caching is not in
   effect and `.workers.dev` is preview only (`ARCHITECTURE §2`). This is not

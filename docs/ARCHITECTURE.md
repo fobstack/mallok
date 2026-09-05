@@ -147,10 +147,17 @@ GET /de/products/titanium-bar
       └─ return
 ```
 
-**The design target: one cold render issues one D1 batch, containing a
-constant number of queries (≤ 3 is the goal), reading a bounded number of rows
-regardless of how much content the site holds.** Data for list pages and
-navigation comes from separate, bounded queries with `LIMIT` pagination; a
+**The invariant, corrected 2026-09-02 against measurement
+(`docs/ACCEPTANCE.md §14.2` item 1, `AC-INV-05`): a cold render makes at most
+4 D1 round trips, each with a constant number of queries and reading a
+bounded number of rows, regardless of how much content the site holds.** A
+plain page with no media or relations measures 2 (`batch(5)` + `batch(1)`,
+`test/worker/budget.test.ts`); resolved media adds one, and related items
+with covers add one more. One batch was the original target, but the first
+round trip has to return the content row — its slug, kind, front matter and
+assets — before related content and media can even be looked up, so a second
+round trip is a data dependency, not a shortfall to fix. Data for list pages
+and navigation comes from separate, bounded queries with `LIMIT` pagination; a
 query per content item is never acceptable. **A list page reads front matter
 and summary fields only, and never parses body Markdown.**
 
@@ -647,12 +654,16 @@ free of any CI step, so upgrading is just deploying a new Worker version.
 Migrations must be forward-compatible: the old Worker version is still serving
 during one, and a failure must not take the site down.
 
-The wizard's steps at `/_mallok/setup`: administrator account → site name and
-languages → choose a starter → domain (detecting whether a custom domain is
-bound, and otherwise giving the steps and warning that caching is not yet in
-effect) → media domain (creating `media.<domain>` automatically) → email (the
-Resend key, the sending domain, writing the DNS records) → done. Every step
-can be skipped and completed later in settings.
+The wizard's steps at `/_mallok/setup`, **four in 0.1**
+(`docs/ACCEPTANCE.md §14.2` item 2, settled 2026-09-02): administrator
+account → site name and languages → choose a starter → domain (detecting
+whether a custom domain is bound, and otherwise giving the steps and warning
+that caching is not yet in effect), then done. Starter and domain can be
+skipped. Media domain (creating `media.<domain>` automatically) and email
+(the Resend key, the sending domain, writing the DNS records) are not wizard
+steps: both need an account-scoped Cloudflare API token, a different
+credential from the `wrangler` OAuth session the wizard runs under, so they
+are configured afterward in Settings instead.
 
 **Which actions need a redeploy must be stated plainly in one place:**
 
