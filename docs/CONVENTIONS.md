@@ -135,12 +135,12 @@ looks up rows without rendering belongs to that dead design.
 
 - Follow the Google TypeScript Style Guide. What tooling can enforce is in
   `biome.json`; the rest is in `CONTRIBUTING.md`.
-- Everything in the repository is written in English: code, comments, JSDoc,
-  commit messages, test names and developer documentation. `docs/` is being
-  translated — a translated document is authoritative at `docs/<NAME>.md` with
-  its Chinese original archived under `docs/zh/`, while an untranslated one is
-  still Chinese at its canonical path and marked *(zh)* in
-  [`docs/README.md`](README.md). `docs/tasks/` was written in English.
+- English is the project's first language and everything in the repository is
+  written in it: code, comments, JSDoc, commit messages, test names and
+  developer documentation, `docs/` included. Other languages (Chinese among
+  them) are supported where they serve a real user — Mallok's own content
+  model, for one — on the same footing as any other locale, never as a
+  second, repository-level copy of the project's own documentation.
 - Named exports only. `import type`. No `any`, no non-null assertions, no
   `namespace`. Filenames are lowercase and hyphenated.
 - Database column names and the view objects handed to Liquid templates use

@@ -4,8 +4,6 @@
 
 > The editing experience of WordPress, the performance of the edge, open source and never locked in.
 
-[中文说明](README.zh-CN.md)
-
 ## The problem
 
 Content websites today take one of two roads, each with a structural flaw:
@@ -74,14 +72,9 @@ pnpm test          # unit tests in Node + integration tests inside workerd
 pnpm dev           # wrangler dev on http://127.0.0.1:8787
 ```
 
-Design documents (currently in Chinese; English versions will follow):
-
-- [Product vision](docs/PRODUCT_VISION.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Tech stack](docs/TECH_STACK.md)
-- [Content format](docs/CONTENT_FORMAT.md)
-- [Data model](docs/DATA_MODEL.md)
-- [Cloudflare resources](docs/CLOUDFLARE_RESOURCES.md)
+Design documents, starting with [the product vision](docs/PRODUCT_VISION.md)
+and [the architecture](docs/ARCHITECTURE.md) — the full set is indexed in
+[docs/README.md](docs/README.md).
 
 Contributing guidelines, including the code style, are in [CONTRIBUTING.md](CONTRIBUTING.md).
 

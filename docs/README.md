@@ -5,9 +5,8 @@ Markdown in D1, an edit is live immediately, there is no build step, and the
 content can be taken elsewhere at any time. The first vertical is
 foreign-trade B2B company sites.
 
-> **English is authoritative.** Every document here has been translated; the
-> Chinese originals are kept under [`zh/`](zh/) for reference. Where the two
-> disagree, the English is what the code is held to.
+> **English is the primary language of this project and the authoritative
+> version of every document here.**
 
 ## Design documents
 
