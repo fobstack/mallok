@@ -13,7 +13,7 @@
  * prefixes; a content kind may not claim them as its base path.
  */
 
-import { loadSiteRenderData } from '../db/queries.js';
+import { loadSite, loadSiteRenderData } from '../db/queries.js';
 import { handleAdmin } from './admin.js';
 import { handleApp, isAppPath } from './admin-app.js';
 import { boot } from './bootstrap.js';
@@ -60,13 +60,18 @@ async function fetchHandler(
       return await handleApp(request, env);
     }
     if (pathname.startsWith('/_mallok/setup')) {
-      const step = pathname.slice('/_mallok/setup'.length).replace(/^\//, '');
-      return await handleSetup(
-        request,
-        env,
-        ctx,
-        step === '' ? 'status' : step,
-      );
+      // The pretty top-level URL for the wizard: the admin SPA's own router
+      // (src/admin/routes.ts, `SETUP_PATH`) recognises this path and renders
+      // the wizard client-side, matching /_mallok/app/setup. The API calls
+      // that page makes go through /_mallok/api/setup/* above, which is the
+      // only place the 404-once-completed rule actually needs enforcing —
+      // but the bare shell must stop rendering too, so a browser cannot find
+      // a stale link into a completed site's wizard.
+      const site = await loadSite(env.DB);
+      if (site !== null && site.setup_completed_at !== null) {
+        return problem(404, 'Not found.');
+      }
+      return await handleApp(request, env);
     }
     if (pathname.startsWith('/_mallok/p/')) {
       const data = await loadSiteRenderData(env.DB);

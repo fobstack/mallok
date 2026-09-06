@@ -32,6 +32,24 @@ describe('the setup wizard', () => {
     await SELF.fetch(`${ORIGIN}/`);
   });
 
+  it('serves the wizard UI at the pretty top-level URL, not the JSON API', async () => {
+    // A regression test: this used to be routed to the same handler as
+    // /_mallok/api/setup, so a browser visiting it got the status JSON back
+    // instead of the admin app shell the wizard actually renders from
+    // (src/admin/routes.ts's SETUP_PATH expects to be served the shell, the
+    // same as /_mallok/app/*).
+    for (const path of ['/_mallok/setup', '/_mallok/setup/']) {
+      const response = await SELF.fetch(`${ORIGIN}${path}`);
+      // Either the shell (200) or the honest "not built" answer (503) —
+      // never the setup API's status JSON shape.
+      expect([200, 503]).toContain(response.status);
+      const body = (await response.json().catch(() => null)) as {
+        completed?: boolean;
+      } | null;
+      expect(body?.completed).toBeUndefined();
+    }
+  });
+
   it('reports what this deployment can and cannot do', async () => {
     const response = await SELF.fetch(`${ORIGIN}/_mallok/api/setup`);
     expect(response.status).toBe(200);
@@ -195,5 +213,10 @@ describe('the setup wizard', () => {
       });
       expect(response.status).toBe(404);
     }
+
+    // The pretty top-level URL closes too, not just the API — otherwise a
+    // stale bookmark to /_mallok/setup would still render the wizard shell
+    // on a completed site, even though its own API calls would then fail.
+    expect((await SELF.fetch(`${ORIGIN}/_mallok/setup`)).status).toBe(404);
   });
 });
