@@ -1,44 +1,60 @@
 /*
  * The admin's own styles: CSS variables and a handful of components, no
- * framework (docs/TECH_STACK.md §6). The admin's appearance is not a product
- * feature — it should be quiet, legible and quick.
+ * framework (docs/TECH_STACK.md §6).
+ *
+ * Design language: this runs a trade company's back office — entering
+ * products with technical specs, publishing news, reading buyer inquiries.
+ * The people using it already trust spec sheets, manifests and technical
+ * drawings, not soft consumer software, so the admin borrows from that
+ * vocabulary: flat surfaces instead of shadowed cards, hairline rules
+ * instead of rounded tints, and a monospace face used deliberately wherever
+ * there is real structure to show (identifiers, counts, dates, table
+ * headers) rather than as a decorative label font. One accent (blueprint)
+ * marks anything actionable; one reserved accent (oxide) marks anything
+ * that needs attention. They never compete on the same element.
  */
 
 :root {
-  --bg: #ffffff;
-  --bg-soft: #f6f7f8;
-  --bg-sunken: #f0f2f3;
-  --ink: #161c1f;
-  --muted: #5b666c;
-  --faint: #808c92;
-  --line: #e2e6e8;
-  --brand: #0d4f4a;
-  --brand-deep: #0a3d39;
-  --brand-tint: #e7f0ee;
-  --warn: #8a5a00;
-  --warn-tint: #fdf3e2;
-  --danger: #a11d33;
-  --radius: 10px;
+  --bg: #f4f6f8;
+  --bg-surface: #ffffff;
+  --bg-sunken: #e7ebee;
+  --ink: #12181f;
+  --muted: #55626d;
+  --faint: #838f99;
+  --line: #d7dee4;
+  --line-strong: #b7c1cb;
+  --blueprint: #1f4e79;
+  --blueprint-deep: #163a5c;
+  --blueprint-tint: #e4ecf3;
+  --oxide: #a8461f;
+  --oxide-tint: #f6e7de;
+  --danger: #a5311f;
+  --danger-tint: #f7e5e1;
+  --radius: 3px;
+  --radius-sm: 2px;
   --body:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  --mono: ui-monospace, "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #12171a;
-    --bg-soft: #171d20;
-    --bg-sunken: #1c2327;
-    --ink: #e8edef;
-    --muted: #a2aeb3;
-    --faint: #7d888d;
-    --line: #263034;
-    --brand: #46a99b;
-    --brand-deep: #5cbcae;
-    --brand-tint: #16302c;
-    --warn: #e0a94a;
-    --warn-tint: #2c2313;
-    --danger: #e2798b;
+    --bg: #0f1417;
+    --bg-surface: #161c20;
+    --bg-sunken: #0a0d0f;
+    --ink: #e7edf1;
+    --muted: #a2afb9;
+    --faint: #6e7c87;
+    --line: #2a343b;
+    --line-strong: #3c4750;
+    --blueprint: #6fa8d8;
+    --blueprint-deep: #8fc0ea;
+    --blueprint-tint: #1b2c3b;
+    --oxide: #d9895f;
+    --oxide-tint: #302219;
+    --danger: #e08877;
+    --danger-tint: #301c18;
   }
 }
 
@@ -54,12 +70,20 @@ html {
 body {
   background: var(--bg);
   color: var(--ink);
-  font: 400 15px / 1.55 var(--body);
+  font: 400 0.9375rem / 1.55 var(--body);
   -webkit-font-smoothing: antialiased;
 }
 
+h1,
+h2,
+h3 {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
 a {
-  color: var(--brand);
+  color: var(--blueprint);
   text-decoration: none;
 }
 a:hover {
@@ -69,14 +93,25 @@ a:hover {
 code,
 .code {
   font-family: var(--mono);
-  font-size: 0.88em;
+  font-size: 0.85em;
   color: var(--muted);
   word-break: break-all;
 }
 
 :focus-visible {
-  outline: 2px solid var(--brand);
+  outline: 2px solid var(--blueprint);
   outline-offset: 2px;
+}
+
+/* A small mono label used wherever text stands in for structure rather than
+   prose: table headers, field captions, fact terms. Sentence case, not
+   tracked-out caps — the monospace face is what marks it as structural. */
+.structure-label {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--faint);
+  letter-spacing: 0.01em;
 }
 
 /* Buttons */
@@ -92,21 +127,21 @@ button:disabled {
   cursor: not-allowed;
 }
 button.primary {
-  background: var(--brand);
+  background: var(--blueprint);
   color: #fff;
   font-weight: 600;
 }
 button.primary:hover:not(:disabled) {
-  background: var(--brand-deep);
+  background: var(--blueprint-deep);
 }
 button.ghost {
   background: transparent;
-  border-color: var(--line);
+  border-color: var(--line-strong);
   color: var(--muted);
 }
 button.ghost:hover:not(:disabled) {
-  border-color: var(--brand);
-  color: var(--brand);
+  border-color: var(--blueprint);
+  color: var(--blueprint);
 }
 
 /* Inputs */
@@ -116,14 +151,21 @@ textarea {
   font: inherit;
   width: 100%;
   padding: 0.45rem 0.6rem;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  background: var(--bg);
+  background: var(--bg-surface);
   color: var(--ink);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--blueprint);
+  box-shadow: 0 0 0 1px var(--blueprint);
 }
 input[type="checkbox"] {
   width: auto;
-  accent-color: var(--brand);
+  accent-color: var(--blueprint);
 }
 input[type="color"] {
   padding: 0.2rem;
@@ -144,9 +186,9 @@ textarea {
   display: flex;
   align-items: center;
   gap: 2rem;
-  padding: 0.7rem clamp(1rem, 3vw, 2rem);
-  border-bottom: 1px solid var(--line);
-  background: var(--bg-soft);
+  padding: 0.65rem clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--bg-surface);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -154,9 +196,10 @@ textarea {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   color: var(--ink);
   font-weight: 650;
+  letter-spacing: -0.005em;
 }
 .brand:hover {
   text-decoration: none;
@@ -164,26 +207,28 @@ textarea {
 .brand .mark {
   display: grid;
   place-items: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 7px;
-  background: var(--brand);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  background: var(--blueprint);
   color: #fff;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 .topbar nav {
   display: flex;
-  gap: 1.2rem;
+  gap: 1.4rem;
 }
 .topbar nav a {
   color: var(--muted);
   padding: 0.2rem 0;
   border-bottom: 2px solid transparent;
+  font-size: 0.9rem;
 }
 .topbar nav a[aria-current] {
   color: var(--ink);
-  border-bottom-color: var(--brand);
+  border-bottom-color: var(--blueprint);
   text-decoration: none;
 }
 .user {
@@ -191,7 +236,26 @@ textarea {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+@media (max-width: 40rem) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 0.6rem 1.2rem;
+  }
+  .brand span:last-child {
+    max-width: 11rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .topbar nav {
+    order: 3;
+    flex-basis: 100%;
+    gap: 1rem;
+  }
 }
 
 .banner {
@@ -199,10 +263,11 @@ textarea {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.7rem clamp(1rem, 3vw, 2rem);
-  background: var(--warn-tint);
-  color: var(--warn);
+  padding: 0.6rem clamp(1rem, 3vw, 2rem);
+  background: var(--oxide-tint);
+  color: var(--oxide);
   border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
 }
 
 main {
@@ -218,12 +283,10 @@ main {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 1.4rem;
+  margin-bottom: 1.6rem;
 }
 .page-head h1 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 1.75rem;
 }
 .lede {
   color: var(--muted);
@@ -231,23 +294,22 @@ main {
 }
 .card {
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--bg-soft);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
   padding: clamp(1rem, 2.5vw, 1.5rem);
   margin-bottom: 1.2rem;
 }
 .card h2 {
-  font-size: 1.05rem;
-  font-weight: 650;
+  font-size: 1.1875rem;
   margin-bottom: 0.8rem;
 }
 .card h3 {
-  font-size: 0.92rem;
-  font-weight: 650;
+  font-size: 1rem;
   margin-bottom: 0.5rem;
 }
 .card.note {
-  background: var(--bg-sunken);
+  border-inline-start: 3px solid var(--line-strong);
+  border-radius: 0 var(--radius) var(--radius) 0;
 }
 .card.note p + p {
   margin-top: 0.6rem;
@@ -279,7 +341,7 @@ main {
 .tabs {
   display: flex;
   gap: 1.2rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-strong);
   margin-bottom: 1.5rem;
 }
 .tabs a {
@@ -289,7 +351,7 @@ main {
 }
 .tabs a[aria-current] {
   color: var(--ink);
-  border-bottom-color: var(--brand);
+  border-bottom-color: var(--blueprint);
   text-decoration: none;
 }
 
@@ -300,11 +362,6 @@ main {
   margin: 0 0 0.4rem;
 }
 .schema-form legend {
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--faint);
   padding: 0.6rem 0 0.4rem;
 }
 .field {
@@ -312,10 +369,12 @@ main {
 }
 .field > label {
   display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--faint);
+  letter-spacing: 0.01em;
+  margin-bottom: 0.35rem;
 }
 .field-inline {
   display: flex;
@@ -331,7 +390,7 @@ main {
   width: auto;
 }
 .field .req {
-  color: var(--danger);
+  color: var(--oxide);
   margin-inline-start: 0.2rem;
 }
 .field.has-error input,
@@ -398,7 +457,7 @@ main {
   width: 3.2rem;
   height: 3.2rem;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--line);
 }
 .media-thumb.small {
@@ -422,7 +481,7 @@ main {
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  padding: 0.55rem 0;
+  padding: 0.6rem 0;
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
@@ -433,21 +492,32 @@ main {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
 }
 .rows-table th {
   text-align: start;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
   color: var(--faint);
+  letter-spacing: 0.01em;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--line-strong);
 }
 .rows-table td {
-  padding: 0.6rem 0.6rem 0.6rem 0;
+  padding: 0.65rem 0.6rem 0.65rem 0;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
+}
+@media (max-width: 40rem) {
+  /* A path column full of monospace URLs has no good break points; scroll
+     the table sideways instead of wrapping it into a single-character
+     column. */
+  .rows-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
 }
 .facts {
   display: grid;
@@ -455,15 +525,16 @@ main {
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
 }
 .facts dt {
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
   color: var(--faint);
-  margin-bottom: 0.2rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.25rem;
 }
 .facts dd {
   margin: 0;
+  font-variant-numeric: tabular-nums;
 }
 .filters {
   display: flex;
@@ -486,25 +557,28 @@ main {
   margin-top: 1.2rem;
 }
 
-/* Pills */
+/* Pills: a stamped tag, not a rounded chip — square corners, a hairline
+   frame in the status colour rather than a filled tint, matching how a
+   status stamp reads on a shipping document. */
 .pill {
   display: inline-block;
-  padding: 0.1rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 650;
-  background: var(--bg-sunken);
+  padding: 0.1rem 0.45rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
   color: var(--muted);
 }
 .pill.ok,
 .pill.published {
-  background: var(--brand-tint);
-  color: var(--brand);
+  border-color: var(--blueprint);
+  color: var(--blueprint);
 }
 .pill.warn,
 .pill.scheduled {
-  background: var(--warn-tint);
-  color: var(--warn);
+  border-color: var(--oxide);
+  color: var(--oxide);
 }
 
 .token-reveal {
@@ -513,9 +587,9 @@ main {
   gap: 0.6rem;
   flex-wrap: wrap;
   padding: 0.7rem;
-  border: 1px solid var(--brand);
+  border: 1px solid var(--blueprint);
   border-radius: var(--radius);
-  background: var(--brand-tint);
+  background: var(--blueprint-tint);
   margin-bottom: 1rem;
 }
 .token-reveal code {
@@ -529,14 +603,15 @@ main {
   place-items: center;
   min-height: 100vh;
   padding: 1.5rem;
+  background: var(--bg);
 }
 .login .card {
-  width: min(24rem, 100%);
+  width: min(23rem, 100%);
   margin: 0;
 }
 .login h1 {
-  font-size: 1.3rem;
-  margin-bottom: 1rem;
+  font-size: 1.375rem;
+  margin-bottom: 1.2rem;
 }
 .login button {
   width: 100%;
@@ -565,8 +640,8 @@ main {
   gap: 0.8rem;
   flex-wrap: wrap;
   padding: 0.6rem clamp(0.8rem, 2vw, 1.4rem);
-  border-bottom: 1px solid var(--line);
-  background: var(--bg-soft);
+  border-bottom: 1px solid var(--line-strong);
+  background: var(--bg-surface);
 }
 .editor-bar .grow {
   flex: 1;
@@ -603,7 +678,7 @@ main {
 }
 .pane-fields {
   padding: 1rem;
-  background: var(--bg-soft);
+  background: var(--bg-surface);
 }
 .pane-source {
   display: flex;
@@ -634,8 +709,8 @@ main {
 /* A line referencing a file the bundle does not contain. Missing media is a
    normal state, so this is a signpost, not an error (docs/ADMIN.md §6.4). */
 .cm-host .cm-missing-asset {
-  background: var(--warn-tint);
-  box-shadow: inset 3px 0 0 var(--warn);
+  background: var(--oxide-tint);
+  box-shadow: inset 3px 0 0 var(--oxide);
 }
 .markdown-fallback {
   flex: 1;
@@ -661,6 +736,8 @@ main {
   padding: 0.4rem 0.7rem;
   border-top: 1px solid var(--line);
   margin: 0;
+  font-size: 0.82rem;
+  color: var(--faint);
 }
 
 @media (max-width: 64rem) {
@@ -684,15 +761,15 @@ main {
 .upload-drop {
   display: block;
   padding: 1.2rem;
-  border: 1px dashed var(--line);
-  border-radius: 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
   text-align: center;
   color: var(--muted);
   cursor: pointer;
 }
 .upload-drop:hover {
-  border-color: var(--brand);
-  color: var(--brand);
+  border-color: var(--blueprint);
+  color: var(--blueprint);
 }
 .upload-drop input {
   display: block;
@@ -711,9 +788,9 @@ main {
 }
 .media-card {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-soft);
+  background: var(--bg-surface);
   display: flex;
   flex-direction: column;
 }
@@ -729,8 +806,8 @@ main {
   aspect-ratio: 4 / 3;
   background: var(--bg-sunken);
   color: var(--faint);
-  font-weight: 700;
-  letter-spacing: 0.05em;
+  font-family: var(--mono);
+  font-weight: 500;
 }
 .media-meta {
   padding: 0.5rem 0.6rem;
@@ -762,13 +839,13 @@ main {
   max-height: 85vh;
   overflow: auto;
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--bg);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
   color: var(--ink);
   padding: 1.2rem;
 }
 .modal::backdrop {
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(18 24 31 / 0.5);
 }
 .modal-head {
   display: flex;
@@ -803,9 +880,9 @@ main {
 .warning-line {
   margin-top: 0.8rem;
   padding: 0.6rem 0.8rem;
-  border-radius: var(--radius);
-  background: var(--warn-tint);
-  color: var(--warn);
+  border-inline-start: 3px solid var(--oxide);
+  background: var(--oxide-tint);
+  color: var(--oxide);
   font-size: 0.9rem;
 }
 .plugin h3,
@@ -842,11 +919,11 @@ main {
   gap: 0.8rem;
 }
 .detail-list dt {
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
   color: var(--faint);
+  letter-spacing: 0.01em;
 }
 .detail-list dd {
   margin: 0;
@@ -861,41 +938,85 @@ main {
   white-space: nowrap;
 }
 
-/* First-run wizard */
+/* ---------------------------------------------------------------------------
+   First-run wizard — a real sequence, so it earns a numbered treatment: a
+   ledger rule spanning the page, each step a mark on the line rather than a
+   row of pill tabs.
+--------------------------------------------------------------------------- */
 .setup {
   max-width: 40rem;
   margin-inline: auto;
   padding: clamp(1.5rem, 5vw, 3rem) 1.25rem;
 }
 .setup-head h1 {
-  font-size: 1.6rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  margin-bottom: 1rem;
+  font-size: 1.75rem;
+  margin-bottom: 1.25rem;
 }
 .steps {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1rem;
   list-style: none;
   padding: 0;
-  margin-bottom: 1.5rem;
-  font-size: 0.85rem;
-  color: var(--faint);
+  margin-bottom: 2rem;
   counter-reset: step;
 }
 .steps li {
   counter-increment: step;
+  flex: 1;
+  position: relative;
+  padding-top: 1.6rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--faint);
+  text-align: center;
 }
 .steps li::before {
-  content: counter(step) ". ";
+  content: counter(step);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  color: var(--faint);
+  font-size: 0.7rem;
+}
+.steps li::after {
+  content: "";
+  position: absolute;
+  top: 0.65rem;
+  left: -50%;
+  width: 100%;
+  height: 1px;
+  background: var(--line-strong);
+  z-index: -1;
+}
+.steps li:first-child::after {
+  display: none;
 }
 .steps li.current {
-  color: var(--brand);
-  font-weight: 650;
+  color: var(--ink);
+  font-weight: 600;
+}
+.steps li.current::before {
+  border-color: var(--blueprint);
+  background: var(--blueprint);
+  color: #fff;
 }
 .steps li.done {
   color: var(--muted);
+}
+.steps li.done::before {
+  content: "✓";
+  border-color: var(--blueprint);
+  color: var(--blueprint);
+}
+.steps li.done::after {
+  background: var(--blueprint);
 }
 .starter-option {
   display: flex;
@@ -908,7 +1029,7 @@ main {
   cursor: pointer;
 }
 .starter-option:hover {
-  border-color: var(--brand);
+  border-color: var(--blueprint);
 }
 .starter-option input {
   width: auto;
@@ -922,29 +1043,29 @@ main {
   display: inline-block;
   padding: 0.45rem 0.9rem;
   border-radius: var(--radius);
-  background: var(--brand);
+  background: var(--blueprint);
   color: #fff;
   font-weight: 600;
 }
 .button-link:hover {
-  background: var(--brand-deep);
+  background: var(--blueprint-deep);
   text-decoration: none;
 }
 .button-link.ghost-link {
   background: transparent;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   color: var(--muted);
 }
 .button-link.ghost-link:hover {
-  border-color: var(--brand);
-  color: var(--brand);
+  border-color: var(--blueprint);
+  color: var(--blueprint);
 }
 
 .upload-drop.dragging {
-  border-color: var(--brand);
+  border-color: var(--blueprint);
   border-style: solid;
-  background: var(--brand-tint);
-  color: var(--brand);
+  background: var(--blueprint-tint);
+  color: var(--blueprint);
 }
 .alt-button {
   border: 0;
@@ -956,5 +1077,5 @@ main {
   text-decoration: underline dotted;
 }
 .alt-button:hover {
-  color: var(--brand);
+  color: var(--blueprint);
 }
