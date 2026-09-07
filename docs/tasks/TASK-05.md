@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | XML builders | `src/core/seo.ts` | Pure functions over plain data: sitemap, sitemap index, RSS 2.0, robots. Deterministic — the feed's `lastBuildDate` is the newest item's date, never "now". |
 | Routes | `src/worker/seo-routes.ts` | `/sitemap.xml` (+ `/sitemap-N.xml` beyond 5000 URLs), `/feed.xml`, `/<locale>/feed.xml`, `/robots.txt`. Edge-cached under `sitemap` / `feed:<locale>` / `site` tags. |
-| noindex | `src/worker/public.ts` | Any host other than the bound domain gets `X-Robots-Tag: noindex`; with no domain bound, every host does. Robots on such hosts disallows everything. |
+| noindex | `src/worker/pages/context.ts` | Any host other than the bound domain gets `X-Robots-Tag: noindex`; with no domain bound, every host does. Robots on such hosts disallows everything. |
 | JSON-LD | `src/core/view.ts` | `Product` (name, description, `sku` falling back to `grade`, url) joins the existing `Article` and `WebSite`. |
 | GC | `src/db/queries.ts`, `src/worker/scheduled.ts` | The cron now drops `render_cache` rows from older pipeline versions and rows whose content is gone (`DATA_MODEL §4`). |
 

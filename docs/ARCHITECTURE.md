@@ -130,6 +130,27 @@ Worker behave the same.
 
 ## 4. The public request path
 
+The public site runs on `@fobstack/runtime`, the group's page engine. Mallok
+supplies the routes, the per-request state and the document; the runtime owns
+the lifecycle (`match → load → render → document → cache policy`), the cache
+semantics and the response. Entry point: `src/worker/pages/runtime.ts`.
+
+Three things are Mallok-specific and stay that way:
+
+- **The route manifest is hand-written**, not scanned from a file tree: the
+  Worker is bundled by Wrangler, not Vite, and three routes are cheaper to
+  list than a second bundler is to add.
+- **Routing is data-driven.** A kind's base path lives in `site.json`, so
+  `/products` and `/about` are the same shape until D1 says otherwise. One
+  catch-all page (`content.page.ts`) resolves content, kind lists, redirects
+  and the themed 404; `/` and `/tags/[...tag]` are the two shapes known
+  statically.
+- **The theme writes the document.** Mallok's themes already emit a whole
+  `<html>` in `layouts/base.liquid`, so the document renderer returns their
+  output untouched and the runtime's head descriptor is unused. SEO
+  directives that are not in the theme's `<head>` — `x-robots-tag` on a
+  non-bound host or a 404 — are response headers instead.
+
 ```
 GET /de/products/titanium-bar
  │
@@ -152,7 +173,11 @@ GET /de/products/titanium-bar
 4 D1 round trips, each with a constant number of queries and reading a
 bounded number of rows, regardless of how much content the site holds.** A
 plain page with no media or relations measures 2 (`batch(5)` + `batch(1)`,
-`test/worker/budget.test.ts`); resolved media adds one, and related items
+`test/worker/budget.test.ts`, unchanged by the move onto the runtime); the
+batch runs once per request in `buildLocals` — before routing, since the site
+row is what decides which route a path even is — and is memoised per
+`Request`, because the adapter asks for `locals` and for the request's locales
+through separate callbacks. Resolved media adds one, and related items
 with covers add one more. One batch was the original target, but the first
 round trip has to return the content row — its slug, kind, front matter and
 assets — before related content and media can even be looked up, so a second
@@ -297,7 +322,9 @@ enough.
 Everything under `/_mallok/*`, which must carry
 `Cache-Control: private, no-store`. Drafts and scheduled content whose time
 has not come are never written to the cache. Plugin routes are uncached by
-default.
+default. **A 404 is rendered but never stored**, so the page a visitor asked
+for is served as soon as it exists rather than after a TTL; it also carries
+`x-robots-tag: noindex`.
 
 ### 6.5 Scheduled work
 

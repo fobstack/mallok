@@ -13,6 +13,7 @@ import {
   buildListPageView,
   type CompiledTheme,
   computeFragmentCacheKey,
+  escapeHtml,
   type FragmentMeta,
   mediaUrl,
   PIPELINE_VERSION,
@@ -478,4 +479,50 @@ export async function loadRelations(
     : [];
 
   return { refs, backrefs, siblings };
+}
+
+/**
+ * Renders the themed 404.
+ *
+ * No theme declares a `notFound` layout, and adding one to all five would be
+ * a theme-format change for a page that is structurally an ordinary one. So
+ * this goes through the `page` layout every theme already has, with a view
+ * that says what happened — the visitor gets the site's header, footer and
+ * styling instead of a bare error, and themes stay untouched.
+ */
+export async function renderNotFoundPage(ctx: RenderContext): Promise<string> {
+  const strings = themeStrings(ctx.theme.manifest, ctx.theme.files, ctx.locale);
+  const title = strings['not_found_title'] ?? 'Page not found';
+  const body =
+    strings['not_found_body'] ??
+    'The page you asked for is not here. It may have moved, or the link may be wrong.';
+  const view = buildContentPageView(
+    viewContext(ctx),
+    {
+      id: '',
+      kind: 'page',
+      locale: ctx.locale,
+      slug: '',
+      path: ctx.path,
+      title,
+      description: '',
+      publishedAt: '',
+      updatedAt: '',
+      frontmatter: {},
+      cover: '',
+    },
+    {
+      html: `<p>${escapeHtml(body)}</p>`,
+      meta: {
+        excerpt: '',
+        readingTimeMinutes: 0,
+        headings: [],
+        refs: [],
+        missing: [],
+      },
+    },
+    [],
+  );
+  const layout = ctx.theme.manifest.kinds.page?.layout ?? 'layouts/page.liquid';
+  return renderPage(ctx.theme, layout, view);
 }

@@ -600,6 +600,17 @@ the official themes (`:target`, the checkbox hack).
   assembled, the template does it with `{% capture %}`. 0.1 deliberately
   introduces no i18n library.
 
+Two keys are read by the core rather than by a template:
+
+| Key | Default |
+| --- | --- |
+| `not_found_title` | `Page not found` |
+| `not_found_body` | `The page you asked for is not here. It may have moved, or the link may be wrong.` |
+
+A missing page is rendered through the theme's own `page` layout, so a visitor
+who mistypes a URL still gets the site's header, navigation and footer. No
+theme needs a `404` layout, and none of the official themes has one.
+
 ## 11. `assets/` and static files
 
 See §3.2. The essentials again, because they decide how templates are written:

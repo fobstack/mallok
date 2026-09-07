@@ -20,12 +20,12 @@ import { boot } from './bootstrap.js';
 import type { Env } from './env.js';
 import { problem } from './http.js';
 import { handleMedia } from './media.js';
+import { handlePublicPage } from './pages/runtime.js';
 import {
   handlePluginRoute,
   registryDeclaresOnRequest,
   runOnRequest,
 } from './plugin-runtime.js';
-import { handlePublic } from './public.js';
 import { handleScheduled } from './scheduled.js';
 import { handleSeo, isSeoPath } from './seo-routes.js';
 import { handleSetup } from './setup.js';
@@ -99,7 +99,7 @@ async function fetchHandler(
     if (isSeoPath(pathname)) {
       return await handleSeo(request, env, ctx, pathname);
     }
-    return await handlePublic(request, env, ctx);
+    return await handlePublicPage(request, env, ctx);
   } catch (error) {
     // Never leak SQL, bucket names or stack traces to the client.
     console.error(

@@ -61,6 +61,7 @@
     "build:site": "pnpm run build:cli && node dist/cli/index.js build . --theme ./src/themes/atelier --out dist/site"
   },
   "dependencies": {
+    "@fobstack/runtime": "file:../runtime",
     "hast-util-to-string": "3.0.1",
     "liquidjs": "10.29.0",
     "mdast-util-to-string": "4.0.0",

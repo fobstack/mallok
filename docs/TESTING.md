@@ -149,7 +149,7 @@ Every acceptance criterion in a completion report carries copyable evidence:
 
 ```
 AC-XX-YY  one sentence saying what is being accepted
-  Implementation  src/worker/public.ts:42  handlePublic()
+  Implementation  src/worker/pages/runtime.ts:78  handlePublicPage()
   Test            test/worker/flow.test.ts:118  "serves a cache HIT on the second request"
   Command         pnpm test
   Exit code       0

@@ -342,10 +342,24 @@ describe('walking skeleton', () => {
     expect(badAsset.status).toBe(400);
   });
 
-  it('returns 404 for unknown paths and hides internals', async () => {
+  it('renders the theme’s own 404 for unknown public paths', async () => {
     const missing = await get('/nope/nothing');
     expect(missing.status).toBe(404);
+    // A missing page is a real page in the site's theme, not a bare JSON
+    // error: a visitor who mistypes a URL still gets the header, the
+    // navigation and a way back.
+    expect(missing.headers.get('content-type')).toContain('text/html');
+    expect(missing.headers.get('x-robots-tag')).toBe('noindex');
+    const html = await missing.text();
+    expect(html).toContain('Page not found');
+    expect(html).toContain('<footer');
+    // Rendered but never stored: the page may exist by the next request.
+    expect(missing.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('returns 404 for unknown internal paths and hides internals', async () => {
+    const missing = await get('/_mallok/whatever');
+    expect(missing.status).toBe(404);
     expect(await missing.text()).toBe('{"error":"Not found."}');
-    expect((await get('/_mallok/whatever')).status).toBe(404);
   });
 });

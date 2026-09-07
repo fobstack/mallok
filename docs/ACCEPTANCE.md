@@ -442,6 +442,30 @@ signup shares whatever this one account's headroom comes from. The
 throwaway probe Worker was deleted after use and left no trace in this
 codebase.
 
+### 14.2.1 The move onto `@fobstack/runtime` (2026-09-07)
+
+The public request path was rebuilt on the group's page engine
+(`docs/ARCHITECTURE.md §4`). `src/worker/public.ts` is gone; `src/worker/pages/`
+replaces it. What was checked, and what changed:
+
+| Behaviour | Result |
+| --- | --- |
+| D1 round trips, cold content render | 2 (`batch(5)` + `batch(1)`) — unchanged |
+| D1 round trips, product page with relations | 2 (`batch(5)` + `batch(3)`) — unchanged |
+| `Cache-Control`, `Cache-Tag`, `x-mallok-cache`, `x-mallok-fragment` | byte-identical; pinned by `test/worker/flow.test.ts` |
+| `x-robots-tag: noindex` off the bound domain | preserved, now decided in `pages/context.ts` |
+| 301 redirects for moved slugs | preserved, absolute `Location` |
+| Drafts and scheduled items | still 404; the visibility rule is unchanged |
+| Worker bundle | 284.5 → 288.9 KiB gzip (9.4% of the Free 3 MB limit) |
+| **404 for an unknown public path** | **changed**: the theme's own page at status 404 with `x-robots-tag: noindex` and `Cache-Control: no-store`, instead of `{"error":"Not found."}`. Requested; `/_mallok/*` still answers JSON. |
+
+`AC-INV-05` is unaffected: the speculative batch runs once per request in
+`buildLocals`, memoised per `Request` because the adapter asks for `locals` and
+for the request's locales through separate callbacks.
+
+Full gate on 2026-09-07: `pnpm lint && pnpm typecheck && pnpm test && pnpm
+build && pnpm bundle:size && pnpm admin:size`, all green, 359 tests.
+
 ### 14.3 Evidence index
 
 | Kind of evidence | File |

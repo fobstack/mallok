@@ -1,5 +1,7 @@
 import { env, SELF } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { cacheKeyFor } from '../../src/worker/cache.js';
+import { handlePublicPage } from '../../src/worker/pages/runtime.js';
 
 /**
  * Measures the D1 call budget of a cold page render
@@ -15,6 +17,24 @@ const EMAIL = 'budget@example.com';
 const PASSWORD = 'a sufficiently long password';
 
 let token = '';
+
+/**
+ * Renders a page with nothing served from, or written to, the edge cache.
+ *
+ * The entry is dropped first so the render is genuinely cold, and the
+ * `waitUntil` given here does nothing, so the fresh response is never stored
+ * and a later measurement of the same path is cold too.
+ */
+async function coldRender(path: string, db: D1Database): Promise<Response> {
+  const request = new Request(`${ORIGIN}${path}`);
+  await caches.default.delete(cacheKeyFor(request));
+  const ctx = {
+    waitUntil: () => undefined,
+    passThroughOnException: () => undefined,
+    props: {},
+  } as unknown as ExecutionContext;
+  return await handlePublicPage(request, { ...env, DB: db } as typeof env, ctx);
+}
 
 /** Counts D1 round trips: `batch` is one, each statement verb is one. */
 function countingDb(real: D1Database): { db: D1Database; calls: string[] } {
@@ -124,20 +144,8 @@ describe('cold render D1 budget', () => {
   });
 
   it('records how many D1 calls a cold content render makes', async () => {
-    const { handlePublic } = await import('../../src/worker/public.js');
     const { db, calls } = countingDb(env.DB);
-    const ctx = {
-      waitUntil: () => undefined,
-      passThroughOnException: () => undefined,
-      props: {},
-    } as unknown as ExecutionContext;
-
-    const response = await handlePublic(
-      new Request(`${ORIGIN}${path}`),
-      { ...env, DB: db } as typeof env,
-      ctx,
-      { bypassCache: true },
-    );
+    const response = await coldRender(path, db);
     expect(response.status).toBe(200);
 
     // Reported rather than asserted against a number: docs/ACCEPTANCE.md §14
@@ -179,19 +187,8 @@ describe('cold render D1 budget', () => {
     });
     const heavyPath = ((await created.json()) as { path: string }).path;
 
-    const { handlePublic } = await import('../../src/worker/public.js');
     const { db, calls } = countingDb(env.DB);
-    const ctx = {
-      waitUntil: () => undefined,
-      passThroughOnException: () => undefined,
-      props: {},
-    } as unknown as ExecutionContext;
-    const response = await handlePublic(
-      new Request(`${ORIGIN}${heavyPath}`),
-      { ...env, DB: db } as typeof env,
-      ctx,
-      { bypassCache: true },
-    );
+    const response = await coldRender(heavyPath, db);
     expect(response.status).toBe(200);
     console.log(`D1 calls for a product page with relations: ${calls.length}`);
     for (const call of calls) {
