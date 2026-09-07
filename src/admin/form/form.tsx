@@ -7,7 +7,7 @@
  * plugin authors add fields without touching admin code.
  */
 
-import type { JSX } from 'preact';
+import type { JSX } from 'react';
 import {
   BooleanControl,
   KeyValueControl,
@@ -82,22 +82,22 @@ function Field(
   const label = labelFor(spec);
   return (
     <div
-      class={`field${inline ? ' field-inline' : ''}${error === undefined ? '' : ' has-error'}`}
+      className={`field${inline ? ' field-inline' : ''}${error === undefined ? '' : ' has-error'}`}
     >
-      <label for={id}>
+      <label htmlFor={id}>
         {label}
         {spec.field.required ? (
-          <span class="req" aria-hidden="true">
+          <span className="req" aria-hidden="true">
             *
           </span>
         ) : null}
       </label>
-      <div class="control">{controlFor(spec, props)}</div>
+      <div className="control">{controlFor(spec, props)}</div>
       {spec.field.help === undefined ? null : (
-        <p class="help">{spec.field.help}</p>
+        <p className="help">{spec.field.help}</p>
       )}
       {error === undefined ? null : (
-        <p class="error" role="alert">
+        <p className="error" role="alert">
           {error}
         </p>
       )}
@@ -109,7 +109,7 @@ function Field(
 export function SchemaForm(props: SchemaFormProps): JSX.Element {
   const groups = byGroup(props.specs);
   return (
-    <div class="schema-form">
+    <div className="schema-form">
       {groups.map(([group, specs]) => (
         <fieldset key={group === '' ? '__ungrouped' : group}>
           {group === '' ? null : <legend>{group}</legend>}

@@ -100,8 +100,8 @@ with **no vendor SDK entering the Worker**:
 
 | Area | Choice | Notes |
 | --- | --- | --- |
-| UI framework | `preact` + `@preact/signals` | Size first; no React compatibility layer |
-| Build | `vite` + `@preact/preset-vite` | A build-time dependency only |
+| UI framework | `react` + `react-dom`, state on `@preact/signals-react` | Switched from Preact 2026-09-06: contributor familiarity outweighed the size difference, measured at real ~54 KiB gzip (`ADMIN.md §13`) — still well inside the 150 KB first-load budget. Signals stayed: the app's state is a handful of globals, not enough to justify a store library, and `@preact/signals-react` keeps the same `signal()`/`computed()`/`.value` API the Preact build used |
+| Build | `vite` + `@vitejs/plugin-react` (with the `@preact/signals-react-transform` Babel plugin, so a bare `.value` read in JSX still subscribes automatically) | A build-time dependency only |
 | Markdown editing | `codemirror` + `@codemirror/lang-markdown` | The only body editor in 0.1. It runs in the browser and never enters the Worker |
 | Field forms | Generated in-repository from zod/JSON schemas | Content-kind fields, theme options, plugin settings and plugin panels are all schema-driven; no bespoke forms |
 | Live preview | Reuses `src/core/` in the browser | Byte-identical to production |
@@ -164,7 +164,7 @@ authors develop against what actually ships.
 | Lint and formatting | `@biomejs/biome`, rather than maintaining ESLint and Prettier together |
 | Unit tests | `vitest` |
 | Worker integration tests | `@cloudflare/vitest-pool-workers`, running in real workerd |
-| Admin component tests | `@testing-library/preact` + `happy-dom` |
+| Admin component tests | `@testing-library/react` + `happy-dom` |
 | Property tests and hostile input | `fast-check` |
 | End to end | `playwright` + `@axe-core/playwright` |
 | Performance gate | `lighthouse` / `@lhci/cli`, pinned, development-only |

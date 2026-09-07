@@ -7,8 +7,8 @@
  * fine (docs/SECURITY.md §3.1).
  */
 
-import type { JSX } from 'preact';
-import { useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useState } from 'react';
 import { ApiError } from '../api.js';
 import { signIn } from '../state.js';
 
@@ -18,7 +18,7 @@ export function LoginPage(): JSX.Element {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const submit = async (event: Event): Promise<void> => {
+  const submit = async (event: { preventDefault(): void }): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     setError('');
@@ -32,12 +32,12 @@ export function LoginPage(): JSX.Element {
   };
 
   return (
-    <div class="login">
-      <form class="card" onSubmit={(event) => void submit(event)}>
+    <div className="login">
+      <form className="card" onSubmit={(event) => void submit(event)}>
         <h1>Sign in</h1>
-        <div class="field">
-          <label for="login-email">Email</label>
-          <div class="control">
+        <div className="field">
+          <label htmlFor="login-email">Email</label>
+          <div className="control">
             <input
               id="login-email"
               type="email"
@@ -48,9 +48,9 @@ export function LoginPage(): JSX.Element {
             />
           </div>
         </div>
-        <div class="field">
-          <label for="login-password">Password</label>
-          <div class="control">
+        <div className="field">
+          <label htmlFor="login-password">Password</label>
+          <div className="control">
             <input
               id="login-password"
               type="password"
@@ -62,11 +62,11 @@ export function LoginPage(): JSX.Element {
           </div>
         </div>
         {error === '' ? null : (
-          <p class="error" role="alert">
+          <p className="error" role="alert">
             {error}
           </p>
         )}
-        <button type="submit" class="primary" disabled={busy}>
+        <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>

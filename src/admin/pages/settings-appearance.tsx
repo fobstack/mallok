@@ -7,8 +7,8 @@
  * (docs/PRODUCT_VISION.md §4).
  */
 
-import type { JSX } from 'preact';
-import { useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useState } from 'react';
 import { LOCALE_OPTIONS_KEY } from '../../core/constants.js';
 import { ApiError } from '../api.js';
 import { SavedNote } from '../components/saved-note.js';
@@ -54,7 +54,7 @@ export function AppearancePage(): JSX.Element {
         spec.field.default);
   }
 
-  const submit = async (event: Event): Promise<void> => {
+  const submit = async (event: { preventDefault(): void }): Promise<void> => {
     event.preventDefault();
     const found = validateAll(specs, values);
     setErrors(found);
@@ -94,21 +94,21 @@ export function AppearancePage(): JSX.Element {
   const kinds = Object.entries(active.kinds);
 
   return (
-    <div class="page">
-      <header class="page-head">
+    <div className="page">
+      <header className="page-head">
         <h1>Appearance</h1>
-        <p class="lede">
+        <p className="lede">
           The options below are runtime settings: saving takes effect without a
           rebuild. The theme itself is source code.
         </p>
       </header>
 
-      <section class="card">
+      <section className="card">
         <h2>
-          {active.name} <span class="code">{active.version}</span>
+          {active.name} <span className="code">{active.version}</span>
         </h2>
         {active.description === '' ? null : <p>{active.description}</p>}
-        <dl class="facts">
+        <dl className="facts">
           <div>
             <dt>Content types</dt>
             <dd>{kinds.map(([kind]) => kind).join(', ')}</dd>
@@ -117,9 +117,9 @@ export function AppearancePage(): JSX.Element {
             <dt>Client JavaScript</dt>
             <dd>
               {active.clientScripts.length === 0 ? (
-                <span class="pill ok">None</span>
+                <span className="pill ok">None</span>
               ) : (
-                <span class="pill warn">
+                <span className="pill warn">
                   Injects {active.clientScripts.length} script
                   {active.clientScripts.length === 1 ? '' : 's'}
                 </span>
@@ -129,12 +129,12 @@ export function AppearancePage(): JSX.Element {
           <div>
             <dt>Assets</dt>
             <dd>
-              <span class="code">{active.assetBase}</span>
+              <span className="code">{active.assetBase}</span>
             </dd>
           </div>
         </dl>
         {active.clientScripts.length === 0 ? null : (
-          <ul class="rows">
+          <ul className="rows">
             {active.clientScripts.map((script) => {
               // A theme may list a script as a bare path or with a stated
               // purpose; both are shown verbatim.
@@ -142,7 +142,7 @@ export function AppearancePage(): JSX.Element {
               const purpose = typeof script === 'string' ? '' : script.purpose;
               return (
                 <li key={path}>
-                  <span class="code">{path}</span>
+                  <span className="code">{path}</span>
                   <span>{purpose}</span>
                 </li>
               );
@@ -151,26 +151,26 @@ export function AppearancePage(): JSX.Element {
         )}
       </section>
 
-      <section class="card note">
+      <section className="card note">
         <h2>Changing the theme takes a deploy</h2>
         <p>
           Themes live in the source tree, not the database — they are compiled
           into the Worker. To switch, edit <code>ACTIVE_THEME</code> in{' '}
           <code>src/themes/index.ts</code>, then build and deploy again.
         </p>
-        <p class="help">
+        <p className="help">
           Built into this deployment: {active.available.join(', ')}. Your
           content, its ids and every URL stay exactly as they are.
         </p>
       </section>
 
       {specs.length === 0 ? null : (
-        <form class="card" onSubmit={(event) => void submit(event)}>
+        <form className="card" onSubmit={(event) => void submit(event)}>
           <h2>Theme options</h2>
           {current.locales.length > 1 ? (
             <>
-              <div class="filters">
-                <label class="filter">
+              <div className="filters">
+                <label className="filter">
                   <span>Editing</span>
                   <select
                     value={editingLocale}
@@ -188,7 +188,7 @@ export function AppearancePage(): JSX.Element {
                   </select>
                 </label>
               </div>
-              <p class="help">
+              <p className="help">
                 {editingLocale === current.defaultLocale
                   ? 'These values apply to every language unless a language overrides them below.'
                   : `Values you change here apply only to ${editingLocale}. Anything you leave alone follows the ${current.defaultLocale} value.`}
@@ -205,8 +205,8 @@ export function AppearancePage(): JSX.Element {
               setTouched(true);
             }}
           />
-          <div class="actions">
-            <button type="submit" class="primary" disabled={busy}>
+          <div className="actions">
+            <button type="submit" className="primary" disabled={busy}>
               {busy ? 'Saving…' : 'Save options'}
             </button>
             {saved ? <SavedNote /> : null}

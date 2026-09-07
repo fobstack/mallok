@@ -7,8 +7,8 @@
  * still letting a plugin have a real interface.
  */
 
-import type { JSX } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api, csrf } from '../api.js';
 import { notice } from '../state.js';
 import type { PluginPanel } from '../types.js';
@@ -32,7 +32,7 @@ function cell(
     return text.slice(0, 16).replace('T', ' ');
   }
   if (type === 'badge') {
-    return <span class={`pill ${text}`}>{text}</span>;
+    return <span className={`pill ${text}`}>{text}</span>;
   }
   return text;
 }
@@ -54,7 +54,8 @@ export function PluginPanelView({
 
   const base = `/plugins/${pluginId}/panels/${panel.id}`;
 
-  const reload = async (): Promise<void> => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filters is a new object every render; its stringified form is the real "did it change" check.
+  const reload = useCallback(async (): Promise<void> => {
     setLoading(true);
     const query = new URLSearchParams({
       limit: String(PAGE),
@@ -77,11 +78,11 @@ export function PluginPanelView({
     } finally {
       setLoading(false);
     }
-  };
+  }, [offset, base, JSON.stringify(filters)]);
 
   useEffect(() => {
     void reload();
-  }, [offset, JSON.stringify(filters)]);
+  }, [reload]);
 
   const runAction = async (
     action: PluginPanel['actions'][number],
@@ -132,11 +133,11 @@ export function PluginPanelView({
   };
 
   return (
-    <div class="panel">
-      <div class="panel-head">
+    <div className="panel">
+      <div className="panel-head">
         <h3>{panel.label}</h3>
         {panel.filters.map((field) => (
-          <label class="filter" key={field}>
+          <label className="filter" key={field}>
             <span>{field.replace(/_/g, ' ')}</span>
             <input
               value={filters[field] ?? ''}
@@ -151,12 +152,12 @@ export function PluginPanelView({
             />
           </label>
         ))}
-        <span class="grow" />
+        <span className="grow" />
         {panel.actions.map((action) => (
           <button
             key={action.id}
             type="button"
-            class="ghost"
+            className="ghost"
             onClick={() => void runAction(action)}
           >
             {action.label}
@@ -167,13 +168,13 @@ export function PluginPanelView({
       {loading ? (
         <p>Loading…</p>
       ) : rows.length === 0 ? (
-        <p class="empty">Nothing here yet.</p>
+        <p className="empty">Nothing here yet.</p>
       ) : (
-        <table class="rows-table">
+        <table className="rows-table">
           <thead>
             <tr>
               <th scope="col">
-                <span class="visually-hidden">Select</span>
+                <span className="visually-hidden">Select</span>
               </th>
               {panel.columns.map((column) => (
                 <th scope="col" key={column.field}>
@@ -181,7 +182,7 @@ export function PluginPanelView({
                 </th>
               ))}
               <th scope="col">
-                <span class="visually-hidden">Details</span>
+                <span className="visually-hidden">Details</span>
               </th>
             </tr>
           </thead>
@@ -212,7 +213,7 @@ export function PluginPanelView({
                   <td>
                     <button
                       type="button"
-                      class="ghost"
+                      className="ghost"
                       onClick={() => setOpen(row)}
                     >
                       Open
@@ -225,10 +226,10 @@ export function PluginPanelView({
         </table>
       )}
 
-      <nav class="pager" aria-label="Pagination">
+      <nav className="pager" aria-label="Pagination">
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           disabled={offset === 0}
           onClick={() => setOffset(Math.max(0, offset - PAGE))}
         >
@@ -236,7 +237,7 @@ export function PluginPanelView({
         </button>
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           disabled={!hasNext}
           onClick={() => setOffset(offset + PAGE)}
         >
@@ -266,19 +267,19 @@ function RowDetail({
   ];
   return (
     <dialog
-      class="modal"
+      className="modal"
       aria-label={`${panel.label} detail`}
       ref={(element) => element?.showModal()}
       onClose={onClose}
       onCancel={onClose}
     >
-      <header class="modal-head">
+      <header className="modal-head">
         <h2>{panel.label}</h2>
-        <button type="button" class="ghost" onClick={onClose}>
+        <button type="button" className="ghost" onClick={onClose}>
           Close
         </button>
       </header>
-      <dl class="detail-list">
+      <dl className="detail-list">
         {fields.map((field) => (
           <div key={field}>
             <dt>{field.replace(/_/g, ' ')}</dt>

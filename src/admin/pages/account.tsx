@@ -5,8 +5,8 @@
  * is stated plainly rather than hidden (docs/SECURITY.md §3.1).
  */
 
-import type { JSX } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { notice, session } from '../state.js';
 
@@ -33,7 +33,7 @@ export function AccountPage(): JSX.Element {
   const [chosen, setChosen] = useState<string[]>(['content:write']);
   const [busy, setBusy] = useState(false);
 
-  const reload = async (): Promise<void> => {
+  const reload = useCallback(async (): Promise<void> => {
     try {
       const result = await api<{ tokens: TokenRow[] }>('/tokens');
       setTokens(result.tokens);
@@ -41,13 +41,13 @@ export function AccountPage(): JSX.Element {
       notice.value =
         caught instanceof ApiError ? caught.message : 'Could not load tokens.';
     }
-  };
+  }, []);
 
   useEffect(() => {
     void reload();
-  }, []);
+  }, [reload]);
 
-  const create = async (event: Event): Promise<void> => {
+  const create = async (event: { preventDefault(): void }): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     try {
@@ -73,15 +73,15 @@ export function AccountPage(): JSX.Element {
       activeSession.passwordRecommendedIterations;
 
   return (
-    <div class="page">
-      <header class="page-head">
+    <div className="page">
+      <header className="page-head">
         <h1>Account</h1>
       </header>
 
       <PasswordSection />
 
       {weakPassword && activeSession !== null ? (
-        <section class="card note">
+        <section className="card note">
           <h2>About password hashing</h2>
           <p>
             Passwords are hashed with PBKDF2-SHA256 at{' '}
@@ -91,49 +91,53 @@ export function AccountPage(): JSX.Element {
             a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU
             budget, so the cost is capped.
           </p>
-          <p class="help">
+          <p className="help">
             Use a long, unique password. For stronger protection, put Cloudflare
             Access in front of <code>/_mallok/</code>.
           </p>
         </section>
       ) : null}
 
-      <section class="card">
+      <section className="card">
         <h2>API tokens</h2>
-        <p class="help">
+        <p className="help">
           The CLI and any script use these. A token is shown once — copy it now,
           it cannot be retrieved later.
         </p>
         {minted === '' ? null : (
-          <div class="token-reveal" role="alert">
+          <div className="token-reveal" role="alert">
             <code>{minted}</code>
             <button
               type="button"
-              class="ghost"
+              className="ghost"
               onClick={() => {
                 void navigator.clipboard?.writeText(minted);
               }}
             >
               Copy
             </button>
-            <button type="button" class="ghost" onClick={() => setMinted('')}>
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => setMinted('')}
+            >
               Done
             </button>
           </div>
         )}
-        <ul class="rows">
+        <ul className="rows">
           {tokens.map((token) => (
             <li key={token.id}>
               <span>{token.name}</span>
-              <span class="code">{token.scopes.join(' ')}</span>
-              <span class="help">
+              <span className="code">{token.scopes.join(' ')}</span>
+              <span className="help">
                 {token.lastUsedAt === null
                   ? 'Never used'
                   : `Last used ${token.lastUsedAt.slice(0, 10)}`}
               </span>
               <button
                 type="button"
-                class="ghost"
+                className="ghost"
                 onClick={() => {
                   void (async () => {
                     await api(`/tokens/${token.id}`, { method: 'DELETE' });
@@ -146,10 +150,10 @@ export function AccountPage(): JSX.Element {
             </li>
           ))}
         </ul>
-        <form class="inline-form" onSubmit={(event) => void create(event)}>
-          <div class="field">
-            <label for="token-name">New token name</label>
-            <div class="control">
+        <form className="inline-form" onSubmit={(event) => void create(event)}>
+          <div className="field">
+            <label htmlFor="token-name">New token name</label>
+            <div className="control">
               <input
                 id="token-name"
                 required
@@ -158,10 +162,10 @@ export function AccountPage(): JSX.Element {
               />
             </div>
           </div>
-          <fieldset class="scopes">
+          <fieldset className="scopes">
             <legend>Scopes</legend>
             {SCOPES.map((scope) => (
-              <label key={scope} class="check">
+              <label key={scope} className="check">
                 <input
                   type="checkbox"
                   checked={chosen.includes(scope)}
@@ -173,11 +177,11 @@ export function AccountPage(): JSX.Element {
                     )
                   }
                 />
-                <span class="code">{scope}</span>
+                <span className="code">{scope}</span>
               </label>
             ))}
           </fieldset>
-          <button type="submit" class="primary" disabled={busy}>
+          <button type="submit" className="primary" disabled={busy}>
             Create token
           </button>
         </form>
@@ -192,7 +196,7 @@ function PasswordSection(): JSX.Element {
   const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const submit = async (event: Event): Promise<void> => {
+  const submit = async (event: { preventDefault(): void }): Promise<void> => {
     event.preventDefault();
     setBusy(true);
     setDone(false);
@@ -215,11 +219,11 @@ function PasswordSection(): JSX.Element {
   };
 
   return (
-    <form class="card" onSubmit={(event) => void submit(event)}>
+    <form className="card" onSubmit={(event) => void submit(event)}>
       <h2>Password</h2>
-      <div class="field">
-        <label for="pw-current">Current password</label>
-        <div class="control">
+      <div className="field">
+        <label htmlFor="pw-current">Current password</label>
+        <div className="control">
           <input
             id="pw-current"
             type="password"
@@ -230,9 +234,9 @@ function PasswordSection(): JSX.Element {
           />
         </div>
       </div>
-      <div class="field">
-        <label for="pw-next">New password</label>
-        <div class="control">
+      <div className="field">
+        <label htmlFor="pw-next">New password</label>
+        <div className="control">
           <input
             id="pw-next"
             type="password"
@@ -244,11 +248,11 @@ function PasswordSection(): JSX.Element {
           />
         </div>
       </div>
-      <div class="actions">
-        <button type="submit" class="primary" disabled={busy}>
+      <div className="actions">
+        <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Changing…' : 'Change password'}
         </button>
-        {done ? <span class="pill ok">Changed</span> : null}
+        {done ? <span className="pill ok">Changed</span> : null}
       </div>
     </form>
   );

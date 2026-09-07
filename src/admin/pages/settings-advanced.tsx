@@ -6,8 +6,8 @@
  * and has to be stated once, plainly (docs/ARCHITECTURE.md §15).
  */
 
-import type { JSX } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import type { ExportProgress } from '../export.js';
 import { notice, saveSettings, settings } from '../state.js';
@@ -83,28 +83,28 @@ function BackupSection(): JSX.Element {
   };
 
   return (
-    <section class="card">
+    <section className="card">
       <h2>Backup and export</h2>
-      <p class="help">
+      <p className="help">
         A zip containing every page as Markdown, its images, your settings and
         your inquiries. It is a complete site you can read anywhere — take it to
         Astro, Hugo or Obsidian whenever you like. Export before upgrading.
       </p>
-      <div class="actions">
+      <div className="actions">
         <button
           type="button"
-          class="primary"
+          className="primary"
           disabled={busy}
           onClick={() => void run()}
         >
           {busy ? 'Building…' : 'Export everything'}
         </button>
         {progress === null ? null : (
-          <span class="help" role="status">
+          <span className="help" role="status">
             {progress.done}/{progress.total} files
           </span>
         )}
-        {result === '' ? null : <span class="pill ok">{result}</span>}
+        {result === '' ? null : <span className="pill ok">{result}</span>}
       </div>
     </section>
   );
@@ -175,21 +175,21 @@ export function AdvancedPage(): JSX.Element {
   };
 
   return (
-    <div class="page">
-      <header class="page-head">
+    <div className="page">
+      <header className="page-head">
         <h1>Advanced</h1>
-        <p class="lede">
+        <p className="lede">
           Everything below is a platform detail. You do not need any of it to
           run the site.
         </p>
       </header>
 
-      <section class="card">
+      <section className="card">
         <h2>What is instant, and what needs a deploy</h2>
-        <div class="two-col">
+        <div className="two-col">
           <div>
             <h3>Instant</h3>
-            <ul class="bullets">
+            <ul className="bullets">
               {INSTANT.map((line) => (
                 <li key={line}>{line}</li>
               ))}
@@ -197,7 +197,7 @@ export function AdvancedPage(): JSX.Element {
           </div>
           <div>
             <h3>Needs a rebuild and deploy</h3>
-            <ul class="bullets">
+            <ul className="bullets">
               {NEEDS_DEPLOY.map((line) => (
                 <li key={line}>{line}</li>
               ))}
@@ -206,16 +206,16 @@ export function AdvancedPage(): JSX.Element {
         </div>
       </section>
 
-      <section class="card">
+      <section className="card">
         <h2>Diagnostics</h2>
-        <dl class="facts">
+        <dl className="facts">
           <div>
             <dt>Custom domain</dt>
             <dd>
               {health?.customDomain === null || health === null ? (
-                <span class="pill warn">Not bound</span>
+                <span className="pill warn">Not bound</span>
               ) : (
-                <span class="code">{health.customDomain}</span>
+                <span className="code">{health.customDomain}</span>
               )}
             </dd>
           </div>
@@ -223,11 +223,11 @@ export function AdvancedPage(): JSX.Element {
             <dt>Edge cache</dt>
             <dd>
               {health?.customDomain == null ? (
-                <span class="pill warn">
+                <span className="pill warn">
                   Inactive — a workers.dev URL is a preview, not a site
                 </span>
               ) : (
-                <span class="pill ok">Active</span>
+                <span className="pill ok">Active</span>
               )}
             </dd>
           </div>
@@ -235,9 +235,9 @@ export function AdvancedPage(): JSX.Element {
             <dt>Cache purge token</dt>
             <dd>
               {health?.purgeConfigured === true ? (
-                <span class="pill ok">Configured</span>
+                <span className="pill ok">Configured</span>
               ) : (
-                <span class="pill warn">
+                <span className="pill warn">
                   Not configured — edits go live after the cache expires
                 </span>
               )}
@@ -247,22 +247,22 @@ export function AdvancedPage(): JSX.Element {
             <dt>Media domain</dt>
             <dd>
               {health?.mediaBaseUrl == null ? (
-                <span class="pill warn">Served through the Worker</span>
+                <span className="pill warn">Served through the Worker</span>
               ) : (
-                <span class="code">{health.mediaBaseUrl}</span>
+                <span className="code">{health.mediaBaseUrl}</span>
               )}
             </dd>
           </div>
           <div>
             <dt>Theme</dt>
             <dd>
-              <span class="code">{health?.theme ?? '—'}</span>
+              <span className="code">{health?.theme ?? '—'}</span>
             </dd>
           </div>
           <div>
             <dt>Render pipeline</dt>
             <dd>
-              <span class="code">{health?.pipeline ?? '—'}</span>
+              <span className="code">{health?.pipeline ?? '—'}</span>
             </dd>
           </div>
           <div>
@@ -272,12 +272,12 @@ export function AdvancedPage(): JSX.Element {
         </dl>
       </section>
 
-      <section class="card">
+      <section className="card">
         <h2>Storage</h2>
         {diagnostics === null ? (
           <p>Loading…</p>
         ) : (
-          <dl class="facts">
+          <dl className="facts">
             {Object.entries(diagnostics.counts).map(([key, count]) => (
               <div key={key}>
                 <dt>{key}</dt>
@@ -286,16 +286,16 @@ export function AdvancedPage(): JSX.Element {
             ))}
           </dl>
         )}
-        <p class="help">{diagnostics?.quotaUsageNote ?? ''}</p>
+        <p className="help">{diagnostics?.quotaUsageNote ?? ''}</p>
       </section>
 
       <BackupSection />
 
-      <section class="card">
+      <section className="card">
         <h2>Cache</h2>
-        <div class="field field-inline">
-          <label for="cache-ttl">Edge cache lifetime (seconds)</label>
-          <div class="control">
+        <div className="field field-inline">
+          <label htmlFor="cache-ttl">Edge cache lifetime (seconds)</label>
+          <div className="control">
             <input
               id="cache-ttl"
               type="number"
@@ -306,14 +306,14 @@ export function AdvancedPage(): JSX.Element {
             />
           </div>
         </div>
-        <p class="help">
+        <p className="help">
           Saving content purges the pages it affects, so this is a ceiling for
           pages nothing touched — not the delay before an edit appears.
         </p>
-        <div class="actions">
+        <div className="actions">
           <button
             type="button"
-            class="primary"
+            className="primary"
             disabled={busy || ttl === null}
             onClick={() => void saveTtl()}
           >
@@ -322,15 +322,15 @@ export function AdvancedPage(): JSX.Element {
         </div>
 
         <h3>Clearing caches</h3>
-        <p class="help">
+        <p className="help">
           Neither of these loses anything. Cached pages and fragments are both
           derived from your content and are rebuilt on the next request — the
           only cost is that the next visitor waits for a render.
         </p>
-        <div class="actions">
+        <div className="actions">
           <button
             type="button"
-            class="ghost"
+            className="ghost"
             disabled={clearing !== ''}
             onClick={() => void clear('purge', 'Cleared the page cache.')}
           >
@@ -338,7 +338,7 @@ export function AdvancedPage(): JSX.Element {
           </button>
           <button
             type="button"
-            class="ghost"
+            className="ghost"
             disabled={clearing !== ''}
             onClick={() =>
               void clear('fragments', 'Cleared the fragment cache.')
@@ -347,7 +347,7 @@ export function AdvancedPage(): JSX.Element {
             {clearing === 'fragments' ? 'Clearing…' : 'Rebuild all pages'}
           </button>
           {cacheResult === '' ? null : (
-            <span class="pill ok">{cacheResult}</span>
+            <span className="pill ok">{cacheResult}</span>
           )}
         </div>
       </section>

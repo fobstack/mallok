@@ -13,8 +13,8 @@
  */
 
 import type { DecorationSet } from '@codemirror/view';
-import type { JSX } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface MarkdownEditorProps {
   readonly value: string;
@@ -140,6 +140,7 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
     // Mounted once; the sync effect below keeps the document current.
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: rich is unread but is the signal that handle.current just became non-null.
   useEffect(() => {
     const editor = handle.current;
     if (editor === null) {
@@ -152,19 +153,20 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
     }
   }, [props.value, rich]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above.
   useEffect(() => {
     handle.current?.setMissing(props.missing ?? []);
   }, [props.missing, rich]);
 
   return (
-    <div class="markdown-pane">
-      <div ref={host} class={rich ? 'cm-host' : 'cm-host hidden'} />
+    <div className="markdown-pane">
+      <div ref={host} className={rich ? 'cm-host' : 'cm-host hidden'} />
       {rich ? null : (
         <textarea
-          class="markdown-fallback"
+          className="markdown-fallback"
           aria-label="Markdown source"
           value={props.value}
-          spellcheck={false}
+          spellCheck={false}
           onInput={(event) => props.onChange(event.currentTarget.value)}
         />
       )}

@@ -2,7 +2,7 @@
  * Route table and the signed-in/signed-out split.
  */
 
-import type { JSX } from 'preact';
+import type { JSX } from 'react';
 import { lazyRoute } from './components/lazy.js';
 import { Shell } from './components/shell.js';
 import { AccountPage } from './pages/account.js';
@@ -45,8 +45,8 @@ function SettingsLayout({
 }): JSX.Element {
   const path = route.value;
   return (
-    <div class="with-tabs">
-      <nav class="tabs" aria-label="Settings sections">
+    <div className="with-tabs">
+      <nav className="tabs" aria-label="Settings sections">
         {SETTINGS_TABS.map((tab) => (
           <a
             key={tab.href}
@@ -68,7 +68,7 @@ function SettingsLayout({
 
 function NotFound(): JSX.Element {
   return (
-    <div class="page">
+    <div className="page">
       <h1>Not found</h1>
       <p>
         <a
@@ -133,7 +133,7 @@ export function App(): JSX.Element {
     return <SetupPage />;
   }
   if (!ready.value) {
-    return <div class="booting">Loading…</div>;
+    return <div className="booting">Loading…</div>;
   }
   if (session.value === false) {
     return <LoginPage />;

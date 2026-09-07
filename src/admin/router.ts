@@ -5,7 +5,7 @@
  * nesting, no data loaders. The path helpers live in `routes.ts`.
  */
 
-import { signal } from '@preact/signals';
+import { signal } from '@preact/signals-react';
 import { APP_BASE, toHref, toRoute } from './routes.js';
 
 export { APP_BASE, match, toHref } from './routes.js';

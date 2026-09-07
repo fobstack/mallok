@@ -6,8 +6,8 @@
  * stores URLs cannot be exported and moved (docs/CONTENT_FORMAT.md §4).
  */
 
-import type { JSX } from 'preact';
-import { useEffect, useRef, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { relativePathFor, type UploadProgress, uploadFile } from '../media.js';
 import { notice, settings, theme } from '../state.js';
@@ -32,7 +32,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
   const active = theme.value;
   const site = settings.value;
 
-  const reload = async (): Promise<void> => {
+  const reload = useCallback(async (): Promise<void> => {
     setLoading(true);
     try {
       const query = props.kind === undefined ? '' : `?kind=${props.kind}`;
@@ -45,11 +45,11 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
     } finally {
       setLoading(false);
     }
-  };
+  }, [props.kind]);
 
   useEffect(() => {
     void reload();
-  }, [props.kind]);
+  }, [reload]);
 
   const onFiles = async (files: FileList | null): Promise<void> => {
     if (files === null || active === null) {
@@ -102,13 +102,13 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
   };
 
   return (
-    <div class="media-library">
-      <div class="uploader">
+    <div className="media-library">
+      <div className="uploader">
         {/* The drop handlers live on the label, which is a real form control,
             rather than on a bare div with no keyboard path to the same
             action — the file input inside it is that path. */}
         <label
-          class={dragging ? 'upload-drop dragging' : 'upload-drop'}
+          className={dragging ? 'upload-drop dragging' : 'upload-drop'}
           onDragOver={(event) => {
             event.preventDefault();
             setDragging(true);
@@ -137,18 +137,18 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
             {dragging ? 'Drop to upload' : 'Choose files, or drop them here'}
           </span>
         </label>
-        <p class="help">
+        <p className="help">
           Images are converted to WebP in your browser and uploaded at{' '}
           {active?.imageWidths.join(', ') ?? ''} pixels wide. SVG is not
           accepted — it can carry script.
         </p>
         {progress === null ? null : (
-          <p class="help" role="status">
+          <p className="help" role="status">
             {progress.file}: {progress.stage}
           </p>
         )}
         {error === '' ? null : (
-          <p class="error" role="alert">
+          <p className="error" role="alert">
             {error}
           </p>
         )}
@@ -157,21 +157,21 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
       {loading ? (
         <p>Loading…</p>
       ) : items.length === 0 ? (
-        <p class="empty">No media yet.</p>
+        <p className="empty">No media yet.</p>
       ) : (
-        <ul class="media-grid">
+        <ul className="media-grid">
           {items.map((item) => (
-            <li key={item.sha256} class="media-card">
+            <li key={item.sha256} className="media-card">
               {item.kind === 'image' ? (
                 <img src={item.url} alt={item.alt ?? ''} loading="lazy" />
               ) : (
-                <span class="file-badge">{item.ext.toUpperCase()}</span>
+                <span className="file-badge">{item.ext.toUpperCase()}</span>
               )}
-              <div class="media-meta">
-                <span class="name" title={item.originalName}>
+              <div className="media-meta">
+                <span className="name" title={item.originalName}>
                   {item.originalName}
                 </span>
-                <span class="help">
+                <span className="help">
                   {item.width === null
                     ? `${Math.round(item.bytes / 1024)} KB`
                     : `${item.width}×${item.height}`}
@@ -180,7 +180,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                     : ` · used ${item.refCount}×`}
                 </span>
                 {item.kind !== 'image' ? null : editing === item.sha256 ? (
-                  <div class="list-row">
+                  <div className="list-row">
                     <input
                       aria-label="Alt text"
                       placeholder="Describe the image"
@@ -191,7 +191,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                     />
                     <button
                       type="button"
-                      class="ghost"
+                      className="ghost"
                       onClick={() => void saveAlt(item)}
                     >
                       Save
@@ -200,7 +200,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                 ) : (
                   <button
                     type="button"
-                    class="alt-button"
+                    className="alt-button"
                     onClick={() => {
                       setEditing(item.sha256);
                       setAltDraft(item.alt ?? '');
@@ -212,11 +212,11 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                   </button>
                 )}
               </div>
-              <div class="media-actions">
+              <div className="media-actions">
                 {props.onPick === undefined ? null : (
                   <button
                     type="button"
-                    class="ghost"
+                    className="ghost"
                     onClick={() => props.onPick?.(relativePathFor(item), item)}
                   >
                     Use
@@ -224,7 +224,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                 )}
                 <button
                   type="button"
-                  class="ghost"
+                  className="ghost"
                   disabled={item.refCount > 0}
                   title={
                     item.refCount > 0
@@ -265,16 +265,16 @@ export function MediaPicker(props: {
   return (
     <dialog
       ref={dialog}
-      class="modal"
+      className="modal"
       aria-label={props.kind === 'image' ? 'Choose an image' : 'Choose a file'}
       onClose={props.onClose}
       onCancel={props.onClose}
     >
-      <header class="modal-head">
+      <header className="modal-head">
         <h2>Choose {props.kind === 'image' ? 'an image' : 'a file'}</h2>
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           onClick={() => dialog.current?.close()}
         >
           Close

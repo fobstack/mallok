@@ -6,7 +6,7 @@
  * local. A state library would be more machinery than the app has state.
  */
 
-import { computed, signal } from '@preact/signals';
+import { computed, signal } from '@preact/signals-react';
 import { api, setCsrf } from './api.js';
 import type { Health, Session, Settings, ThemeInfo } from './types.js';
 

@@ -8,8 +8,8 @@
  * wording keeps them distinct from failures.
  */
 
-import type { JSX } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError, api, setCsrf } from '../api.js';
 
 interface SetupStatus {
@@ -116,8 +116,8 @@ export function SetupPage(): JSX.Element {
 
   if (gone) {
     return (
-      <div class="login">
-        <div class="card">
+      <div className="login">
+        <div className="card">
           <h1>Setup is finished</h1>
           <p>
             This site has already been set up. Everything the wizard did can be
@@ -129,20 +129,20 @@ export function SetupPage(): JSX.Element {
   }
 
   if (status === null) {
-    return <div class="booting">{error === '' ? 'Loading…' : error}</div>;
+    return <div className="booting">{error === '' ? 'Loading…' : error}</div>;
   }
 
   const steps: Step[] = ['admin', 'site', 'starter', 'domain', 'done'];
 
   return (
-    <div class="setup">
-      <header class="setup-head">
+    <div className="setup">
+      <header className="setup-head">
         <h1>Set up your site</h1>
-        <ol class="steps">
+        <ol className="steps">
           {steps.map((entry, index) => (
             <li
               key={entry}
-              class={
+              className={
                 entry === step
                   ? 'current'
                   : steps.indexOf(step) > index
@@ -157,23 +157,23 @@ export function SetupPage(): JSX.Element {
       </header>
 
       {error === '' ? null : (
-        <p class="error" role="alert">
+        <p className="error" role="alert">
           {error}
         </p>
       )}
 
       {step === 'admin' ? (
         <form
-          class="card"
+          className="card"
           onSubmit={(event) => {
             event.preventDefault();
             void run('admin', { email, password }, 'site');
           }}
         >
           <h2>Create the administrator</h2>
-          <div class="field">
-            <label for="setup-email">Email</label>
-            <div class="control">
+          <div className="field">
+            <label htmlFor="setup-email">Email</label>
+            <div className="control">
               <input
                 id="setup-email"
                 type="email"
@@ -184,9 +184,9 @@ export function SetupPage(): JSX.Element {
               />
             </div>
           </div>
-          <div class="field">
-            <label for="setup-password">Password</label>
-            <div class="control">
+          <div className="field">
+            <label htmlFor="setup-password">Password</label>
+            <div className="control">
               <input
                 id="setup-password"
                 type="password"
@@ -197,11 +197,11 @@ export function SetupPage(): JSX.Element {
                 onInput={(event) => setPassword(event.currentTarget.value)}
               />
             </div>
-            <p class="help">
+            <p className="help">
               At least 12 characters. This is the only account.
             </p>
           </div>
-          <button type="submit" class="primary" disabled={busy}>
+          <button type="submit" className="primary" disabled={busy}>
             {busy ? 'Creating…' : 'Continue'}
           </button>
         </form>
@@ -209,7 +209,7 @@ export function SetupPage(): JSX.Element {
 
       {step === 'site' ? (
         <form
-          class="card"
+          className="card"
           onSubmit={(event) => {
             event.preventDefault();
             const extra = extraLocales
@@ -228,9 +228,9 @@ export function SetupPage(): JSX.Element {
           }}
         >
           <h2>Name your site</h2>
-          <div class="field">
-            <label for="setup-name">Site name</label>
-            <div class="control">
+          <div className="field">
+            <label htmlFor="setup-name">Site name</label>
+            <div className="control">
               <input
                 id="setup-name"
                 required
@@ -239,9 +239,9 @@ export function SetupPage(): JSX.Element {
               />
             </div>
           </div>
-          <div class="field">
-            <label for="setup-locale">Main language</label>
-            <div class="control">
+          <div className="field">
+            <label htmlFor="setup-locale">Main language</label>
+            <div className="control">
               <input
                 id="setup-locale"
                 required
@@ -249,14 +249,14 @@ export function SetupPage(): JSX.Element {
                 onInput={(event) => setLocale(event.currentTarget.value)}
               />
             </div>
-            <p class="help">
+            <p className="help">
               A language code such as <code>en</code> or <code>zh</code>. It has
               no URL prefix; every other language does.
             </p>
           </div>
-          <div class="field">
-            <label for="setup-extra">Other languages</label>
-            <div class="control">
+          <div className="field">
+            <label htmlFor="setup-extra">Other languages</label>
+            <div className="control">
               <input
                 id="setup-extra"
                 placeholder="zh, de"
@@ -264,23 +264,23 @@ export function SetupPage(): JSX.Element {
                 onInput={(event) => setExtraLocales(event.currentTarget.value)}
               />
             </div>
-            <p class="help">Comma separated. You can add more later.</p>
+            <p className="help">Comma separated. You can add more later.</p>
           </div>
-          <button type="submit" class="primary" disabled={busy}>
+          <button type="submit" className="primary" disabled={busy}>
             {busy ? 'Saving…' : 'Continue'}
           </button>
         </form>
       ) : null}
 
       {step === 'starter' ? (
-        <div class="card">
+        <div className="card">
           <h2>Start with example content?</h2>
-          <p class="help">
+          <p className="help">
             A starter fills the site with real pages you can edit or delete.
             Skipping gives you an empty site.
           </p>
           {status.starters.map((entry) => (
-            <label class="starter-option" key={entry.id}>
+            <label className="starter-option" key={entry.id}>
               <input
                 type="radio"
                 name="starter"
@@ -289,8 +289,8 @@ export function SetupPage(): JSX.Element {
               />
               <span>
                 <strong>{entry.name}</strong>
-                <span class="help">{entry.description}</span>
-                <span class="help">
+                <span className="help">{entry.description}</span>
+                <span className="help">
                   {entry.documents} pages
                   {entry.matchesActiveTheme
                     ? ''
@@ -299,10 +299,10 @@ export function SetupPage(): JSX.Element {
               </span>
             </label>
           ))}
-          <div class="actions">
+          <div className="actions">
             <button
               type="button"
-              class="primary"
+              className="primary"
               disabled={busy || starter === ''}
               onClick={() => void run('starter', { starter }, 'domain')}
             >
@@ -310,7 +310,7 @@ export function SetupPage(): JSX.Element {
             </button>
             <button
               type="button"
-              class="ghost"
+              className="ghost"
               disabled={busy}
               onClick={() => setStep('domain')}
             >
@@ -321,7 +321,7 @@ export function SetupPage(): JSX.Element {
       ) : null}
 
       {step === 'domain' ? (
-        <div class="card">
+        <div className="card">
           <h2>Your domain</h2>
           {status.customDomain === null ? (
             <>
@@ -332,7 +332,7 @@ export function SetupPage(): JSX.Element {
                 so pages are rendered on every request and will feel slower than
                 the real site.
               </p>
-              <p class="help">
+              <p className="help">
                 Add a custom domain in the Cloudflare dashboard under Workers
                 &amp; Pages → your Worker → Settings → Domains &amp; Routes,
                 then enter it under Settings → Site. Nothing else changes: your
@@ -346,7 +346,7 @@ export function SetupPage(): JSX.Element {
             </p>
           )}
           {ttlLowered ? (
-            <p class="help">
+            <p className="help">
               No cache-purge token is configured, so the cache lifetime was set
               to 60 seconds — edits appear within a minute instead of
               immediately. Add <code>CF_API_TOKEN</code> and{' '}
@@ -354,10 +354,10 @@ export function SetupPage(): JSX.Element {
               This is a working configuration, not a broken one.
             </p>
           ) : null}
-          <div class="actions">
+          <div className="actions">
             <button
               type="button"
-              class="primary"
+              className="primary"
               disabled={busy}
               onClick={() => void run('complete', {}, 'done')}
             >
@@ -368,7 +368,7 @@ export function SetupPage(): JSX.Element {
       ) : null}
 
       {step === 'done' ? (
-        <div class="card">
+        <div className="card">
           <h2>Your site is ready</h2>
           <p>
             {installed > 0
@@ -376,11 +376,11 @@ export function SetupPage(): JSX.Element {
               : 'The site is empty and waiting for its first page. '}
             Everything the wizard set can be changed later in Settings.
           </p>
-          <div class="actions">
-            <a class="button-link" href="/_mallok/app/">
+          <div className="actions">
+            <a className="button-link" href="/_mallok/app/">
               Open the admin
             </a>
-            <a class="button-link ghost-link" href="/">
+            <a className="button-link ghost-link" href="/">
               View the site
             </a>
           </div>

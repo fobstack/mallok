@@ -27,7 +27,7 @@
 | Unit | `vitest` | Node | `src/core/`'s pure functions, `src/db/`'s SQL construction |
 | Property and hostile input | `fast-check` | Node | Sanitisation, path normalisation, front-matter parsing |
 | Worker integration | `@cloudflare/vitest-pool-workers` | **Real workerd** | Routing, caching, migration, the management API, plugin routes |
-| Admin components | `@testing-library/preact` + `happy-dom` | Node | The form generator, the editor, media upload |
+| Admin components | `@testing-library/react` + `happy-dom` | Node | The form generator, the editor, media upload |
 | End to end | `playwright` | A browser plus `wrangler dev` | The wizard, the publish loop, inquiry submission |
 | Accessibility | `@axe-core/playwright` | As above | The admin and the official themes |
 | Performance | `@lhci/cli` | A custom domain | The gate in `SEO_PERFORMANCE.md §7` |

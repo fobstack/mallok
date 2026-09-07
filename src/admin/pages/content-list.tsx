@@ -6,8 +6,8 @@
  * (docs/THEME_FORMAT.md §5.3).
  */
 
-import type { JSX } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { navigate } from '../router.js';
 import { activeLocale, notice, settings, theme } from '../state.js';
@@ -26,6 +26,7 @@ export function ContentListPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const locale = activeLocale.value;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: locale is read below (query.set('locale', locale)).
   useEffect(() => {
     void (async () => {
       setLoading(true);
@@ -66,20 +67,20 @@ export function ContentListPage(): JSX.Element {
   const kinds = Object.keys(site.kinds);
 
   return (
-    <div class="page">
-      <header class="page-head">
+    <div className="page">
+      <header className="page-head">
         <h1>Content</h1>
-        <div class="head-actions">
+        <div className="head-actions">
           <button
             type="button"
-            class="ghost"
+            className="ghost"
             onClick={() => navigate('/media')}
           >
             Media
           </button>
           <button
             type="button"
-            class="primary"
+            className="primary"
             onClick={() => navigate('/content/new')}
           >
             New
@@ -87,8 +88,8 @@ export function ContentListPage(): JSX.Element {
         </div>
       </header>
 
-      <div class="filters">
-        <label class="filter">
+      <div className="filters">
+        <label className="filter">
           <span>Type</span>
           <select
             value={kind}
@@ -105,7 +106,7 @@ export function ContentListPage(): JSX.Element {
             ))}
           </select>
         </label>
-        <label class="filter">
+        <label className="filter">
           <span>Language</span>
           <select
             value={locale}
@@ -121,7 +122,7 @@ export function ContentListPage(): JSX.Element {
             ))}
           </select>
         </label>
-        <label class="filter">
+        <label className="filter">
           <span>Status</span>
           <select
             value={status}
@@ -141,9 +142,9 @@ export function ContentListPage(): JSX.Element {
       {loading ? (
         <p>Loading…</p>
       ) : items.length === 0 ? (
-        <p class="empty">Nothing here yet.</p>
+        <p className="empty">Nothing here yet.</p>
       ) : (
-        <table class="rows-table">
+        <table className="rows-table">
           <thead>
             <tr>
               <th scope="col">Title</th>
@@ -173,7 +174,7 @@ export function ContentListPage(): JSX.Element {
                     {item.kind}
                     {known ? null : (
                       <span
-                        class="pill warn"
+                        className="pill warn"
                         title="The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
                       >
                         Not in theme
@@ -181,10 +182,10 @@ export function ContentListPage(): JSX.Element {
                     )}
                   </td>
                   <td>
-                    <span class={`pill ${item.status}`}>{item.status}</span>
+                    <span className={`pill ${item.status}`}>{item.status}</span>
                   </td>
                   <td>
-                    <a class="code" href={item.path}>
+                    <a className="code" href={item.path}>
                       {item.path}
                     </a>
                   </td>
@@ -196,10 +197,10 @@ export function ContentListPage(): JSX.Element {
         </table>
       )}
 
-      <nav class="pager" aria-label="Pagination">
+      <nav className="pager" aria-label="Pagination">
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           disabled={offset === 0}
           onClick={() => setOffset(Math.max(0, offset - PAGE))}
         >
@@ -207,7 +208,7 @@ export function ContentListPage(): JSX.Element {
         </button>
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           disabled={!hasNext}
           onClick={() => setOffset(offset + PAGE)}
         >

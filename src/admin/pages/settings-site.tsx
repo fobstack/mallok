@@ -5,8 +5,8 @@
  * deploy involved (docs/PRODUCT_VISION.md §5.1).
  */
 
-import type { JSX } from 'preact';
-import { useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm } from '../form/form.js';
@@ -67,7 +67,7 @@ export function SiteSettingsPage(): JSX.Element {
     return <p>Loading…</p>;
   }
 
-  const submit = async (event: Event): Promise<void> => {
+  const submit = async (event: { preventDefault(): void }): Promise<void> => {
     event.preventDefault();
     const found = validateAll(SITE_FIELDS, draft);
     setErrors(found);
@@ -94,14 +94,14 @@ export function SiteSettingsPage(): JSX.Element {
   };
 
   return (
-    <div class="page">
-      <header class="page-head">
+    <div className="page">
+      <header className="page-head">
         <h1>Site</h1>
-        <p class="lede">
+        <p className="lede">
           These are stored the moment you save — no rebuild, no deploy.
         </p>
       </header>
-      <form class="card" onSubmit={(event) => void submit(event)}>
+      <form className="card" onSubmit={(event) => void submit(event)}>
         <SchemaForm
           specs={SITE_FIELDS}
           values={draft}
@@ -111,8 +111,8 @@ export function SiteSettingsPage(): JSX.Element {
             setDraft((previous) => ({ ...previous, [name]: value }))
           }
         />
-        <div class="actions">
-          <button type="submit" class="primary" disabled={busy}>
+        <div className="actions">
+          <button type="submit" className="primary" disabled={busy}>
             {busy ? 'Saving…' : 'Save'}
           </button>
           {saved ? <SavedNote /> : null}
@@ -174,23 +174,23 @@ function LocaleSection(): JSX.Element {
   };
 
   return (
-    <section class="card">
+    <section className="card">
       <h2>Languages</h2>
-      <p class="help">
+      <p className="help">
         The default language has no URL prefix; every other language is served
         under <code>/&lt;locale&gt;/</code>.
       </p>
-      <ul class="rows">
+      <ul className="rows">
         {current.locales.map((locale) => (
           <li key={locale}>
-            <span class="code">{locale}</span>
+            <span className="code">{locale}</span>
             {locale === current.defaultLocale ? (
-              <span class="pill ok">Default</span>
+              <span className="pill ok">Default</span>
             ) : (
               <>
                 <button
                   type="button"
-                  class="ghost"
+                  className="ghost"
                   disabled={busy}
                   onClick={() => void makeDefault(locale)}
                 >
@@ -198,7 +198,7 @@ function LocaleSection(): JSX.Element {
                 </button>
                 <button
                   type="button"
-                  class="ghost"
+                  className="ghost"
                   disabled={busy}
                   onClick={() =>
                     void setLocales(
@@ -213,7 +213,7 @@ function LocaleSection(): JSX.Element {
           </li>
         ))}
       </ul>
-      <div class="list-row">
+      <div className="list-row">
         <input
           aria-label="Language code"
           placeholder="de"
@@ -222,7 +222,7 @@ function LocaleSection(): JSX.Element {
         />
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           disabled={busy || adding.trim() === ''}
           onClick={() => {
             void setLocales([...current.locales, adding.trim()]);

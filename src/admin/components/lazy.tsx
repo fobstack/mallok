@@ -1,19 +1,20 @@
 /**
  * Loading a route's code on demand.
  *
- * The first screen budget covers Preact, signals, the router and the form
+ * The first screen budget covers React, signals, the router and the form
  * generator (docs/ADMIN.md §13). The editor pulls in the whole rendering
  * pipeline — unified, remark, rehype, LiquidJS — because its preview runs the
  * real renderer, so that code has to arrive with the editor rather than with
  * the first paint.
  *
- * `preact/compat`'s `lazy` would do this, but the admin deliberately does not
- * ship the React compatibility layer (docs/TECH_STACK.md §6), and the honest
- * version is nine lines.
+ * React's own `lazy` needs a `<Suspense>` boundary and a default export;
+ * this app's routes are named exports chosen by a plain `if` chain
+ * (`app.tsx`), so this nine-line version fits what is actually there instead
+ * of reshaping the routing around `lazy`'s expectations.
  */
 
-import type { ComponentType, JSX } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import type { ComponentType, JSX } from 'react';
+import { useEffect, useState } from 'react';
 
 /** Wraps a dynamic import as a component that renders once it resolves. */
 export function lazyRoute<P extends Record<string, unknown>>(
@@ -49,8 +50,8 @@ export function lazyRoute<P extends Record<string, unknown>>(
 
     if (failed) {
       return (
-        <div class="page">
-          <p class="error" role="alert">
+        <div className="page">
+          <p className="error" role="alert">
             This part of the admin could not be loaded. Check your connection
             and reload.
           </p>
@@ -58,7 +59,7 @@ export function lazyRoute<P extends Record<string, unknown>>(
       );
     }
     if (loaded === null) {
-      return <div class="booting">Loading…</div>;
+      return <div className="booting">Loading…</div>;
     }
     const Loaded = loaded;
     return <Loaded {...props} />;

@@ -7,8 +7,8 @@
  * plugin declares — takes effect immediately.
  */
 
-import type { JSX } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { PluginPanelView } from '../components/plugin-panel.js';
 import { SecretControl } from '../form/controls.js';
@@ -21,7 +21,7 @@ export function PluginsPage(): JSX.Element {
   const [plugins, setPlugins] = useState<readonly PluginInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const reload = async (): Promise<void> => {
+  const reload = useCallback(async (): Promise<void> => {
     try {
       const result = await api<{ plugins: PluginInfo[] }>('/plugins');
       setPlugins(result.plugins);
@@ -31,19 +31,19 @@ export function PluginsPage(): JSX.Element {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void reload();
-  }, []);
+  }, [reload]);
 
   return (
-    <div class="page">
-      <header class="page-head">
+    <div className="page">
+      <header className="page-head">
         <h1>Plugins</h1>
       </header>
 
-      <section class="card note">
+      <section className="card note">
         <h2>Plugins ship with your source, not through this page</h2>
         <p>
           To add one, put its folder in <code>src/plugins/</code>, list it in{' '}
@@ -51,7 +51,7 @@ export function PluginsPage(): JSX.Element {
           is the reverse. There is no upload here because there is no way to
           make an upload take effect without a new build.
         </p>
-        <p class="help">
+        <p className="help">
           What you can change here — the switch below, settings and secrets — is
           stored in the database and applies to the very next request.
         </p>
@@ -60,7 +60,7 @@ export function PluginsPage(): JSX.Element {
       {loading ? (
         <p>Loading…</p>
       ) : plugins.length === 0 ? (
-        <p class="empty">No plugins are compiled into this build.</p>
+        <p className="empty">No plugins are compiled into this build.</p>
       ) : (
         plugins.map((plugin) => (
           <PluginCard key={plugin.id} plugin={plugin} onChanged={reload} />
@@ -105,7 +105,9 @@ function PluginCard({
     }
   };
 
-  const saveSettings = async (event: Event): Promise<void> => {
+  const saveSettings = async (event: {
+    preventDefault(): void;
+  }): Promise<void> => {
     event.preventDefault();
     const found = validateAll(specs, values);
     setErrors(found);
@@ -168,16 +170,16 @@ function PluginCard({
   };
 
   return (
-    <section class="card plugin">
-      <header class="plugin-head">
+    <section className="card plugin">
+      <header className="plugin-head">
         <div>
           <h2>
-            {plugin.name} <span class="code">{plugin.version}</span>
-            {plugin.official ? <span class="pill">Official</span> : null}
+            {plugin.name} <span className="code">{plugin.version}</span>
+            {plugin.official ? <span className="pill">Official</span> : null}
           </h2>
           {plugin.description === '' ? null : <p>{plugin.description}</p>}
         </div>
-        <label class="switch">
+        <label className="switch">
           <input
             type="checkbox"
             checked={plugin.enabled}
@@ -188,7 +190,7 @@ function PluginCard({
         </label>
       </header>
 
-      <dl class="facts">
+      <dl className="facts">
         <div>
           <dt>Hooks</dt>
           <dd>
@@ -199,9 +201,9 @@ function PluginCard({
           <dt>Client JavaScript</dt>
           <dd>
             {plugin.clientScripts.length === 0 ? (
-              <span class="pill ok">None</span>
+              <span className="pill ok">None</span>
             ) : (
-              <span class="pill warn">
+              <span className="pill warn">
                 {plugin.clientScripts.length} script
                 {plugin.clientScripts.length === 1 ? '' : 's'}
               </span>
@@ -217,17 +219,17 @@ function PluginCard({
       </dl>
 
       {plugin.runsOnEveryRequest ? (
-        <p class="warning-line">
+        <p className="warning-line">
           This plugin runs on <strong>every visitor request</strong>, including
           ones the cache would otherwise answer for free.
         </p>
       ) : null}
 
       {plugin.clientScripts.length === 0 ? null : (
-        <ul class="rows">
+        <ul className="rows">
           {plugin.clientScripts.map((script) => (
             <li key={script.src}>
-              <span class="code">{script.src}</span>
+              <span className="code">{script.src}</span>
               <span>{script.purpose}</span>
             </li>
           ))}
@@ -246,32 +248,32 @@ function PluginCard({
               setValues((previous) => ({ ...previous, [name]: value }))
             }
           />
-          <div class="actions">
-            <button type="submit" class="primary" disabled={busy}>
+          <div className="actions">
+            <button type="submit" className="primary" disabled={busy}>
               Save settings
             </button>
-            {savedSettings ? <span class="pill ok">Saved</span> : null}
+            {savedSettings ? <span className="pill ok">Saved</span> : null}
           </div>
         </form>
       )}
 
       {plugin.secrets.length === 0 ? null : (
-        <div class="secrets">
+        <div className="secrets">
           <h3>Secrets</h3>
-          <p class="help">
+          <p className="help">
             Stored encrypted. They are never shown again, here or anywhere else.
           </p>
           {plugin.secrets.map((secret) => (
-            <div class="field field-inline" key={secret.name}>
-              <label for={`secret-${plugin.id}-${secret.name}`}>
+            <div className="field field-inline" key={secret.name}>
+              <label htmlFor={`secret-${plugin.id}-${secret.name}`}>
                 {secret.label}
                 {secret.required ? (
-                  <span class="req" aria-hidden="true">
+                  <span className="req" aria-hidden="true">
                     *
                   </span>
                 ) : null}
               </label>
-              <div class="control">
+              <div className="control">
                 <SecretControl
                   id={`secret-${plugin.id}-${secret.name}`}
                   label={secret.label}
@@ -282,7 +284,7 @@ function PluginCard({
                 {secret.checkable && secret.configured ? (
                   <button
                     type="button"
-                    class="ghost"
+                    className="ghost"
                     disabled={checking !== ''}
                     onClick={() => void checkSecret(secret.name)}
                   >
@@ -291,7 +293,7 @@ function PluginCard({
                 ) : null}
                 {checkResult[secret.name] === undefined ? null : (
                   <span
-                    class={
+                    className={
                       checkResult[secret.name]?.ok ? 'pill ok' : 'pill warn'
                     }
                   >

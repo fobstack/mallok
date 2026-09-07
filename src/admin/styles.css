@@ -1,6 +1,7 @@
 /*
- * The admin's own styles: CSS variables and a handful of components, no
- * framework (docs/TECH_STACK.md §6).
+ * The admin's styles: Tailwind CSS (the Fobstack group's standard base,
+ * `~/.claude/CLAUDE.md`) plus the CSS variables shadcn/ui's components read,
+ * plus a handful of hand-written components older pages still use.
  *
  * Design language: this runs a trade company's back office — entering
  * products with technical specs, publishing news, reading buyer inquiries.
@@ -13,6 +14,8 @@
  * marks anything actionable; one reserved accent (oxide) marks anything
  * that needs attention. They never compete on the same element.
  */
+
+@import "tailwindcss";
 
 :root {
   --bg: #f4f6f8;

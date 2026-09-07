@@ -6,8 +6,8 @@
  * write back a **slug**, and secrets never show their value.
  */
 
-import type { JSX } from 'preact';
-import { useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useState } from 'react';
 import type { ControlProps } from './types.js';
 
 function asString(value: unknown): string {
@@ -138,9 +138,10 @@ export function StringListControl({
     onChange(next.filter((entry) => entry.trim() !== ''));
   };
   return (
-    <div class="list-control" id={id}>
+    <div className="list-control" id={id}>
       {entries.map((entry, index) => (
-        <div class="list-row" key={index}>
+        // biome-ignore lint/suspicious/noArrayIndexKey: entries are plain strings edited in place by position, with no other identity.
+        <div className="list-row" key={index}>
           <input
             value={entry}
             onInput={(event) => {
@@ -151,7 +152,7 @@ export function StringListControl({
           />
           <button
             type="button"
-            class="ghost"
+            className="ghost"
             onClick={() => update(entries.filter((_, i) => i !== index))}
           >
             Remove
@@ -160,7 +161,7 @@ export function StringListControl({
       ))}
       <button
         type="button"
-        class="ghost"
+        className="ghost"
         onClick={() => onChange([...entries, ''])}
       >
         Add entry
@@ -192,9 +193,10 @@ export function KeyValueControl({
     onChange(out);
   };
   return (
-    <div class="list-control" id={id}>
+    <div className="list-control" id={id}>
       {pairs.map(([key, entry], index) => (
-        <div class="list-row" key={index}>
+        // biome-ignore lint/suspicious/noArrayIndexKey: entries are plain strings edited in place by position, with no other identity.
+        <div className="list-row" key={index}>
           <input
             aria-label="Name"
             placeholder="Name"
@@ -217,7 +219,7 @@ export function KeyValueControl({
           />
           <button
             type="button"
-            class="ghost"
+            className="ghost"
             onClick={() => write(pairs.filter((_, i) => i !== index))}
           >
             Remove
@@ -226,7 +228,7 @@ export function KeyValueControl({
       ))}
       <button
         type="button"
-        class="ghost"
+        className="ghost"
         onClick={() => write([...pairs, ['', '']])}
       >
         Add row
@@ -256,12 +258,12 @@ export function MediaControl(props: PickerProps): JSX.Element {
   const kind = spec.field.type === 'file' ? 'file' : 'image';
   const preview = current === '' ? null : (previewUrl?.(current) ?? null);
   return (
-    <div class="media-control" id={id}>
+    <div className="media-control" id={id}>
       {preview !== null && kind === 'image' ? (
-        <img class="media-thumb" src={preview} alt="" />
+        <img className="media-thumb" src={preview} alt="" />
       ) : null}
       <input
-        class="path"
+        className="path"
         value={current}
         placeholder={kind === 'image' ? 'images/photo.jpg' : 'files/sheet.pdf'}
         onInput={(event) => onChange(event.currentTarget.value)}
@@ -269,7 +271,7 @@ export function MediaControl(props: PickerProps): JSX.Element {
       {pickMedia === undefined ? null : (
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           onClick={async () => {
             const picked = await pickMedia(kind);
             if (picked !== null) {
@@ -281,7 +283,7 @@ export function MediaControl(props: PickerProps): JSX.Element {
         </button>
       )}
       {current === '' ? null : (
-        <button type="button" class="ghost" onClick={() => onChange('')}>
+        <button type="button" className="ghost" onClick={() => onChange('')}>
           Clear
         </button>
       )}
@@ -294,13 +296,14 @@ export function MediaListControl(props: PickerProps): JSX.Element {
   const { value, onChange, id, pickMedia, previewUrl } = props;
   const entries = asList(value);
   return (
-    <div class="list-control" id={id}>
+    <div className="list-control" id={id}>
       {entries.map((entry, index) => {
         const preview = previewUrl?.(entry) ?? null;
         return (
-          <div class="list-row media-row" key={index}>
+          // biome-ignore lint/suspicious/noArrayIndexKey: entries are plain strings edited in place by position, with no other identity.
+          <div className="list-row media-row" key={index}>
             {preview === null ? null : (
-              <img class="media-thumb small" src={preview} alt="" />
+              <img className="media-thumb small" src={preview} alt="" />
             )}
             <input
               value={entry}
@@ -312,7 +315,7 @@ export function MediaListControl(props: PickerProps): JSX.Element {
             />
             <button
               type="button"
-              class="ghost"
+              className="ghost"
               onClick={() => onChange(entries.filter((_, i) => i !== index))}
             >
               Remove
@@ -323,7 +326,7 @@ export function MediaListControl(props: PickerProps): JSX.Element {
       {pickMedia === undefined ? null : (
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           onClick={async () => {
             const picked = await pickMedia('image');
             if (picked !== null) {
@@ -343,9 +346,9 @@ export function ReferenceControl(props: PickerProps): JSX.Element {
   const { spec, value, onChange, id, pickContent } = props;
   const target = spec.field.kind ?? '';
   return (
-    <div class="media-control" id={id}>
+    <div className="media-control" id={id}>
       <input
-        class="path"
+        className="path"
         value={asString(value)}
         placeholder={`${target} slug`}
         onInput={(event) => onChange(event.currentTarget.value)}
@@ -353,7 +356,7 @@ export function ReferenceControl(props: PickerProps): JSX.Element {
       {pickContent === undefined ? null : (
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           onClick={async () => {
             const picked = await pickContent(target);
             if (picked !== null) {
@@ -390,19 +393,23 @@ export function SecretControl({
   const [draft, setDraft] = useState('');
   if (!editing) {
     return (
-      <div class="secret-control" id={id}>
-        <span class="pill ok">Set</span>
-        <button type="button" class="ghost" onClick={() => setEditing(true)}>
+      <div className="secret-control" id={id}>
+        <span className="pill ok">Set</span>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => setEditing(true)}
+        >
           Replace
         </button>
-        <button type="button" class="ghost" onClick={onClear}>
+        <button type="button" className="ghost" onClick={onClear}>
           Remove
         </button>
       </div>
     );
   }
   return (
-    <div class="secret-control" id={id}>
+    <div className="secret-control" id={id}>
       <input
         type="password"
         autoComplete="off"
@@ -413,7 +420,7 @@ export function SecretControl({
       />
       <button
         type="button"
-        class="ghost"
+        className="ghost"
         onClick={() => {
           onSet(draft);
           setDraft('');
@@ -426,7 +433,7 @@ export function SecretControl({
       {configured ? (
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           onClick={() => {
             setDraft('');
             setEditing(false);

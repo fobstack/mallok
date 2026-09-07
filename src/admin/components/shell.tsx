@@ -4,7 +4,7 @@
  * fits nowhere, that is a sign it is internal complexity leaking out.
  */
 
-import type { ComponentChildren, JSX } from 'preact';
+import type { JSX, ReactNode } from 'react';
 import { navigate, route } from '../router.js';
 import { notice, session, settings, signOut } from '../state.js';
 import { PurgeNotice } from './saved-note.js';
@@ -32,24 +32,24 @@ function isActive(item: NavItem, path: string): boolean {
 export function Shell({
   children,
 }: {
-  readonly children: ComponentChildren;
+  readonly children: ReactNode;
 }): JSX.Element {
   const path = route.value;
   const current = session.value;
   const email =
     current === false || current === null ? '' : (current.email ?? '');
   return (
-    <div class="shell">
-      <header class="topbar">
+    <div className="shell">
+      <header className="topbar">
         <a
-          class="brand"
+          className="brand"
           href="/_mallok/app/"
           onClick={(event) => {
             event.preventDefault();
             navigate('/');
           }}
         >
-          <span class="mark" aria-hidden="true">
+          <span className="mark" aria-hidden="true">
             M
           </span>
           <span>{settings.value?.name ?? 'Mallok'}</span>
@@ -69,7 +69,7 @@ export function Shell({
             </a>
           ))}
         </nav>
-        <div class="user">
+        <div className="user">
           <a
             href="/_mallok/app/account"
             onClick={(event) => {
@@ -79,18 +79,22 @@ export function Shell({
           >
             {email === '' ? 'Account' : email}
           </a>
-          <button type="button" class="ghost" onClick={() => void signOut()}>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => void signOut()}
+          >
             Sign out
           </button>
         </div>
       </header>
       <PurgeNotice />
       {notice.value === '' ? null : (
-        <div class="banner" role="alert">
+        <div className="banner" role="alert">
           <span>{notice.value}</span>
           <button
             type="button"
-            class="ghost"
+            className="ghost"
             onClick={() => {
               notice.value = '';
             }}

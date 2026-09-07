@@ -7,7 +7,7 @@
  * (docs/ADMIN.md §5, docs/ARCHITECTURE.md §6.2).
  */
 
-import type { JSX } from 'preact';
+import type { JSX } from 'react';
 import { liveDelay } from '../state.js';
 
 /** Human-readable form of a cache lifetime. */
@@ -26,11 +26,11 @@ function humanize(seconds: number): string {
 export function SavedNote(): JSX.Element {
   const delay = liveDelay.value;
   if (delay.instant) {
-    return <span class="pill ok">Saved — live now</span>;
+    return <span className="pill ok">Saved — live now</span>;
   }
   return (
     <span
-      class="pill warn"
+      className="pill warn"
       title="Configure a cache-purge token to make saves appear immediately."
     >
       Saved — visitors see it within {humanize(delay.seconds)}
@@ -49,7 +49,7 @@ export function PurgeNotice(): JSX.Element | null {
     return null;
   }
   return (
-    <div class="banner soft">
+    <div className="banner soft">
       <span>
         No cache-purge token is configured, so a saved change reaches visitors
         only after the cached page expires (up to {humanize(delay.seconds)}).

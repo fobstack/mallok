@@ -11,8 +11,8 @@
  *    look-alike, so it cannot drift from what visitors get.
  */
 
-import type { JSX } from 'preact';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import type { JSX } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   buildPublicPath,
   joinFrontmatter,
@@ -97,7 +97,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
           caught instanceof ApiError ? caught.message : 'Could not load.';
       }
     })();
-  }, [id]);
+  }, [id, isNew]);
 
   // Media rows for whatever the item references, so the preview can resolve
   // relative paths exactly as the server does.
@@ -125,6 +125,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
   const parsed = useMemo(() => splitFrontmatter(markdown), [markdown]);
   const frontmatter = parsed.data;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: active is read below (active?.kinds[...]).
   const specs = useMemo(() => {
     const declared = active?.kinds[kind]?.fields ?? {};
     // The always-present fields come first, then whatever the theme declares
@@ -162,6 +163,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
 
   // --- preview ---------------------------------------------------------
   const previewTimer = useRef<number>(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: site and active are read on the next line and both start out null.
   useEffect(() => {
     if (site === null || active === null) {
       return;
@@ -193,7 +195,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
       })();
     }, PREVIEW_DEBOUNCE_MS);
     return () => window.clearTimeout(previewTimer.current);
-  }, [markdown, kind, slug, assets, media, site, active]);
+  }, [markdown, kind, slug, assets, media, site, active, loaded?.path]);
 
   // Leaving with unsaved work must be deliberate (docs/ADMIN.md §13).
   useEffect(() => {
@@ -266,12 +268,12 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
     });
 
   return (
-    <div class="editor">
-      <div class="editor-bar">
-        <button type="button" class="ghost" onClick={() => navigate('/')}>
+    <div className="editor">
+      <div className="editor-bar">
+        <button type="button" className="ghost" onClick={() => navigate('/')}>
           ← All content
         </button>
-        <label class="filter">
+        <label className="filter">
           <span>Type</span>
           <select
             value={kind}
@@ -288,7 +290,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
             ))}
           </select>
         </label>
-        <label class="filter">
+        <label className="filter">
           <span>Slug</span>
           <input
             value={slug}
@@ -299,17 +301,17 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
             }}
           />
         </label>
-        <span class="grow" />
+        <span className="grow" />
         {missing.length === 0 ? null : (
-          <span class="pill warn" title={missing.join(', ')}>
+          <span className="pill warn" title={missing.join(', ')}>
             {missing.length} image{missing.length === 1 ? '' : 's'} missing
           </span>
         )}
-        {dirty ? <span class="pill">Unsaved</span> : null}
+        {dirty ? <span className="pill">Unsaved</span> : null}
         {saved && !dirty ? <SavedNote /> : null}
         <button
           type="button"
-          class="ghost"
+          className="ghost"
           disabled={busy}
           onClick={() => void save('draft')}
         >
@@ -317,7 +319,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
         </button>
         <button
           type="button"
-          class="primary"
+          className="primary"
           disabled={busy}
           onClick={() => void save('published')}
         >
@@ -334,8 +336,8 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
         />
       )}
 
-      <div class="editor-panes">
-        <aside class="pane pane-fields">
+      <div className="editor-panes">
+        <aside className="pane pane-fields">
           <SchemaForm
             specs={specs}
             values={frontmatter}
@@ -348,7 +350,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
             }}
           />
         </aside>
-        <section class="pane pane-source">
+        <section className="pane pane-source">
           <MarkdownEditor
             value={markdown}
             missing={missing}
@@ -358,7 +360,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
             }}
           />
         </section>
-        <section class="pane pane-preview">
+        <section className="pane pane-preview">
           {/*
             `allow-same-origin` **without** `allow-scripts` is the safe
             combination: the frame can load the theme's stylesheet (a fully
@@ -370,11 +372,11 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
           */}
           <iframe
             title="Preview"
-            class="preview-frame"
+            className="preview-frame"
             sandbox="allow-same-origin"
-            srcdoc={preview}
+            srcDoc={preview}
           />
-          <p class="help preview-note">
+          <p className="help preview-note">
             Rendered by the same code the site runs — {previewPath}
           </p>
         </section>
@@ -412,11 +414,11 @@ function TranslationBar(props: {
     return null;
   }
   return (
-    <nav class="translations" aria-label="Translations">
+    <nav className="translations" aria-label="Translations">
       {props.translations.map((slot) => {
         if (slot.locale === props.current) {
           return (
-            <span key={slot.locale} class="pill ok">
+            <span key={slot.locale} className="pill ok">
               {slot.locale}
             </span>
           );
@@ -426,7 +428,7 @@ function TranslationBar(props: {
             <button
               key={slot.locale}
               type="button"
-              class="ghost"
+              className="ghost"
               onClick={() => navigate(`/content/${slot.id}`)}
             >
               {slot.locale}
@@ -437,7 +439,7 @@ function TranslationBar(props: {
           <button
             key={slot.locale}
             type="button"
-            class="ghost"
+            className="ghost"
             onClick={() =>
               navigate(
                 `/content/new?locale=${slot.locale}&group=${props.group}&kind=${props.kind}`,

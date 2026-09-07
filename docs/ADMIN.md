@@ -9,7 +9,7 @@
 
 ## 1. In one sentence
 
-**The admin is a Preact single-page application running in the browser, served
+**The admin is a React single-page application running in the browser, served
 through Workers Static Assets, calling exactly the same management API the CLI
 does.**
 
@@ -36,8 +36,8 @@ From `TECH_STACK §6`, not re-argued here:
 
 | Area | Choice |
 | --- | --- |
-| UI | `preact` + `@preact/signals`, **with no React compatibility layer** |
-| Build | `vite` + `@preact/preset-vite` |
+| UI | `react` + `react-dom`, state on `@preact/signals-react` (switched from Preact 2026-09-06, `TECH_STACK.md §6`) |
+| Build | `vite` + `@vitejs/plugin-react` |
 | Markdown editing | `codemirror` + `@codemirror/lang-markdown` |
 | Forms | The in-repository schema-driven generator (§7) |
 | Preview | Reuses `src/core/`, rendering in the browser |
@@ -324,7 +324,7 @@ The complete rules are in `SECURITY.md`. On the interface side:
 | Item | Requirement |
 | --- | --- |
 | Accessibility | Fully keyboard operable; every form control has a label; focus is visible; `@axe-core/playwright` reports nothing serious or critical |
-| First load | Admin first-load JS ≤ 150 KB gzip (Preact, signals, the router, the form generator). **Asserted by `pnpm admin:size`**, counting only what `index.html` references; measured at 20.6 KB on 2026-08-30 |
+| First load | Admin first-load JS ≤ 150 KB gzip (React, signals, the router, the form generator). **Asserted by `pnpm admin:size`**, counting only what `index.html` references; measured at 72.0 KB on 2026-09-06, up from 17.3 KB on Preact — real React+ReactDOM cost is ≈ 54 KB gzip in this project's own Vite build, not the ≈ 45 KB estimated from memory before switching |
 | CodeMirror | Chunked and loaded only when the editor opens. **The render pipeline — unified, remark, rehype, LiquidJS — is equally on demand**: the preview uses the real renderer, so it loads with the editor rather than on first load |
 | Importing from core | **A page on the first-load path must not import from the `src/core/index.ts` barrel**, not even for a single constant — the barrel drags the whole render pipeline into the first load. This happened once, on 2026-08-31: the Appearance page imported the barrel for one string constant and the first load went from 17 KB to 137 KB, caught by `pnpm admin:size`. Dependency-free constants live in `src/core/constants.ts` |
 | Offline | No offline support. A network failure produces a clear error and never silently discards a change |
