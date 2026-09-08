@@ -100,7 +100,6 @@ export default definePage<PublicLocals>()({
       ? {
           mode: 'public',
           edgeSeconds: locals.settings.cacheTtl,
-          browserSeconds: locals.settings.cacheTtl,
           tags: ['site', `tag:${locals.locale}`],
         }
       : { mode: 'no-store' },

@@ -46,10 +46,12 @@ export default definePage<PublicLocals>()({
     return { body, headers: publicHeaders(locals) };
   },
 
+  // `browserSeconds` is left at 0 on purpose: purging the edge does not reach
+  // a visitor's browser, so a long browser lifetime would serve stale pages
+  // long after an edit went live (docs/ARCHITECTURE.md §6).
   cache: (_data, { locals }) => ({
     mode: 'public',
     edgeSeconds: locals.settings.cacheTtl,
-    browserSeconds: locals.settings.cacheTtl,
     tags: ['site', `home:${locals.locale}`],
   }),
 });

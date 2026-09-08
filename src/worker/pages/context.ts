@@ -61,38 +61,17 @@ export function publicHeaders(
 export class SiteNotReady extends Error {}
 
 /**
- * One build per request, however many times the adapter asks.
+ * Builds the request's locals.
  *
- * The adapter resolves `locals` and `locale` through separate callbacks, and
- * both need the site row. Without this memo each request would run the
- * speculative batch twice and blow the D1 round-trip budget (`AC-INV-05`,
- * at most 4) on its own. Keyed by the `Request`, which the adapter passes to
- * both callbacks unchanged, so entries die with the request.
- */
-const perRequest = new WeakMap<Request, Promise<PublicLocals>>();
-
-/**
- * Builds the request's locals, or returns the build already in flight.
+ * Called once per request by the adapter, which then hands the result to the
+ * locale resolver as well — so the speculative batch happens exactly once and
+ * the D1 round-trip budget (`AC-INV-05`, at most 4) is unaffected.
  *
  * Throws {@link SiteNotReady} rather than returning a response, because the
  * adapter builds locals before routing and has nowhere to put a response yet;
  * the Worker turns it into the 503 the previous handler returned.
  */
-export function buildLocals(
-  request: Request,
-  env: Env,
-  ctx: ExecutionContext,
-): Promise<PublicLocals> {
-  const existing = perRequest.get(request);
-  if (existing !== undefined) {
-    return existing;
-  }
-  const building = build(request, env, ctx);
-  perRequest.set(request, building);
-  return building;
-}
-
-async function build(
+export async function buildLocals(
   request: Request,
   env: Env,
   ctx: ExecutionContext,

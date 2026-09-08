@@ -268,8 +268,21 @@ round trip, `§18` item 3).
 ### 6.1 Writing to the cache
 
 After rendering, `cache.put()` with
-`Cache-Control: public, max-age=<site.cache_ttl>` — one hour by default,
-adjustable in the admin. Every response carries a `Cache-Tag` header, drawn
+`Cache-Control: public, max-age=0, s-maxage=<site.cache_ttl>` — one hour by
+default, adjustable in the admin.
+
+**The two lifetimes are deliberately different** (corrected 2026-09-07). The
+edge keeps the page for the full TTL; the browser is told to revalidate every
+time. Purging Cloudflare by tag empties the edge cache, but it cannot reach a
+page already sitting in a visitor's browser — so a shared `max-age` of an hour
+would mean an edit is live at the edge and still invisible to anyone who
+loaded the page in the last hour, with nothing the operator can do about it.
+The edge is the layer we can invalidate, so it is the only layer given a long
+lifetime. Static assets are the opposite case and keep their long browser
+lifetime: their URLs carry a content hash, so a change produces a new URL
+rather than a stale one.
+
+Every response carries a `Cache-Tag` header, drawn
 from a fixed set: `site`, `c:<content_id>`, `k:<kind>:<locale>` (that kind's
 list pages), `home:<locale>`, `feed:<locale>` and `sitemap`. List pages and
 the home page also carry the `c:<id>` tag of every item they display.
@@ -325,6 +338,20 @@ has not come are never written to the cache. Plugin routes are uncached by
 default. **A 404 is rendered but never stored**, so the page a visitor asked
 for is served as soon as it exists rather than after a TTL; it also carries
 `x-robots-tag: noindex`.
+
+Two more rules are enforced by the runtime adapter rather than by Mallok, and
+matter enough to state here (`@fobstack/runtime`, 2026-09-07):
+
+- **A request carrying `Cookie` or `Authorization` is never served from, or
+  written to, the shared cache.** Eligibility is decided from the request as
+  it arrived — before `cacheKey` normalises it — so Mallok's key, which
+  rebuilds the request without headers to drop the query string, cannot turn
+  a credentialed request into a cacheable one.
+- **A response that sets a cookie, says `private` or `no-store`, or varies on
+  everything is never stored**, whatever cache policy the page declared. The
+  page's own headers are inspected before the policy rewrites them, and a
+  response that will not be stored never leaves carrying `public` or a
+  `Cache-Tag`.
 
 ### 6.5 Scheduled work
 

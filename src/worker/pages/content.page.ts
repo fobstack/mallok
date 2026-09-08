@@ -155,7 +155,6 @@ export default definePage<PublicLocals>()({
       return {
         mode: 'public',
         edgeSeconds: locals.settings.cacheTtl,
-        browserSeconds: locals.settings.cacheTtl,
         tags: tagsForContent(
           resolved.row.id,
           resolved.row.kind,
@@ -166,7 +165,6 @@ export default definePage<PublicLocals>()({
     return {
       mode: 'public',
       edgeSeconds: locals.settings.cacheTtl,
-      browserSeconds: locals.settings.cacheTtl,
       tags: ['site', `k:${resolved.listKind}:${locals.locale}`],
     };
   },

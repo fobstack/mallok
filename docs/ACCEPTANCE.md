@@ -452,7 +452,8 @@ replaces it. What was checked, and what changed:
 | --- | --- |
 | D1 round trips, cold content render | 2 (`batch(5)` + `batch(1)`) — unchanged |
 | D1 round trips, product page with relations | 2 (`batch(5)` + `batch(3)`) — unchanged |
-| `Cache-Control`, `Cache-Tag`, `x-mallok-cache`, `x-mallok-fragment` | byte-identical; pinned by `test/worker/flow.test.ts` |
+| `Cache-Tag`, `x-mallok-cache`, `x-mallok-fragment` | byte-identical; pinned by `test/worker/flow.test.ts` |
+| `Cache-Control` | **changed on purpose**, see §14.2.2 |
 | `x-robots-tag: noindex` off the bound domain | preserved, now decided in `pages/context.ts` |
 | 301 redirects for moved slugs | preserved, absolute `Location` |
 | Drafts and scheduled items | still 404; the visibility rule is unchanged |
@@ -460,11 +461,52 @@ replaces it. What was checked, and what changed:
 | **404 for an unknown public path** | **changed**: the theme's own page at status 404 with `x-robots-tag: noindex` and `Cache-Control: no-store`, instead of `{"error":"Not found."}`. Requested; `/_mallok/*` still answers JSON. |
 
 `AC-INV-05` is unaffected: the speculative batch runs once per request in
-`buildLocals`, memoised per `Request` because the adapter asks for `locals` and
-for the request's locales through separate callbacks.
+`buildLocals`. The adapter builds locals once and hands them to the locale
+resolver, so no deduplication is needed on Mallok's side.
 
 Full gate on 2026-09-07: `pnpm lint && pnpm typecheck && pnpm test && pnpm
 build && pnpm bundle:size && pnpm admin:size`, all green, 359 tests.
+
+### 14.2.2 Pre-release hardening (2026-09-07)
+
+Four defects found while preparing the first Runtime release. All four are
+fixed, and each has a test that fails without the fix.
+
+**1. A credentialed request could be served from the shared cache.** The
+adapter decided cache eligibility from the *normalised* cache key rather than
+the request. Mallok's key rebuilds the request without headers in order to
+drop the query string, which meant a request carrying `Cookie` or
+`Authorization` arrived at the check with its credentials already gone, and
+was cached like any anonymous page. Eligibility is now decided from the
+request as it arrived. Test: `runtime/test/adapter-cache-safety.test.ts`,
+"cannot be laundered by a cacheKey that drops the headers" — before the fix it
+returned `MISS`, i.e. the response to a `Bearer` request was stored.
+
+**2. A page's own `private` / `no-store` was overwritten before it was
+read.** The adapter set `Cache-Control` from the declared policy and only then
+asked whether the response was storable — so it inspected the header it had
+just written, never the page's. A page that answered `private` was stored as
+`public`. Storability is now judged on the page's own response, and a response
+that will not be stored never leaves with `public` or a `Cache-Tag`.
+
+**3. Browser cache lifetime (`AC-CONTENT-02b`, related).** Public pages sent
+`public, max-age=<ttl>`, giving the browser the same one-hour lifetime as the
+edge. Purging by tag empties the edge but cannot reach a visitor's browser, so
+an edit could be live at the edge and invisible to a returning visitor for up
+to an hour. Now `public, max-age=0, s-maxage=<ttl>`. **This is a deliberate
+change, not a regression**: "byte-identical to the old headers" was the wrong
+goal for this one header. Hashed static assets keep their long browser
+lifetime, because a change to them produces a new URL.
+
+**4. Island scripts landed outside the document.** Mallok's themes emit the
+whole `<html>`, and the document renderer appended island markup to the end of
+the string — after `</html>`. Scripts are now inserted before the document's
+own `</body>`, and a page that used no island is still returned byte-for-byte
+unchanged (`AC-INV-08`). Test: `test/worker/islands-placement.test.ts`.
+
+D1 round trips are now asserted exactly rather than merely counted
+(`test/worker/budget.test.ts`): `['batch(5)', 'batch(1)']` for a cold content
+page, `['batch(5)', 'batch(3)']` with relations, and `[]` on a page-cache hit.
 
 ### 14.3 Evidence index
 

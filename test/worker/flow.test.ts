@@ -131,7 +131,12 @@ describe('walking skeleton', () => {
     const miss = await get('/');
     expect(miss.status).toBe(200);
     expect(miss.headers.get('x-mallok-cache')).toBe('MISS');
-    expect(miss.headers.get('cache-control')).toBe('public, max-age=3600');
+    // The edge keeps the page for an hour; the browser revalidates every time.
+    // Purging Cloudflare does not reach a visitor's browser, so a long
+    // `max-age` would serve a stale page long after the edit went live.
+    expect(miss.headers.get('cache-control')).toBe(
+      'public, max-age=0, s-maxage=3600',
+    );
     expect(miss.headers.get('cache-tag')).toBe('site,home:en');
     expect(await miss.text()).toContain('My Mallok site');
 

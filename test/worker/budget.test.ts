@@ -28,8 +28,17 @@ let token = '';
 async function coldRender(path: string, db: D1Database): Promise<Response> {
   const request = new Request(`${ORIGIN}${path}`);
   await caches.default.delete(cacheKeyFor(request));
+  return await render(request, db, () => undefined);
+}
+
+/** Renders through the real handler, with control over `waitUntil`. */
+async function render(
+  request: Request,
+  db: D1Database,
+  waitUntil: (promise: Promise<unknown>) => void,
+): Promise<Response> {
   const ctx = {
-    waitUntil: () => undefined,
+    waitUntil,
     passThroughOnException: () => undefined,
     props: {},
   } as unknown as ExecutionContext;
@@ -143,19 +152,38 @@ describe('cold render D1 budget', () => {
     path = ((await created.json()) as { path: string }).path;
   });
 
-  it('records how many D1 calls a cold content render makes', async () => {
+  it('makes exactly two D1 round trips for a cold content render', async () => {
     const { db, calls } = countingDb(env.DB);
     const response = await coldRender(path, db);
     expect(response.status).toBe(200);
 
-    // Reported rather than asserted against a number: docs/ACCEPTANCE.md §14
-    // records the measurement, and the product owner decides whether the
-    // invariant's wording or the code changes.
-    console.log(`D1 calls for a cold content render: ${calls.length}`);
-    for (const call of calls) {
-      console.log(`  ${call}`);
-    }
-    expect(calls.length).toBeGreaterThan(0);
+    // The exact sequence, not just the count: a regression that splits one
+    // batch into two single statements keeps the count and loses the point.
+    // `batch(5)` is the speculative load, `batch(1)` the fragment lookup.
+    expect(calls).toEqual(['batch(5)', 'batch(1)']);
+  });
+
+  it('makes no D1 calls at all when the page cache hits', async () => {
+    // Warm the cache through the real path: `waitUntil` must actually be
+    // awaited, or the entry is still being written when the next request runs.
+    const request = new Request(`${ORIGIN}${path}`);
+    await caches.default.delete(cacheKeyFor(request));
+    const pending: Promise<unknown>[] = [];
+    const warm = await render(request, env.DB, (promise) => {
+      pending.push(promise);
+    });
+    expect(warm.headers.get('x-mallok-cache')).toBe('MISS');
+    await Promise.all(pending);
+
+    const { db, calls } = countingDb(env.DB);
+    const hit = await render(
+      new Request(`${ORIGIN}${path}`),
+      db,
+      () => undefined,
+    );
+    expect(hit.headers.get('x-mallok-cache')).toBe('HIT');
+    // The whole point of the edge cache: a hit must not touch the database.
+    expect(calls).toEqual([]);
   });
 
   it('records the worst realistic case: media plus relations', async () => {
@@ -190,10 +218,8 @@ describe('cold render D1 budget', () => {
     const { db, calls } = countingDb(env.DB);
     const response = await coldRender(heavyPath, db);
     expect(response.status).toBe(200);
-    console.log(`D1 calls for a product page with relations: ${calls.length}`);
-    for (const call of calls) {
-      console.log(`  ${call}`);
-    }
-    expect(calls.length).toBeGreaterThan(0);
+    // `batch(3)` rather than `batch(1)`: the cover image and the related
+    // items are resolved in the same second round trip.
+    expect(calls).toEqual(['batch(5)', 'batch(3)']);
   });
 });

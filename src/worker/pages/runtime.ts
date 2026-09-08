@@ -61,21 +61,51 @@ const pageCache: PageCache = {
   },
 };
 
-/** The theme wrote the document already; hand it back untouched. */
-const document: DocumentRenderer<PageData, PublicLocals> = ({
+/**
+ * The theme wrote the document already; hand it back with the island scripts
+ * placed inside it.
+ *
+ * A page that used no island gets its document back untouched, which is what
+ * keeps "this page ships no JavaScript" a property that can be checked rather
+ * than hoped for.
+ */
+export const renderDocument: DocumentRenderer<PageData, PublicLocals> = ({
   body,
   islands,
-}) => (islands === '' ? body : `${body}\n${islands}`);
+}) => (islands === '' ? body : insertBeforeBodyClose(body, islands));
+
+/**
+ * Puts markup just before the document's closing `</body>`.
+ *
+ * Appending to the end of the string instead would put the scripts after
+ * `</html>`, outside the document: browsers recover from that, but it is
+ * invalid, and anything that parses the page properly — a validator, a
+ * scraper, a strict CSP report — sees markup that escaped the document.
+ *
+ * The last `</body>` is the document's own; an earlier one could only come
+ * from escaped text in the content.
+ */
+function insertBeforeBodyClose(document: string, markup: string): string {
+  const at = document.lastIndexOf('</body>');
+  if (at === -1) {
+    // A theme layout with no `</body>` is malformed, but dropping the scripts
+    // would break the page silently. Append, and say why in the log.
+    console.warn(
+      JSON.stringify({ event: 'island_placement_fallback', reason: 'no_body' }),
+    );
+    return `${document}\n${markup}`;
+  }
+  return `${document.slice(0, at)}${markup}\n${document.slice(at)}`;
+}
 
 const pages = createPageHandler<Env, PublicLocals>({
   runtime,
   cache: pageCache,
   cacheKey: cacheKeyFor,
   cacheStatusHeader: CACHE_STATUS_HEADER,
-  document,
+  document: renderDocument,
   locals: async ({ request, env, ctx }) => await buildLocals(request, env, ctx),
-  locale: async ({ request, env, ctx }) =>
-    localeResolution(await buildLocals(request, env, ctx)),
+  locale: (locals) => localeResolution(locals),
   onRejectedTag: (tag, reason) => {
     console.warn(JSON.stringify({ event: 'cache_tag_rejected', tag, reason }));
   },
