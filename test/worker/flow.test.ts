@@ -347,6 +347,38 @@ describe('walking skeleton', () => {
     expect(badAsset.status).toBe(400);
   });
 
+  it('answers HEAD with the GET headers and no body', async () => {
+    await forgetCached('/');
+    const get_ = await get('/');
+    const body = await get_.text();
+    expect(body.length).toBeGreaterThan(0);
+
+    const head = await SELF.fetch(`${ORIGIN}/`, { method: 'HEAD' });
+    expect(head.status).toBe(200);
+    expect(head.headers.get('content-type')).toBe(
+      get_.headers.get('content-type'),
+    );
+    expect(head.headers.get('cache-control')).toBe(
+      get_.headers.get('cache-control'),
+    );
+    expect(head.headers.get('cache-tag')).toBe(get_.headers.get('cache-tag'));
+    // Served from the entry the GET stored, and carrying no body.
+    expect(head.headers.get('x-mallok-cache')).toBe('HIT');
+    expect(await head.text()).toBe('');
+  });
+
+  it('never serves a public page from cache to a credentialed request', async () => {
+    // A visitor with any cookie must not be handed the shared copy, and the
+    // response they get must not be cacheable by anything downstream either.
+    await forgetCached('/');
+    await get('/');
+    const withCookie = await get('/', { cookie: 'session=whatever' });
+    expect(withCookie.status).toBe(200);
+    expect(withCookie.headers.get('x-mallok-cache')).toBe('BYPASS');
+    expect(withCookie.headers.get('cache-tag')).toBeNull();
+    expect(withCookie.headers.get('cache-control')).toBe('private, no-store');
+  });
+
   it('renders the theme’s own 404 for unknown public paths', async () => {
     const missing = await get('/nope/nothing');
     expect(missing.status).toBe(404);
@@ -359,7 +391,8 @@ describe('walking skeleton', () => {
     expect(html).toContain('Page not found');
     expect(html).toContain('<footer');
     // Rendered but never stored: the page may exist by the next request.
-    expect(missing.headers.get('cache-control')).toBe('no-store');
+    // `private` as well as `no-store`, so no browser or intermediary keeps it.
+    expect(missing.headers.get('cache-control')).toBe('private, no-store');
   });
 
   it('returns 404 for unknown internal paths and hides internals', async () => {

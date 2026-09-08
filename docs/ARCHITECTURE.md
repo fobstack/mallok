@@ -347,11 +347,17 @@ matter enough to state here (`@fobstack/runtime`, 2026-09-07):
   it arrived — before `cacheKey` normalises it — so Mallok's key, which
   rebuilds the request without headers to drop the query string, cannot turn
   a credentialed request into a cacheable one.
-- **A response that sets a cookie, says `private` or `no-store`, or varies on
-  everything is never stored**, whatever cache policy the page declared. The
-  page's own headers are inspected before the policy rewrites them, and a
-  response that will not be stored never leaves carrying `public` or a
-  `Cache-Tag`.
+- **A response that sets a cookie, says `private` or `no-store` (in any
+  casing), or varies on everything is never stored**, whatever cache policy the
+  page declared. The page's own headers are inspected before the policy
+  rewrites them, and a response that will not be stored leaves with
+  `Cache-Control: private, no-store` and no `Cache-Tag` — never with `public`,
+  whatever the page had set. This matters beyond our own cache: a bypassed
+  response still reaches the visitor's browser and whatever sits between.
+- **`HEAD` returns exactly what `GET` returns, without the body**, and is
+  answered from the entry a `GET` stored rather than keeping one of its own. A
+  `HEAD` never writes to the cache: the body it would store is the one thing it
+  does not have.
 
 ### 6.5 Scheduled work
 

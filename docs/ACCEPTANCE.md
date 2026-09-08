@@ -508,6 +508,45 @@ D1 round trips are now asserted exactly rather than merely counted
 (`test/worker/budget.test.ts`): `['batch(5)', 'batch(1)']` for a cold content
 page, `['batch(5)', 'batch(3)']` with relations, and `[]` on a page-cache hit.
 
+### 14.2.3 Release-blocking cache and island fixes (2026-09-08)
+
+Found while hardening the Runtime for its first release. Each has a test that
+fails without the fix.
+
+**1. `Cache-Control` was matched case-sensitively.** `Private`, `NO-STORE` and
+`max-age=60, No-Store` all passed the "may this be shared?" check and were
+stored. HTTP field values are case-insensitive; the check now is too.
+
+**2. A bypassed response kept its `public` permission.** When a page declared
+`public, max-age=3600` and was bypassed for some *other* reason — the request
+carried credentials, the response set a cookie — the adapter simply left the
+page's header alone. Nothing was written to our cache, so a `put()` count
+looked clean, and the response still told the visitor's browser and every
+intermediary that they could keep it. Such responses now leave with
+`private, no-store` and no `Cache-Tag`.
+
+**3. `HEAD` was treated as uncacheable.** It returned `private, no-store`,
+never hit the cache, and sent a body. It now returns the `GET` headers with no
+body, and reads the entry a `GET` stored.
+
+**4. Island scripts pointed at the wrong file.** A page with islands linked the
+island's own component chunk, which downloads the component and never mounts
+it, and in a Worker build the URL was the *source* path. Pages now load one
+hashed bootstrap that calls `mountIslands`; the Worker build gets the hashed
+names through the plugin's `islandManifest` option. Mallok's own themes ship no
+islands, so this never affected the live site.
+
+**5. Island ids were cross-request state.** The `{% island %}` tag numbered
+placeholders from a counter on the renderer instance, which is shared across
+requests in a Worker isolate — so the same template and data rendered
+different bytes each time. Props are now nested inside their own placeholder
+and no id is minted at all.
+
+Mallok's own consequences: the themed 404 now returns
+`Cache-Control: private, no-store` (was `no-store`), and a request carrying a
+cookie is served fresh rather than from the shared cache. Both are pinned in
+`test/worker/flow.test.ts`.
+
 ### 14.3 Evidence index
 
 | Kind of evidence | File |
