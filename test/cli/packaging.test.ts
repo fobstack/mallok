@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 const run = promisify(execFile);
 
@@ -13,9 +13,15 @@ const run = promisify(execFile);
  * entry-point guard was true from the repository and false once installed —
  * so the published CLI exited 0 and did nothing.
  *
- * `pnpm build:cli` must have run; `pnpm build` runs it.
+ * The artifact is built here rather than assumed: these tests failed in a
+ * fresh clone because `dist/cli` only existed if something had built it
+ * earlier, which made them pass or fail depending on what ran before them.
  */
 const MANIFEST = 'dist/cli/package.json';
+
+beforeAll(async () => {
+  await run('pnpm', ['run', 'build:cli']);
+}, 120_000);
 
 async function manifest(): Promise<Record<string, unknown>> {
   return JSON.parse(await readFile(MANIFEST, 'utf8')) as Record<
