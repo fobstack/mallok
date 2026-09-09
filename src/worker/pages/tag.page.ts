@@ -31,7 +31,7 @@ type Archive =
 
 export default definePage<PublicLocals>()({
   load: async ({ params, locals }): Promise<Archive> => {
-    const raw = params['tag'] ?? '';
+    const raw = params.tag ?? '';
     const matched = PAGED.exec(raw);
     const tag = decodeURIComponent(matched?.[1] ?? '');
     const page = matched?.[2] === undefined ? 1 : Number(matched[2]);

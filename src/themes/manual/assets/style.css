@@ -563,8 +563,15 @@ img {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* The one place !important is the correct tool: this has to beat every
+     animation any rule in this file declares, whatever its specificity, for a
+     visitor who has asked their system not to animate. Rewriting it as a more
+     specific selector would mean enumerating every animated rule and would
+     silently miss the next one added. */
   * {
+    /* biome-ignore lint/complexity/noImportantStyles: must beat every animation rule, whatever its specificity */
     animation: none !important;
+    /* biome-ignore lint/complexity/noImportantStyles: must beat every transition rule, whatever its specificity */
     transition: none !important;
   }
 }

@@ -492,9 +492,9 @@ export async function loadRelations(
  */
 export async function renderNotFoundPage(ctx: RenderContext): Promise<string> {
   const strings = themeStrings(ctx.theme.manifest, ctx.theme.files, ctx.locale);
-  const title = strings['not_found_title'] ?? 'Page not found';
+  const title = strings.not_found_title ?? 'Page not found';
   const body =
-    strings['not_found_body'] ??
+    strings.not_found_body ??
     'The page you asked for is not here. It may have moved, or the link may be wrong.';
   const view = buildContentPageView(
     viewContext(ctx),
