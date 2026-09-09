@@ -94,6 +94,20 @@ export default defineConfig({
         test: {
           name: 'runtime-dom',
           environment: 'happy-dom',
+          // The markup these tests inject carries `<script src>` and `<link>`
+          // tags naming built assets. Left to itself happy-dom tries to fetch
+          // them over the network, which fails with ECONNREFUSED and surfaces
+          // as an unhandled error after the run — green tests, exit code 1.
+          // The island client is loaded explicitly by the test instead.
+          environmentOptions: {
+            happyDOM: {
+              settings: {
+                disableJavaScriptFileLoading: true,
+                disableCSSFileLoading: true,
+                fetch: { disableSameOriginPolicy: true },
+              },
+            },
+          },
           include: ['test/runtime/dom/**/*.test.tsx'],
           // One of these runs two real Vite builds before it can assert
           // anything about the code a browser would actually execute.
