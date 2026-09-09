@@ -1,5 +1,5 @@
 /**
- * The public site, served by `@fobstack/runtime`.
+ * The public site, served by the page runtime in `src/runtime`.
  *
  * Three things about this file are deliberate:
  *
@@ -18,12 +18,12 @@
  *    serve one migration is how a purge quietly stops covering half the site.
  */
 
-import type { DocumentRenderer, PageData } from '@fobstack/runtime';
-import { Runtime } from '@fobstack/runtime';
 import {
   createPageHandler,
   type PageCache,
-} from '@fobstack/runtime/cloudflare';
+} from '../../runtime/cloudflare/index.js';
+import type { DocumentRenderer, PageData } from '../../runtime/core/index.js';
+import { Runtime } from '../../runtime/core/index.js';
 import { CACHE_STATUS_HEADER, cacheKeyFor } from '../cache.js';
 import type { Env } from '../env.js';
 import { problem } from '../http.js';

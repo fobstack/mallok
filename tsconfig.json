@@ -14,5 +14,13 @@
     "text-modules.d.ts",
     "scripts/**/*.mjs"
   ],
-  "exclude": ["src/admin", "test/admin"]
+  // `src/admin` and `src/runtime/react` run in a browser and need the DOM
+  // library, which cannot share a project with the Workers types. Each has its
+  // own tsconfig, and `pnpm typecheck` runs all of them.
+  "exclude": [
+    "src/admin",
+    "test/admin",
+    "src/runtime/react",
+    "test/runtime/dom"
+  ]
 }

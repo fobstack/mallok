@@ -18,9 +18,16 @@ is the point of the four statuses in `docs/ACCEPTANCE.md §14`.
 
 ### Changed since the last local milestone
 
-- **The public site runs on `@fobstack/runtime`.** Mallok supplies the routes,
-  the per-request state and the document; the runtime owns the lifecycle,
-  cache semantics and the response. Routing is data-driven, so the manifest is
+- **Mallok is the framework.** The page runtime — file routing, the page
+  lifecycle, the restricted Liquid engine, React islands, cache semantics, the
+  Cloudflare adapter and the Vite plugin — lives at `src/runtime` and is part
+  of this repository. It was briefly a separate package; that is over, and
+  `docs/ARCHITECTURE.md §3.1` records why so it is not re-attempted. A clone
+  now builds, tests and deploys with no sibling checkout and no dependency to
+  pin.
+- **The public site runs on that runtime.** Mallok supplies the routes, the
+  per-request state and the document; the runtime owns the lifecycle, cache
+  semantics and the response. Routing is data-driven, so the manifest is
   written by hand rather than scanned from a file tree, and the theme still
   owns the `<html>`.
 - **A missing page renders the theme's own 404** — status 404, `noindex`,
@@ -36,6 +43,19 @@ is the point of the four statuses in `docs/ACCEPTANCE.md §14`.
 - The admin moved from Preact to React 19. First load is 73.4 KiB gzip against
   a 150 KiB budget — the reason Preact was originally chosen turned out not to
   hold once it was measured.
+
+### Fixed in the CLI
+
+- The published CLI **did nothing when installed**. Its entry-point guard
+  compared `argv[1]` against `cli/index.js`, which npm's
+  `node_modules/.bin/mallok` symlink is not — so it exited 0 with no output
+  and no error. It now compares real paths.
+- `mallok --help` exited **1**, so any script checking the status read a
+  working install as broken. An explicit help request now succeeds.
+- The published manifest claimed **MIT** while the project is Apache-2.0, and
+  shipped neither the licence, the notice, nor a readme. All four are fixed,
+  and `test/cli/packaging.test.ts` checks the built artifact rather than the
+  source, because every one of these bugs was invisible in the source.
 
 ### Not in 0.1
 

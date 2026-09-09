@@ -7,8 +7,11 @@
  * `</html>`, outside the document.
  */
 
-import type { DocumentParts, PageContext } from '@fobstack/runtime';
 import { describe, expect, it } from 'vitest';
+import type {
+  DocumentParts,
+  PageContext,
+} from '../../src/runtime/core/index.js';
 import type { PublicLocals } from '../../src/worker/pages/context.js';
 import { renderDocument } from '../../src/worker/pages/runtime.js';
 

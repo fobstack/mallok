@@ -7,8 +7,8 @@
  * document.
  */
 
-import { definePage } from '@fobstack/runtime';
 import { listPublished } from '../../db/queries.js';
+import { definePage } from '../../runtime/core/index.js';
 import { runAfterRender } from '../plugin-runtime.js';
 import { renderHomePage, resolveCovers } from '../render.js';
 import { HOME_RECENT, type PublicLocals, publicHeaders } from './context.js';

@@ -85,6 +85,54 @@
   },
   "overrides": [
     {
+      "includes": [
+        "test/runtime/workerd/worker.ts",
+        "test/runtime/fixtures/**",
+        "src/runtime/vite/virtual.d.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["src/runtime/core/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUndeclaredVariables": "error"
+          },
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "cloudflare:workers": "The runtime core must not depend on the Workers runtime.",
+                  "cloudflare:test": "The runtime core must not depend on the Workers runtime.",
+                  "@cloudflare/workers-types": "The runtime core must not depend on the Workers runtime."
+                }
+              }
+            },
+            "noRestrictedGlobals": {
+              "level": "error",
+              "options": {
+                "deniedGlobals": {
+                  "caches": "The runtime core must not touch the edge cache.",
+                  "HTMLRewriter": "The runtime core must not use Workers-only APIs.",
+                  "WebSocketPair": "The runtime core must not use Workers-only APIs.",
+                  "process": "The runtime core must not use Node-only APIs.",
+                  "Buffer": "The runtime core must not use Node-only APIs."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["src/worker/pages/**/*.page.ts"],
       "linter": {
         "rules": {

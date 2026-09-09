@@ -7,8 +7,8 @@
  * catch-all page instead.
  */
 
-import { definePage } from '@fobstack/runtime';
 import { listByTag } from '../../db/queries.js';
+import { definePage } from '../../runtime/core/index.js';
 import { runAfterRender } from '../plugin-runtime.js';
 import {
   renderListPage,

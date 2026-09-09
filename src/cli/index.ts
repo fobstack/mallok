@@ -9,8 +9,10 @@
  * (docs/PRODUCT_VISION.md §5.9).
  */
 
+import { realpathSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   boolFlag,
   parseArgs,
@@ -567,7 +569,11 @@ export async function main(argv: readonly string[]): Promise<number> {
 
   if (args.command === '' || boolFlag(args, 'help')) {
     process.stdout.write(USAGE);
-    return args.command === '' ? EXIT.user : EXIT.ok;
+    // `--help` is a request that succeeded, whether or not a command came with
+    // it: `mallok --help` exiting non-zero makes every script that checks the
+    // status treat a working install as broken. Only a bare invocation with no
+    // command and no `--help` is a usage error.
+    return boolFlag(args, 'help') ? EXIT.ok : EXIT.user;
   }
 
   const report = makeReporter(boolFlag(args, 'json'));
@@ -600,7 +606,32 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 }
 
-// Only run when invoked directly, so tests can import `main`.
-if (process.argv[1]?.endsWith('cli/index.js') === true) {
+/**
+ * Runs only when this file is what Node was asked to run.
+ *
+ * The previous check was `argv[1].endsWith('cli/index.js')`, which is true
+ * when the bundle is run from the repository and **false once the package is
+ * installed**: npm links the binary as `node_modules/.bin/mallok`, so `argv[1]`
+ * ends with `mallok`. The published CLI therefore exited silently with status
+ * 0 and did nothing at all — a failure with no error message, which is the
+ * worst kind to ship.
+ *
+ * Comparing real paths handles both: `realpathSync` follows npm's symlink to
+ * the same file `import.meta.url` names, and under a test runner `argv[1]` is
+ * the runner, so importing this module still has no side effect.
+ */
+function invokedDirectly(): boolean {
+  const invoked = process.argv[1];
+  if (invoked === undefined) {
+    return false;
+  }
+  try {
+    return realpathSync(invoked) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+}
+
+if (invokedDirectly()) {
   process.exitCode = await main(process.argv.slice(2));
 }

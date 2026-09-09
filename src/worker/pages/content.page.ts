@@ -10,9 +10,9 @@
  * would rightly refuse them.
  */
 
-import { definePage } from '@fobstack/runtime';
 import type { ContentRow } from '../../db/queries.js';
 import { findRedirect, listPublished } from '../../db/queries.js';
+import { definePage } from '../../runtime/core/index.js';
 import { tagsForContent } from '../cache.js';
 import { runAfterRender } from '../plugin-runtime.js';
 import {

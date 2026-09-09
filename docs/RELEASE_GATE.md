@@ -34,7 +34,7 @@ None of this is in the repository, and none of it can be:
 | Zone id for that domain | Purge | `wrangler secret put CF_ZONE_ID` |
 | Resend account + verified sending domain | `AC-PLUGIN-02b` | Admin → Plugins → Inquiry |
 | Turnstile site + secret key | `AC-PLUGIN-03b` | Admin → Plugins → Inquiry |
-| npm account with `@fobstack` publish rights | Runtime release | `npm login` |
+| npm account with `mallok` publish rights | CLI release | `npm login` |
 | A public GitHub repository | `AC-DEPLOY-02` (Deploy button) | github.com/fobstack/mallok |
 
 **Never commit any of these.** `MALLOK_SECRET`, `CF_API_TOKEN` and
@@ -43,12 +43,12 @@ stored AES-GCM-encrypted in D1 (`docs/CLOUDFLARE_RESOURCES.md §5`).
 
 ## 2. Order
 
-Steps 1–3 must happen before anything else, because every later row runs
-against the deployment they produce.
+Step 3 must happen before anything else, because every later row runs against
+the deployment it produces.
 
 ```
-1. Release @fobstack/runtime to npm
-2. Pin Mallok to that exact version
+1. Publish the mallok CLI to npm
+2. (nothing to pin — the page runtime is internal)
 3. Deploy to a real account, bind a domain
 4. Wizard → content → media → cache → purge      (§4–§8)
 5. Cron and media collection                      (§9)
@@ -61,39 +61,30 @@ against the deployment they produce.
 
 ---
 
-## 3. Release the Runtime and pin it
+## 3. Publish the CLI
 
-**Blocker:** npm publish rights. **Status:** `BLOCKED_EXTERNAL`.
+**Blocker:** npm publish rights for `mallok`. **Status:** `BLOCKED_EXTERNAL`.
 
-The exact tarball to publish is already built and verified (see
-`../runtime/RELEASE.md` for the verification that produced it).
+The page runtime is **not** published separately — it is an internal module at
+`src/runtime`, and there is no `@fobstack/runtime` package to release. That
+decision is recorded in `docs/ARCHITECTURE.md §3`; a repository clone builds
+and tests with no sibling checkout and no registry dependency.
 
-```sh
-cd ../runtime
-pnpm lint && pnpm typecheck && pnpm test && pnpm build
-pnpm pack                       # must reproduce the recorded SHA-256
-npm publish fobstack-runtime-0.1.0-alpha.2.tgz --access public --tag next
-git tag v0.1.0-alpha.2 && git push --tags
-```
-
-Then, in Mallok:
+The one artifact that does get published is the CLI:
 
 ```sh
-pnpm pkg set dependencies.@fobstack/runtime=0.1.0-alpha.2
-pnpm install --lockfile-only
-pnpm install --frozen-lockfile
-pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size && pnpm admin:size
+pnpm build:cli
+cd dist/cli && npm pack            # inspect the tarball first
+npm publish --access public --tag next
 ```
 
-**Pass:** the gate is green with the dependency resolved from the registry, and
-`node_modules/@fobstack/runtime` contains no `src/`.
+**Pass:** installing the tarball into an empty directory links
+`node_modules/.bin/mallok`, and `mallok --help` prints usage and exits **0**.
+`test/cli/packaging.test.ts` checks both here; the install is the part it
+cannot check, and is the reason to do it by hand once.
 
-**Exact version, never a range.** `^0.1.0-alpha.2` would let a prerelease with
-a different cache contract in silently; this package's defaults decide what may
-enter a shared cache.
-
-**Rollback:** `git revert` the pin commit. The `file:../runtime` dependency is
-a development convenience and must not return to a release branch.
+**Rollback:** `npm unpublish mallok@<version>` within 72 hours, or
+`npm deprecate` after that.
 
 ## 4. Deploy and bind a domain
 
@@ -291,8 +282,8 @@ upgrade if the migration is destructive.
 **Blocker:** §4's deployment. **Status:** `BLOCKED_EXTERNAL`.
 
 Two rows in `docs/ACCEPTANCE.md` carry `VERIFIED_HUMAN` evidence collected
-against the **previous** request handler, before the public site moved onto
-`@fobstack/runtime`:
+against the **previous** request handler, before the public site moved onto the
+page runtime in `src/runtime`:
 
 | Row | What to re-run | Why it may differ |
 | --- | --- | --- |

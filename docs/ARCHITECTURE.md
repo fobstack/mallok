@@ -114,6 +114,7 @@ Source layout:
 ```text
 src/
 ├── core/           # Cloudflare-independent logic: the render pipeline, the content model, validation, bundle parsing
+├── runtime/        # The page runtime: routing, page lifecycle, Liquid, islands, cache semantics, the Workers adapter, the Vite plugin
 ├── worker/         # The Worker entry point, routing, caching, authentication, the wizard, cron
 ├── db/             # D1 schema, migrations, queries
 ├── admin/          # The admin single-page app
@@ -126,11 +127,45 @@ src/
 `core/` must not import any Cloudflare type or global — it has to run
 identically in Node (the CLI, the tests), in a browser (the admin's preview)
 and in the Worker. That is the only mechanism guaranteeing the CLI and the
-Worker behave the same.
+Worker behave the same. `runtime/core` carries the same rule, enforced by its
+own `tsconfig.json` and a `biome.json` override.
+
+### 3.1 The page runtime is part of Mallok, not a package
+
+`src/runtime` is Mallok's page runtime: file routing, the page lifecycle
+(`match → load | action → head → render → document → cache`), the restricted
+Liquid engine, React islands, cache semantics, the Cloudflare adapter and the
+Vite plugin. Mallok is the framework — routing, rendering, SEO, caching, CMS,
+CLI and plugins in one product — and this is the part of it that turns a
+request into a page.
+
+It spent a while as a separate repository and a `@fobstack/runtime` npm
+package. **That is over**, and the reasons are worth recording so it is not
+re-attempted:
+
+- It had one consumer. A shared package needs at least two before its
+  boundaries mean anything; with one, every "API decision" was really just
+  Mallok's own code with a version number in front of it.
+- The split cost more than it returned: a `file:` dependency that made a clone
+  unbuildable on its own, a release checklist, a tarball to verify, and a
+  version to pin — all to move code between two directories on one machine.
+- Sub-packages built on Mallok — a commerce storefront, for one — belong on
+  its **starter, theme and plugin APIs**, which already exist and are already
+  the supported extension points. They do not need a second page framework
+  underneath them, and giving them one would mean two things to keep in step.
+
+Nothing about the code changed in the move: the four test environments came
+with it (plain Node, real workerd, a DOM, real Vite builds), because they are
+the reason its cache and routing rules can be trusted. The module keeps its
+internal boundaries — `runtime/core` still imports no platform API — so
+`src/worker` depends on it exactly as it did on the package.
+
+**It is not planned for extraction again.** Anyone tempted should read this
+section first.
 
 ## 4. The public request path
 
-The public site runs on `@fobstack/runtime`, the group's page engine. Mallok
+The public site runs on the page runtime in `src/runtime` (§3.1). Mallok
 supplies the routes, the per-request state and the document; the runtime owns
 the lifecycle (`match → load → render → document → cache policy`), the cache
 semantics and the response. Entry point: `src/worker/pages/runtime.ts`.
@@ -340,7 +375,7 @@ for is served as soon as it exists rather than after a TTL; it also carries
 `x-robots-tag: noindex`.
 
 Two more rules are enforced by the runtime adapter rather than by Mallok, and
-matter enough to state here (`@fobstack/runtime`, 2026-09-07):
+matter enough to state here (`src/runtime/cloudflare`, 2026-09-07):
 
 - **A request carrying `Cookie` or `Authorization` is never served from, or
   written to, the shared cache.** Eligibility is decided from the request as

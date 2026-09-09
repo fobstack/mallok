@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
+import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
 
 /**
@@ -22,12 +23,24 @@ function textModules(): Plugin {
 }
 
 /**
- * Two test projects:
- *  - `core` runs in plain Node and covers `src/core`, which must not depend on
- *    the Workers runtime. It also covers the admin's pure logic — validation,
- *    spec building, routing — which needs no DOM.
- *  - `worker` runs inside workerd via the Workers Vitest integration and
- *    covers the full request path (D1, R2, Cache API).
+ * Six test projects, because the things being tested genuinely run in
+ * different places:
+ *
+ *  - `core`            plain Node. `src/core`, which must not depend on the
+ *                      Workers runtime, plus the admin's pure logic.
+ *  - `worker`          real workerd. The full request path: D1, R2, Cache API.
+ *  - `runtime`         plain Node. The page runtime's routing, cache
+ *                      semantics, Liquid engine and Vite plugin — none of
+ *                      which may need a platform to work.
+ *  - `runtime-workerd` real workerd. The runtime's Cloudflare adapter,
+ *                      including what may and may not enter a shared cache.
+ *  - `runtime-dom`     a browser-like DOM. The island client, and the built
+ *                      client bundle executed against server-rendered markup.
+ *  - `runtime-build`   real Vite builds and a real dev server.
+ *
+ * The runtime moved into this repository from a separate package; its tests
+ * came with it unchanged, because they are the reason its cache and routing
+ * rules can be trusted.
  */
 export default defineConfig({
   test: {
@@ -56,6 +69,46 @@ export default defineConfig({
         test: {
           name: 'worker',
           include: ['test/worker/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
+          name: 'runtime',
+          environment: 'node',
+          include: ['test/runtime/*.test.ts'],
+        },
+      },
+      {
+        plugins: [
+          cloudflareTest({
+            wrangler: { configPath: './test/runtime/workerd/wrangler.jsonc' },
+          }),
+        ],
+        test: {
+          name: 'runtime-workerd',
+          include: ['test/runtime/workerd/**/*.test.ts'],
+        },
+      },
+      {
+        plugins: [react()],
+        test: {
+          name: 'runtime-dom',
+          environment: 'happy-dom',
+          include: ['test/runtime/dom/**/*.test.tsx'],
+          // One of these runs two real Vite builds before it can assert
+          // anything about the code a browser would actually execute.
+          testTimeout: 120_000,
+        },
+      },
+      {
+        test: {
+          name: 'runtime-build',
+          environment: 'node',
+          include: ['test/runtime/build/**/*.test.ts'],
+          // Real Vite builds and a dev server: slower than a unit test, and
+          // they must not be killed halfway through.
+          testTimeout: 60_000,
+          hookTimeout: 60_000,
         },
       },
     ],

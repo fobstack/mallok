@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    // Web Standards only: no Workers types, no Node types. The core has to
+    // run unchanged in a Worker, in Node and in a browser, and this is what
+    // makes a violation a compile error rather than a code-review question.
+    "lib": ["ES2022", "WebWorker"]
+  },
+  "include": ["./**/*.ts"]
+}

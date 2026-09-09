@@ -43,7 +43,7 @@
     "build": "pnpm run build:themes && pnpm run build:admin && pnpm run build:cli && wrangler deploy --dry-run --outdir dist/worker",
     "dev": "pnpm run build:themes && pnpm run build:admin && wrangler dev",
     "deploy": "pnpm run build && node scripts/ensure-secret.mjs && wrangler deploy",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/core/tsconfig.json --noEmit && tsc -p src/admin/tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/core/tsconfig.json --noEmit && tsc -p src/runtime/core/tsconfig.json --noEmit && tsc -p src/runtime/react/tsconfig.json --noEmit && tsc -p src/admin/tsconfig.json --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "test": "vitest run",
@@ -61,7 +61,6 @@
     "build:site": "pnpm run build:cli && node dist/cli/index.js build . --theme ./src/themes/atelier --out dist/site"
   },
   "dependencies": {
-    "@fobstack/runtime": "file:../runtime",
     "hast-util-to-string": "3.0.1",
     "liquidjs": "10.29.0",
     "mdast-util-to-string": "4.0.0",
@@ -103,7 +102,8 @@
     "typescript": "5.9.3",
     "vite": "^8.2.2",
     "vitest": "4.1.11",
-    "wrangler": "4.124.0"
+    "wrangler": "4.124.0",
+    "happy-dom": "^19.0.2"
   },
   "cloudflare": {
     "bindings": {

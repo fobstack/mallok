@@ -442,7 +442,7 @@ signup shares whatever this one account's headroom comes from. The
 throwaway probe Worker was deleted after use and left no trace in this
 codebase.
 
-### 14.2.1 The move onto `@fobstack/runtime` (2026-09-07)
+### 14.2.1 The move onto the page runtime (2026-09-07)
 
 The public request path was rebuilt on the group's page engine
 (`docs/ARCHITECTURE.md §4`). `src/worker/public.ts` is gone; `src/worker/pages/`
@@ -549,7 +549,7 @@ cookie is served fresh rather than from the shared cache. Both are pinned in
 
 ### 14.2.4 What the Runtime migration did and did not re-verify (2026-09-09)
 
-The public site moved onto `@fobstack/runtime` (§14.2.1–14.2.3). Every status
+The public site moved onto the page runtime (§14.2.1–14.2.3). Every status
 in the tables above was earned **before** that move, so this is the honest
 account of which of them still stand on their original evidence.
 

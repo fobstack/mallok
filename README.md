@@ -62,7 +62,7 @@ a static build has no inquiry form, no admin, and needs rebuilding after edits.
 
 ## Status
 
-**Feature complete locally; Gate A run for real, not yet released.** The rendering core, database schema, Worker request path, edge cache, management API, media pipeline, SEO endpoints, multilingual model, plugin runtime with the official inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the CLI, and the `trade-b2b` starter with its setup wizard all exist and are covered by 372 tests.
+**Feature complete locally; Gate A run for real, not yet released.** The rendering core, database schema, Worker request path, edge cache, management API, media pipeline, SEO endpoints, multilingual model, plugin runtime with the official inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the CLI, the page runtime that turns a request into a page, and the `trade-b2b` starter with its setup wizard all exist and are covered by 504 tests across five environments: plain Node, real `workerd`, a DOM, and real Vite builds.
 
 **Gate A ran for real 2026-09-03/04** — seven of the nine `ARCHITECTURE.md §18` measurements against a real Cloudflare account, including `mallok create` end to end (which found and fixed a real deploy-breaking bug). [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the honest status: of 66 acceptance criteria — split into 74 rows where a criterion bundled a testable half with an untestable one — 59 are verified locally, 5 are verified on a real account, and 10 still need a real account for reasons Gate A itself could not close (a public repository, a second real deployment, elapsed real time or cron, and Resend/Turnstile/Lighthouse accounts). No criterion is waiting on a product decision. `mallok create` is proven; the release-gate walkthrough — deploy, wizard, real content, a real inquiry received — has not. Nothing is published to npm, and the repository is private. Treat this as a codebase to try, not a product to deploy.
 
@@ -102,14 +102,13 @@ write the reverse path before shipping a destructive one.
 Content, settings, theme options and plugin toggles are data and survive every
 upgrade untouched.
 
-### Runtime version
+### One repository, no hidden dependency
 
-The public site runs on [`@fobstack/runtime`](https://github.com/fobstack/runtime),
-pinned to an **exact** version — never a range. That package decides what may
-enter a shared cache, and a prerelease with different defaults must not arrive
-by way of `^`. Until it is published, the dependency is a local `file:` path
-and Mallok cannot be installed from a clone alone; `docs/RELEASE_GATE.md §3`
-is the step that closes this.
+The page runtime — routing, the page lifecycle, Liquid, islands, cache
+semantics and the Cloudflare adapter — lives at `src/runtime`. It is part of
+Mallok, not a package to install: a clone builds, tests and deploys with no
+sibling checkout and nothing to pin. `docs/ARCHITECTURE.md §3.1` explains why
+it stopped being a separate package and why it will not become one again.
 
 ## License
 
