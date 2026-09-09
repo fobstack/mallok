@@ -4,11 +4,48 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.1] — unreleased
+
+The release candidate: every criterion that can be closed without a Cloudflare
+account, a domain, or a third-party key is closed. **Fifteen rows still need a
+real account**, itemised with commands in
+[`docs/RELEASE_GATE.md`](docs/RELEASE_GATE.md); the per-criterion status is in
+`docs/ACCEPTANCE.md §14`.
+
+Gate A ran for real on 2026-09-03/04 and closed five rows on a real account.
+Local `workerd` results are never recorded as edge results — that distinction
+is the point of the four statuses in `docs/ACCEPTANCE.md §14`.
+
+### Changed since the last local milestone
+
+- **The public site runs on `@fobstack/runtime`.** Mallok supplies the routes,
+  the per-request state and the document; the runtime owns the lifecycle,
+  cache semantics and the response. Routing is data-driven, so the manifest is
+  written by hand rather than scanned from a file tree, and the theme still
+  owns the `<html>`.
+- **A missing page renders the theme's own 404** — status 404, `noindex`,
+  `no-store` — instead of `{"error":"Not found."}`. `/_mallok/*` still answers
+  JSON.
+- **Public pages no longer sit in a visitor's browser cache.**
+  `Cache-Control` is now `public, max-age=0, s-maxage=<ttl>`: purging
+  Cloudflare cannot reach a browser, so only the edge gets a long lifetime.
+  Hashed assets are unaffected.
+- **A request carrying `Cookie` or `Authorization` is never served from, or
+  written to, the shared cache**, and such a response leaves with
+  `private, no-store` and no `Cache-Tag`.
+- The admin moved from Preact to React 19. First load is 73.4 KiB gzip against
+  a 150 KiB budget — the reason Preact was originally chosen turned out not to
+  hold once it was measured.
+
+### Not in 0.1
+
+Static pre-rendering, streaming, and moving `sitemap.xml` / `robots.txt` /
+`feed.xml` onto the runtime's router. The SEO endpoints work and are tested;
+moving them would be churn.
+
 ## [Unreleased]
 
-Everything below is written and passes locally. **Nothing has run against a
-real Cloudflare account.** See `docs/ACCEPTANCE.md §14` for what is and is
-not backed by evidence.
+Everything below is written and passes locally.
 
 ### Added
 

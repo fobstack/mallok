@@ -62,9 +62,16 @@ a static build has no inquiry form, no admin, and needs rebuilding after edits.
 
 ## Status
 
-**Feature complete locally; Gate A run for real, not yet released.** The rendering core, database schema, Worker request path, edge cache, management API, media pipeline, SEO endpoints, multilingual model, plugin runtime with the official inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the CLI, and the `trade-b2b` starter with its setup wizard all exist and are covered by 357 tests.
+**Feature complete locally; Gate A run for real, not yet released.** The rendering core, database schema, Worker request path, edge cache, management API, media pipeline, SEO endpoints, multilingual model, plugin runtime with the official inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the CLI, and the `trade-b2b` starter with its setup wizard all exist and are covered by 372 tests.
 
 **Gate A ran for real 2026-09-03/04** — seven of the nine `ARCHITECTURE.md §18` measurements against a real Cloudflare account, including `mallok create` end to end (which found and fixed a real deploy-breaking bug). [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the honest status: of 66 acceptance criteria — split into 74 rows where a criterion bundled a testable half with an untestable one — 59 are verified locally, 5 are verified on a real account, and 10 still need a real account for reasons Gate A itself could not close (a public repository, a second real deployment, elapsed real time or cron, and Resend/Turnstile/Lighthouse accounts). No criterion is waiting on a product decision. `mallok create` is proven; the release-gate walkthrough — deploy, wizard, real content, a real inquiry received — has not. Nothing is published to npm, and the repository is private. Treat this as a codebase to try, not a product to deploy.
+
+The version is `0.1.0-rc.1`: every criterion that can be closed without a
+Cloudflare account, a domain or a third-party key is closed. What remains is
+listed with exact commands, pass conditions and rollbacks in
+[`docs/RELEASE_GATE.md`](docs/RELEASE_GATE.md). A local `workerd` result is
+never recorded as a real-edge result — that distinction is what the four
+statuses in `docs/ACCEPTANCE.md §14` exist to keep.
 
 ```sh
 pnpm install
@@ -77,6 +84,32 @@ and [the architecture](docs/ARCHITECTURE.md) — the full set is indexed in
 [docs/README.md](docs/README.md).
 
 Contributing guidelines, including the code style, are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Upgrading and rolling back
+
+Themes, plugins and Mallok itself live in the source tree, so upgrading is a
+redeploy:
+
+```sh
+git pull && pnpm install && pnpm deploy
+```
+
+Migrations apply themselves on the first request after a deploy, once, behind
+a lock — concurrent cold starts cannot race. `npx wrangler rollback` returns
+the Worker to its previous version, but **it does not undo a D1 migration**:
+write the reverse path before shipping a destructive one.
+
+Content, settings, theme options and plugin toggles are data and survive every
+upgrade untouched.
+
+### Runtime version
+
+The public site runs on [`@fobstack/runtime`](https://github.com/fobstack/runtime),
+pinned to an **exact** version — never a range. That package decides what may
+enter a shared cache, and a prerelease with different defaults must not arrive
+by way of `^`. Until it is published, the dependency is a local `file:` path
+and Mallok cannot be installed from a clone alone; `docs/RELEASE_GATE.md §3`
+is the step that closes this.
 
 ## License
 

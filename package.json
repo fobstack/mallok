@@ -1,6 +1,6 @@
 {
   "name": "mallok",
-  "version": "0.1.0-dev",
+  "version": "0.1.0-rc.1",
   "description": "Open-source, Cloudflare-native content website. Markdown in D1, instant publishing, no build step.",
   "license": "Apache-2.0",
   "author": "FobStack",
@@ -108,13 +108,13 @@
   "cloudflare": {
     "bindings": {
       "MALLOK_SECRET": {
-        "description": "Required. Signs sessions and encrypts plugin API keys. Generate one with `openssl rand -base64 32`. Keep it — changing it signs everyone out and makes stored plugin keys unreadable."
+        "description": "Required. Signs sessions and encrypts plugin API keys. Generate one with `openssl rand -base64 32`. Keep it \u2014 changing it signs everyone out and makes stored plugin keys unreadable."
       },
       "CF_API_TOKEN": {
-        "description": "Optional. A Cloudflare API token with **Zone → Cache Purge → Purge**, scoped to this site’s zone. Without it the site works, but an edit becomes visible when the cached page expires rather than immediately."
+        "description": "Optional. A Cloudflare API token with **Zone \u2192 Cache Purge \u2192 Purge**, scoped to this site\u2019s zone. Without it the site works, but an edit becomes visible when the cached page expires rather than immediately."
       },
       "CF_ZONE_ID": {
-        "description": "Optional, and only useful together with `CF_API_TOKEN`. The Zone ID shown on your domain’s overview page in the Cloudflare dashboard."
+        "description": "Optional, and only useful together with `CF_API_TOKEN`. The Zone ID shown on your domain\u2019s overview page in the Cloudflare dashboard."
       }
     }
   }

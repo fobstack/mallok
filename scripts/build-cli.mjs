@@ -6,8 +6,13 @@
  * other dependency is bundled so the published package installs quickly.
  */
 
-import { chmod, mkdir, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { build } from 'esbuild';
+
+// The published CLI carries the repository's version. Hard-coding it here
+// meant a release could ship a binary labelled `0.1.0-dev`, and the mismatch
+// would only surface in a bug report months later.
+const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 
 const OUT_DIR = 'dist/cli';
 const OUT_FILE = `${OUT_DIR}/index.js`;
@@ -45,7 +50,7 @@ await writeFile(
   `${JSON.stringify(
     {
       name: 'mallok',
-      version: '0.1.0-dev',
+      version,
       description:
         'Command line interface for Mallok, a Cloudflare-native content website.',
       type: 'module',

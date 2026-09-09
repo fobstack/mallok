@@ -547,6 +547,36 @@ Mallok's own consequences: the themed 404 now returns
 cookie is served fresh rather than from the shared cache. Both are pinned in
 `test/worker/flow.test.ts`.
 
+### 14.2.4 What the Runtime migration did and did not re-verify (2026-09-09)
+
+The public site moved onto `@fobstack/runtime` (§14.2.1–14.2.3). Every status
+in the tables above was earned **before** that move, so this is the honest
+account of which of them still stand on their original evidence.
+
+**Unchanged, and re-verified locally.** `AC-INV-05`'s D1 round trips are still
+`batch(5)` + `batch(1)` cold and `[]` on a cache hit; `Cache-Tag`,
+`x-mallok-cache` and `x-mallok-fragment` are byte-identical; redirects, draft
+and scheduled visibility, and the SEO endpoints are untouched. These are
+`VERIFIED_LOCAL` and were `VERIFIED_LOCAL` before.
+
+**Deliberately changed, and re-verified locally.** `Cache-Control` on a public
+page is now `public, max-age=0, s-maxage=<ttl>` rather than
+`public, max-age=<ttl>`, and an unknown path renders the theme's own 404. Both
+are recorded in §14.2.1 and §14.2.2.
+
+**Standing on pre-migration evidence, and not re-run.** Two `VERIFIED_HUMAN`
+rows were measured against the previous handler and have **not** been measured
+against the runtime path:
+
+| Row | Original evidence | Status after the migration |
+| --- | --- | --- |
+| `AC-CONTENT-02b` | ≈ 20 s real purge round trip, 2026-09-03 | The `Cache-Tag` the runtime writes is byte-identical, so the purge path is unchanged *by construction* — but no real-account run has confirmed it. Treat the row's evidence as pre-migration |
+| `ARCHITECTURE §18` CPU figures | 60–726 ms stage one, real workerd | Stage one is unchanged (it runs on save, not on the public path). The **public request path** is new and its CPU has been measured only in local workerd |
+
+Neither is a regression anyone has observed; both are claims whose evidence
+predates the code now serving them. They are listed in the release-gate
+runbook (`docs/RELEASE_GATE.md`) as re-measurements, not as new work.
+
 ### 14.3 Evidence index
 
 | Kind of evidence | File |
@@ -582,9 +612,14 @@ section used to list: four became `VERIFIED_HUMAN`
 (`AC-DEPLOY-01`/`04`/`07b`, `AC-MEDIA-04`) and two became `PENDING_DECISION`
 because the real numbers raised a wording or implementation question rather
 than settling one (`AC-CONTENT-02b`, `AC-CONTENT-10` — see §14.2 items 6–7).
-`AC-CONTENT-10` was settled and implemented the next day, 2026-09-05;
-`AC-CONTENT-02b` was settled 2026-09-06 (§14.2 item 6). Both are now
-`VERIFIED_HUMAN`, and no `PENDING_DECISION` rows remain. This list is
+`AC-CONTENT-10` was settled and implemented the next day, 2026-09-05, and
+`AC-CONTENT-02b` was settled 2026-09-06 (§14.2 item 6). They landed on
+different statuses, and the difference matters: `AC-CONTENT-02b` is
+`VERIFIED_HUMAN` because the 20-second purge round trip was measured on a real
+account, while `AC-CONTENT-10` is `VERIFIED_LOCAL` — the length check that
+settled it is covered by `test/worker/content-length-safety.test.ts`, and no
+real-account run has exercised it. That is why the group table above totals
+**5** `VERIFIED_HUMAN`, not 6. No `PENDING_DECISION` rows remain. This list is
 exactly the criteria whose status in the group tables is still
 `NOT_AVAILABLE`, all **10** of them — unaffected by either change, since
 neither criterion was ever `NOT_AVAILABLE`:
