@@ -75,13 +75,11 @@ export function resourceNames(slug: string): {
   worker: string;
   database: string;
   bucket: string;
-  config: string;
 } {
   return {
     worker: `mallok-${slug}`,
     database: `mallok-${slug}-db`,
     bucket: `mallok-${slug}-media`,
-    config: `.mallok/sites/${slug}.jsonc`,
   };
 }
 

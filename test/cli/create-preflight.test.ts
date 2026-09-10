@@ -3,8 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  applyResourceIds,
   type CommandRunner,
   createSite,
+  parseDatabaseId,
   preflightSteps,
   readState,
   slugFromDirectory,
@@ -348,5 +350,137 @@ describe('an interrupted run is recoverable', () => {
         report,
       ),
     ).rejects.toThrow(/already exists and was not created by this run/);
+  });
+});
+
+describe('a run that reaches the end', () => {
+  it('provisions in the documented order and records the site', async () => {
+    const fake = recorder();
+
+    const result = await createSite(
+      {
+        directory: 'my-site',
+        cwd: workspace,
+        run: fake.run,
+        templateDir: template,
+      },
+      report,
+    );
+
+    // The order is the contract: nothing irreversible before the three
+    // preflight steps, and the deploy before the secret that only a deployed
+    // Worker can hold (docs/CLOUDFLARE_RESOURCES.md §6).
+    expect(fake.mutations()).toEqual([
+      'd1 create mallok-my-site-db',
+      'r2 bucket create mallok-my-site-media',
+      'deploy',
+      'secret put MALLOK_SECRET',
+    ]);
+    const labels = fake.calls.map((call) => call.args.join(' '));
+    expect(
+      labels.indexOf('deploy --dry-run --outdir dist/worker-preflight'),
+    ).toBeLessThan(labels.indexOf('d1 create mallok-my-site-db'));
+
+    expect(result.deployed).toBe(true);
+
+    // `mallok publish` and `mallok destroy` find the site through the
+    // registry, so a create that deployed has to leave one behind.
+    const registry = JSON.parse(
+      await readFile(join(workspace, 'my-site/.mallok/sites.json'), 'utf8'),
+    ) as { sites: { slug: string; databaseId: string; bucket: string }[] };
+    expect(registry.sites).toHaveLength(1);
+    expect(registry.sites[0]?.slug).toBe('my-site');
+    expect(registry.sites[0]?.bucket).toBe('mallok-my-site-media');
+    expect(registry.sites[0]?.databaseId).toBe(
+      '11111111-2222-4333-8444-555555555555',
+    );
+    // Neither file may carry the secret that was piped to wrangler.
+    const state = await readFile(
+      join(workspace, 'my-site/.mallok/create-state.json'),
+      'utf8',
+    );
+    for (const text of [state, JSON.stringify(registry)]) {
+      expect(text).not.toMatch(
+        /MALLOK_SECRET|secretValue|"[A-Za-z0-9+/]{40,}"/,
+      );
+    }
+  });
+
+  it('points the project’s own wrangler.jsonc at the real resources', async () => {
+    const fake = recorder();
+
+    await createSite(
+      {
+        directory: 'my-site',
+        cwd: workspace,
+        domain: 'shop.example.com',
+        run: fake.run,
+        templateDir: template,
+      },
+      report,
+    );
+
+    const config = await readFile(
+      join(workspace, 'my-site/wrangler.jsonc'),
+      'utf8',
+    );
+    expect(config).toContain('"name": "mallok-my-site"');
+    expect(config).toContain('"database_name": "mallok-my-site-db"');
+    expect(config).toContain(
+      '"database_id": "11111111-2222-4333-8444-555555555555"',
+    );
+    expect(config).toContain('"bucket_name": "mallok-my-site-media"');
+    expect(config).toContain('"pattern": "shop.example.com"');
+    expect(config).toContain('"custom_domain": true');
+  });
+
+  it('reads the database id out of either shape wrangler prints', () => {
+    const uuid = '2f3a1b4c-5d6e-4f70-8192-a3b4c5d6e7f8';
+    expect(parseDatabaseId(`"database_id": "${uuid}"`)).toBe(uuid);
+    expect(parseDatabaseId(`database_id = "${uuid}"`)).toBe(uuid);
+    // Null rather than a wrong value: the run stops and says where to look.
+    expect(parseDatabaseId('Created database mallok-acme-db')).toBeNull();
+  });
+
+  it('leaves main and assets.directory alone', async () => {
+    // The config `wrangler deploy` reads is the project's own, at the project
+    // root, so these paths resolve as written. Gate A found the opposite bug
+    // in the old nested `.mallok/sites/<slug>.jsonc`, which needed every
+    // relative path rewritten and broke when one was missed.
+    const project = join(workspace, 'unchanged-paths');
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(project, { recursive: true });
+    await writeFile(
+      join(project, 'wrangler.jsonc'),
+      JSON.stringify(
+        {
+          name: 'mallok-site',
+          main: 'src/worker/index.ts',
+          assets: { directory: './dist/assets' },
+          database_name: 'x',
+          database_id: 'x',
+          bucket_name: 'x',
+          compatibility_date: '2026-01-01',
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    );
+
+    await applyResourceIds(project, {
+      worker: 'mallok-acme',
+      database: 'mallok-acme-db',
+      databaseId: '11111111-2222-4333-8444-555555555555',
+      bucket: 'mallok-acme-media',
+      domain: null,
+    });
+
+    const config = JSON.parse(
+      await readFile(join(project, 'wrangler.jsonc'), 'utf8'),
+    ) as { main: string; assets: { directory: string }; name: string };
+    expect(config.main).toBe('src/worker/index.ts');
+    expect(config.assets.directory).toBe('./dist/assets');
+    expect(config.name).toBe('mallok-acme');
   });
 });

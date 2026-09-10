@@ -24,7 +24,14 @@ import { webcrypto } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { CliError, EXIT, type Reporter } from './output.js';
-import { resourceNames, validateSlug } from './registry.js';
+import {
+  nextNamespace,
+  readRegistry,
+  resourceNames,
+  upsertSite,
+  validateSlug,
+  writeRegistry,
+} from './registry.js';
 import {
   generateProject,
   hasProjectWrangler,
@@ -433,6 +440,25 @@ async function provision(
     ...state,
     secretSetAt: new Date().toISOString(),
   });
+
+  // The registry is what `mallok publish` and `mallok destroy` read to find
+  // this site later. It lives inside the project, holds names and an origin,
+  // and never a secret (docs/CLOUDFLARE_RESOURCES.md §9).
+  const registryPath = join(projectDir, '.mallok/sites.json');
+  const sites = await readRegistry(registryPath);
+  await writeRegistry(
+    upsertSite(sites, {
+      slug,
+      origin,
+      domain: input.domain,
+      accountId: null,
+      databaseId: state.databaseId ?? null,
+      bucket: names.bucket,
+      ratelimitNs: nextNamespace(sites),
+      createdAt: new Date().toISOString(),
+    }),
+    registryPath,
+  );
   return origin;
 }
 

@@ -2,9 +2,9 @@
  * Default Wrangler configuration for a single Mallok site.
  *
  * This file is what the "Deploy to Cloudflare" button reads, so every binding
- * carries a default resource name. `npx mallok create` writes a per-site copy
- * of this file to `.mallok/sites/<slug>.jsonc` with real names and ids.
- * See docs/CLOUDFLARE_RESOURCES.md.
+ * carries a default resource name. `mallok create` copies it into the project
+ * it generates and edits this same file in place with the real names and ids —
+ * there is no second, nested config. See docs/CLOUDFLARE_RESOURCES.md.
  */
 {
   "$schema": "node_modules/wrangler/config-schema.json",

@@ -58,7 +58,8 @@
     "build:cli": "node scripts/build-cli.mjs",
     "build:site": "pnpm run build:cli && node dist/cli/index.js build . --theme ./src/themes/atelier --out dist/site",
     "release:pack": "pnpm run build:cli && cd dist/cli && npm pack",
-    "prepublishOnly": "node scripts/refuse-publish.mjs"
+    "prepublishOnly": "node scripts/refuse-publish.mjs",
+    "test:coverage": "vitest run --project core --project runtime --project runtime-dom --project runtime-build --coverage"
   },
   "dependencies": {
     "hast-util-to-string": "3.0.1",
@@ -92,9 +93,11 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "codemirror": "^6.0.2",
     "esbuild": "0.28.1",
     "fflate": "^0.8.3",
+    "happy-dom": "20.0.11",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "sharp": "^0.35.4",
@@ -102,8 +105,7 @@
     "typescript": "5.9.3",
     "vite": "^8.2.2",
     "vitest": "4.1.11",
-    "wrangler": "4.124.0",
-    "happy-dom": "20.0.11"
+    "wrangler": "4.124.0"
   },
   "cloudflare": {
     "bindings": {

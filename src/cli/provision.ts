@@ -1,30 +1,20 @@
 /**
- * `mallok create` and `mallok destroy`
- * (docs/CLOUDFLARE_RESOURCES.md §6, §10).
+ * `mallok destroy` (docs/CLOUDFLARE_RESOURCES.md §10).
  *
- * Both drive `wrangler` rather than the Cloudflare REST API, so the user's
+ * It drives `wrangler` rather than the Cloudflare REST API, so the user's
  * existing OAuth login is the only credential involved and the CLI never
  * handles an account token (docs/CLI.md §4).
  *
- * Every step is idempotent and prints its result. A failure stops the run and
- * says which step failed — creation half-done is recoverable, creation
- * half-done and silent is not.
+ * Creation lives in `create.ts`. This file used to hold a `createSite` that
+ * signed in, created a database and a bucket and only then tried to deploy;
+ * it has been deleted rather than left unused, because the safe order is only
+ * a guarantee if the unsafe one is not still in the package.
  */
 
 import { spawn } from 'node:child_process';
-import { webcrypto } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, posix, relative } from 'node:path';
-import { CliError, EXIT, type Reporter } from './output.js';
-import {
-  nextNamespace,
-  readRegistry,
-  resourceNames,
-  type SiteRecord,
-  upsertSite,
-  validateSlug,
-  writeRegistry,
-} from './registry.js';
+import { CliError, EXIT } from './output.js';
+import { resourceNames } from './registry.js';
+import { hasProjectWrangler, projectWrangler } from './template.js';
 
 /** Result of one wrangler invocation. */
 interface RunResult {
@@ -33,13 +23,30 @@ interface RunResult {
   readonly stderr: string;
 }
 
-/** Runs wrangler, streaming nothing and capturing both streams. */
+/**
+ * Runs the project's own Wrangler.
+ *
+ * Not `npx wrangler`: that resolves to whatever the registry currently
+ * publishes, which for a command that deletes a Worker, a database and a
+ * bucket is the wrong binary to be guessing at. The one in the project's
+ * `node_modules` is the version its lockfile pinned and the version the
+ * deploy was made with.
+ */
 export async function runWrangler(
   args: readonly string[],
   input?: string,
+  projectDir: string = process.cwd(),
 ): Promise<RunResult> {
+  if (!(await hasProjectWrangler(projectDir))) {
+    throw new CliError(
+      EXIT.user,
+      'This directory has no Wrangler binary.',
+      'Run `mallok destroy` from the project directory, after `pnpm install`.',
+    );
+  }
   return new Promise((resolve) => {
-    const child = spawn('npx', ['wrangler', ...args], {
+    const child = spawn(projectWrangler(projectDir), args, {
+      cwd: projectDir,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -58,205 +65,6 @@ export async function runWrangler(
   });
 }
 
-/** Pulls a `database_id` out of `wrangler d1 create` output. */
-export function parseDatabaseId(output: string): string | null {
-  return (
-    /"?database_id"?\s*[:=]\s*"?([0-9a-f-]{36})"?/i.exec(output)?.[1] ?? null
-  );
-}
-
-/** Builds a per-site wrangler config from the repository's own. */
-export async function buildSiteConfig(
-  slug: string,
-  databaseId: string,
-  domain: string | null,
-  namespace: number,
-): Promise<string> {
-  const names = resourceNames(slug);
-  const base = await readFile('wrangler.jsonc', 'utf8');
-  // wrangler resolves `main` and `assets.directory` relative to the config
-  // file's own location, not the working directory — the repository's
-  // wrangler.jsonc has them relative to the repo root, so writing the base
-  // file verbatim into the nested `.mallok/sites/<slug>.jsonc` breaks both
-  // paths. Rewrite them relative to where this file actually lands.
-  const toRepoRoot = posix.join(relative(dirname(names.config), '.'), '/');
-  // The base config is JSONC; the substitutions below are all on quoted
-  // string values, so the comments survive untouched.
-  let config = base
-    .replace(/"name":\s*"[^"]*"/, `"name": "${names.worker}"`)
-    .replace(
-      /"main":\s*"([^"]*)"/,
-      (_match, value: string) => `"main": "${posix.join(toRepoRoot, value)}"`,
-    )
-    .replace(
-      /("assets":\s*{\s*"directory":\s*)"([^"]*)"/,
-      (_match, prefix: string, value: string) =>
-        `${prefix}"${posix.join(toRepoRoot, value)}"`,
-    )
-    .replace(
-      /"database_name":\s*"[^"]*"/,
-      `"database_name": "${names.database}"`,
-    )
-    .replace(/"database_id":\s*"[^"]*"/, `"database_id": "${databaseId}"`)
-    .replace(/"bucket_name":\s*"[^"]*"/, `"bucket_name": "${names.bucket}"`);
-  if (domain !== null) {
-    // A custom_domain route makes the deploy create the DNS record and the
-    // certificate (docs/CLOUDFLARE_RESOURCES.md §6 step 9).
-    config = config.replace(
-      /"compatibility_date"/,
-      `"routes": [{ "pattern": "${domain}", "custom_domain": true }],\n  "compatibility_date"`,
-    );
-  }
-  void namespace;
-  return config;
-}
-
-/** Options `mallok create` takes. */
-export interface CreateOptions {
-  readonly slug: string;
-  readonly domain: string | null;
-  readonly dryRun: boolean;
-}
-
-/**
- * Creates a site.
- *
- * The order is fixed by docs/CLOUDFLARE_RESOURCES.md §6 and each step is
- * reported, because a partial creation the user cannot see is worse than a
- * failure they can.
- */
-export async function createSite(
-  options: CreateOptions,
-  report: Reporter,
-): Promise<SiteRecord> {
-  const slugError = validateSlug(options.slug);
-  if (slugError !== null) {
-    throw new CliError(EXIT.user, slugError);
-  }
-  const names = resourceNames(options.slug);
-  const sites = await readRegistry();
-  if (sites.some((site) => site.slug === options.slug)) {
-    throw new CliError(
-      EXIT.user,
-      `"${options.slug}" is already in .mallok/sites.json.`,
-      'Pick another slug, or run `mallok destroy` first.',
-    );
-  }
-
-  if (options.dryRun) {
-    report.step('Dry run — nothing will be created. Steps that would run:');
-    for (const line of [
-      `wrangler d1 create ${names.database}`,
-      `wrangler r2 bucket create ${names.bucket}`,
-      'generate MALLOK_SECRET (32 random bytes)',
-      `write ${names.config}`,
-      `wrangler deploy -c ${names.config}`,
-      `wrangler secret put MALLOK_SECRET -c ${names.config}`,
-    ]) {
-      report.step(`  ${line}`);
-    }
-    return {
-      slug: options.slug,
-      origin: '',
-      domain: options.domain,
-      accountId: null,
-      databaseId: null,
-      bucket: names.bucket,
-      ratelimitNs: nextNamespace(sites),
-      createdAt: new Date().toISOString(),
-    };
-  }
-
-  report.step('Checking you are signed in to Cloudflare…');
-  const who = await runWrangler(['whoami']);
-  if (who.code !== 0) {
-    throw new CliError(
-      EXIT.auth,
-      'Not signed in to Cloudflare.',
-      'Run `npx wrangler login` and try again.',
-    );
-  }
-
-  report.step(`Creating database ${names.database}…`);
-  const database = await runWrangler(['d1', 'create', names.database]);
-  if (database.code !== 0) {
-    throw new CliError(
-      EXIT.remote,
-      `Could not create the database: ${database.stderr.trim().split('\n').at(-1) ?? ''}`,
-    );
-  }
-  const databaseId = parseDatabaseId(`${database.stdout}\n${database.stderr}`);
-  if (databaseId === null) {
-    throw new CliError(
-      EXIT.remote,
-      'The database was created but its id could not be read from wrangler output.',
-      `Find it with \`npx wrangler d1 info ${names.database}\` and write ${names.config} by hand.`,
-    );
-  }
-
-  report.step(`Creating bucket ${names.bucket}…`);
-  const bucket = await runWrangler(['r2', 'bucket', 'create', names.bucket]);
-  if (bucket.code !== 0 && !bucket.stderr.includes('already exists')) {
-    throw new CliError(
-      EXIT.remote,
-      `Could not create the bucket: ${bucket.stderr.trim().split('\n').at(-1) ?? ''}`,
-    );
-  }
-
-  const namespace = nextNamespace(sites);
-  report.step(`Writing ${names.config}…`);
-  await mkdir(dirname(names.config), { recursive: true });
-  await writeFile(
-    names.config,
-    await buildSiteConfig(options.slug, databaseId, options.domain, namespace),
-    'utf8',
-  );
-
-  report.step('Deploying…');
-  const deploy = await runWrangler(['deploy', '-c', names.config]);
-  if (deploy.code !== 0) {
-    throw new CliError(
-      EXIT.remote,
-      `The deploy failed: ${deploy.stderr.trim().split('\n').at(-1) ?? ''}`,
-      `The database and bucket exist; fix the problem and run \`npx wrangler deploy -c ${names.config}\`.`,
-    );
-  }
-  const origin =
-    options.domain !== null
-      ? `https://${options.domain}`
-      : (/https:\/\/[^\s]+\.workers\.dev/.exec(deploy.stdout)?.[0] ?? '');
-
-  report.step('Setting MALLOK_SECRET…');
-  // Generated here and piped straight in: it is never written to a file and
-  // never printed (docs/SECURITY.md §2).
-  const raw = webcrypto.getRandomValues(new Uint8Array(32));
-  const secret = Buffer.from(raw).toString('base64');
-  const put = await runWrangler(
-    ['secret', 'put', 'MALLOK_SECRET', '-c', names.config],
-    secret,
-  );
-  if (put.code !== 0) {
-    throw new CliError(
-      EXIT.remote,
-      'The Worker deployed but MALLOK_SECRET could not be set.',
-      `Run \`npx wrangler secret put MALLOK_SECRET -c ${names.config}\` before opening the site.`,
-    );
-  }
-
-  const record: SiteRecord = {
-    slug: options.slug,
-    origin,
-    domain: options.domain,
-    accountId: null,
-    databaseId,
-    bucket: names.bucket,
-    ratelimitNs: namespace,
-    createdAt: new Date().toISOString(),
-  };
-  await writeRegistry(upsertSite(sites, record));
-  return record;
-}
-
 /** One step of a destroy run. */
 export interface DestroyStep {
   readonly label: string;
@@ -265,13 +73,19 @@ export interface DestroyStep {
   readonly tolerateMissing: boolean;
 }
 
-/** The delete order (docs/CLOUDFLARE_RESOURCES.md §10). */
-export function destroySteps(slug: string, config: string): DestroyStep[] {
+/**
+ * The delete order (docs/CLOUDFLARE_RESOURCES.md §10).
+ *
+ * The Worker is named by the project's own `wrangler.jsonc`, which is the
+ * file `mallok create` edited and `wrangler deploy` read. There is no longer
+ * a per-site `.mallok/sites/<slug>.jsonc` to point `-c` at.
+ */
+export function destroySteps(slug: string): DestroyStep[] {
   const names = resourceNames(slug);
   return [
     {
       label: `Delete the Worker ${names.worker}`,
-      args: ['delete', '-c', config],
+      args: ['delete', names.worker],
       tolerateMissing: true,
     },
     {

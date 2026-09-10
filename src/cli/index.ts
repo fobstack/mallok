@@ -33,7 +33,7 @@ import {
 } from './output.js';
 import { destroySteps, MANUAL_CLEANUP, runWrangler } from './provision.js';
 import { publishBundles, reportMissing, reportWarnings } from './publish.js';
-import { readRegistry, resourceNames, writeRegistry } from './registry.js';
+import { readRegistry, writeRegistry } from './registry.js';
 import { scanDirectory } from './scan.js';
 
 /**
@@ -492,9 +492,8 @@ async function runDestroy(
     );
   }
 
-  const config = resourceNames(slug).config;
   const results: { step: string; ok: boolean; detail: string }[] = [];
-  for (const step of destroySteps(slug, config)) {
+  for (const step of destroySteps(slug)) {
     report.step(`${step.label}…`);
     if (boolFlag(args, 'dry-run')) {
       results.push({ step: step.label, ok: true, detail: 'dry run' });

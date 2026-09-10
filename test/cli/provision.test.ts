@@ -1,13 +1,8 @@
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  buildSiteConfig,
-  destroySteps,
-  MANUAL_CLEANUP,
-  parseDatabaseId,
-} from '../../src/cli/provision.js';
+import { destroySteps, MANUAL_CLEANUP } from '../../src/cli/provision.js';
 import {
   nextNamespace,
   readRegistry,
@@ -37,7 +32,6 @@ describe('resource names', () => {
       worker: 'mallok-acme',
       database: 'mallok-acme-db',
       bucket: 'mallok-acme-media',
-      config: '.mallok/sites/acme.jsonc',
     });
   });
 });
@@ -108,77 +102,17 @@ describe('the registry', () => {
   });
 });
 
-describe('parseDatabaseId', () => {
-  it('reads the id out of wrangler output in either shape', () => {
-    const uuid = '2f3a1b4c-5d6e-4f70-8192-a3b4c5d6e7f8';
-    expect(parseDatabaseId(`"database_id": "${uuid}"`)).toBe(uuid);
-    expect(parseDatabaseId(`database_id = "${uuid}"`)).toBe(uuid);
-  });
-
-  it('returns null rather than a wrong value', () => {
-    expect(parseDatabaseId('Created database mallok-acme-db')).toBeNull();
-  });
-});
-
-describe('buildSiteConfig', () => {
-  it('rewrites the names and keeps the file valid JSONC', async () => {
-    const config = await buildSiteConfig(
-      'acme',
-      '2f3a1b4c-5d6e-4f70-8192-a3b4c5d6e7f8',
-      null,
-      1001,
-    );
-    expect(config).toContain('"name": "mallok-acme"');
-    expect(config).toContain('"database_name": "mallok-acme-db"');
-    expect(config).toContain('"bucket_name": "mallok-acme-media"');
-    expect(config).toContain('2f3a1b4c-5d6e-4f70-8192-a3b4c5d6e7f8');
-    // The comments in the base config survive the substitutions.
-    expect(config).toContain('//');
-  });
-
-  it('adds a custom-domain route when a domain is given', async () => {
-    const config = await buildSiteConfig('acme', 'id', 'acme.com', 1001);
-    expect(config).toContain('"pattern": "acme.com"');
-    expect(config).toContain('"custom_domain": true');
-  });
-
-  // wrangler resolves `main` and `assets.directory` relative to the config
-  // file, not the working directory. This file is written to
-  // `.mallok/sites/<slug>.jsonc` (registry.ts, `resourceNames`), two
-  // directories below the repo root the base paths are written for —
-  // deploying the base file unmodified from there fails with "entry-point
-  // file ... was not found" (found running Gate A for real, 2026-09-03).
-  it('rewrites main and assets.directory to resolve from .mallok/sites/', async () => {
-    const base = await readFile('wrangler.jsonc', 'utf8');
-    const baseMain = /"main":\s*"([^"]*)"/.exec(base)?.[1];
-    const baseAssetsDir = /"assets":\s*{\s*"directory":\s*"([^"]*)"/.exec(
-      base,
-    )?.[1];
-
-    const config = await buildSiteConfig('acme', 'id', null, 1001);
-    const rewrittenMain = /"main":\s*"([^"]*)"/.exec(config)?.[1];
-    const rewrittenAssetsDir = /"assets":\s*{\s*"directory":\s*"([^"]*)"/.exec(
-      config,
-    )?.[1];
-
-    // Resolved from `.mallok/sites/acme.jsonc`, these must land back on the
-    // exact files the base config (resolved from the repo root) points at.
-    expect(resolve('.mallok/sites', rewrittenMain ?? '')).toBe(
-      resolve(baseMain ?? ''),
-    );
-    expect(resolve('.mallok/sites', rewrittenAssetsDir ?? '')).toBe(
-      resolve(baseAssetsDir ?? ''),
-    );
-  });
-});
-
 describe('destroySteps', () => {
   it('deletes in the documented order', () => {
     // Worker first so its bindings release, then the database, then the
     // bucket (docs/CLOUDFLARE_RESOURCES.md §10).
-    const steps = destroySteps('acme', '.mallok/sites/acme.jsonc');
+    const steps = destroySteps('acme');
     expect(steps.map((step) => step.args[0])).toEqual(['delete', 'd1', 'r2']);
     expect(steps.every((step) => step.tolerateMissing)).toBe(true);
+    // Every step names its own resource. There is no per-site config file to
+    // point `-c` at any more: the project's own wrangler.jsonc is the config.
+    expect(steps[0]?.args).toEqual(['delete', 'mallok-acme']);
+    expect(steps.join(' ')).not.toContain('.mallok/sites/');
   });
 
   it('lists what a person still has to do themselves', () => {

@@ -895,4 +895,7 @@ fails, because `main` and `assets.directory` are relative paths that wrangler
 resolves against the config file's own location, not the working directory —
 and `buildSiteConfig` (`src/cli/provision.ts`) never adjusted them. This is a
 confirmed bug: `mallok create` would fail at the deploy step on a real
-account. Fixed 2026-09-03 (`src/cli/provision.ts`).
+account. Fixed 2026-09-03 by rewriting the paths; the nested config was then
+removed altogether in the 0.1.0-rc.2 rewrite of `mallok create`, which edits
+the generated project's own `wrangler.jsonc` in place and so cannot have this
+class of bug (`src/cli/create.ts`).

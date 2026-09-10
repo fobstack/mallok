@@ -44,6 +44,32 @@ function textModules(): Plugin {
  */
 export default defineConfig({
   test: {
+    /**
+     * Coverage is collected from the Node projects only.
+     *
+     * V8 coverage cannot be gathered from code executing inside `workerd`, so
+     * `src/worker`, `src/db` and `src/plugins` — which run there — are not
+     * measurable here however well they are tested. They are excluded rather
+     * than reported as zero, because a gate that counts thoroughly tested code
+     * as uncovered teaches everyone to ignore it. `docs/TESTING.md §5` says
+     * which directories the gate covers and which it cannot.
+     *
+     * The thresholds are today's measured floor, not an aspiration: their job
+     * is to fail when coverage drops, and a threshold set above the current
+     * number fails immediately and gets removed.
+     */
+    coverage: {
+      provider: 'v8',
+      reportsDirectory: 'coverage',
+      reporter: ['text-summary', 'json-summary'],
+      include: ['src/core/**', 'src/cli/**', 'src/runtime/**'],
+      exclude: ['**/*.d.ts', '**/tsconfig.json'],
+      thresholds: {
+        'src/core/**': { lines: 90, branches: 82 },
+        'src/cli/**': { lines: 80, branches: 68 },
+        'src/runtime/**': { lines: 88, branches: 85 },
+      },
+    },
     projects: [
       {
         plugins: [textModules()],
