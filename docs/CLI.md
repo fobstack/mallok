@@ -79,14 +79,27 @@ The CLI writes the token to no file. `.mallok/sites.json` **holds no secrets**
 Follows the ten-step order in `CLOUDFLARE_RESOURCES.md §6`, not repeated here.
 The essentials:
 
+- It takes a **directory**, and creates a complete project in it from the
+  template the package carries: `mallok create my-site`.
+- The Cloudflare resource slug defaults to that directory's name and is
+  overridden with `--slug`. They are usually the same word and do not have to
+  be — a directory can be `.`, and a slug cannot.
 - It uses `wrangler login`'s OAuth identity throughout and **never asks the
-  user to mint a token by hand**.
-- It collects the slug, domain, default locale and starter interactively.
-- It is parameterisable so a portfolio can be scripted: `--slug`, `--domain`,
-  `--locale`, `--starter`.
+  user to mint a token by hand**, and it calls the **project's own** Wrangler,
+  at the version its lockfile pinned, rather than whatever `npx` would fetch.
+- **Nothing on Cloudflare is touched until the generated project has been
+  installed, built and passed `wrangler deploy --dry-run` locally.** A project
+  that cannot build must not leave resources behind (`§4.1`).
+- `--no-deploy` stops after that local verification; `--dry-run` does the same
+  in a temporary directory and removes it.
 - It prints the result of each step and **stops with an explanation on the
   first failure rather than skipping ahead**.
 - It finishes by opening `/_mallok/setup`, where the wizard takes over.
+
+The default locale and the starter are chosen **in the wizard**, not on the
+command line. `--locale` and `--starter` were described here before either was
+implemented; there is one place that decision is made, and adding a second
+would mean two code paths that can disagree about a site's first state.
 
 **Schema migration runs inside the Worker on its first request; the CLI never
 migrates** (`CLOUDFLARE_RESOURCES.md §6`, step 10).

@@ -21,6 +21,7 @@ const BOOLEAN_FLAGS = new Set([
   'verbose',
   'draft',
   'create-only',
+  'no-deploy',
   'fail-on-missing',
   'with-settings',
   'help',

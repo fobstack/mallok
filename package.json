@@ -1,6 +1,7 @@
 {
   "name": "mallok",
   "version": "0.1.0-rc.1",
+  "private": true,
   "description": "Open-source, Cloudflare-native content website. Markdown in D1, instant publishing, no build step.",
   "license": "Apache-2.0",
   "author": "FobStack",
@@ -31,9 +32,6 @@
   "bin": {
     "mallok": "dist/cli/index.js"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -58,7 +56,9 @@
     "dev:admin": "vite",
     "admin:size": "node scripts/admin-size.mjs",
     "build:cli": "node scripts/build-cli.mjs",
-    "build:site": "pnpm run build:cli && node dist/cli/index.js build . --theme ./src/themes/atelier --out dist/site"
+    "build:site": "pnpm run build:cli && node dist/cli/index.js build . --theme ./src/themes/atelier --out dist/site",
+    "release:pack": "pnpm run build:cli && cd dist/cli && npm pack",
+    "prepublishOnly": "node scripts/refuse-publish.mjs"
   },
   "dependencies": {
     "hast-util-to-string": "3.0.1",

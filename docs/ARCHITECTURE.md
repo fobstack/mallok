@@ -734,10 +734,13 @@ Three deployment entry points (see PRODUCT_VISION §5.4) converge on one setup
 wizard. Each site's resources, naming and creation order are in
 [CLOUDFLARE_RESOURCES.md](CLOUDFLARE_RESOURCES.md):
 
-1. **`npx mallok create`**: drives wrangler through OAuth login, creates D1 and
-   R2, generates `MALLOK_SECRET`, deploys the Worker, prints the
-   `.workers.dev` address and opens the wizard. It accepts `--starter`,
-   `--domain` and `--locale` so a portfolio can be scripted.
+1. **`npx mallok create <dir>`**: generates a complete project from the
+   template the package carries, installs and builds it, and checks
+   `wrangler deploy --dry-run` — and only then drives wrangler through OAuth
+   login to create D1 and R2, generate `MALLOK_SECRET`, deploy the Worker,
+   print the `.workers.dev` address and open the wizard. It accepts `--slug`,
+   `--domain`, `--no-deploy` and `--dry-run`. The locale and the starter are
+   the wizard's to collect.
 2. **The Deploy to Cloudflare button**: the official documentation confirms it
    supports GitHub and GitLab only, requires the source repository to be
    public, and creates D1, R2 and the rest from the wrangler configuration

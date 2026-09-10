@@ -21,6 +21,7 @@ import {
   stringFlag,
 } from './args.js';
 import { createClient, type SiteClient } from './client.js';
+import { createSite } from './create.js';
 import { exportSite } from './export.js';
 import {
   CliError,
@@ -30,15 +31,23 @@ import {
   reportFailure,
   table,
 } from './output.js';
-import {
-  createSite,
-  destroySteps,
-  MANUAL_CLEANUP,
-  runWrangler,
-} from './provision.js';
+import { destroySteps, MANUAL_CLEANUP, runWrangler } from './provision.js';
 import { publishBundles, reportMissing, reportWarnings } from './publish.js';
 import { readRegistry, resourceNames, writeRegistry } from './registry.js';
 import { scanDirectory } from './scan.js';
+
+/**
+ * The published version.
+ *
+ * Substituted at build time from the manifest, so `mallok --version` cannot
+ * disagree with the package a user installed — the two came from one source.
+ * Running from source there is no substitution and it reports `dev`, which is
+ * the honest answer for a build nobody published.
+ */
+declare const __MALLOK_VERSION__: string | undefined;
+
+export const VERSION: string =
+  typeof __MALLOK_VERSION__ === 'string' ? __MALLOK_VERSION__ : 'dev';
 
 const USAGE = `mallok — publish and manage a Mallok site
 
@@ -48,7 +57,7 @@ const USAGE = `mallok — publish and manage a Mallok site
   mallok preview <dir>     Render bundles locally, with no network
   mallok build <dir>       Build a whole static site from local files (no D1)
   mallok media push <dir>  Upload media without touching content
-  mallok create <slug>     Deploy a new site to your Cloudflare account
+  mallok create <dir>      Create a Mallok project, then deploy it
   mallok destroy <slug>    Delete a site's Worker, database and bucket
 
 Options
@@ -63,10 +72,15 @@ Options
   --with-settings      Also apply site.json from an export directory
   --create-only        Fail instead of updating existing content
   --fail-on-missing    Treat missing referenced files as an error
+  --slug <slug>        Cloudflare resource slug for create (default: the
+                       directory's own name)
   --domain <host>      Custom domain, for create
+  --no-deploy          create: generate and verify the project, touch nothing
+                       on Cloudflare
   --confirm <slug>     Required by destroy; repeat the slug
   --dry-run            Report what would happen, write nothing
   --json               Emit one JSON object on stdout
+  --version            Print the version
   -v, --verbose        Print each request
 `;
 
@@ -403,31 +417,50 @@ async function runCreate(
   args: ReturnType<typeof parseArgs>,
   report: Reporter,
 ): Promise<number> {
-  const slug = stringFlag(args, 'slug') ?? args.positional[0];
-  if (slug === undefined) {
+  const directory = args.positional[0];
+  if (directory === undefined) {
     throw new CliError(
       EXIT.user,
-      'mallok create needs a slug.',
-      'For example: mallok create acme --domain acme.com',
+      'mallok create needs a directory.',
+      'For example: mallok create my-site --domain example.com',
     );
   }
-  const record = await createSite(
+
+  const result = await createSite(
     {
-      slug,
+      directory,
+      // The directory is where the project goes; the slug names the Cloudflare
+      // resources. They are usually the same word and do not have to be — a
+      // directory can be `.`, and a slug cannot.
+      ...(stringFlag(args, 'slug') === undefined
+        ? {}
+        : { slug: stringFlag(args, 'slug') as string }),
       domain: stringFlag(args, 'domain') ?? null,
+      noDeploy: boolFlag(args, 'no-deploy'),
       dryRun: boolFlag(args, 'dry-run'),
     },
     report,
   );
-  const setupUrl = record.origin === '' ? '' : `${record.origin}/_mallok/setup`;
+
+  const setupUrl =
+    result.origin === null || result.origin === ''
+      ? ''
+      : `${result.origin}/_mallok/setup`;
   if (setupUrl !== '') {
     report.step(`\nOpen ${setupUrl} to finish setting up the site.`);
   }
   report.done(
-    { command: 'create', site: record, setupUrl },
+    {
+      command: 'create',
+      directory,
+      slug: result.slug,
+      origin: result.origin,
+      deployed: result.deployed,
+      setupUrl,
+    },
     table(
-      ['slug', 'origin', 'database'],
-      [[record.slug, record.origin, record.databaseId ?? '—']],
+      ['directory', 'slug', 'origin'],
+      [[directory, result.slug, result.origin ?? '—']],
     ),
   );
   return EXIT.ok;
@@ -565,6 +598,11 @@ export async function main(argv: readonly string[]): Promise<number> {
     args = parseArgs(argv);
   } catch (error) {
     return reportFailure(error);
+  }
+
+  if (boolFlag(args, 'version')) {
+    process.stdout.write(`${VERSION}\n`);
+    return EXIT.ok;
   }
 
   if (args.command === '' || boolFlag(args, 'help')) {
