@@ -33,26 +33,55 @@ enters the Worker.
 ## 3. The commands
 
 ```
-mallok create                     Deploy a new site into your Cloudflare account
+mallok create <dir>               Create a project, verify it, then deploy it
+mallok upgrade --to <version>     Move a project onto another Mallok release
+mallok prepare                    Stage the admin and theme assets for a build
 mallok publish <dir>              Publish one or more bundles (published by default)
 mallok import <dir>               Import (keeping whatever status the front matter says)
 mallok export <dir>               Export the whole site to a directory
 mallok build <dir>                Compile a local directory into a static site
 mallok preview <dir>              Render bundles locally, offline
 mallok media push <dir>           Upload media only, touching no content
-mallok destroy <slug>             Delete every resource of a site, in order
+mallok destroy <slug>             Delete a site's Worker, database and bucket
 ```
 
-Global arguments:
+**Every flag is declared per command, and an undeclared one fails.** A
+misspelling used to be accepted and ignored, so `mallok create site
+--no-deply` provisioned a real database and a real bucket while its user
+believed they had asked it not to. For the same reason a switch is a boolean:
+`--dry-run`, `--dry-run=true` and `--dry-run=false` are accepted, and
+`--dry-run=yes` is refused rather than guessed at — `--dry-run=true` used to
+parse as the string `"true"`, which every check downstream read as false.
+
+Arguments accepted everywhere:
+
+| Argument | Meaning |
+| --- | --- |
+| `--json` | Machine-readable output, for CI and AI content pipelines |
+| `--verbose`, `-v` | Print every request |
+| `--help`, `-h` | Usage |
+| `--version` | The installed version |
+
+Arguments the site commands (`publish`, `import`, `export`, `media push`) take:
 
 | Argument | Meaning |
 | --- | --- |
 | `--site <slug>` | The target site from `.mallok/sites.json`. With one site it is implied; with several, omitting it is an error |
 | `--url <origin>` | Address the site directly, bypassing the registry |
 | `--token <token>` | The API token; defaults to the `MALLOK_TOKEN` environment variable |
-| `--json` | Machine-readable output, for CI and AI content pipelines |
 | `--dry-run` | Report what would happen and write nothing |
-| `-v, --verbose` | Print every HTTP request |
+
+### 3.1 Which package manager
+
+`mallok create` and `mallok upgrade` install a project's dependencies, and the
+supported managers are **npm** and **pnpm**. npm is the default, because it
+ships with Node and the documented prerequisite is Node 22 and nothing else —
+this used to assume a global pnpm and failed with `pnpm: not found` after
+generating the project and before verifying anything.
+
+`--package-manager npm|pnpm` chooses explicitly. Without it, the manager
+running the CLI is used when it is one of the two (so `pnpm dlx mallok create`
+keeps using pnpm), and npm otherwise.
 
 ## 4. Authentication
 
@@ -79,8 +108,11 @@ The CLI writes the token to no file. `.mallok/sites.json` **holds no secrets**
 Follows the order in `CLOUDFLARE_RESOURCES.md §6`, not repeated here.
 The essentials:
 
-- It takes a **directory**, and creates a complete project in it from the
-  template the package carries: `mallok create my-site`.
+- It takes a **directory**, and creates a project in it from the shell the
+  package carries: `mallok create my-site`. That project holds the site —
+  configuration, content, theme choice, plugins and a four-line Worker entry —
+  and depends on `mallok` at an **exact** version for everything else
+  (`docs/PRODUCT_CONTRACT.md §1`).
 - The Cloudflare resource slug defaults to that directory's name and is
   overridden with `--slug`. They are usually the same word and do not have to
   be — a directory can be `.`, and a slug cannot.
@@ -88,15 +120,32 @@ The essentials:
   user to mint a token by hand**, and it calls the **project's own** Wrangler,
   at the version its lockfile pinned, rather than whatever `npx` would fetch.
 - **Nothing on Cloudflare is touched until the generated project has been
-  installed, built and passed `wrangler deploy --dry-run` locally.** A project
-  that cannot build must not leave resources behind (`§4.1`).
+  configured, installed, built and passed `wrangler deploy --dry-run`
+  locally** — and the configuration that dry-run checks is the *final* one,
+  with the real Worker name, bucket, rate-limit namespace and custom domain in
+  it. A project that cannot build must not leave resources behind (`§4.1`).
+- Before the first change to the account it asks three read-only questions:
+  which account is signed in, and whether a Worker, database or bucket of
+  these names already exists. **An existing resource this project did not
+  create is refused**, not adopted: it may belong to another site.
 - `--no-deploy` stops after that local verification; `--dry-run` does the same
   in a temporary directory and removes it.
 - Every resource it creates is recorded in `.mallok/create-state.json` before
-  the next step runs, and **never a secret**. Running
-  `mallok create . --slug <slug>` from inside the project resumes from there:
-  nothing is regenerated, and what already exists is not created twice. That
-  is also how a `--no-deploy` project is deployed later.
+  the call that creates it — names, ids and the account, and **never a secret
+  value**. Running `mallok create . --slug <slug>` from inside the project
+  resumes from there: nothing is regenerated, and what already exists is not
+  created twice. That is also how a `--no-deploy` project is deployed later.
+  A ledger that cannot be read or does not parse **stops the run**; treating
+  it as absent is how a resumed run creates a second database beside the one
+  it cannot see.
+- Running it on a **finished** project does nothing at all and exits 0: no
+  deploy, and no new `MALLOK_SECRET`. Rotating that secret signs every user
+  out and makes stored plugin keys unreadable, so secrets are reconciled by
+  name — Cloudflare will say whether one of that name exists, which is enough.
+- It prints a **one-time setup key** and does not store it. The first-run
+  wizard will not create the administrator without it, so a deployed site
+  cannot be claimed by whoever finds its address first; the key stops working
+  the moment setup succeeds.
 - It prints the result of each step and **stops with an explanation on the
   first failure rather than skipping ahead**.
 - It finishes by opening `/_mallok/setup`, where the wizard takes over.
@@ -293,13 +342,60 @@ For the workflow of preparing images first and publishing later.
 
 ## 10. `mallok destroy <slug>`
 
-Follows the nine-step order in `CLOUDFLARE_RESOURCES.md §10`. **Every step is
-idempotent, every step prints its result, and the first failure stops the run
-with an explanation rather than being skipped.**
+Deletes the Worker, the database and the bucket, in that order
+(`CLOUDFLARE_RESOURCES.md §10`). **Every step prints its result, a resource
+that is already gone counts as done, and the first failure stops the run with
+an explanation rather than being skipped.**
 
-The first step is confirming an export exists. `--yes` skips the interactive
-confirmation but **does not skip the export check** — that additionally
-requires `--i-have-a-backup`.
+It reads **both** records: `.mallok/sites.json`, written when a create
+finishes, and `.mallok/create-state.json`, written before the first resource
+is created. A run that died halfway through `create` never reached the
+registry, and used to be undeletable by this command — the resources existed,
+the ledger named them, and nothing could act on it.
+
+Three refusals:
+
+- `--confirm <slug>` must repeat the slug, or nothing is deleted;
+- it stops if the current Cloudflare account is not the one the ledger
+  records, because a same-named resource on another account is somebody
+  else's site;
+- it will not report a bucket as deleted when the bucket still holds objects,
+  because Cloudflare refuses that. `--empty-bucket` deletes them first, and is
+  opt-in because it destroys every uploaded image and file.
+
+What it cannot do, and says so at the end: R2 and Worker custom domains, DNS
+records, the Turnstile widget and `CF_API_TOKEN` are dashboard work.
+
+## 10.1 `mallok upgrade --to <version>`
+
+Moves a project onto another Mallok release:
+
+1. sets the **exact** version in `package.json` (a range is refused — an
+   upgrade is a decision, not something an install does to you);
+2. installs;
+3. applies any project migrations that release needs, once each, recorded by
+   id in `.mallok/upgrades.json`;
+4. re-runs the project's typecheck, tests, build and `wrangler deploy
+   --dry-run`.
+
+Running it again on the same version changes nothing and exits 0. A failure
+restores `package.json` and the lockfile, so the project is left on the
+version that worked.
+
+Lint is deliberately **not** among the checks: it examines the site's own
+formatting, which the site owns, and failing an upgrade over indentation is
+hostile.
+
+Database schema migrations are not this command's job — the Worker applies
+those itself on its first request after a deploy.
+
+## 10.2 `mallok prepare`
+
+Copies the compiled admin application and the official themes' assets out of
+the installed `mallok` package into the project's `dist/assets`, and validates
+and stages a theme in `src/theme/` if the project has one. It runs before
+every build and every deploy, and rebuilds the directory each time so a stale
+asset from an older version cannot survive an upgrade.
 
 ## 11. Output and exit codes
 

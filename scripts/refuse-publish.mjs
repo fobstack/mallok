@@ -2,7 +2,7 @@
  * Refuses `npm publish` from the repository root.
  *
  * There are two `package.json` files that look publishable — this one and the
- * generated `dist/cli/package.json` — and only the second is the product.
+ * generated `dist/pkg/package.json` — and only the second is the product.
  * Publishing from here would push the entire repository to npm under the name
  * `mallok`: source, tests, docs and all.
  *
@@ -15,10 +15,10 @@ console.error(
     '',
     'Refusing to publish from the repository root.',
     '',
-    'The published package is the CLI, built from this repository:',
+    'The published package is the framework, built from this repository:',
     '',
-    '  pnpm release:pack          # builds dist/cli and packs it',
-    '  cd dist/cli && npm publish',
+    '  pnpm release:pack          # builds dist/pkg and packs it',
+    '  cd dist/pkg && npm publish',
     '',
     'See docs/RELEASE_GATE.md §3.',
     '',
