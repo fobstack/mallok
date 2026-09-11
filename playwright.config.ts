@@ -42,7 +42,11 @@ export default defineConfig({
      * the compiled themes and serves the admin bundle from dist/assets.
      */
     command:
-      'rm -rf .tmp/e2e-state && pnpm run build:themes && pnpm run build:admin && npx wrangler dev --port 8788 --persist-to .tmp/e2e-state',
+      // `build:package` is here because `05-accessibility` builds each theme
+      // with the packaged CLI. Without it the spec used a `dist/` directory
+      // left over from an earlier release and passed against an artifact this
+      // run never produced.
+      'rm -rf .tmp/e2e-state && pnpm run build:types && pnpm run build:package && npx wrangler dev --port 8788 --persist-to .tmp/e2e-state',
     url: 'http://127.0.0.1:8788/_mallok/api/setup/status',
     // Off by default so a run always tests the build it just made. Set
     // MALLOK_E2E_REUSE=1 to attach to a `wrangler dev` you started yourself,

@@ -146,7 +146,11 @@ test.describe('the official themes', () => {
         await run(
           'node',
           [
-            'dist/cli/index.js',
+            // The package this run built, not whatever `dist/` happens to
+            // hold. This pointed at `dist/cli/index.js`, a path the build no
+            // longer writes, and kept passing against an artifact from an
+            // earlier release — the exact shape of a green that means nothing.
+            'dist/pkg/cli/index.js',
             'build',
             '.',
             '--theme',
