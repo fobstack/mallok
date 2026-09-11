@@ -7,6 +7,11 @@
 - Repository: `FobStack/mallok`
 - Licence: Apache-2.0 (§12)
 
+> **Read `docs/PRODUCT_CONTRACT.md` first.** It is the canonical statement of
+> what Mallok is — a complete Cloudflare-native framework, published as one
+> package, with a site depending on an exact version of it — and it wins where
+> this document disagrees.
+
 ## 1. In one sentence
 
 **Mallok is an open-source, Cloudflare-native content website: content lives

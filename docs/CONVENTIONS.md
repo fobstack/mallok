@@ -29,10 +29,15 @@ looks up rows without rendering belongs to that dead design.
 
 ## Product boundaries
 
-- Mallok is an open-source content website deployed into the user's own
-  Cloudflare account. It is not a site generator and not a framework. **The
-  first vertical is foreign-trade B2B company sites; 0.1 is accepted when a
-  real trade site is running and has received an inquiry.**
+- Mallok is a complete, open-source, Cloudflare-native **framework** for
+  content websites, published as one npm package, plus the product built on
+  it. A site is a thin project that depends on an exact version of that
+  package — not a copy of this repository (`docs/PRODUCT_CONTRACT.md §1`).
+  This line used to read "not a framework", which was true while the only
+  deployment was this repository and stopped being true when `mallok create`
+  began generating projects that merely depend on it. **The first vertical is
+  foreign-trade B2B company sites; 0.1 is accepted when a real trade site is
+  running and has received an inquiry.**
 - The direct competitors are WordPress and Ghost. Astro is a reference point
   for output quality, not something to be compatible with or match feature for
   feature.

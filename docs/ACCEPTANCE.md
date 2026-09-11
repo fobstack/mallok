@@ -35,31 +35,28 @@ AC-<GROUP>-<NUMBER>
 | `AC-CLI` | The command line |
 | `AC-INV` | Cross-stage invariants, re-verified by every task |
 
-Status values:
+Status values are **`docs/TESTING.md §6`'s and no others**. This file used to
+define its own five, one of which (`NOT_AVAILABLE`) meant the opposite of what
+it means there, so the same word described two different situations depending
+on which document a reader had open. The mapping applied on 2026-09-11:
 
-| Status | Meaning |
-| --- | --- |
-| `VERIFIED_LOCAL` | **An automated assertion at a nameable `file:line`.** Walking through it by hand does not count — `TESTING §1`, rule 3: a test that cannot be reproduced is not a test |
-| `VERIFIED_HUMAN` | Verified by a person on a real Cloudflare account |
-| `NOT_RUN` | Implemented, but with no reproducible evidence |
-| `PENDING_DECISION` | The implementation is fine; **the criterion itself is wrong** and awaits the product owner. What blocks it is us, not the platform |
-| `NOT_AVAILABLE` | Needs a real account or an external service; no evidence is obtainable locally |
-
-**These five are not the seven in `docs/TESTING.md §6`**, and the difference
-is worth knowing before reading a row:
-
-| Here | There | Note |
+| Previously here | Now | Why |
 | --- | --- | --- |
-| `VERIFIED_LOCAL` | `VERIFIED_LOCAL` | Same meaning |
-| `VERIFIED_HUMAN` | `VERIFIED_STAGING` / `VERIFIED_HUMAN` | A row here does not say whether a person's judgement was needed or only a real account |
-| `NOT_RUN` | `NOT_RUN` | Same meaning |
-| `NOT_AVAILABLE` | — | **Different meaning.** Here it means "needs a real account"; in `TESTING.md §6` it means "there is no implementation to test yet" |
-| `PENDING_DECISION` | — | No equivalent; the blocker is a product decision, not a platform |
+| `VERIFIED_LOCAL` | `VERIFIED_LOCAL` | Unchanged: an automated assertion at a nameable `file:line` |
+| `VERIFIED_HUMAN` (Gate A rows) | `STALE` | The evidence is real and predates the code now serving it — see below |
+| `NOT_RUN` | `NOT_RUN` | Unchanged |
+| `NOT_AVAILABLE` ("needs a real account") | `NOT_RUN` | It *can* be run; it needs an account nobody has run it on. `NOT_AVAILABLE` means "there is nothing to test yet" |
+| `NOT_RUN` | `NOT_RUN` | None remain; the last one was settled 2026-09-06 |
 
-`docs/RELEASE_GATE.md` uses `TESTING.md §6`'s seven and nothing else.
-Reconciling this table with it means re-labelling all 74 rows below and has
-not been done; until it is, read a status here against this mapping rather
-than against `TESTING.md`.
+**Every Gate A row is `STALE` as of 0.1.0-rc.3.** Those five were verified on a
+real account on 2026-09-03/04 — against the previous `mallok create`, which
+wrote a nested per-site config and provisioned before it built; against a
+Worker whose theme and plugins were compiled-in constants; and against a
+package that shipped a copy of this repository rather than a framework. All
+three were replaced. The measurements are still interesting and are kept in
+`docs/tasks/TASK-01.md §5`; they are not evidence for this release, and the
+rows return to `VERIFIED_STAGING` only when somebody re-runs them
+(`docs/RELEASE_GATE.md`).
 
 **Each criterion's status and evidence live in its group's table below, and
 the totals are counted from those tables rather than written above them.**
@@ -72,15 +69,15 @@ contradictory figures (§14.0).
 
 | ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
-| `AC-DEPLOY-01` | `npx mallok create` creates every resource on a clean Cloudflare account, deploys successfully, and prints a reachable `.workers.dev` address | `VERIFIED_HUMAN` | Run for real 2026-09-03/04 (`TASK-01.md §5`): D1 and R2 created, config written, deployed, `.workers.dev` address returned `200`. **Found and fixed a real bug on this run**: `buildSiteConfig` did not adjust `main`/`assets.directory` for the nested config path, so the deploy step failed until `src/cli/provision.ts` was corrected — see `test/cli/provision.test.ts` for the regression test |
-| `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_AVAILABLE` | Needs a public repository and a real account. The button has never been clicked |
+| `AC-DEPLOY-01` | `npx mallok create` creates every resource on a clean Cloudflare account, deploys successfully, and prints a reachable `.workers.dev` address | `STALE` | Run for real 2026-09-03/04 (`TASK-01.md §5`): D1 and R2 created, config written, deployed, `.workers.dev` address returned `200`. **Found and fixed a real bug on this run**: `buildSiteConfig` did not adjust `main`/`assets.directory` for the nested config path, so the deploy step failed until `src/cli/provision.ts` was corrected — see `test/cli/provision.test.ts` for the regression test |
+| `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_RUN` | Needs a public repository and a real account. The button has never been clicked |
 | `AC-DEPLOY-03` | Every step of the setup wizard completes, and `/_mallok/setup` returns 404 afterwards. **The wizard is four steps** (`ARCHITECTURE §15`, `ADMIN.md §5`); media domain and email are configured afterward in Settings, not folded into it — settled 2026-09-02, see §14.2 item 2 | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:53`, `:81`, `:181` |
-| `AC-DEPLOY-04` | With a custom domain bound, the site serves normally and **the cache hits** (`x-mallok-cache: HIT`) | `VERIFIED_HUMAN` | Real custom domain (`spike.mallok.dev`) bound 2026-09-03: first request `MISS`, second `HIT`, identical to the `.workers.dev` behaviour. `TASK-01.md §5`, `ARCHITECTURE §18` item 1 |
+| `AC-DEPLOY-04` | With a custom domain bound, the site serves normally and **the cache hits** (`x-mallok-cache: HIT`) | `STALE` | Real custom domain (`spike.mallok.dev`) bound 2026-09-03: first request `MISS`, second `HIT`, identical to the `.workers.dev` behaviour. `TASK-01.md §5`, `ARCHITECTURE §18` item 1 |
 | `AC-DEPLOY-05` | With no custom domain bound, the wizard says plainly that caching is not in effect, and `robots.txt` emits `Disallow: /` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:152`, `:161` |
 | `AC-DEPLOY-06` | Without `CF_API_TOKEN` the site works normally, `cache_ttl` drops to 60 seconds, and the admin carries a standing notice | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:81`, `test/worker/cache-admin.test.ts:94`, `test/worker/setup.test.ts:35` |
 | `AC-DEPLOY-07a` | Concurrent first requests apply the migration exactly once in workerd, and the lock is released | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:42` |
-| `AC-DEPLOY-07b` | The same holds on real infrastructure | `VERIFIED_HUMAN` | Two independent runs against fresh real D1 databases 2026-09-03, ten parallel first requests each: exactly one row per migration, lock released both times. `TASK-01.md §5`, `ARCHITECTURE §18` item 8 |
-| `AC-DEPLOY-08` | Upgrading the Worker does not interrupt the site; the schema migrates itself and the old version keeps serving during it | `NOT_AVAILABLE` | Needs two deployments on a real account |
+| `AC-DEPLOY-07b` | The same holds on real infrastructure | `STALE` | Two independent runs against fresh real D1 databases 2026-09-03, ten parallel first requests each: exactly one row per migration, lock released both times. `TASK-01.md §5`, `ARCHITECTURE §18` item 8 |
+| `AC-DEPLOY-08` | Upgrading the Worker does not interrupt the site; the schema migrates itself and the old version keeps serving during it | `NOT_RUN` | Needs two deployments on a real account |
 
 ## 4. AC-CONTENT
 
@@ -88,12 +85,12 @@ contradictory figures (§14.0).
 | --- | --- | --- | --- |
 | `AC-CONTENT-01` | Enter ten products in the admin, with specification tables and images, and publish them | `VERIFIED_LOCAL` | `test/worker/product-catalog.test.ts:119` |
 | `AC-CONTENT-02a` | Saving content does issue the tag purge | `VERIFIED_LOCAL` | `test/worker/cache-admin.test.ts:94` |
-| `AC-CONTENT-02b` | Publish a news item and see it on the public URL **within a minute** — settled 2026-09-06, correcting "within seconds", which a 20-second real purge round trip could not honestly claim; see §14.2 item 6 | `VERIFIED_HUMAN` | Measured 2026-09-03: real purge round trip is **≈ 20 seconds** (`TASK-01.md §5`, `ARCHITECTURE §18` item 3) — comfortable margin under a minute, and far better than an unpurged page's TTL |
+| `AC-CONTENT-02b` | Publish a news item and see it on the public URL **within a minute** — settled 2026-09-06, correcting "within seconds", which a 20-second real purge round trip could not honestly claim; see §14.2 item 6 | `STALE` | Measured 2026-09-03: real purge round trip is **≈ 20 seconds** (`TASK-01.md §5`, `ARCHITECTURE §18` item 3) — comfortable margin under a minute, and far better than an unpurged page's TTL |
 | `AC-CONTENT-03` | Enable a second language, create a translation of a product, and both have correct URLs | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:69`, `:107` |
 | `AC-CONTENT-04` | Both languages emit correct `hreflang`, including `x-default` | `VERIFIED_LOCAL` | `test/worker/locale.test.ts:134`, `:271` |
 | `AC-CONTENT-05` | Drafts do not appear on a public URL, do not enter the cache, and do not enter the sitemap | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:213`, `test/worker/seo.test.ts:92` |
 | `AC-CONTENT-06a` | Due content is published by `publishDue`, which triggers the purge | `VERIFIED_LOCAL` | `test/core/paths.test.ts` (`schedules a future date and publishes a past one`), `src/worker/scheduled.ts` |
-| `AC-CONTENT-06b` | The Cron Trigger drives that flow every minute in a real environment | `NOT_AVAILABLE` | Platform behaviour; needs a real account |
+| `AC-CONTENT-06b` | The Cron Trigger drives that flow every minute in a real environment | `NOT_RUN` | Platform behaviour; needs a real account |
 | `AC-CONTENT-07` | After a slug change the old URL 301s to the new one | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:234` |
 | `AC-CONTENT-08` | Opening an item and closing it leaves `markdown` byte-identical | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:269`, `test/worker/roundtrip.test.ts:140` |
 | `AC-CONTENT-09` | A body over 2 MB fails to save with a clear error, and is never silently truncated | `VERIFIED_LOCAL` | `src/worker/admin-content.ts:38`, `test/worker/roundtrip.test.ts:289` (`handles hostile content without crashing or leaking`, whose corpus includes a 2 MB+ body) |
@@ -107,10 +104,10 @@ contradictory figures (§14.0).
 | `AC-MEDIA-01` | Uploading an image in the admin converts it to WebP with width variants in the browser; the Worker processes no image | `VERIFIED_LOCAL` | `test/worker/media.test.ts:142`, `test/admin/media.test.ts` |
 | `AC-MEDIA-02` | Uploading the same file twice stores it once (sha deduplication) | `VERIFIED_LOCAL` | `test/worker/media.test.ts:111` |
 | `AC-MEDIA-03` | Body images emit `srcset`, `sizes`, `width`, `height`, `loading` and `decoding` | `VERIFIED_LOCAL` | `test/core/fragment.test.ts:69`, `test/worker/media.test.ts:176` |
-| `AC-MEDIA-04` | Media is served directly from an R2 custom domain and does not count against Worker requests | `VERIFIED_HUMAN` | Real R2 custom domain (`media.mallok.dev`) connected 2026-09-04: fetched an uploaded object twice, `200`, byte-identical, never touching the Worker (true by construction — the domain resolves straight to R2). **New finding**: `cf-cache-status: DYNAMIC` on both fetches — Cloudflare's edge does **not** cache R2 custom-domain objects by default; an explicit Cache Rule would be needed for that, which this run did not configure. `TASK-01.md §5`, `ARCHITECTURE §18` item 6 |
+| `AC-MEDIA-04` | Media is served directly from an R2 custom domain and does not count against Worker requests | `STALE` | Real R2 custom domain (`media.mallok.dev`) connected 2026-09-04: fetched an uploaded object twice, `200`, byte-identical, never touching the Worker (true by construction — the domain resolves straight to R2). **New finding**: `cf-cache-status: DYNAMIC` on both fetches — Cloudflare's edge does **not** cache R2 custom-domain objects by default; an explicit Cache Rule would be needed for that, which this run did not configure. `TASK-01.md §5`, `ARCHITECTURE §18` item 6 |
 | `AC-MEDIA-05` | Types outside the allow-list are refused, judged by signature rather than extension; svg is refused | `VERIFIED_LOCAL` | `test/worker/media.test.ts:125`, `test/core/media.test.ts` (`rejects SVG`, `ignores a lying extension`) |
 | `AC-MEDIA-06a` | Media at `ref_count` zero appears under "unused" and is not collected during the grace period | `VERIFIED_LOCAL` | `test/worker/media.test.ts:254`, `:279` |
-| `AC-MEDIA-06b` | Cron performs the collection on a real seven-day window | `NOT_AVAILABLE` | Platform behaviour; needs a real account |
+| `AC-MEDIA-06b` | Cron performs the collection on a real seven-day window | `NOT_RUN` | Platform behaviour; needs a real account |
 
 ## 6. AC-THEME
 
@@ -131,12 +128,12 @@ contradictory figures (§14.0).
 | --- | --- | --- | --- |
 | `AC-PLUGIN-01` | The installed `inquiry` plugin's switch, settings and secrets all take effect **immediately** | `VERIFIED_LOCAL` | `test/worker/plugins.test.ts:60`, `:115` |
 | `AC-PLUGIN-02a` | A submission is validated, stored, and queued as a job notifying the owner with Reply-To set to the buyer | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts` (`accepts a valid submission, stores it and queues both emails`) |
-| `AC-PLUGIN-02b` | The owner **actually receives the email within seconds** | `NOT_AVAILABLE` | Needs real Resend; the tests use a stub |
+| `AC-PLUGIN-02b` | The owner **actually receives the email within seconds** | `NOT_RUN` | Needs real Resend; the tests use a stub |
 | `AC-PLUGIN-03a` | The acknowledgement picks its template by the submitting page's locale and is queued | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts` (`renders an operator Liquid template for the autoreply`) |
-| `AC-PLUGIN-03b` | The buyer **actually receives** the acknowledgement | `NOT_AVAILABLE` | Needs real Resend |
+| `AC-PLUGIN-03b` | The buyer **actually receives** the acknowledgement | `NOT_RUN` | Needs real Resend |
 | `AC-PLUGIN-04` | The admin panel lists inquiries, shows detail, marks spam and exports CSV | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts:359`, `:385` |
 | `AC-PLUGIN-05a` | The honeypot, rate limiting and server-side Turnstile verification are all on the code path | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts` (`silently drops a submission that filled the honeypot`, `verifies Turnstile server-side once a secret is configured`) |
-| `AC-PLUGIN-05b` | They hold against real Turnstile, and a submission fits the free plan's CPU and subrequest budget | `NOT_AVAILABLE` | Needs real Turnstile and CPU measurement, `ARCHITECTURE §18` item 9 |
+| `AC-PLUGIN-05b` | They hold against real Turnstile, and a submission fits the free plan's CPU and subrequest budget | `NOT_RUN` | Needs real Turnstile and CPU measurement, `ARCHITECTURE §18` item 9 |
 | `AC-PLUGIN-06` | A failed send is retried by cron and its status is visible in the admin | `VERIFIED_LOCAL` | `test/worker/inquiry.test.ts:339` |
 | `AC-PLUGIN-07` | The interface states plainly that **installing, updating and removing plugins need a redeploy**, and has no upload control | `VERIFIED_LOCAL` | `test/admin/redeploy-notice.test.ts:58`, `:69` |
 
@@ -149,9 +146,9 @@ contradictory figures (§14.0).
 | `AC-SEO-02` | `/feed.xml` emits valid RSS per language | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:128` |
 | `AC-SEO-03` | Every page emits correct canonical, OG and Twitter Card tags | `VERIFIED_LOCAL` | `test/core/view.test.ts` (`never overrides a canonical field the author wrote`, `fills canonical fields from the aliases other tools use`) |
 | `AC-SEO-04` | JSON-LD emits Organization, Article, Product and FAQPage, with `<` escaped to `\u003c` | `VERIFIED_LOCAL` | `test/core/view.test.ts:117`, `:144`, and `still emits Article and Product` |
-| `AC-SEO-05` | Lighthouse mobile SEO is **100 every time** | `NOT_AVAILABLE` | Needs a custom domain with the cache warm, `SEO_PERFORMANCE §12` |
-| `AC-SEO-06` | Lighthouse mobile Performance is ≥ 95 median and ≥ 90 in any run | `NOT_AVAILABLE` | As above |
-| `AC-SEO-07` | The page-size and image budgets are met | `NOT_AVAILABLE` | The budget numbers themselves still await the product owner (`SEO_PERFORMANCE §7`) |
+| `AC-SEO-05` | Lighthouse mobile SEO is **100 every time** | `NOT_RUN` | Needs a custom domain with the cache warm, `SEO_PERFORMANCE §12` |
+| `AC-SEO-06` | Lighthouse mobile Performance is ≥ 95 median and ≥ 90 in any run | `NOT_RUN` | As above |
+| `AC-SEO-07` | The page-size and image budgets are met | `NOT_RUN` | The budget numbers themselves still await the product owner (`SEO_PERFORMANCE §7`) |
 
 ## 9. AC-EXPORT
 
@@ -256,7 +253,10 @@ The recount did four things:
    As written, those counted as no-evidence in full, hiding work that was
    done. They are `-a` and `-b`; identifiers were not renumbered, so existing
    references still resolve.
-3. **Added `NOT_RUN` and `PENDING_DECISION`.** The first is "implemented but
+3. **Added `NOT_RUN` and a pending-decision state.** (The vocabulary was
+   unified with `docs/TESTING.md §6` on 2026-09-11; this paragraph records
+   what happened in 2026-09-01's recount, in the words used then.) The first
+   is "implemented but
    with no reproducible evidence" — walking through it by hand does not count
    (`TESTING §1`, rule 3). The second is "the criterion itself is wrong",
    which separates the items *we* are blocking from the ones the platform is.
@@ -278,36 +278,39 @@ for `AC-CONTENT-10`, and the 2026-09-06 purge-latency wording for
 `AC-CONTENT-02b`, there are **74 rows**: 66 active criteria, eight of which
 became two halves each.
 
-| Group | Rows | `VERIFIED_LOCAL` | `VERIFIED_HUMAN` | `NOT_RUN` | `PENDING_DECISION` | `NOT_AVAILABLE` |
-| --- | --- | --- | --- | --- | --- | --- |
-| `AC-DEPLOY` | 9 | 4 | 3 | 0 | 0 | 2 |
-| `AC-CONTENT` | 13 | 11 | 1 | 0 | 0 | 1 |
-| `AC-MEDIA` | 7 | 5 | 1 | 0 | 0 | 1 |
-| `AC-THEME` | 8 | 8 | 0 | 0 | 0 | 0 |
-| `AC-PLUGIN` | 10 | 7 | 0 | 0 | 0 | 3 |
-| `AC-SEO` | 8 | 5 | 0 | 0 | 0 | 3 |
-| `AC-EXPORT` | 4 | 4 | 0 | 0 | 0 | 0 |
-| `AC-CLI` | 5 | 5 | 0 | 0 | 0 | 0 |
-| `AC-INV` | 10 | 10 | 0 | 0 | 0 | 0 |
-| **Total** | **74** | **59** | **5** | **0** | **0** | **10** |
+| Group | Rows | `VERIFIED_LOCAL` | `STALE` | `NOT_RUN` |
+| --- | --- | --- | --- | --- |
+| `AC-DEPLOY` | 9 | 4 | 3 | 2 |
+| `AC-CONTENT` | 13 | 11 | 1 | 1 |
+| `AC-MEDIA` | 7 | 5 | 1 | 1 |
+| `AC-THEME` | 8 | 8 | 0 | 0 |
+| `AC-PLUGIN` | 10 | 7 | 0 | 3 |
+| `AC-SEO` | 8 | 5 | 0 | 3 |
+| `AC-EXPORT` | 4 | 4 | 0 | 0 |
+| `AC-CLI` | 5 | 5 | 0 | 0 |
+| `AC-INV` | 10 | 10 | 0 | 0 |
+| **Total** | **74** | **59** | **5** | **10** |
 
-**`VERIFIED_HUMAN` was 0 from 2026-08-28 until 2026-09-03/04.** Gate A
+**No row is `VERIFIED_STAGING` as of 0.1.0-rc.3.** The five that were
+real-account verified are `STALE`: the code they tested has been replaced.
+
+**Gate A's history, kept because it is worth knowing.** Gate A
 (`ARCHITECTURE §18`, `TASK-01.md §4`–`§5`) ran for real against a Cloudflare
 account for the first time and gave four criteria genuine real-account
 evidence: `AC-DEPLOY-01` (`mallok create` end to end — which also surfaced and
 fixed a real deploy-breaking bug), `AC-DEPLOY-04` (cache on a custom domain),
 `AC-DEPLOY-07b` (migration concurrency on real infrastructure) and
 `AC-MEDIA-04` (R2 custom domain serving). Two criteria briefly moved from
-`NOT_AVAILABLE` to `PENDING_DECISION` because the run produced real numbers
+`NOT_RUN` to a pending-decision state because the run produced real numbers
 that called the wording itself into question rather than simply confirming
 it: `AC-CONTENT-02b` (purge propagation measured at ≈ 20 seconds, not
 obviously "seconds") and `AC-CONTENT-10` (stage-one CPU measured at 6×–73×
 the budget, with no code path that caught an overrun and stored a draft).
 `AC-CONTENT-10` was settled and implemented 2026-09-05, a length-based check
 ahead of rendering (§14.2 item 7); `AC-CONTENT-02b` was settled 2026-09-06,
-reworded to "within a minute" and promoted straight to `VERIFIED_HUMAN` on
-the same Gate A measurement (§14.2 item 6) — no `PENDING_DECISION` rows
-remain. The remaining ten `NOT_AVAILABLE` criteria still need a public
+reworded to "within a minute" on the same Gate A measurement (§14.2 item 6);
+that measurement is now `STALE`, like every other Gate A row. The remaining
+ten `NOT_RUN` criteria still need a public
 repository (`AC-DEPLOY-02`), a second real deployment (`AC-DEPLOY-08`),
 elapsed real time or cron (`AC-CONTENT-06b`, `AC-MEDIA-06b`), a Resend
 account (`AC-PLUGIN-02b`, `03b`), Turnstile (`AC-PLUGIN-05b`), or Lighthouse
@@ -411,8 +414,8 @@ cannot promise to speed up. "Within a minute" is honest, carries real margin
 against measurement variance across regions and load, and is still a
 meaningfully differentiated promise against the static-generator
 commit-build-redeploy cycle this product competes against. The existing Gate
-A measurement already satisfies the reworded criterion, so it moves straight
-to `VERIFIED_HUMAN` rather than needing a further run.
+A measurement already satisfied the reworded criterion when it was taken. It
+is `STALE` as of 0.1.0-rc.3 and needs re-running (`docs/RELEASE_GATE.md §9`).
 
 **7. `AC-CONTENT-10`'s CPU-overrun handling — settled 2026-09-05: a
 pre-flight length check, option (a) below.** Real stage-one CPU measured at
@@ -580,9 +583,9 @@ page is now `public, max-age=0, s-maxage=<ttl>` rather than
 `public, max-age=<ttl>`, and an unknown path renders the theme's own 404. Both
 are recorded in §14.2.1 and §14.2.2.
 
-**Standing on pre-migration evidence, and not re-run.** Two `VERIFIED_HUMAN`
-rows were measured against the previous handler and have **not** been measured
-against the runtime path:
+**Standing on pre-migration evidence, and not re-run.** Two rows were measured
+against the previous handler and have **not** been measured against the
+runtime path. Both are `STALE`, along with the other three Gate A rows:
 
 | Row | Original evidence | Status after the migration |
 | --- | --- | --- |
@@ -622,23 +625,24 @@ runbook (`docs/RELEASE_GATE.md`) as re-measurements, not as new work.
 
 ### 14.4 What still needs a real account (§12, blocker 1, itemised)
 
-**Regenerated 2026-09-04, after Gate A.** Gate A ran for real 2026-09-03/04
+**Regenerated 2026-09-04, after Gate A; every Gate A row downgraded to
+`STALE` on 2026-09-11.** Gate A ran for real 2026-09-03/04
 (`docs/tasks/TASK-01.md §5`) and closed six of the sixteen criteria this
-section used to list: four became `VERIFIED_HUMAN`
-(`AC-DEPLOY-01`/`04`/`07b`, `AC-MEDIA-04`) and two became `PENDING_DECISION`
-because the real numbers raised a wording or implementation question rather
+section used to list: four got real-account evidence
+(`AC-DEPLOY-01`/`04`/`07b`, `AC-MEDIA-04`) and two were left pending a wording
+decision because the real numbers raised a wording or implementation question rather
 than settling one (`AC-CONTENT-02b`, `AC-CONTENT-10` — see §14.2 items 6–7).
 `AC-CONTENT-10` was settled and implemented the next day, 2026-09-05, and
 `AC-CONTENT-02b` was settled 2026-09-06 (§14.2 item 6). They landed on
-different statuses, and the difference matters: `AC-CONTENT-02b` is
-`VERIFIED_HUMAN` because the 20-second purge round trip was measured on a real
-account, while `AC-CONTENT-10` is `VERIFIED_LOCAL` — the length check that
-settled it is covered by `test/worker/content-length-safety.test.ts`, and no
-real-account run has exercised it. That is why the group table above totals
-**5** `VERIFIED_HUMAN`, not 6. No `PENDING_DECISION` rows remain. This list is
-exactly the criteria whose status in the group tables is still
-`NOT_AVAILABLE`, all **10** of them — unaffected by either change, since
-neither criterion was ever `NOT_AVAILABLE`:
+different statuses, and the difference matters: `AC-CONTENT-02b` had a real-account
+measurement (the 20-second purge round trip) while `AC-CONTENT-10` is
+`VERIFIED_LOCAL` — the length check that settled it is covered by
+`test/worker/content-length-safety.test.ts`, and no real-account run has
+exercised it. That is why the group table above totals **5** `STALE`, not 6.
+
+The ten below have never had a real-account run at all; the five `STALE` ones
+had one, against code that has since been replaced. Both sets need the same
+thing now, which is `docs/RELEASE_GATE.md`:
 
 | Group | Criteria | What still blocks them |
 | --- | --- | --- |
@@ -649,7 +653,6 @@ neither criterion was ever `NOT_AVAILABLE`:
 | `AC-SEO` | `05`, `06`, `07` | The three Lighthouse criteria, which need a custom domain with the cache warm |
 
 `AC-THEME`, `AC-EXPORT`, `AC-CLI` and `AC-INV` have **no** criteria needing a
-real account and none `PENDING_DECISION` either — every row in those four
-groups is closed. `AC-DEPLOY-02` is the only one of the ten that Gate A's own
+real account — every row in those four groups is closed locally. `AC-DEPLOY-02` is the only one of the ten that Gate A's own
 measurements could never have closed regardless — it needs a public
 repository, which is a separate decision (§12, blocker 6 territory).

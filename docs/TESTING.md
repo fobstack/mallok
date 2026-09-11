@@ -184,6 +184,10 @@ AC-XX-YY  one sentence saying what is being accepted
 Only seven statuses are permitted, and **wording such as "should pass" is
 not**:
 
+**This table is the project's only status vocabulary.** `docs/ACCEPTANCE.md`
+and `docs/RELEASE_GATE.md` use these words and no others; each of them used to
+invent its own, so the same row could be "verified" in three senses.
+
 | Status | Meaning |
 | --- | --- |
 | `NOT_AVAILABLE` | There is no testable implementation yet |
@@ -192,7 +196,16 @@ not**:
 | `VERIFIED_LOCAL` | It passes locally, with a command and an exit code |
 | `VERIFIED_STAGING` | It passes on a real Cloudflare account |
 | `VERIFIED_HUMAN` | It requires human judgement, such as "the email really arrived" |
+| `STALE` | It passed once, against code that has since been replaced |
 | `ACCEPTED` | The product owner has confirmed it |
+
+`STALE` is the one added in 0.1.0-rc.3, and it exists because the alternative
+is worse. Five rows were `VERIFIED_HUMAN` from Gate A — run for real against
+the previous `mallok create`, the previous Worker composition and a package
+laid out differently. Leaving them green would mean a release claiming
+real-account evidence for code that no longer exists; deleting them would
+throw away the knowledge that the run happened and what it found. `STALE`
+says both: it was true, and it is not evidence for this release.
 
 **A conclusion about platform behaviour can only be `VERIFIED_STAGING` or
 `VERIFIED_HUMAN`** — the Cache API working under local `wrangler dev` says
