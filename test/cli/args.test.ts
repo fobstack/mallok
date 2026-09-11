@@ -17,9 +17,9 @@ describe('parseArgs', () => {
   });
 
   it('accepts --name=value as well as --name value', () => {
-    expect(stringFlag(parseArgs(['publish', '--url=https://a.example']), 'url')).toBe(
-      'https://a.example',
-    );
+    expect(
+      stringFlag(parseArgs(['publish', '--url=https://a.example']), 'url'),
+    ).toBe('https://a.example');
   });
 
   it('treats declared boolean flags as switches', () => {
@@ -64,9 +64,9 @@ describe('resolveOrigin', () => {
   });
 
   it('looks a named site up in the registry', () => {
-    expect(resolveOrigin(parseArgs(['publish', '--site', 'beta']), registry)).toBe(
-      'https://beta.example',
-    );
+    expect(
+      resolveOrigin(parseArgs(['publish', '--site', 'beta']), registry),
+    ).toBe('https://beta.example');
   });
 
   it('uses the only registered site when there is exactly one', () => {
@@ -103,7 +103,9 @@ describe('resolveOrigin', () => {
 describe('resolveToken', () => {
   it('prefers --token, then the environment', () => {
     expect(resolveToken(parseArgs(['publish', '--token', 'a']), {})).toBe('a');
-    expect(resolveToken(parseArgs(['publish']), { MALLOK_TOKEN: 'b' })).toBe('b');
+    expect(resolveToken(parseArgs(['publish']), { MALLOK_TOKEN: 'b' })).toBe(
+      'b',
+    );
   });
 
   it('fails with the auth exit code and says where to get one', () => {

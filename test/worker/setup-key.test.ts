@@ -18,9 +18,7 @@ import { describe, expect, it } from 'vitest';
 const ORIGIN = 'https://setup-key.example';
 const KEY = 'a-one-time-setup-key-for-this-test';
 
-async function bootstrap(
-  body: Record<string, unknown>,
-): Promise<Response> {
+async function bootstrap(body: Record<string, unknown>): Promise<Response> {
   return await SELF.fetch(`${ORIGIN}/_mallok/api/setup/admin`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
