@@ -18,6 +18,15 @@ import type { CommandRunner, RunResult } from '../../../src/cli/cloudflare.js';
 
 /** The account's contents, shared between runs in a test. */
 export interface FakeAccount {
+  /**
+   * Which mutating steps actually took effect on this account.
+   *
+   * What makes an "after the effect" interruption testable: the CLI was told
+   * the call failed, and the account changed anyway.
+   */
+  applied?: string[];
+  /** Bucket name → custom domains attached to it. */
+  domains?: Record<string, { domain: string; enabled: boolean }[]>;
   /** Accounts `whoami --json` reports. */
   accounts?: { id: string; name?: string }[];
   /** Database name → id. */
@@ -62,6 +71,8 @@ export interface FakeOptions {
   readonly account?: FakeAccount;
   /** Calls matching this fail. */
   readonly failWhen?: (args: readonly string[]) => boolean;
+  /** What the failure says. Defaults to a generic message. */
+  readonly failureMessage?: string;
   /**
    * Apply the call's effect *before* failing it.
    *
@@ -93,6 +104,8 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
     workers: [...(options.account?.workers ?? [])],
     secrets: { ...(options.account?.secrets ?? {}) },
     objects: { ...(options.account?.objects ?? {}) },
+    applied: [...(options.account?.applied ?? [])],
+    domains: { ...(options.account?.domains ?? {}) },
   };
   const calls: { command: string; args: string[] }[] = [];
   const sent: Record<string, string> = {};
@@ -157,13 +170,28 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
         ),
       );
     }
-    if (first === 'r2' && second === 'object' && third === 'list') {
-      const bucket = args[3] ?? '';
-      return ok(
-        JSON.stringify({
-          objects: (account.objects[bucket] ?? []).map((key) => ({ key })),
-        }),
+    if (
+      first === 'r2' &&
+      second === 'bucket' &&
+      third === 'domain' &&
+      args[3] === 'list'
+    ) {
+      const bucket = args[4] ?? '';
+      return ok(JSON.stringify({ domains: account.domains[bucket] ?? [] }));
+    }
+    if (
+      first === 'r2' &&
+      second === 'bucket' &&
+      third === 'domain' &&
+      args[3] === 'remove'
+    ) {
+      const bucket = args[4] ?? '';
+      const domain = args[args.indexOf('--domain') + 1] ?? '';
+      account.domains[bucket] = (account.domains[bucket] ?? []).filter(
+        (entry) => entry.domain !== domain,
       );
+      account.applied.push('domain-remove');
+      return ok('Removed');
     }
     if (first === 'deploy' && args.includes('--dry-run')) {
       return ok('Total Upload: 100 KiB / gzip: 30 KiB');
@@ -172,14 +200,17 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
     // ---- mutating ---------------------------------------------------------
     if (first === 'd1' && second === 'create') {
       account.databases[third ?? ''] = DATABASE_ID;
+      account.applied.push('database');
       return ok(`✅ Created DB\n"database_id": "${DATABASE_ID}"`);
     }
     if (first === 'r2' && second === 'bucket' && third === 'create') {
       account.buckets.push(args[3] ?? '');
+      account.applied.push('bucket');
       return ok('Created bucket');
     }
     if (first === 'deploy') {
       account.workers.push(currentWorker(args, account));
+      account.applied.push('deploy');
       return ok('Deployed\nhttps://mallok-my-site.tests.workers.dev');
     }
     if (first === 'secret' && second === 'put') {
@@ -187,6 +218,7 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
       const worker = 'mallok-my-site';
       sent[name] = input ?? '';
       account.secrets[worker] = [...(account.secrets[worker] ?? []), name];
+      account.applied.push(name === 'MALLOK_SETUP_KEY' ? 'setupKey' : 'secret');
       return ok(`Success! Uploaded secret ${name}`);
     }
     if (first === 'delete') {
@@ -215,12 +247,13 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
   const run: CommandRunner = async (command, args, runOptions) => {
     calls.push({ command, args: [...args] });
     const failing = options.failWhen?.(args) ?? false;
+    const message = options.failureMessage ?? `boom: ${args.join(' ')} failed`;
     if (failing && options.failAfterEffect !== true) {
-      return fail(`boom: ${args[0]} failed`);
+      return fail(message);
     }
     const result = await handle(args, runOptions.input, runOptions.cwd);
     if (failing) {
-      return fail(`boom: ${args[0]} failed after taking effect`);
+      return fail(message);
     }
     return result;
   };
@@ -239,6 +272,33 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
     secretsSent: () => ({ ...sent }),
   };
 }
+
+/**
+ * Every subcommand this fake answers.
+ *
+ * `test/cli/wrangler-contract.test.ts` checks this list against the real
+ * Wrangler's own `--help`, because a fake that answers a command Wrangler
+ * does not have is a fake that proves a feature nobody can use. That is not
+ * hypothetical: this file implemented `r2 object list`, which Wrangler
+ * 4.124.0 does not provide, and a `destroy --empty-bucket` was built on it.
+ */
+export const FAKE_SUBCOMMANDS: readonly string[] = [
+  'whoami',
+  'deploy',
+  'delete',
+  'd1 create',
+  'd1 delete',
+  'd1 info',
+  'r2 bucket create',
+  'r2 bucket delete',
+  'r2 bucket info',
+  'r2 bucket domain list',
+  'r2 bucket domain remove',
+  'r2 object delete',
+  'secret put',
+  'secret list',
+  'deployments list',
+];
 
 /** The Worker a deploy in this project would create. */
 function currentWorker(

@@ -45,21 +45,40 @@ export const PLACEHOLDER_DATABASE_ID = '00000000-0000-0000-0000-000000000000';
  * A stable rate-limit namespace for a slug.
  *
  * Cloudflare requires the id to be unique per account, and the template ships
- * `1000` for every site — so two Mallok sites on one account silently shared a
- * limiter, and a busy site throttled a quiet one. Derived from the slug so it
- * is stable across runs and machines, and recorded in the ledger so a
- * collision is visible rather than mysterious.
+ * `1000` for every site — so two Mallok sites on one account silently shared
+ * a limiter and a busy site throttled a quiet one.
+ *
+ * The first attempt at fixing that hashed the slug into 1001–65000, which is
+ * a 64,000-slot space: `s01z` and `s0cg` both landed on 44314, and with that
+ * many slots a collision is a matter of a few hundred sites, not a freak
+ * accident. This uses the full 32-bit space the id allows, which moves the
+ * first expected collision from "the same afternoon" to "tens of thousands of
+ * sites on one account" — and the value is recorded in the ledger and the
+ * registry, so a collision is visible rather than mysterious.
+ *
+ * A site that needs a specific value sets it in `wrangler.jsonc` and this
+ * leaves it alone (`renderConfig` only fills a placeholder).
  */
 export function rateLimitNamespace(slug: string): string {
-  // FNV-1a, for a small deterministic spread with no dependency.
+  // FNV-1a over the slug, then mixed, so neighbouring slugs land far apart.
   let hash = 0x811c9dc5;
   for (const character of slug) {
     hash ^= character.codePointAt(0) ?? 0;
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
-  // 1001–65000: outside the template's default, and inside what Cloudflare
-  // accepts for a namespace id.
-  return String(1001 + (hash % 63_999));
+  // A final avalanche step (the murmur3 finaliser), which is what the plain
+  // FNV output was missing: without it, slugs differing in one character
+  // stayed close together and collided in a small modulus.
+  hash ^= hash >>> 16;
+  hash = Math.imul(hash, 0x85eb_ca6b) >>> 0;
+  hash ^= hash >>> 13;
+  hash = Math.imul(hash, 0xc2b2_ae35) >>> 0;
+  // `>>> 0` at the end, because `^` yields a *signed* 32-bit integer: without
+  // it the namespace could come out negative, which Cloudflare rejects and
+  // which no amount of reading the hash function would have suggested.
+  hash = (hash ^ (hash >>> 16)) >>> 0;
+  // 1001 upwards, inside the 32-bit range Cloudflare accepts.
+  return String(1001 + (hash % 4_294_966_000));
 }
 
 /** Resource names for a slug. */
@@ -90,6 +109,32 @@ export function validateSlug(slug: string): string | null {
 }
 
 /**
+ * The canonical form of a hostname.
+ *
+ * Lower-cased and punycoded, because that is what DNS, a certificate and
+ * Wrangler will all use — and because the fingerprint that decides whether a
+ * resumed run is deploying "the same configuration" is computed from this
+ * string. `Example.COM` and `example.com` are one site, and before this they
+ * produced two fingerprints and a refused resume.
+ *
+ * Returns the input unchanged when it cannot be parsed; {@link validateDomain}
+ * is what rejects it.
+ */
+export function normaliseDomain(domain: string): string {
+  const trimmed = domain.trim().replace(/\.$/, '');
+  if (trimmed === '' || /[\s/:@?#]/.test(trimmed)) {
+    return trimmed.toLowerCase();
+  }
+  try {
+    // `URL` applies IDNA (ToASCII) to the host, which is the conversion a
+    // hand-rolled lower-case cannot do.
+    return new URL(`https://${trimmed}`).hostname;
+  } catch {
+    return trimmed.toLowerCase();
+  }
+}
+
+/**
  * Checks a custom domain before it can reach Cloudflare.
  *
  * Validated here, before the first remote call, because a malformed hostname
@@ -97,8 +142,16 @@ export function validateSlug(slug: string): string | null {
  * after the database and the bucket already existed.
  */
 export function validateDomain(domain: string): string | null {
-  if (domain !== domain.trim() || domain === '') {
-    return 'A domain cannot be empty or padded with spaces.';
+  if (domain.trim() === '') {
+    return 'A domain cannot be empty.';
+  }
+  if (domain !== domain.trim()) {
+    // Trimming silently would accept a copy-paste artefact as a hostname and
+    // write it into a configuration; saying so costs the user one retype.
+    return 'A domain cannot be padded with spaces.';
+  }
+  if (/[:@?#]/.test(domain)) {
+    return 'Give a bare hostname: no scheme, no port, no user and no query.';
   }
   if (domain.includes('://') || domain.includes('/')) {
     return 'Give a hostname, not a URL: example.com, not https://example.com/.';
@@ -109,7 +162,7 @@ export function validateDomain(domain: string): string | null {
   if (domain.length > 253) {
     return 'That hostname is longer than DNS allows.';
   }
-  const labels = domain.split('.');
+  const labels = normaliseDomain(domain).split('.');
   if (labels.length < 2) {
     return 'A custom domain needs at least one dot: example.com.';
   }

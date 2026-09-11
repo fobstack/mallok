@@ -316,9 +316,7 @@ describe('mallok create, from an empty directory', () => {
     // the local registry. Nothing about that reaches the project's files.
     const created = await run(
       mallok,
-      // The manager is named rather than inherited: which one runs this
-      // suite must not decide what a user's project is built with.
-      ['create', 'my-site', '--no-deploy', '--package-manager', 'npm'],
+      ['create', 'my-site', '--no-deploy'],
       workspace,
       { npm_config_registry: registry?.origin ?? '' },
     );

@@ -1,25 +1,30 @@
 /**
  * `mallok destroy` — delete what this project created, and nothing else.
  *
- * It reads **both** records: the registry, which is written when a create
- * finishes, and the ledger, which is written before the first resource is
- * created. A run that died halfway through create never reached the registry,
- * and used to be undeletable by this command — the resources existed, the
- * ledger named them, and nothing could act on it.
+ * It reads **both** records: the registry, written when a create finishes,
+ * and the ledger, written before the first resource is created. A run that
+ * died halfway through create never reached the registry, and used to be
+ * undeletable by this command — the resources existed, the ledger named them,
+ * and nothing could act on it.
  *
- * Three refusals, all deliberate:
+ * The order is the bucket first, and that is the opposite of what it was.
+ * Cloudflare refuses to delete an R2 bucket that still holds objects, so
+ * deleting the Worker and the database first produced the worst possible
+ * outcome: the site is gone, its content is gone, and the bucket full of
+ * images is still there with nothing left to explain it. Now the step that
+ * can refuse runs while everything else is still intact.
  *
- * - it will not run against a different Cloudflare account from the one the
- *   ledger records;
- * - it will not report a bucket as deleted when the bucket still has objects
- *   in it, because Cloudflare refuses that and a cheerful summary is worse
- *   than an error;
- * - it will not delete anything without the slug repeated back.
+ * There is no automatic emptying. Wrangler 4.124.0 has `r2 object get`, `put`
+ * and `delete`, and **no** `r2 object list` — a previous version of this file
+ * built `--empty-bucket` on a listing command that does not exist, tested it
+ * against a fake that invented it, and would have failed on the first real
+ * account it met. `test/cli/wrangler-contract.test.ts` now checks every
+ * subcommand against the locked binary's own help.
  */
 
 import { join } from 'node:path';
 import {
-  bucketHasObjects,
+  bucketDomains,
   type CommandRunner,
   currentAccountId,
   lastLine,
@@ -31,6 +36,7 @@ import {
   clearLedger,
   type Ledger,
   readLedger,
+  writeLedger,
 } from './ledger.js';
 import { CliError, EXIT, type Reporter } from './output.js';
 import { readRegistry, type SiteRecord, writeRegistry } from './registry.js';
@@ -38,10 +44,9 @@ import { resourceNames } from './site-config.js';
 
 /** One step of a destroy run. */
 export interface DestroyStep {
+  readonly id: 'bucket' | 'worker' | 'database';
   readonly label: string;
   readonly args: readonly string[];
-  /** A resource that is already gone counts as done. */
-  readonly tolerateMissing: boolean;
 }
 
 /** What a destroy run did, step by step. */
@@ -55,8 +60,8 @@ export interface DestroyOptions {
   readonly slug: string;
   readonly confirm: string | undefined;
   readonly dryRun?: boolean;
-  /** Delete the bucket's objects before the bucket. Off by default. */
-  readonly emptyBucket?: boolean;
+  /** The account this is expected to act on; checked against `whoami`. */
+  readonly accountId?: string;
   readonly projectDir?: string;
   readonly run?: CommandRunner;
 }
@@ -71,46 +76,46 @@ export interface DestroyResult {
 /**
  * The delete order (docs/CLOUDFLARE_RESOURCES.md §10).
  *
- * Worker first so its bindings release, then the database, then the bucket.
- * Each names its own resource: there is no per-site config file to point `-c`
- * at, because the project's own `wrangler.jsonc` is the config.
+ * Bucket, then Worker, then database. The bucket is first because it is the
+ * only step Cloudflare can refuse on a condition this command cannot fix, and
+ * a refusal is worth far more before the site is gone than after it.
  */
 export function destroySteps(slug: string): DestroyStep[] {
   const names = resourceNames(slug);
   return [
     {
-      label: `Delete the Worker ${names.worker}`,
-      args: ['delete', names.worker],
-      tolerateMissing: true,
-    },
-    {
-      label: `Delete the database ${names.database}`,
-      args: ['d1', 'delete', names.database, '--skip-confirmation'],
-      tolerateMissing: true,
-    },
-    {
+      id: 'bucket',
       label: `Delete the bucket ${names.bucket}`,
       args: ['r2', 'bucket', 'delete', names.bucket],
-      tolerateMissing: true,
+    },
+    {
+      id: 'worker',
+      label: `Delete the Worker ${names.worker}`,
+      args: ['delete', names.worker],
+    },
+    {
+      id: 'database',
+      label: `Delete the database ${names.database}`,
+      args: ['d1', 'delete', names.database, '--skip-confirmation'],
     },
   ];
 }
 
 /** Steps a person has to do themselves, printed at the end of a destroy. */
 export const MANUAL_CLEANUP: readonly string[] = [
-  'Delete the R2 custom domain (media.<your domain>) in the dashboard.',
   'Delete the Worker custom domain and the DNS records the wizard wrote.',
   'Delete the Turnstile widget, if one was created.',
   'Delete the CF_API_TOKEN you created for cache purging.',
 ];
 
+/** What a bucket has to be before Cloudflare will delete it. */
+const NOT_EMPTY = /not empty|contains objects|bucket is not empty/i;
+
 /**
  * Everything this project is known to own, from either record.
  *
- * The ledger is authoritative for a half-finished create; the registry is
- * what a finished one leaves behind. A slug present in neither is refused,
- * because deleting by name alone would mean deleting whatever happens to
- * carry that name on this account.
+ * A slug present in neither is refused: deleting by name alone would mean
+ * deleting whatever happens to carry that name on this account.
  */
 async function knownSite(
   projectDir: string,
@@ -145,7 +150,7 @@ export async function destroySite(
 ): Promise<DestroyResult> {
   const projectDir = options.projectDir ?? process.cwd();
   const { slug } = options;
-  const { ledger } = await knownSite(projectDir, slug);
+  const { ledger, record } = await knownSite(projectDir, slug);
 
   if (options.confirm !== slug) {
     // Deleting a site destroys its content, its media and its inquiries.
@@ -169,49 +174,87 @@ export async function destroySite(
   if (runner === undefined) {
     throw new CliError(EXIT.user, 'No command runner was provided.');
   }
-  const wrangler = wranglerFor(projectDir, runner);
+  const wrangler = wranglerFor(projectDir, runner, options.accountId);
 
-  // The same account check `create` does, for the same reason: `wrangler`
-  // follows whichever login is current, and a same-named resource on another
-  // account is somebody else's site.
-  const accountId = await currentAccountId(wrangler);
+  // Every read-only check first, before anything is deleted.
+  //
+  // `wrangler` follows whichever login is current, so a same-named resource
+  // on another account is somebody else's site. The account is checked
+  // against **both** records: a completed create leaves a registry entry
+  // carrying it, and an interrupted one leaves a ledger.
+  const accountId = await currentAccountId(wrangler, options.accountId);
   if (ledger !== null) {
     assertSameAccount(ledger, accountId);
   }
-
-  const names = resourceNames(slug);
-  if (options.emptyBucket === true) {
-    await emptyBucket(wrangler, names.bucket, report, results);
+  if (record?.accountId != null && record.accountId !== accountId) {
+    throw new CliError(
+      EXIT.user,
+      `"${slug}" was provisioned on a different Cloudflare account.`,
+      'Switch accounts, or pass --account-id for the one that owns it. ' +
+        'Deleting by name on the wrong account deletes somebody else’s site.',
+    );
   }
 
+  const names = resourceNames(slug);
+
+  // An attached R2 custom domain keeps the hostname claimed after the bucket
+  // is gone. It is read here, reported, and removed by the operator — there
+  // is no need to guess whether one exists.
+  const domains = await bucketDomains(wrangler, names.bucket);
+  for (const domain of domains as { domain: string }[]) {
+    report.warn(
+      `${names.bucket} still has the custom domain ${domain.domain}. Remove ` +
+        `it first: wrangler r2 bucket domain remove ${names.bucket} --domain ${domain.domain}`,
+    );
+  }
+  if (domains.length > 0) {
+    results.push({
+      step: `Detach the custom domains on ${names.bucket}`,
+      ok: false,
+      detail: domains.map((entry) => entry.domain).join(', '),
+    });
+    return finish(
+      results,
+      `Detach the custom domains on ${names.bucket}`,
+      slug,
+    );
+  }
+
+  let progress: Ledger | null = ledger;
   for (const step of destroySteps(slug)) {
+    if (progress?.deleted?.includes(step.id) === true) {
+      // A repeated run: this one is already gone, and saying so is cheaper
+      // and safer than asking Cloudflare again.
+      results.push({ step: step.label, ok: true, detail: 'already deleted' });
+      continue;
+    }
     report.step(`${step.label}…`);
 
-    // A non-empty bucket cannot be deleted, and wrangler's message for it is
-    // easy to read as a transient failure. Say what it is.
-    if (
-      step.args[0] === 'r2' &&
-      options.emptyBucket !== true &&
-      (await bucketHasObjects(wrangler, names.bucket))
-    ) {
+    const run = await wrangler.run(step.args);
+    const output = `${run.stderr}${run.stdout}`;
+    const missing = /not found|does not exist|no such|couldn'?t find/i.test(
+      output,
+    );
+    const ok = run.code === 0 || missing;
+
+    if (!ok && step.id === 'bucket' && NOT_EMPTY.test(output)) {
+      // The one refusal worth explaining, and the reason the bucket goes
+      // first: everything else is still intact, so the site still works while
+      // its owner decides what to do with the objects.
       results.push({
         step: step.label,
         ok: false,
         detail: 'the bucket still holds objects',
       });
       report.warn(
-        `${names.bucket} is not empty. Cloudflare will not delete a bucket ` +
-          'with objects in it. Re-run with --empty-bucket to delete them ' +
-          'first — that destroys every uploaded image and file.',
+        `${names.bucket} is not empty, and Cloudflare will not delete a ` +
+          'bucket with objects in it. Nothing else has been deleted: the ' +
+          'site is still running. Export your media, remove the objects ' +
+          '(the dashboard can empty a bucket), then run this again.',
       );
       return finish(results, step.label, slug);
     }
 
-    const run = await wrangler.run(step.args);
-    const missing = /not found|does not exist|no such/i.test(
-      `${run.stderr}${run.stdout}`,
-    );
-    const ok = run.code === 0 || (step.tolerateMissing && missing);
     results.push({
       step: step.label,
       ok,
@@ -225,6 +268,15 @@ export async function destroySite(
       // Stop rather than continue past a failure: a half-deleted site with no
       // report is worse than one that says where it stopped.
       return finish(results, step.label, slug);
+    }
+
+    // Recorded as it happens, so a repeated run picks up exactly here.
+    if (progress !== null) {
+      progress = {
+        ...progress,
+        deleted: [...(progress.deleted ?? []), step.id],
+      };
+      await writeLedger(projectDir, progress);
     }
   }
 
@@ -249,68 +301,5 @@ function finish(
   return { slug, results: [...results], stoppedAt, manual: MANUAL_CLEANUP };
 }
 
-/**
- * Deletes every object in a bucket, one page at a time.
- *
- * Explicit and opt-in: this is the step that destroys a site's uploaded
- * images, and no amount of "the bucket must be empty to delete it" makes that
- * something to do on the user's behalf without being asked.
- */
-async function emptyBucket(
-  wrangler: Wrangler,
-  bucket: string,
-  report: Reporter,
-  results: DestroyOutcome[],
-): Promise<void> {
-  report.step(`Emptying ${bucket}…`);
-  const listing = await wrangler.run([
-    'r2',
-    'object',
-    'list',
-    bucket,
-    '--json',
-  ]);
-  if (listing.code !== 0) {
-    results.push({
-      step: `Empty the bucket ${bucket}`,
-      ok: false,
-      detail: lastLine(listing.stderr, listing.stdout),
-    });
-    throw new CliError(
-      EXIT.remote,
-      `Could not list ${bucket}, so it cannot be emptied safely.`,
-      lastLine(listing.stderr, listing.stdout),
-    );
-  }
-  const text = listing.stdout.slice(listing.stdout.search(/[[{]/));
-  const parsed = JSON.parse(text === '' ? '[]' : text) as
-    | { objects?: { key?: string }[] }
-    | { key?: string }[];
-  const objects = Array.isArray(parsed) ? parsed : (parsed.objects ?? []);
-  let deleted = 0;
-  for (const object of objects) {
-    const key = object.key;
-    if (key === undefined) {
-      continue;
-    }
-    const remove = await wrangler.run([
-      'r2',
-      'object',
-      'delete',
-      `${bucket}/${key}`,
-    ]);
-    if (remove.code !== 0) {
-      throw new CliError(
-        EXIT.remote,
-        `Could not delete ${bucket}/${key}.`,
-        lastLine(remove.stderr, remove.stdout),
-      );
-    }
-    deleted++;
-  }
-  results.push({
-    step: `Empty the bucket ${bucket}`,
-    ok: true,
-    detail: `${deleted} object${deleted === 1 ? '' : 's'} deleted`,
-  });
-}
+/** Re-exported for the gate documentation and tests. */
+export type { Wrangler };

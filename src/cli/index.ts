@@ -33,7 +33,6 @@ import {
   table,
 } from './output.js';
 
-import { resolvePackageManager } from './package-manager.js';
 import { prepareAssets } from './prepare.js';
 import { publishBundles, reportMissing, reportWarnings } from './publish.js';
 import { scanDirectory } from './scan.js';
@@ -441,9 +440,9 @@ async function runCreate(
       domain: stringFlag(args, 'domain') ?? null,
       noDeploy: boolFlag(args, 'no-deploy'),
       dryRun: boolFlag(args, 'dry-run'),
-      packageManager: resolvePackageManager(
-        stringFlag(args, 'package-manager'),
-      ),
+      ...(stringFlag(args, 'account-id') === undefined
+        ? {}
+        : { accountId: stringFlag(args, 'account-id') as string }),
       run: spawnRunner,
     },
     report,
@@ -513,9 +512,6 @@ async function runUpgrade(
     {
       to,
       projectDir: process.cwd(),
-      packageManager: resolvePackageManager(
-        stringFlag(args, 'package-manager'),
-      ),
       dryRun: boolFlag(args, 'dry-run'),
       skipChecks: boolFlag(args, 'skip-checks'),
       run: spawnRunner,
@@ -545,7 +541,9 @@ async function runDestroy(
       slug,
       confirm: stringFlag(args, 'confirm'),
       dryRun: boolFlag(args, 'dry-run'),
-      emptyBucket: boolFlag(args, 'empty-bucket'),
+      ...(stringFlag(args, 'account-id') === undefined
+        ? {}
+        : { accountId: stringFlag(args, 'account-id') as string }),
       projectDir: process.cwd(),
       run: spawnRunner,
     },

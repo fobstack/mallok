@@ -11,10 +11,9 @@ import { join, join as joinPath } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CliError, makeReporter } from '../../src/cli/output.js';
 import {
+  assertNpmProject,
   installArgs,
-  LOCKFILES,
-  parsePackageManager,
-  resolvePackageManager,
+  LOCKFILE,
 } from '../../src/cli/package-manager.js';
 import { prepareAssets } from '../../src/cli/prepare.js';
 
@@ -37,49 +36,41 @@ const report = makeReporter(true);
 const PACKAGE_ASSETS = joinPath(process.cwd(), 'dist/pkg/assets');
 
 describe('which package manager', () => {
-  it('defaults to npm, which ships with Node', () => {
-    // This assumed a global pnpm and failed with `pnpm: not found` after
-    // generating the project and before verifying anything — on a machine
-    // that had exactly the documented prerequisite.
-    expect(resolvePackageManager(undefined, {})).toBe('npm');
+  it('is npm, and only npm', () => {
+    // 0.1.0-rc.3 offered a choice of npm or pnpm. npm was tested end to end;
+    // pnpm was not, and when it finally was, it could not install the
+    // candidate package from the local registry the release test serves it
+    // from. A flag for an unexercised path is a claim, so the flag is gone.
+    expect(LOCKFILE).toBe('package-lock.json');
+    expect(installArgs()).toEqual(['install']);
   });
 
-  it('follows the manager that is running the CLI', () => {
-    expect(
-      resolvePackageManager(undefined, {
-        npm_config_user_agent: 'pnpm/10.34.5 npm/? node/v22.22.2 darwin arm64',
-      }),
-    ).toBe('pnpm');
-    expect(
-      resolvePackageManager(undefined, {
-        npm_config_user_agent: 'yarn/4.0.0 npm/? node/v22.22.2',
-      }),
-    ).toBe('npm');
+  it('refuses a project another manager owns', async () => {
+    const project = await mkdtemp(join(tmpdir(), 'mallok-foreign-'));
+    try {
+      await writeFile(join(project, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n');
+
+      const error = await assertNpmProject(project).catch(
+        (cause: unknown) => cause,
+      );
+
+      // Running `npm ci` here would resolve a different tree from the one its
+      // owner tested and write a second lockfile beside the first.
+      expect(error).toBeInstanceOf(CliError);
+      expect(String(error)).toContain('pnpm-lock.yaml');
+    } finally {
+      await rm(project, { recursive: true, force: true });
+    }
   });
 
-  it('prefers an explicit choice over the environment', () => {
-    expect(
-      resolvePackageManager('npm', { npm_config_user_agent: 'pnpm/10' }),
-    ).toBe('npm');
-  });
-
-  it('refuses one it does not support', () => {
-    expect(() => parsePackageManager('bun')).toThrow(CliError);
-    const error = (() => {
-      try {
-        parsePackageManager('bun');
-      } catch (cause) {
-        return cause as CliError;
-      }
-      throw new Error('expected a refusal');
-    })();
-    expect(error.hint).toContain('npm, pnpm');
-  });
-
-  it('knows which lockfile each one writes', () => {
-    expect(LOCKFILES.npm).toBe('package-lock.json');
-    expect(LOCKFILES.pnpm).toBe('pnpm-lock.yaml');
-    expect(installArgs('npm')).toEqual(['install']);
+  it('accepts a project with only an npm lockfile', async () => {
+    const project = await mkdtemp(join(tmpdir(), 'mallok-npm-'));
+    try {
+      await writeFile(join(project, 'package-lock.json'), '{}\n');
+      await expect(assertNpmProject(project)).resolves.toBeUndefined();
+    } finally {
+      await rm(project, { recursive: true, force: true });
+    }
   });
 });
 

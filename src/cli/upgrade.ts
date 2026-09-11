@@ -26,10 +26,10 @@ import { join } from 'node:path';
 import { type CommandRunner, lastLine } from './cloudflare.js';
 import { CliError, EXIT, type Reporter } from './output.js';
 import {
+  assertNpmProject,
   frozenInstallArgs,
   installArgs,
-  LOCKFILES,
-  type PackageManager,
+  LOCKFILE,
   runArgs,
 } from './package-manager.js';
 import { isMallokProject, projectWrangler } from './template.js';
@@ -79,7 +79,6 @@ export const PROJECT_MIGRATIONS: readonly ProjectMigration[] = [];
 export interface UpgradeOptions {
   readonly to: string;
   readonly projectDir?: string;
-  readonly packageManager?: PackageManager;
   /** Report what would change; write nothing. */
   readonly dryRun?: boolean;
   /** Skip lint, typecheck, test and the deploy dry-run. */
@@ -198,10 +197,10 @@ export async function upgradeProject(
   report: Reporter,
 ): Promise<UpgradeResult> {
   const projectDir = options.projectDir ?? process.cwd();
-  const manager = options.packageManager ?? 'npm';
   const migrations = options.migrations ?? PROJECT_MIGRATIONS;
   assertExactVersion(options.to);
 
+  await assertNpmProject(projectDir);
   if (!(await isMallokProject(projectDir))) {
     throw new CliError(
       EXIT.user,
@@ -244,14 +243,12 @@ export async function upgradeProject(
   }
 
   const manifestPath = join(projectDir, 'package.json');
-  const lockPath = join(projectDir, LOCKFILES[manager]);
+  const lockPath = join(projectDir, LOCKFILE);
   const backup = join(projectDir, '.mallok', 'upgrade-backup');
   const { mkdir } = await import('node:fs/promises');
   await mkdir(backup, { recursive: true });
   await copyFile(manifestPath, join(backup, 'package.json'));
-  await copyFile(lockPath, join(backup, LOCKFILES[manager])).catch(
-    () => undefined,
-  );
+  await copyFile(lockPath, join(backup, LOCKFILE)).catch(() => undefined);
 
   const runner = options.run;
   if (runner === undefined) {
@@ -265,9 +262,7 @@ export async function upgradeProject(
     await setVersion(projectDir, options.to);
 
     report.step('Installing…');
-    const install = await runner(manager, installArgs(manager), {
-      cwd: projectDir,
-    });
+    const install = await runner('npm', installArgs(), { cwd: projectDir });
     if (install.code !== 0) {
       throw new CliError(
         EXIT.user,
@@ -290,9 +285,9 @@ export async function upgradeProject(
       // checked is whether the site still type-checks, tests, builds and
       // would deploy against the new framework.
       for (const [label, command, args] of [
-        ['typecheck', manager, runArgs(manager, 'typecheck')],
-        ['test', manager, runArgs(manager, 'test')],
-        ['build', manager, runArgs(manager, 'build')],
+        ['typecheck', 'npm', runArgs('typecheck')],
+        ['test', 'npm', runArgs('test')],
+        ['build', 'npm', runArgs('build')],
         [
           'deploy --dry-run',
           projectWrangler(projectDir),
@@ -328,12 +323,10 @@ export async function upgradeProject(
     await copyFile(join(backup, 'package.json'), manifestPath).catch(
       () => undefined,
     );
-    await copyFile(join(backup, LOCKFILES[manager]), lockPath).catch(
+    await copyFile(join(backup, LOCKFILE), lockPath).catch(() => undefined);
+    await runner('npm', frozenInstallArgs(), { cwd: projectDir }).catch(
       () => undefined,
     );
-    await runner(manager, frozenInstallArgs(manager), {
-      cwd: projectDir,
-    }).catch(() => undefined);
     throw error;
   } finally {
     await rm(backup, { recursive: true, force: true });

@@ -56,8 +56,23 @@ export interface Ledger {
   readonly worker?: ResourceRecord;
   /** Recorded by name only — never a value. */
   readonly secrets?: readonly string[];
+  /**
+   * When the setup key's value was handed to the person running the command.
+   *
+   * Separate from `secrets` containing its name, because the two can differ:
+   * a run interrupted between `secret put` and printing leaves a key set on
+   * the Worker that nobody has. A resumed run rotates in exactly that case.
+   */
+  readonly setupKeyDeliveredAt?: string;
   readonly origin?: string;
   readonly completedAt?: string;
+  /**
+   * Resources a `destroy` has already removed.
+   *
+   * What makes a repeated destroy idempotent: a run that stopped on the
+   * bucket does not ask Cloudflare to delete a Worker it has already deleted.
+   */
+  readonly deleted?: readonly ('bucket' | 'worker' | 'database')[];
 }
 
 export function ledgerPath(projectDir: string): string {

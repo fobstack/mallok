@@ -129,7 +129,7 @@ beforeAll(async () => {
 
   const created = await run(
     mallok,
-    ['create', 'my-site', '--no-deploy', '--package-manager', 'npm'],
+    ['create', 'my-site', '--no-deploy'],
     sandbox,
     { npm_config_registry: registry?.origin ?? '' },
   );

@@ -548,10 +548,13 @@ describe('destroy', () => {
       report,
     );
 
+    // Bucket first: it is the only step Cloudflare can refuse on a condition
+    // this command cannot fix, and a refusal is worth far more before the
+    // site is gone than after it.
     expect(destroyer.mutations()).toEqual([
+      'r2 bucket delete mallok-my-site-media',
       'delete mallok-my-site',
       'd1 delete mallok-my-site-db --skip-confirmation',
-      'r2 bucket delete mallok-my-site-media',
     ]);
     expect(result.stoppedAt).toBeNull();
     expect(await readLedger(join(workspace, 'my-site'))).toBeNull();
@@ -619,10 +622,12 @@ describe('destroy', () => {
   it('does not pretend to delete a bucket that still holds objects', async () => {
     const fake = await provisioned();
     const destroyer = fakeCloudflare({
-      account: {
-        ...fake.account,
-        objects: { 'mallok-my-site-media': ['a.png'] },
-      },
+      account: fake.account,
+      // Cloudflare's own refusal, which is the only way this can be known:
+      // Wrangler 4.124.0 has no `r2 object list` to count with.
+      failWhen: (args) =>
+        args[0] === 'r2' && args[1] === 'bucket' && args[2] === 'delete',
+      failureMessage: 'The bucket you tried to delete is not empty.',
     });
 
     const result = await destroySite(
@@ -635,21 +640,67 @@ describe('destroy', () => {
       report,
     );
 
-    expect(destroyer.mutations()).not.toContain(
+    // It stopped at the first step, so the Worker and the database — and
+    // therefore the running site — are untouched.
+    expect(destroyer.mutations()).toEqual([
       'r2 bucket delete mallok-my-site-media',
-    );
+    ]);
     expect(result.stoppedAt).toContain('bucket');
     expect(result.results.at(-1)?.detail).toContain('still holds objects');
-    // And it stopped, so the records still describe what is there.
     expect(await readLedger(join(workspace, 'my-site'))).not.toBeNull();
   });
 
-  it('empties the bucket first when asked explicitly', async () => {
+  it('is idempotent: a repeated run does not ask twice', async () => {
+    const fake = await provisioned();
+    const project = join(workspace, 'my-site');
+
+    // First run stops at the Worker, with the bucket already deleted.
+    const first = fakeCloudflare({
+      account: fake.account,
+      failWhen: (args) => args[0] === 'delete',
+      failureMessage: 'A request to the Cloudflare API failed (10000)',
+    });
+    const stopped = await destroySite(
+      {
+        slug: 'my-site',
+        confirm: 'my-site',
+        projectDir: project,
+        run: first.run,
+      },
+      report,
+    );
+    expect(stopped.stoppedAt).toContain('Worker');
+
+    const second = fakeCloudflare({ account: first.account });
+    const finished = await destroySite(
+      {
+        slug: 'my-site',
+        confirm: 'my-site',
+        projectDir: project,
+        run: second.run,
+      },
+      report,
+    );
+
+    // The bucket is not asked about again: the ledger records it as gone.
+    expect(second.mutations()).toEqual([
+      'delete mallok-my-site',
+      'd1 delete mallok-my-site-db --skip-confirmation',
+    ]);
+    expect(finished.stoppedAt).toBeNull();
+    expect(await readLedger(project)).toBeNull();
+  });
+
+  it('stops before deleting anything when the bucket has a custom domain', async () => {
     const fake = await provisioned();
     const destroyer = fakeCloudflare({
       account: {
         ...fake.account,
-        objects: { 'mallok-my-site-media': ['a.png', 'b.png'] },
+        domains: {
+          'mallok-my-site-media': [
+            { domain: 'media.example.com', enabled: true },
+          ],
+        },
       },
     });
 
@@ -657,19 +708,40 @@ describe('destroy', () => {
       {
         slug: 'my-site',
         confirm: 'my-site',
-        emptyBucket: true,
         projectDir: join(workspace, 'my-site'),
         run: destroyer.run,
       },
       report,
     );
 
+    // An attached custom domain keeps the hostname claimed after the bucket
+    // is gone, so it is detached first — by the operator, with the real
+    // command named in the message.
+    expect(destroyer.mutations()).toEqual([]);
+    expect(result.stoppedAt).toContain('custom domains');
+  });
+
+  it('deletes the bucket first, so a refusal costs nothing', async () => {
+    const fake = await provisioned();
+    const destroyer = fakeCloudflare({ account: fake.account });
+
+    const result = await destroySite(
+      {
+        slug: 'my-site',
+        confirm: 'my-site',
+        projectDir: join(workspace, 'my-site'),
+        run: destroyer.run,
+      },
+      report,
+    );
+
+    // Cloudflare refuses to delete a bucket with objects in it. Deleting the
+    // Worker and the database first would leave the site gone, its content
+    // gone, and the images still there.
     expect(destroyer.mutations()).toEqual([
-      'r2 object delete mallok-my-site-media/a.png',
-      'r2 object delete mallok-my-site-media/b.png',
+      'r2 bucket delete mallok-my-site-media',
       'delete mallok-my-site',
       'd1 delete mallok-my-site-db --skip-confirmation',
-      'r2 bucket delete mallok-my-site-media',
     ]);
     expect(result.stoppedAt).toBeNull();
   });

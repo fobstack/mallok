@@ -42,20 +42,22 @@ import {
   LEDGER_FILE,
   LEDGER_SCHEMA_VERSION,
   type Ledger,
+  type ResourceRecord,
   readLedger,
   writeLedger,
 } from './ledger.js';
 import { CliError, EXIT, type Reporter } from './output.js';
 import {
+  assertNpmProject,
   frozenInstallArgs,
   installArgs,
-  LOCKFILES,
-  type PackageManager,
+  LOCKFILE,
   runArgs,
 } from './package-manager.js';
 import { readRegistry, upsertSite, writeRegistry } from './registry.js';
 import {
   configFingerprint,
+  normaliseDomain,
   PLACEHOLDER_DATABASE_ID,
   parseDatabaseId,
   rateLimitNamespace,
@@ -110,7 +112,8 @@ export interface CreateOptions {
   readonly noDeploy?: boolean;
   /** Verify in a temporary directory, then remove it. */
   readonly dryRun?: boolean;
-  readonly packageManager?: PackageManager;
+  /** The Cloudflare account to act on; checked against `whoami`. */
+  readonly accountId?: string | undefined;
   readonly cwd?: string;
   readonly run?: CommandRunner;
   readonly templateDir?: string;
@@ -146,7 +149,6 @@ export interface PreflightStep {
 
 export function preflightSteps(
   projectDir: string,
-  manager: PackageManager,
   hasLockfile: boolean,
 ): PreflightStep[] {
   return [
@@ -154,13 +156,13 @@ export function preflightSteps(
       label: hasLockfile
         ? 'Installing dependencies (from the lockfile)'
         : 'Installing dependencies',
-      command: manager,
-      args: hasLockfile ? frozenInstallArgs(manager) : installArgs(manager),
+      command: 'npm',
+      args: hasLockfile ? frozenInstallArgs() : installArgs(),
     },
     {
       label: 'Building',
-      command: manager,
-      args: runArgs(manager, 'build'),
+      command: 'npm',
+      args: runArgs('build'),
     },
     {
       // The project's own Wrangler, at the version its lockfile pinned, and
@@ -185,9 +187,14 @@ export async function createSite(
 ): Promise<CreateResult> {
   const runner = options.run ?? spawnRunner;
   const cwd = options.cwd ?? process.cwd();
-  const manager = options.packageManager ?? 'npm';
   const slug = options.slug ?? slugFromDirectory(options.directory);
-  const domain = options.domain ?? null;
+  // Normalised before anything reads it: the configuration, the fingerprint
+  // and the Worker's own `MALLOK_DOMAIN` must all agree, and they only do if
+  // there is one spelling of the name.
+  const domain =
+    options.domain === undefined || options.domain === null
+      ? null
+      : normaliseDomain(options.domain);
 
   // ---- 1. Checks that cost nothing --------------------------------------
   const slugError = validateSlug(slug);
@@ -284,8 +291,9 @@ export async function createSite(
     await writeSiteConfig(projectDir, configInput);
 
     // ---- 4. Prove it builds ---------------------------------------------
-    const hasLockfile = await exists(join(projectDir, LOCKFILES[manager]));
-    for (const step of preflightSteps(projectDir, manager, hasLockfile)) {
+    await assertNpmProject(projectDir);
+    const hasLockfile = await exists(join(projectDir, LOCKFILE));
+    for (const step of preflightSteps(projectDir, hasLockfile)) {
       report.step(`${step.label}…`);
       const result = await runner(step.command, step.args, { cwd: projectDir });
       if (result.code !== 0) {
@@ -296,10 +304,10 @@ export async function createSite(
         );
       }
     }
-    if (!(await exists(join(projectDir, LOCKFILES[manager])))) {
+    if (!(await exists(join(projectDir, LOCKFILE)))) {
       throw new CliError(
         EXIT.user,
-        `The install did not produce a ${LOCKFILES[manager]}.`,
+        `The install did not produce a ${LOCKFILE}.`,
         'A project with no lockfile cannot be rebuilt from what it records.',
       );
     }
@@ -337,7 +345,16 @@ export async function createSite(
 
     // ---- 5. Only now may anything on Cloudflare change ------------------
     return await provision(
-      { projectDir, slug, domain, names, fingerprint, configInput, runner },
+      {
+        projectDir,
+        slug,
+        domain,
+        names,
+        fingerprint,
+        configInput,
+        runner,
+        accountId: options.accountId,
+      },
       existing,
       report,
     );
@@ -352,6 +369,7 @@ interface ProvisionInput {
   readonly projectDir: string;
   readonly slug: string;
   readonly domain: string | null;
+  readonly accountId?: string | undefined;
   readonly names: ReturnType<typeof resourceNames>;
   readonly fingerprint: string;
   readonly configInput: SiteConfigInput;
@@ -377,20 +395,30 @@ async function provision(
       'Run the install inside the project and try again.',
     );
   }
-  const wrangler = wranglerFor(projectDir, runner);
+  const wrangler = wranglerFor(projectDir, runner, input.accountId);
 
   // ---- Read-only: who am I, and what is already there? ------------------
   report.step('Checking you are signed in to Cloudflare…');
-  const accountId = await currentAccountId(wrangler);
+  const accountId = await currentAccountId(wrangler, input.accountId);
   if (existing !== null) {
     assertSameAccount(existing, accountId);
   }
 
   if (existing !== null && isComplete(existing)) {
-    // Nothing to do, and saying so is the whole feature: a second run used to
-    // redeploy and rotate MALLOK_SECRET, which signs every user out and makes
-    // stored plugin keys unreadable.
-    report.step(`${slug} is already provisioned; nothing to do.`);
+    // Nothing to do on Cloudflare, and saying so is the whole feature: a
+    // second run used to redeploy and rotate MALLOK_SECRET, which signs every
+    // user out and makes stored plugin keys unreadable.
+    //
+    // The registry is the exception. It is written last, so a run killed
+    // between the final ledger write and it leaves a finished site that
+    // `publish` and `destroy` cannot find. Repairing it is local, free and
+    // exactly what a resumed run is for.
+    const repaired = await ensureRegistered(projectDir, existing, accountId);
+    report.step(
+      repaired
+        ? `${slug} is already provisioned; restored .mallok/sites.json.`
+        : `${slug} is already provisioned; nothing to do.`,
+    );
     return {
       projectDir,
       slug,
@@ -408,14 +436,55 @@ async function provision(
     findBucket(wrangler, names.bucket),
     findWorker(wrangler, names.worker),
   ]);
-  refuseUnknown(
-    'database',
-    names.database,
-    database.exists,
-    existing?.database,
-  );
-  refuseUnknown('bucket', names.bucket, bucket.exists, existing?.bucket);
-  refuseUnknown('Worker', names.worker, worker.exists, existing?.worker);
+
+  /*
+   * Reconciling what exists with what the ledger says.
+   *
+   * A resource can exist for three reasons, and they need three answers:
+   *
+   * - the ledger says we created it — ours, carry on;
+   * - the ledger says we were **about to** create it (`pending`) and it is
+   *   there — the call took effect and the process died before the answer
+   *   arrived, which is by far the most likely way a `pending` record and a
+   *   live resource end up together on the same account. Ours, adopted;
+   * - the ledger says nothing about it — somebody else's, and the run stops.
+   *
+   * The second case is what made an interrupted run unrecoverable: it created
+   * a second database, or refused the slug for ever. The account is the same
+   * (checked above), the name is the one this project derives from its own
+   * slug, and for D1 the id Cloudflare reports is recorded, so a later run can
+   * tell the adopted database from any other.
+   */
+  const adopted: string[] = [];
+  const reconcile = (
+    kind: string,
+    name: string,
+    found: { exists: boolean; id?: string },
+    record: ResourceRecord | undefined,
+  ): ResourceRecord | undefined => {
+    if (!found.exists) {
+      return record;
+    }
+    if (record?.status === 'created' || record?.status === 'adopted') {
+      return record;
+    }
+    if (record?.status === 'pending') {
+      adopted.push(`${kind} ${name}`);
+      return {
+        status: 'adopted',
+        name,
+        ...(found.id === undefined ? {} : { id: found.id }),
+        at: new Date().toISOString(),
+      };
+    }
+    throw new CliError(
+      EXIT.user,
+      `A ${kind} named ${name} already exists on this account, and this project did not create it.`,
+      'It may belong to another site: pointing this one at it would mean two ' +
+        'sites sharing one. Choose another --slug, or delete that resource if ' +
+        'it is genuinely unused.',
+    );
+  };
 
   // ---- Intent, written before the first mutation ------------------------
   let ledger: Ledger = existing ?? {
@@ -427,12 +496,33 @@ async function provision(
     fingerprint: input.fingerprint,
     startedAt: new Date().toISOString(),
   };
-  ledger = { ...ledger, accountId, directory: projectDir };
+  const reconciled = {
+    database: reconcile('database', names.database, database, ledger.database),
+    bucket: reconcile('bucket', names.bucket, bucket, ledger.bucket),
+    worker: reconcile('Worker', names.worker, worker, ledger.worker),
+  };
+  for (const line of adopted) {
+    report.step(`Adopting the ${line} this project already created.`);
+  }
+  ledger = {
+    ...ledger,
+    accountId,
+    directory: projectDir,
+    ...(reconciled.database === undefined
+      ? {}
+      : { database: reconciled.database }),
+    ...(reconciled.bucket === undefined ? {} : { bucket: reconciled.bucket }),
+    ...(reconciled.worker === undefined ? {} : { worker: reconciled.worker }),
+  };
   await writeLedger(projectDir, ledger);
 
   // ---- D1 ----------------------------------------------------------------
   let databaseId = ledger.database?.id;
-  if (ledger.database?.status !== 'created' || databaseId === undefined) {
+  if (
+    (ledger.database?.status !== 'created' &&
+      ledger.database?.status !== 'adopted') ||
+    databaseId === undefined
+  ) {
     report.step(`Creating database ${names.database}…`);
     ledger = {
       ...ledger,
@@ -476,7 +566,10 @@ async function provision(
   }
 
   // ---- R2 ----------------------------------------------------------------
-  if (ledger.bucket?.status !== 'created') {
+  if (
+    ledger.bucket?.status !== 'created' &&
+    ledger.bucket?.status !== 'adopted'
+  ) {
     report.step(`Creating bucket ${names.bucket}…`);
     ledger = { ...ledger, bucket: { status: 'pending', name: names.bucket } };
     await writeLedger(projectDir, ledger);
@@ -511,6 +604,11 @@ async function provision(
   await writeSiteConfig(projectDir, { ...input.configInput, databaseId });
 
   // ---- Deploy -------------------------------------------------------------
+  //
+  // A deploy is idempotent — it uploads the current bundle either way — so an
+  // adopted Worker is redeployed rather than assumed correct. The bundle a
+  // half-finished run uploaded may predate the database id that has since
+  // been written into wrangler.jsonc.
   report.step('Deploying…');
   ledger = { ...ledger, worker: { status: 'pending', name: names.worker } };
   await writeLedger(projectDir, ledger);
@@ -541,10 +639,12 @@ async function provision(
 
   // ---- Secrets ------------------------------------------------------------
   //
-  // Reconciled by **name**. An interrupted run may have set a secret without
-  // recording it; generating a new value to be safe would sign every user out
-  // and make stored plugin keys unreadable. Cloudflare will say whether a
-  // secret of that name exists, and that is enough.
+  // Reconciled by **name**, because that is all Cloudflare will tell us and
+  // all that is needed. `secretNames` throws rather than returning an empty
+  // list when it cannot read: an empty list means "this Worker has no
+  // secrets", and acting on that when the truth is "the API did not answer"
+  // sets a new MALLOK_SECRET, which signs every user out and makes stored
+  // plugin keys unreadable.
   const present = new Set(await secretNames(wrangler, names.worker));
   const recorded = new Set(ledger.secrets ?? []);
   let setupKey: string | null = null;
@@ -557,13 +657,39 @@ async function provision(
   }
   recorded.add('MALLOK_SECRET');
 
+  /*
+   * The setup key, and the one case where rotating a secret is the fix.
+   *
+   * It is a one-time credential for the first-run wizard: without it, a
+   * deployed but unclaimed site belongs to whoever reaches `/_mallok/setup`
+   * first, and a fresh Worker's address is not a secret.
+   *
+   * A key the CLI set and never managed to print is a key **nobody has** —
+   * the site cannot be set up and `create` has no way to recover it, because
+   * Cloudflare never returns a secret's value. The ledger therefore records
+   * not just that the secret exists but that its value was *delivered*, and a
+   * resumed run that finds the first without the second rotates it. That is
+   * safe exactly while no administrator exists, which is checked against the
+   * site's own public setup endpoint rather than assumed.
+   */
   if (!present.has('MALLOK_SETUP_KEY')) {
-    // A one-time credential for the first-run wizard. Without it, a deployed
-    // but un-set-up site can be claimed by whoever reaches `/_mallok/setup`
-    // first — and a fresh Worker's address is not a secret.
     setupKey = randomSecret();
     report.step('Setting MALLOK_SETUP_KEY…');
     await putSecret(wrangler, 'MALLOK_SETUP_KEY', setupKey);
+  } else if (ledger.setupKeyDeliveredAt === undefined) {
+    const claimed = await siteHasAdministrator(origin);
+    if (claimed === true) {
+      report.step(
+        'The site already has an administrator, so the setup key is spent.',
+      );
+    } else {
+      report.step(
+        'A setup key was set but never shown, so it cannot be recovered. ' +
+          'Rotating it…',
+      );
+      setupKey = randomSecret();
+      await putSecret(wrangler, 'MALLOK_SETUP_KEY', setupKey);
+    }
   }
   recorded.add('MALLOK_SETUP_KEY');
 
@@ -571,26 +697,15 @@ async function provision(
     ...ledger,
     // Names only. This file is meant to be committed.
     secrets: [...recorded].sort(),
+    // Recorded *after* the value has been produced for printing. The caller
+    // prints it; if this process dies first, the next run rotates.
+    setupKeyDeliveredAt: new Date().toISOString(),
     completedAt: new Date().toISOString(),
   };
   await writeLedger(projectDir, ledger);
 
   // ---- The registry, for the commands that come later ---------------------
-  const registryPath = join(projectDir, '.mallok/sites.json');
-  const sites = await readRegistry(registryPath);
-  await writeRegistry(
-    upsertSite(sites, {
-      slug,
-      origin,
-      domain: input.domain,
-      accountId,
-      databaseId,
-      bucket: names.bucket,
-      ratelimitNs: Number(input.configInput.rateLimitNamespace),
-      createdAt: new Date().toISOString(),
-    }),
-    registryPath,
-  );
+  await ensureRegistered(projectDir, ledger, accountId);
 
   return {
     projectDir,
@@ -601,28 +716,6 @@ async function provision(
     ledger,
     alreadyComplete: false,
   };
-}
-
-/** Refuses to build on a resource this project did not create. */
-function refuseUnknown(
-  kind: string,
-  name: string,
-  exists: boolean,
-  record: { status: string } | undefined,
-): void {
-  if (!exists) {
-    return;
-  }
-  if (record?.status === 'created' || record?.status === 'adopted') {
-    return;
-  }
-  throw new CliError(
-    EXIT.user,
-    `A ${kind} named ${name} already exists on this account, and this project did not create it.`,
-    'It may belong to another site: pointing this one at it would mean two ' +
-      'sites sharing one. Choose another --slug, or delete that resource if ' +
-      'it is genuinely unused.',
-  );
 }
 
 /** Pipes a secret to wrangler. The value never becomes an argument. */
@@ -638,6 +731,67 @@ async function putSecret(
       `The Worker deployed but ${name} could not be set.`,
       `Run \`wrangler secret put ${name}\` in the project before opening the site.`,
     );
+  }
+}
+
+/**
+ * Writes the site into the project's registry if it is not already there.
+ *
+ * Returns true when it had to repair something. The registry is what
+ * `mallok publish` and `mallok destroy` read to find a site; the ledger is
+ * what `create` reads to finish one. Both are derived from the same run, so
+ * a missing registry entry is repairable from the ledger without asking
+ * Cloudflare anything.
+ */
+async function ensureRegistered(
+  projectDir: string,
+  ledger: Ledger,
+  accountId: string,
+): Promise<boolean> {
+  const registryPath = join(projectDir, '.mallok/sites.json');
+  const sites = await readRegistry(registryPath);
+  const existing = sites.find((site) => site.slug === ledger.slug);
+  if (existing !== undefined && existing.accountId === accountId) {
+    return false;
+  }
+  await writeRegistry(
+    upsertSite(sites, {
+      slug: ledger.slug,
+      origin: ledger.origin ?? '',
+      domain: ledger.domain,
+      accountId,
+      databaseId: ledger.database?.id ?? null,
+      bucket: ledger.bucket?.name ?? '',
+      ratelimitNs: Number(rateLimitNamespace(ledger.slug)),
+      createdAt: ledger.completedAt ?? new Date().toISOString(),
+    }),
+    registryPath,
+  );
+  return existing === undefined;
+}
+
+/**
+ * Whether the site already has an administrator.
+ *
+ * Read from the site's own public setup endpoint, which exists to answer
+ * exactly this. `null` when the question cannot be answered — in which case
+ * the caller must not treat "unknown" as "no".
+ */
+async function siteHasAdministrator(origin: string): Promise<boolean | null> {
+  if (origin === '') {
+    return null;
+  }
+  try {
+    const response = await fetch(`${origin}/_mallok/api/setup/status`, {
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const status = (await response.json()) as { hasAdmin?: boolean };
+    return typeof status.hasAdmin === 'boolean' ? status.hasAdmin : null;
+  } catch {
+    return null;
   }
 }
 

@@ -31,6 +31,8 @@ export interface ParsedArgs {
 interface CommandSpec {
   readonly booleans: readonly string[];
   readonly values: readonly string[];
+  /** How many positional arguments, and what to call them in an error. */
+  readonly positional: { readonly max: number; readonly what: string };
 }
 
 /** Accepted everywhere, because they say how to run rather than what to do. */
@@ -53,6 +55,7 @@ const COMMANDS: Readonly<Record<string, CommandSpec>> = {
       'with-settings',
     ],
     values: ['site', 'url', 'token', 'kind'],
+    positional: { max: 1, what: 'one directory' },
   },
   import: {
     booleans: [
@@ -63,24 +66,54 @@ const COMMANDS: Readonly<Record<string, CommandSpec>> = {
       'with-settings',
     ],
     values: ['site', 'url', 'token', 'kind'],
+    positional: { max: 1, what: 'one directory' },
   },
-  export: { booleans: [], values: ['site', 'url', 'token'] },
-  preview: { booleans: [], values: ['theme', 'out', 'kind'] },
-  build: { booleans: [], values: ['theme', 'out', 'origin', 'kind'] },
-  media: { booleans: ['dry-run'], values: ['site', 'url', 'token'] },
+  export: {
+    booleans: [],
+    values: ['site', 'url', 'token'],
+    positional: { max: 1, what: 'one directory' },
+  },
+  preview: {
+    booleans: [],
+    values: ['theme', 'out', 'kind'],
+    positional: { max: 1, what: 'one directory' },
+  },
+  build: {
+    booleans: [],
+    values: ['theme', 'out', 'origin', 'kind'],
+    positional: { max: 1, what: 'one directory' },
+  },
+  media: {
+    booleans: ['dry-run'],
+    values: ['site', 'url', 'token'],
+    // `push` plus a directory.
+    positional: { max: 2, what: 'a subcommand and one directory' },
+  },
   create: {
-    booleans: ['dry-run', 'no-deploy', 'yes'],
-    values: ['slug', 'domain', 'package-manager'],
+    booleans: ['dry-run', 'no-deploy'],
+    values: ['slug', 'domain', 'account-id'],
+    positional: { max: 1, what: 'one directory' },
   },
   destroy: {
-    booleans: ['dry-run', 'empty-bucket'],
-    values: ['confirm'],
+    booleans: ['dry-run'],
+    values: ['confirm', 'account-id'],
+    positional: { max: 1, what: 'one site slug' },
   },
   upgrade: {
     booleans: ['dry-run', 'skip-checks'],
-    values: ['to', 'package-manager'],
+    values: ['to'],
+    positional: { max: 0, what: 'no arguments' },
   },
-  prepare: { booleans: [], values: [] },
+  'setup-key': {
+    booleans: [],
+    values: ['account-id'],
+    positional: { max: 0, what: 'no arguments' },
+  },
+  prepare: {
+    booleans: [],
+    values: [],
+    positional: { max: 0, what: 'no arguments' },
+  },
 };
 
 /** Commands, for the dispatcher and for error messages. */
@@ -211,6 +244,26 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   }
 
   const [, ...rest] = positional;
+
+  /*
+   * A stray positional is an error, not something to ignore.
+   *
+   * `mallok destroy acme --confirm acme extra` used to delete a site while
+   * its user believed they had typed something the tool would refuse. There
+   * is no reading of an unexpected argument that is safer than stopping.
+   */
+  const spec = COMMANDS[command];
+  if (spec !== undefined && rest.length > spec.positional.max) {
+    const extra = rest.slice(spec.positional.max);
+    throw new CliError(
+      EXIT.user,
+      spec.positional.max === 0
+        ? `mallok ${command} takes no arguments, but was given ${extra.map((value) => `"${value}"`).join(', ')}.`
+        : `mallok ${command} takes ${spec.positional.what}, but was also given ${extra.map((value) => `"${value}"`).join(', ')}.`,
+      'Quote an argument that contains spaces.',
+    );
+  }
+
   return { command, positional: rest, flags };
 }
 
