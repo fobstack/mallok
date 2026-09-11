@@ -301,11 +301,11 @@ describe('an interrupted run is recoverable', () => {
       report,
     ).catch(() => undefined);
 
-    // Resume into the same directory. `create` refuses a non-empty target, so
-    // a resume is `create .` from inside it — the state file is what makes the
-    // second run skip what the first already did.
+    // Resume into the same directory: `create .` from inside it. A generated
+    // project is recognised as a resume rather than refused as a non-empty
+    // directory — a ledger nothing can act on is not a recovery path.
     const second = recorder();
-    await createSite(
+    const result = await createSite(
       {
         directory: '.',
         cwd: projectDir,
@@ -314,14 +314,11 @@ describe('an interrupted run is recoverable', () => {
         templateDir: template,
       },
       report,
-    ).catch(() => undefined);
+    );
 
-    expect(
-      second.mutations().filter((call) => call.startsWith('d1 create')),
-    ).toEqual([]);
-    expect(
-      second.mutations().filter((call) => call.startsWith('r2 bucket create')),
-    ).toEqual([]);
+    // It reached the end this time, without creating either resource again.
+    expect(result.deployed).toBe(true);
+    expect(second.mutations()).toEqual(['deploy', 'secret put MALLOK_SECRET']);
   });
 
   it('refuses to adopt a resource it did not create', async () => {
@@ -482,5 +479,69 @@ describe('a run that reaches the end', () => {
     expect(config.main).toBe('src/worker/index.ts');
     expect(config.assets.directory).toBe('./dist/assets');
     expect(config.name).toBe('mallok-acme');
+  });
+});
+
+describe('resuming after --no-deploy', () => {
+  it('finishes the run without regenerating the project', async () => {
+    const projectDir = join(workspace, 'my-site');
+    const first = recorder();
+    await createSite(
+      {
+        directory: 'my-site',
+        cwd: workspace,
+        noDeploy: true,
+        run: first.run,
+        templateDir: template,
+      },
+      report,
+    );
+    expect(first.mutations()).toEqual([]);
+
+    // A file the user edited between the two runs. Regenerating would throw
+    // it away, and "create finished setting up your project" is not a licence
+    // to overwrite what is in it.
+    await writeFile(join(projectDir, 'site.json'), '{"edited":true}', 'utf8');
+
+    const second = recorder();
+    const result = await createSite(
+      {
+        directory: '.',
+        cwd: projectDir,
+        slug: 'my-site',
+        run: second.run,
+        templateDir: template,
+      },
+      report,
+    );
+
+    expect(result.deployed).toBe(true);
+    expect(await readFile(join(projectDir, 'site.json'), 'utf8')).toBe(
+      '{"edited":true}',
+    );
+  });
+
+  it('still refuses a directory that is not a Mallok project', async () => {
+    const fake = recorder();
+    const { mkdir } = await import('node:fs/promises');
+    await mkdir(join(workspace, 'someone-elses'), { recursive: true });
+    await writeFile(
+      join(workspace, 'someone-elses/README.md'),
+      'not a Mallok project',
+      'utf8',
+    );
+
+    await expect(
+      createSite(
+        {
+          directory: 'someone-elses',
+          cwd: workspace,
+          run: fake.run,
+          templateDir: template,
+        },
+        report,
+      ),
+    ).rejects.toThrow(/already exists and is not empty/);
+    expect(fake.mutations()).toEqual([]);
   });
 });

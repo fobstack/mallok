@@ -35,6 +35,7 @@ import {
 import {
   generateProject,
   hasProjectWrangler,
+  isMallokProject,
   isUsableTarget,
   projectWrangler,
   verifyTemplate,
@@ -209,7 +210,25 @@ export async function createSite(
       ? await temporaryDirectory()
       : resolve(cwd, options.directory);
 
-  if (options.dryRun !== true && !(await isUsableTarget(projectDir))) {
+  /*
+   * A second run in a directory this command already generated is a
+   * **resume**, not a collision.
+   *
+   * It is the documented way to finish a run that stopped — after
+   * `--no-deploy`, or after a deploy failed with the database and bucket
+   * already created (`docs/CLOUDFLARE_RESOURCES.md §6`). Refusing it left the
+   * ledger with no way to be acted on: the state file said what existed and
+   * the only command that could use it would not start.
+   *
+   * A directory with anything *else* in it is still refused.
+   */
+  const resuming =
+    options.dryRun !== true && (await isMallokProject(projectDir));
+  if (
+    options.dryRun !== true &&
+    !resuming &&
+    !(await isUsableTarget(projectDir))
+  ) {
     throw new CliError(
       EXIT.user,
       `${options.directory} already exists and is not empty.`,
@@ -219,14 +238,21 @@ export async function createSite(
 
   try {
     // ---- 2. Generate ----------------------------------------------------
-    report.step(`Creating ${options.directory}…`);
-    await generateProject({
-      target: projectDir,
-      name: slug,
-      ...(options.templateDir === undefined
-        ? {}
-        : { templateDir: options.templateDir }),
-    });
+    if (resuming) {
+      // Nothing is regenerated: the files there may have been edited, and
+      // overwriting a user's project to finish provisioning it would be a
+      // strange way to be helpful.
+      report.step(`Resuming ${options.directory}…`);
+    } else {
+      report.step(`Creating ${options.directory}…`);
+      await generateProject({
+        target: projectDir,
+        name: slug,
+        ...(options.templateDir === undefined
+          ? {}
+          : { templateDir: options.templateDir }),
+      });
+    }
 
     // ---- 3. Prove it builds --------------------------------------------
     for (const step of preflightSteps(projectDir)) {

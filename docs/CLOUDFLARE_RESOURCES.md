@@ -189,9 +189,15 @@ next one runs:
     email, DNS records, starter. Schema migration runs inside the Worker on
     its first request; the CLI never migrates.
 
-The ledger is what makes an interrupted run recoverable. A resumed run skips
-what it already created and **refuses to adopt a resource of the same name it
-did not create** — that name may belong to somebody else's site, and pointing
+The ledger is what makes an interrupted run recoverable. Running
+`mallok create . --slug <slug>` from **inside** a generated project resumes:
+it regenerates nothing, re-runs the preflight, and picks up at the first
+resource the ledger does not already record. That is also how a `--no-deploy`
+run is finished later. A directory that is not a Mallok project is still
+refused rather than written into.
+
+A resumed run **refuses to adopt a resource of the same name it did not
+create** — that name may belong to somebody else's site, and pointing
 a new project at it would mean two sites sharing one database.
 
 Without `CF_API_TOKEN` the site works normally, it just cannot purge the cache

@@ -70,6 +70,28 @@ export async function isUsableTarget(target: string): Promise<boolean> {
   }
 }
 
+/**
+ * Whether a directory already holds a project this command generated.
+ *
+ * Deliberately a shape check rather than a marker file: a marker can be
+ * deleted or copied, and what matters is whether the three files the next
+ * steps will act on are actually there.
+ */
+export async function isMallokProject(target: string): Promise<boolean> {
+  for (const file of [
+    'package.json',
+    'wrangler.jsonc',
+    'src/worker/index.ts',
+  ]) {
+    try {
+      await access(join(target, file));
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 export interface GenerateOptions {
   /** Absolute path of the directory to create. */
   readonly target: string;

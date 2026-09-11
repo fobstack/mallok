@@ -76,7 +76,7 @@ The CLI writes the token to no file. `.mallok/sites.json` **holds no secrets**
 
 ## 5. `mallok create`
 
-Follows the ten-step order in `CLOUDFLARE_RESOURCES.md §6`, not repeated here.
+Follows the order in `CLOUDFLARE_RESOURCES.md §6`, not repeated here.
 The essentials:
 
 - It takes a **directory**, and creates a complete project in it from the
@@ -92,6 +92,11 @@ The essentials:
   that cannot build must not leave resources behind (`§4.1`).
 - `--no-deploy` stops after that local verification; `--dry-run` does the same
   in a temporary directory and removes it.
+- Every resource it creates is recorded in `.mallok/create-state.json` before
+  the next step runs, and **never a secret**. Running
+  `mallok create . --slug <slug>` from inside the project resumes from there:
+  nothing is regenerated, and what already exists is not created twice. That
+  is also how a `--no-deploy` project is deployed later.
 - It prints the result of each step and **stops with an explanation on the
   first failure rather than skipping ahead**.
 - It finishes by opening `/_mallok/setup`, where the wizard takes over.
