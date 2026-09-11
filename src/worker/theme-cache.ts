@@ -7,14 +7,15 @@
  */
 
 import { type CompiledTheme, compileTheme } from '../core/index.js';
-import { ACTIVE_THEME } from '../themes/index.js';
+import { activeTheme } from './composition.js';
 
 let compiled: CompiledTheme | undefined;
 
 /** Returns the compiled active theme, parsing its templates on first use. */
 export function getCompiledTheme(): CompiledTheme {
   if (compiled === undefined) {
-    compiled = compileTheme(ACTIVE_THEME.manifest, ACTIVE_THEME.files, 1);
+    const theme = activeTheme();
+    compiled = compileTheme(theme.manifest, theme.files, 1);
   }
   return compiled;
 }

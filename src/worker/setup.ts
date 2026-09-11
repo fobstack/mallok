@@ -24,11 +24,11 @@ import {
   updateSite,
 } from '../db/queries.js';
 import { findStarter, STARTERS } from '../starters/index.js';
-import { ACTIVE_THEME } from '../themes/index.js';
 import { bootstrapAdmin } from './admin-auth.js';
 import { saveContent } from './admin-content.js';
 import { authenticate } from './auth.js';
 import { purgeTags } from './cache.js';
+import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem } from './http.js';
 import { parseSiteSettings } from './site.js';
@@ -63,9 +63,9 @@ export async function getSetupStatus(env: Env): Promise<Response> {
             mediaBaseUrl: row.media_base_url,
           },
     theme: {
-      id: ACTIVE_THEME.manifest.id,
-      name: ACTIVE_THEME.manifest.name,
-      version: ACTIVE_THEME.manifest.version,
+      id: activeTheme().manifest.id,
+      name: activeTheme().manifest.name,
+      version: activeTheme().manifest.version,
     },
     starters: STARTERS.map((starter) => ({
       id: starter.id,
@@ -76,7 +76,7 @@ export async function getSetupStatus(env: Env): Promise<Response> {
       // Said plainly: a starter written for another theme still imports, but
       // its content types fall back to the page layout
       // (docs/THEME_FORMAT.md §5.3).
-      matchesActiveTheme: starter.theme === ACTIVE_THEME.manifest.id,
+      matchesActiveTheme: starter.theme === activeTheme().manifest.id,
     })),
     // Facts the wizard has to be honest about rather than discover later.
     purgeConfigured:

@@ -24,8 +24,9 @@ import {
   setDefaultLocale,
   updateSite,
 } from '../db/queries.js';
-import { ACTIVE_THEME, THEMES } from '../themes/index.js';
+import { THEMES } from '../themes/index.js';
 import { purgeTags } from './cache.js';
+import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem, readJson } from './http.js';
 import { parseSiteSettings } from './site.js';
@@ -168,7 +169,7 @@ export async function getHealth(env: Env): Promise<Response> {
   return json({
     ok: data.site !== null,
     site: data.site?.name ?? null,
-    theme: `${ACTIVE_THEME.manifest.id}@${ACTIVE_THEME.manifest.version}`,
+    theme: `${activeTheme().manifest.id}@${activeTheme().manifest.version}`,
     pipeline: PIPELINE_VERSION,
     purgeConfigured:
       env.CF_API_TOKEN !== undefined && env.CF_ZONE_ID !== undefined,
@@ -266,7 +267,7 @@ export async function postDefaultLocale(
  * theme is a build-time constant.
  */
 export function getTheme(): Response {
-  const { manifest, files } = ACTIVE_THEME;
+  const { manifest, files } = activeTheme();
   return json({
     id: manifest.id,
     name: manifest.name,
@@ -282,8 +283,9 @@ export function getTheme(): Response {
     clientScripts: manifest.clientScripts,
     assetBase: themeAssetBase(manifest.id, manifest.version),
     files,
-    // Every theme in the build, so the admin can say what switching would
-    // require without pretending it can do it.
+    // The official themes the `mallok` package ships, so the admin can say
+    // what switching would require without pretending it can do it. A
+    // project's own theme lives in its repository and is not listed here.
     available: Object.keys(THEMES),
     switchRequiresDeploy: true,
   });

@@ -10,7 +10,6 @@
 import type { BeforeRenderHook } from '../core/index.js';
 import { sha256Hex } from '../core/index.js';
 import { loadSiteRenderData, type PluginStateRow } from '../db/queries.js';
-import { PLUGINS } from '../plugins/index.js';
 import type {
   ContentDraft,
   MallokPlugin,
@@ -19,23 +18,28 @@ import type {
   PluginRequestContext,
 } from '../plugins/types.js';
 import { purgeTags } from './cache.js';
+import { compiledPlugins } from './composition.js';
 import { queueEmail } from './email.js';
 import type { Env } from './env.js';
 import { problem } from './http.js';
 import { decryptSecret } from './secrets.js';
 import { parseSiteSettings, type SiteSettings } from './site.js';
 
-/** Registry lookup by id. */
-const BY_ID = new Map(PLUGINS.map((plugin) => [plugin.manifest.id, plugin]));
+/** Registry lookup by id, built from the composition this build declared. */
+function byId(): Map<string, MallokPlugin> {
+  return new Map(
+    compiledPlugins().map((plugin) => [plugin.manifest.id, plugin]),
+  );
+}
 
 /** Migrations of every compiled-in plugin, for the boot migrator. */
 export function pluginMigrations() {
-  return PLUGINS.flatMap((plugin) => plugin.migrations ?? []);
+  return compiledPlugins().flatMap((plugin) => plugin.migrations ?? []);
 }
 
 /** Registered plugins with their manifests, for boot seeding and the admin. */
 export function registeredPlugins(): readonly MallokPlugin[] {
-  return PLUGINS;
+  return compiledPlugins();
 }
 
 /** A plugin the current request may run: implementation plus its state. */
@@ -52,7 +56,7 @@ export function activePlugins(rows: readonly PluginStateRow[]): ActivePlugin[] {
     if (row.enabled !== 1) {
       continue;
     }
-    const plugin = BY_ID.get(row.plugin_id);
+    const plugin = byId().get(row.plugin_id);
     if (plugin === undefined) {
       continue;
     }
@@ -199,7 +203,9 @@ export async function collectPluginExports(
  * (docs/PLUGIN_API.md §5.1).
  */
 export function registryDeclaresOnRequest(): boolean {
-  return PLUGINS.some((plugin) => plugin.manifest.hooks.includes('onRequest'));
+  return compiledPlugins().some((plugin) =>
+    plugin.manifest.hooks.includes('onRequest'),
+  );
 }
 
 /**

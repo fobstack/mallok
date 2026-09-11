@@ -26,7 +26,7 @@ import {
   loadSite,
   loadSiteRenderData,
 } from '../db/queries.js';
-import { ACTIVE_THEME } from '../themes/index.js';
+import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem } from './http.js';
 import { collectPluginExports } from './plugin-runtime.js';
@@ -187,8 +187,8 @@ export async function getExport(
         // Recorded for information only: a theme is source code, so an
         // import cannot install it (docs/CONTENT_FORMAT.md §5).
         theme: {
-          id: ACTIVE_THEME.manifest.id,
-          version: ACTIVE_THEME.manifest.version,
+          id: activeTheme().manifest.id,
+          version: activeTheme().manifest.version,
           note: 'Themes ship with the source. Make sure the target build contains this one.',
         },
       },
