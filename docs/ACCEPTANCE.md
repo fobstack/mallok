@@ -45,6 +45,22 @@ Status values:
 | `PENDING_DECISION` | The implementation is fine; **the criterion itself is wrong** and awaits the product owner. What blocks it is us, not the platform |
 | `NOT_AVAILABLE` | Needs a real account or an external service; no evidence is obtainable locally |
 
+**These five are not the seven in `docs/TESTING.md §6`**, and the difference
+is worth knowing before reading a row:
+
+| Here | There | Note |
+| --- | --- | --- |
+| `VERIFIED_LOCAL` | `VERIFIED_LOCAL` | Same meaning |
+| `VERIFIED_HUMAN` | `VERIFIED_STAGING` / `VERIFIED_HUMAN` | A row here does not say whether a person's judgement was needed or only a real account |
+| `NOT_RUN` | `NOT_RUN` | Same meaning |
+| `NOT_AVAILABLE` | — | **Different meaning.** Here it means "needs a real account"; in `TESTING.md §6` it means "there is no implementation to test yet" |
+| `PENDING_DECISION` | — | No equivalent; the blocker is a product decision, not a platform |
+
+`docs/RELEASE_GATE.md` uses `TESTING.md §6`'s seven and nothing else.
+Reconciling this table with it means re-labelling all 74 rows below and has
+not been done; until it is, read a status here against this mapping rather
+than against `TESTING.md`.
+
 **Each criterion's status and evidence live in its group's table below, and
 the totals are counted from those tables rather than written above them.**
 That is the structural change from the 2026-09-01 recount: previously only the
