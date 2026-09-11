@@ -12,7 +12,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const ORIGIN = 'https://secret-check.example';
 const EMAIL = 'check@example.com';
 const PASSWORD = 'a sufficiently long password';
-const KEY = 're_live_supersecret_value';
+// Deliberately not shaped like a real Resend key: `scripts/scan-secrets.mjs`
+// scans the whole history for credential *shapes*, and a fixture that looks
+// like the real thing trains everyone to wave the scanner through.
+const KEY = 'fixture-not-a-credential-0123456789';
 
 let token = '';
 const realFetch = globalThis.fetch;

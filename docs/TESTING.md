@@ -198,7 +198,55 @@ not**:
 `VERIFIED_HUMAN`** — the Cache API working under local `wrangler dev` says
 nothing about `.workers.dev` (`ARCHITECTURE §18`, item 1).
 
-## 7. What needs a real account
+## 7. The browser run
+
+`pnpm test:e2e` drives a real `wrangler dev` — local D1 and R2, the same Worker
+code a deployed site runs — through the flows that only exist end to end:
+
+| Spec | What it walks |
+| --- | --- |
+| `01-wizard` | The first-run wizard, the starter install, and that setup cannot run twice |
+| `02-login` | Sign-in, a refused password, the session boundary, sign-out |
+| `03-publish` | Writing a page in the admin, publishing it, editing it, and a draft staying private |
+| `04-public-pages` | List and detail pages, zero client JavaScript, the second language and hreflang, the SEO endpoints, a themed 404 |
+| `05-accessibility` | axe on eight admin screens and on all five official themes |
+
+`pnpm test:a11y` runs the wizard and the axe spec alone.
+
+Three things about this run are worth knowing before changing it:
+
+- **The specs are ordered and share one database.** `01` creates the
+  administrator every later spec signs in as, so they run in file order with
+  one worker. Running a single spec on its own starts from an empty database
+  and will fail at the sign-in.
+- **The state directory is deleted by the web-server command**, not by a
+  global setup: Playwright starts the server before global setup runs, so
+  deleting it afterwards pulled the SQLite file out from under a wrangler that
+  had already migrated it.
+- **The accessibility gate is "no serious or critical".** Moderate and minor
+  findings are printed and do not fail the run. The five themes are scanned
+  from a real `mallok build` of this repository's content, one build per
+  theme, served over HTTP so the stylesheets load — only one theme can be
+  compiled into a Worker at a time (`ACTIVE_THEME`), so there is no other way
+  to scan all five.
+
+The browser is not installed by `pnpm install`. Once per machine:
+`npx playwright install chromium`.
+
+## 8. The history scan
+
+`pnpm scan:secrets` reads **every blob reachable from any ref** — not the
+working tree, which says nothing about what a public repository would carry —
+and matches credential *shapes*: private-key blocks, provider key formats,
+JWTs, and long literals assigned to a name like `MALLOK_SECRET`.
+
+It never prints a suspected value. Echoing a match copies the secret into a
+terminal, a CI log and whatever screenshot follows; the report gives the path,
+the line and the rule, which is enough to go and look. Findings a person has
+reviewed are listed in the script with their reason and still appear in the
+output — they just do not fail the run.
+
+## 9. What needs a real account
 
 The things no tool replaces (`TECH_STACK §10`):
 
@@ -213,7 +261,7 @@ The things no tool replaces (`TECH_STACK §10`):
 `TASK-01 §4` is the first batch of these, with the conclusions written back
 into `ARCHITECTURE §18`.
 
-## 8. Test data
+## 10. Test data
 
 - Fixed corpora live in `test/fixtures/`, including a set of genuine
   foreign-trade content — several products, categories and news items.
@@ -222,7 +270,7 @@ into `ARCHITECTURE §18`.
 - **Never snapshot randomly generated content** — a snapshot has to be stable.
 - Time is always injected; `Date.now()` is never called.
 
-## 9. CI
+## 11. CI
 
 Everything must be green before a change is done (`docs/CONVENTIONS.md`):
 
@@ -234,10 +282,19 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size
 because it re-runs the Node projects on their own; `pnpm test` runs all six
 projects, workerd included.
 
-End-to-end and Lighthouse need a browser and a custom domain, so they stay out
-of that chain, run separately, and their evidence goes in the task report.
+The full local gate, in the order worth running it:
 
-## 10. Deliberately not done
+```sh
+pnpm lint && pnpm typecheck && pnpm test && pnpm build \
+  && pnpm bundle:size && pnpm admin:size \
+  && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
+```
+
+`pnpm test:e2e` needs a browser (`npx playwright install chromium`, once).
+Lighthouse still needs a custom domain, so it stays out of the chain and its
+evidence goes in the task report.
+
+## 12. Deliberately not done
 
 - No mutation testing.
 - No visual regression testing; screenshot comparison is too noisy across

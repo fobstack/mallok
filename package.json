@@ -61,7 +61,8 @@
     "prepublishOnly": "node scripts/refuse-publish.mjs",
     "test:coverage": "vitest run --project core --project runtime --project runtime-dom --project runtime-build --coverage",
     "test:e2e": "playwright test",
-    "test:a11y": "playwright test 01-wizard 05-accessibility"
+    "test:a11y": "playwright test 01-wizard 05-accessibility",
+    "scan:secrets": "node scripts/scan-secrets.mjs"
   },
   "dependencies": {
     "hast-util-to-string": "3.0.1",
