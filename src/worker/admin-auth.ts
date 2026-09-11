@@ -20,6 +20,7 @@ import {
   revokeApiToken,
   updateAdminPassword,
 } from '../db/auth.js';
+import { loadSite, updateSite } from '../db/queries.js';
 import {
   clearedSessionCookie,
   isScope,
@@ -47,7 +48,78 @@ const MIN_PASSWORD_LENGTH = 12;
 const credentialsSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(MIN_PASSWORD_LENGTH).max(1024),
+  /** The one-time key `mallok create` printed; see {@link checkSetupKey}. */
+  setupKey: z.string().min(1).max(512).optional(),
 });
+
+/**
+ * Compares two secrets without leaking their contents through timing.
+ *
+ * `===` on strings returns as soon as two bytes differ, which over enough
+ * attempts is a way to learn a value one character at a time.
+ */
+function constantTimeEqual(a: string, b: string): boolean {
+  const left = new TextEncoder().encode(a);
+  const right = new TextEncoder().encode(b);
+  // Lengths are compared openly: a length is not the secret.
+  if (left.length !== right.length) {
+    return false;
+  }
+  let difference = 0;
+  for (const [index, byte] of left.entries()) {
+    difference |= byte ^ (right[index] ?? 0);
+  }
+  return difference === 0;
+}
+
+/**
+ * The one-time credential that makes the first-run wizard safe.
+ *
+ * A freshly deployed site has no administrator, and its address is not a
+ * secret: a `.workers.dev` name is guessable, and certificate transparency
+ * publishes a custom domain within minutes of the first request. Whoever
+ * reached `/_mallok/setup` first became the administrator of somebody else's
+ * site — a race with a scanner, on every deployment, until now.
+ *
+ * `mallok create` generates `MALLOK_SETUP_KEY`, sets it as a Worker secret and
+ * prints it once. This checks it, and records that it has been spent so that
+ * the same key cannot be replayed even if it is later found in a terminal's
+ * scrollback.
+ *
+ * When the Worker has no such secret — a site deployed by hand, or one created
+ * before this existed — the check is skipped and the wizard behaves as it did.
+ * Refusing would lock those sites out of their own setup.
+ */
+async function checkSetupKey(
+  env: Env,
+  supplied: string | undefined,
+  now: Date,
+): Promise<Response | null> {
+  const expected = env.MALLOK_SETUP_KEY;
+  if (expected === undefined || expected === '') {
+    return null;
+  }
+  const site = await loadSite(env.DB);
+  if (site?.setup_key_used_at != null) {
+    return problem(
+      403,
+      'The setup key has already been used. Deploy a new key with ' +
+        '`wrangler secret put MALLOK_SETUP_KEY` if you need to run setup again.',
+    );
+  }
+  if (supplied === undefined || !constantTimeEqual(supplied, expected)) {
+    return problem(
+      403,
+      'That setup key is not correct. It was printed once, by `mallok create`.',
+    );
+  }
+  await updateSite(
+    env.DB,
+    { setup_key_used_at: now.toISOString() },
+    now.toISOString(),
+  );
+  return null;
+}
 
 const passwordChangeSchema = z.object({
   currentPassword: z.string().min(1).max(1024),
@@ -78,6 +150,13 @@ export async function bootstrapAdmin(
       `Provide an email and a password of at least ${MIN_PASSWORD_LENGTH} characters.`,
     );
   }
+  // Checked after the payload parses and before the account is created, so a
+  // bad key costs an attacker the same work as a bad password.
+  const refused = await checkSetupKey(env, parsed.data.setupKey, now);
+  if (refused !== null) {
+    return refused;
+  }
+
   const derived = await hashPassword(parsed.data.password);
   await createAdminUser(env.DB, {
     id: crypto.randomUUID(),

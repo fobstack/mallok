@@ -49,6 +49,7 @@ describe('walking skeleton', () => {
     // Core plus every compiled-in plugin migration, applied exactly once.
     expect(migrations.results.map((row) => row.id)).toEqual([
       '0001_init',
+      '0002_setup_key',
       'plugin:inquiry:0001_inquiry',
     ]);
     const sites = await env.DB.prepare('SELECT COUNT(*) AS n FROM site').first<{

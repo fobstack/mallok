@@ -95,6 +95,33 @@ export default defineConfig({
         test: {
           name: 'worker',
           include: ['test/worker/**/*.test.ts'],
+          // Its own project below: it needs a binding the rest must not have.
+          exclude: ['test/worker/setup-key.test.ts'],
+        },
+      },
+      {
+        /*
+         * The first-run wizard with a one-time setup key.
+         *
+         * A separate project because the key is an *environment* difference:
+         * every other worker test bootstraps an administrator directly, and
+         * binding `MALLOK_SETUP_KEY` for all of them would make them all
+         * exercise the same path instead of the ones they are about.
+         */
+        plugins: [
+          cloudflareTest({
+            wrangler: { configPath: './wrangler.jsonc' },
+            miniflare: {
+              bindings: {
+                MALLOK_SECRET: 'test-secret-do-not-use',
+                MALLOK_SETUP_KEY: 'a-one-time-setup-key-for-this-test',
+              },
+            },
+          }),
+        ],
+        test: {
+          name: 'worker-setup-key',
+          include: ['test/worker/setup-key.test.ts'],
         },
       },
       {

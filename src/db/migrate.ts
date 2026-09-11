@@ -9,6 +9,7 @@
  */
 
 import initSql from './migrations/0001_init.sql';
+import setupKeySql from './migrations/0002_setup_key.sql';
 
 /** One migration: a stable id and the SQL text to apply. */
 export interface Migration {
@@ -19,6 +20,7 @@ export interface Migration {
 /** Core migrations in apply order. Plugin migrations are appended at runtime. */
 export const CORE_MIGRATIONS: readonly Migration[] = [
   { id: '0001_init', sql: initSql },
+  { id: '0002_setup_key', sql: setupKeySql },
 ];
 
 const LOCK_TTL_MS = 60_000;

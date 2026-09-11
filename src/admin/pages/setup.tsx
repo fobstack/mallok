@@ -26,6 +26,8 @@ interface SetupStatus {
   }[];
   readonly purgeConfigured: boolean;
   readonly customDomain: string | null;
+  /** Whether this deployment has a one-time setup key to check. */
+  readonly requiresSetupKey: boolean;
 }
 
 type Step = 'admin' | 'site' | 'starter' | 'domain' | 'done';
@@ -47,6 +49,7 @@ export function SetupPage(): JSX.Element {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [setupKey, setSetupKey] = useState('');
   const [name, setName] = useState('');
   const [locale, setLocale] = useState('en');
   const [extraLocales, setExtraLocales] = useState('');
@@ -167,7 +170,13 @@ export function SetupPage(): JSX.Element {
           className="card"
           onSubmit={(event) => {
             event.preventDefault();
-            void run('admin', { email, password }, 'site');
+            void run(
+              'admin',
+              status.requiresSetupKey
+                ? { email, password, setupKey }
+                : { email, password },
+              'site',
+            );
           }}
         >
           <h2>Create the administrator</h2>
@@ -201,6 +210,26 @@ export function SetupPage(): JSX.Element {
               At least 12 characters. This is the only account.
             </p>
           </div>
+          {status.requiresSetupKey ? (
+            <div className="field">
+              <label htmlFor="setup-key">Setup key</label>
+              <div className="control">
+                <input
+                  id="setup-key"
+                  type="password"
+                  required
+                  autoComplete="off"
+                  value={setupKey}
+                  onInput={(event) => setSetupKey(event.currentTarget.value)}
+                />
+              </div>
+              <p className="help">
+                Printed once by <code>mallok create</code>. It proves this site
+                is yours: without it, whoever found the address first could
+                claim it. It stops working the moment setup succeeds.
+              </p>
+            </div>
+          ) : null}
           <button type="submit" className="primary" disabled={busy}>
             {busy ? 'Creating…' : 'Continue'}
           </button>

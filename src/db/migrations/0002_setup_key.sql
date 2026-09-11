@@ -1,0 +1,12 @@
+-- The first-run wizard's one-time credential (docs/SECURITY.md §4).
+--
+-- A freshly deployed site has no administrator, and its address is not a
+-- secret: `mallok-<slug>.<account>.workers.dev` is guessable and certificate
+-- transparency logs publish a custom domain within minutes. Whoever reached
+-- `/_mallok/setup` first became the administrator.
+--
+-- `mallok create` now sets a random `MALLOK_SETUP_KEY` as a Worker secret and
+-- prints it once. The wizard will not create the administrator without it, and
+-- this column records the moment it was spent — after which the key is refused
+-- even if it leaks.
+ALTER TABLE site ADD COLUMN setup_key_used_at TEXT;

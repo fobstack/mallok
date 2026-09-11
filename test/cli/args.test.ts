@@ -17,7 +17,7 @@ describe('parseArgs', () => {
   });
 
   it('accepts --name=value as well as --name value', () => {
-    expect(stringFlag(parseArgs(['x', '--url=https://a.example']), 'url')).toBe(
+    expect(stringFlag(parseArgs(['publish', '--url=https://a.example']), 'url')).toBe(
       'https://a.example',
     );
   });
@@ -57,21 +57,21 @@ describe('resolveOrigin', () => {
   it('prefers an explicit --url', () => {
     expect(
       resolveOrigin(
-        parseArgs(['x', '--url', 'https://direct.example']),
+        parseArgs(['publish', '--url', 'https://direct.example']),
         registry,
       ),
     ).toBe('https://direct.example');
   });
 
   it('looks a named site up in the registry', () => {
-    expect(resolveOrigin(parseArgs(['x', '--site', 'beta']), registry)).toBe(
+    expect(resolveOrigin(parseArgs(['publish', '--site', 'beta']), registry)).toBe(
       'https://beta.example',
     );
   });
 
   it('uses the only registered site when there is exactly one', () => {
     expect(
-      resolveOrigin(parseArgs(['x']), {
+      resolveOrigin(parseArgs(['publish']), {
         solo: { origin: 'https://solo.example' },
       }),
     ).toBe('https://solo.example');
@@ -79,14 +79,14 @@ describe('resolveOrigin', () => {
 
   it('refuses to guess between several sites', () => {
     // Publishing to the wrong site is worse than an error message.
-    expect(() => resolveOrigin(parseArgs(['x']), registry)).toThrow(
+    expect(() => resolveOrigin(parseArgs(['publish']), registry)).toThrow(
       /--site is required/,
     );
   });
 
   it('names the known sites when one is not found', () => {
     try {
-      resolveOrigin(parseArgs(['x', '--site', 'gamma']), registry);
+      resolveOrigin(parseArgs(['publish', '--site', 'gamma']), registry);
       expect.unreachable();
     } catch (error) {
       expect((error as CliError).hint).toContain('alpha');
@@ -94,7 +94,7 @@ describe('resolveOrigin', () => {
   });
 
   it('explains what to do when nothing is registered', () => {
-    expect(() => resolveOrigin(parseArgs(['x']), {})).toThrow(
+    expect(() => resolveOrigin(parseArgs(['publish']), {})).toThrow(
       /No site specified/,
     );
   });
@@ -102,13 +102,13 @@ describe('resolveOrigin', () => {
 
 describe('resolveToken', () => {
   it('prefers --token, then the environment', () => {
-    expect(resolveToken(parseArgs(['x', '--token', 'a']), {})).toBe('a');
-    expect(resolveToken(parseArgs(['x']), { MALLOK_TOKEN: 'b' })).toBe('b');
+    expect(resolveToken(parseArgs(['publish', '--token', 'a']), {})).toBe('a');
+    expect(resolveToken(parseArgs(['publish']), { MALLOK_TOKEN: 'b' })).toBe('b');
   });
 
   it('fails with the auth exit code and says where to get one', () => {
     try {
-      resolveToken(parseArgs(['x']), {});
+      resolveToken(parseArgs(['publish']), {});
       expect.unreachable();
     } catch (error) {
       expect((error as CliError).code).toBe(EXIT.auth);

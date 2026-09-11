@@ -62,6 +62,10 @@ export async function getSetupStatus(env: Env): Promise<Response> {
             domain: row.domain,
             mediaBaseUrl: row.media_base_url,
           },
+    // Whether the wizard will ask for the one-time key `mallok create`
+    // printed. The key itself is never sent anywhere, in either direction.
+    requiresSetupKey:
+      env.MALLOK_SETUP_KEY !== undefined && env.MALLOK_SETUP_KEY !== '',
     theme: {
       id: activeTheme().manifest.id,
       name: activeTheme().manifest.name,

@@ -25,6 +25,8 @@ export interface SiteRow {
   readonly max_image_edge: number | null;
   readonly content_rev: number;
   readonly setup_completed_at: string | null;
+  /** When the one-time setup key was spent; null until the wizard runs. */
+  readonly setup_key_used_at: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -548,6 +550,7 @@ export interface SitePatch {
   readonly cache_ttl?: number;
   readonly max_image_edge?: number | null;
   readonly setup_completed_at?: string | null;
+  readonly setup_key_used_at?: string | null;
 }
 
 /**
