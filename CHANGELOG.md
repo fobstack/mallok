@@ -4,6 +4,61 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.2] — unreleased
+
+`mallok create` became a product contract rather than a script, and the two
+gates the documentation had always claimed — a browser run and a coverage
+floor — started actually running. Both found real defects on their first run.
+
+### Fixed
+
+- **`mallok create` created Cloudflare resources before checking the project
+  could build.** It signed in, created a D1 database, created an R2 bucket,
+  wrote a config and only then attempted a deploy, so a project that could not
+  build left two real resources behind, named after a site that did not exist,
+  recorded nowhere — and the next run refused the slug it had itself
+  half-provisioned. Nothing on Cloudflare is now touched until the generated
+  project has been installed, built and passed `wrangler deploy --dry-run`
+  locally, and every resource created after that is written to
+  `.mallok/create-state.json` before the next step runs.
+- **`mallok create` assumed it was being run inside a checkout.** It now takes
+  a directory, generates a complete project into it from a template the
+  package carries, and takes the Cloudflare slug separately (`--slug`).
+  `--no-deploy` stops after local verification; `--dry-run` does the same in a
+  temporary directory and removes it.
+- **A stopped run could not be resumed.** The ledger recorded what existed and
+  nothing could act on it, because `create` refused any non-empty directory.
+  `mallok create . --slug <slug>` now resumes from inside a generated project.
+- **The admin was broken in the shipped build.** `@vitejs/plugin-react` has
+  been oxc-only since v6 and silently ignores `babel.plugins`, so the signals
+  transform stopped running and no component subscribed to anything: the app
+  rendered "Loading…" and stayed there. The transform runs as its own Vite
+  plugin now, and the build fails if it ever produces zero subscriptions.
+- **Serious colour-contrast failures across the admin and four themes** —
+  between 2.69:1 and 4.44:1 where WCAG AA requires 4.5:1, in both light and
+  dark. The Markdown editor also had no accessible name once CodeMirror
+  replaced its textarea.
+- **`mallok destroy` pointed at a config file that no longer exists** and
+  shelled out to `npx wrangler` — an unpinned binary deleting a Worker, a
+  database and a bucket. It uses the project's own `wrangler.jsonc` and its
+  own pinned Wrangler, and `create` now registers the site it deployed so
+  `destroy` and `publish` can find it.
+
+### Added
+
+- `pnpm test:e2e` — 24 Playwright tests driving a real `wrangler dev` through
+  the wizard, sign-in, the publish loop and the public site, including axe on
+  eight admin screens and on all five official themes.
+- `pnpm test:coverage` — an enforced coverage floor for the directories V8 can
+  instrument. `src/worker`, `src/db` and `src/plugins` run inside workerd and
+  cannot be measured; docs/TESTING.md §5 now says so instead of listing
+  thresholds that never ran.
+- `pnpm scan:secrets` — scans every blob on every ref for credential shapes
+  and never prints a suspected value.
+- The release tarball is built and tested before it is published, and the
+  sha256 recorded at build time is rechecked at publish time
+  (docs/RELEASE_GATE.md §4, §5).
+
 ## [0.1.0-rc.1] — unreleased
 
 The release candidate: every criterion that can be closed without a Cloudflare
