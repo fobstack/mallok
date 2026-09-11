@@ -1,9 +1,21 @@
 /**
  * Argument parsing (docs/CLI.md §3).
  *
- * Hand-written rather than a parser library: the surface is seven commands
- * and a dozen flags, and a dependency here would ship to every user of the
+ * Hand-written rather than a parser library: the surface is nine commands and
+ * a dozen flags, and a dependency here would ship to every user of the
  * published package.
+ *
+ * Two rules this file exists to enforce, both learned the expensive way:
+ *
+ * 1. **Every flag is declared per command, and an undeclared one fails.**
+ *    A misspelling used to be accepted and ignored, so `mallok create site
+ *    --no-deply` provisioned a real database and a real bucket while the user
+ *    believed they had asked it not to.
+ * 2. **A boolean flag is a boolean.** `--dry-run=true` parsed as the *string*
+ *    `"true"`, and every `=== true` check downstream read it as false, so the
+ *    most explicit way a person can ask for a dry run was the one way that
+ *    deployed. Boolean flags now accept `--flag`, `--flag=true` and
+ *    `--flag=false`, and reject anything else rather than guessing.
  */
 
 import { CliError, EXIT } from './output.js';
@@ -15,23 +27,132 @@ export interface ParsedArgs {
   readonly flags: Readonly<Record<string, string | boolean>>;
 }
 
-const BOOLEAN_FLAGS = new Set([
-  'json',
-  'dry-run',
-  'verbose',
-  'draft',
-  'create-only',
-  'no-deploy',
-  'fail-on-missing',
-  'with-settings',
-  'help',
-  'version',
-]);
+/** What one command accepts. */
+interface CommandSpec {
+  readonly booleans: readonly string[];
+  readonly values: readonly string[];
+}
 
-/** Parses `argv` (without node and the script path). */
+/** Accepted everywhere, because they say how to run rather than what to do. */
+const GLOBAL_BOOLEANS = ['help', 'json', 'verbose', 'version'] as const;
+
+/**
+ * The flag whitelist, by command.
+ *
+ * A flag absent from a command's list is an error for that command even when
+ * another command accepts it: `mallok publish --slug x` is a mistake worth
+ * reporting, not a value worth ignoring.
+ */
+const COMMANDS: Readonly<Record<string, CommandSpec>> = {
+  publish: {
+    booleans: [
+      'draft',
+      'create-only',
+      'dry-run',
+      'fail-on-missing',
+      'with-settings',
+    ],
+    values: ['site', 'url', 'token', 'kind'],
+  },
+  import: {
+    booleans: [
+      'draft',
+      'create-only',
+      'dry-run',
+      'fail-on-missing',
+      'with-settings',
+    ],
+    values: ['site', 'url', 'token', 'kind'],
+  },
+  export: { booleans: [], values: ['site', 'url', 'token'] },
+  preview: { booleans: [], values: ['theme', 'out', 'kind'] },
+  build: { booleans: [], values: ['theme', 'out', 'origin', 'kind'] },
+  media: { booleans: ['dry-run'], values: ['site', 'url', 'token'] },
+  create: {
+    booleans: ['dry-run', 'no-deploy', 'yes'],
+    values: ['slug', 'domain', 'package-manager'],
+  },
+  destroy: {
+    booleans: ['dry-run', 'empty-bucket'],
+    values: ['confirm'],
+  },
+  upgrade: {
+    booleans: ['dry-run', 'skip-checks'],
+    values: ['to', 'package-manager'],
+  },
+  prepare: { booleans: [], values: [] },
+};
+
+/** Commands, for the dispatcher and for error messages. */
+export const COMMAND_NAMES: readonly string[] = Object.keys(COMMANDS);
+
+/** Whether a command declares a flag as a boolean. */
+function isBoolean(command: string, name: string): boolean {
+  if ((GLOBAL_BOOLEANS as readonly string[]).includes(name)) {
+    return true;
+  }
+  return COMMANDS[command]?.booleans.includes(name) ?? false;
+}
+
+/** Whether a command accepts a flag at all. */
+function isKnown(command: string, name: string): boolean {
+  if ((GLOBAL_BOOLEANS as readonly string[]).includes(name)) {
+    return true;
+  }
+  const spec = COMMANDS[command];
+  if (spec === undefined) {
+    return false;
+  }
+  return spec.booleans.includes(name) || spec.values.includes(name);
+}
+
+/**
+ * Turns `--flag=<value>` into a boolean.
+ *
+ * Only `true` and `false` are accepted. `--dry-run=yes` is refused rather than
+ * interpreted, because the cost of guessing wrong is a deployment.
+ */
+function parseBooleanValue(name: string, value: string): boolean {
+  if (value === 'true') {
+    return true;
+  }
+  if (value === 'false') {
+    return false;
+  }
+  throw new CliError(
+    EXIT.user,
+    `--${name} is a switch; "${value}" is not true or false.`,
+    `Write --${name}, --${name}=true or --${name}=false.`,
+  );
+}
+
+/** Suggests the closest known flag, when there is an obvious one. */
+function nearest(command: string, name: string): string | undefined {
+  const spec = COMMANDS[command];
+  const candidates = [
+    ...GLOBAL_BOOLEANS,
+    ...(spec?.booleans ?? []),
+    ...(spec?.values ?? []),
+  ];
+  return candidates.find(
+    (candidate) =>
+      candidate.startsWith(name.slice(0, 3)) ||
+      candidate.replace(/-/g, '') === name.replace(/-/g, ''),
+  );
+}
+
+/**
+ * Parses `argv` (without node and the script path).
+ *
+ * The command is read first, because which flags are legal depends on it.
+ */
 export function parseArgs(argv: readonly string[]): ParsedArgs {
   const positional: string[] = [];
   const flags: Record<string, string | boolean> = {};
+
+  // The command is the first token that is not a flag or a flag's value. It
+  // has to be found before the loop, since the loop's rules depend on it.
+  const command = findCommand(argv);
 
   for (let index = 0; index < argv.length; index++) {
     const token = argv[index] ?? '';
@@ -40,21 +161,37 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
       break;
     }
     if (token.startsWith('--')) {
-      const [name, inline] = token.slice(2).split('=', 2);
-      const key = name ?? '';
-      if (inline !== undefined) {
-        flags[key] = inline;
+      const [rawName, inline] = splitFlag(token.slice(2));
+      const name = rawName;
+      if (name === '') {
+        throw new CliError(EXIT.user, `"${token}" is not a valid option.`);
+      }
+      if (!isKnown(command, name)) {
+        const suggestion = nearest(command, name);
+        throw new CliError(
+          EXIT.user,
+          command === ''
+            ? `Unknown option "--${name}".`
+            : `mallok ${command} has no option "--${name}".`,
+          suggestion === undefined
+            ? 'Run `mallok --help` for the options each command takes.'
+            : `Did you mean --${suggestion}?`,
+        );
+      }
+      if (isBoolean(command, name)) {
+        flags[name] =
+          inline === undefined ? true : parseBooleanValue(name, inline);
         continue;
       }
-      if (BOOLEAN_FLAGS.has(key)) {
-        flags[key] = true;
+      if (inline !== undefined) {
+        flags[name] = inline;
         continue;
       }
       const next = argv[index + 1];
       if (next === undefined || next.startsWith('-')) {
-        throw new CliError(EXIT.user, `--${key} needs a value.`);
+        throw new CliError(EXIT.user, `--${name} needs a value.`);
       }
-      flags[key] = next;
+      flags[name] = next;
       index++;
       continue;
     }
@@ -73,8 +210,41 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     positional.push(token);
   }
 
-  const [command = '', ...rest] = positional;
+  const [, ...rest] = positional;
   return { command, positional: rest, flags };
+}
+
+/** Splits `name=value`, keeping a `=` inside the value. */
+function splitFlag(token: string): [string, string | undefined] {
+  const equals = token.indexOf('=');
+  if (equals === -1) {
+    return [token, undefined];
+  }
+  return [token.slice(0, equals), token.slice(equals + 1)];
+}
+
+/**
+ * Finds the command without knowing yet which flags take values.
+ *
+ * A value-taking flag consumes the next token, so this has to skip it — but
+ * whether it takes a value is exactly what depends on the command. The knot is
+ * cut by looking only at the *global* shape: the first bare token that is not
+ * preceded by an unknown `--flag` is the command. In practice the command
+ * comes first or directly after global switches, which is what this accepts.
+ */
+function findCommand(argv: readonly string[]): string {
+  for (let index = 0; index < argv.length; index++) {
+    const token = argv[index] ?? '';
+    if (token === '--') {
+      return argv[index + 1] ?? '';
+    }
+    if (!token.startsWith('-')) {
+      return token;
+    }
+    // A global switch never takes a value, so nothing is skipped for it.
+    // Anything else here precedes the command and is validated later.
+  }
+  return '';
 }
 
 /** Reads a string flag, or undefined. */

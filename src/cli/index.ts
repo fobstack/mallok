@@ -21,7 +21,8 @@ import {
   stringFlag,
 } from './args.js';
 import { createClient, type SiteClient } from './client.js';
-import { createSite } from './create.js';
+import { createSite, spawnRunner } from './create.js';
+import { destroySite } from './destroy.js';
 import { exportSite } from './export.js';
 import {
   CliError,
@@ -31,10 +32,12 @@ import {
   reportFailure,
   table,
 } from './output.js';
-import { destroySteps, MANUAL_CLEANUP, runWrangler } from './provision.js';
+
+import { resolvePackageManager } from './package-manager.js';
+import { prepareAssets } from './prepare.js';
 import { publishBundles, reportMissing, reportWarnings } from './publish.js';
-import { readRegistry, writeRegistry } from './registry.js';
 import { scanDirectory } from './scan.js';
+import { upgradeProject } from './upgrade.js';
 
 /**
  * The published version.
@@ -438,6 +441,10 @@ async function runCreate(
       domain: stringFlag(args, 'domain') ?? null,
       noDeploy: boolFlag(args, 'no-deploy'),
       dryRun: boolFlag(args, 'dry-run'),
+      packageManager: resolvePackageManager(
+        stringFlag(args, 'package-manager'),
+      ),
+      run: spawnRunner,
     },
     report,
   );
@@ -446,6 +453,15 @@ async function runCreate(
     result.origin === null || result.origin === ''
       ? ''
       : `${result.origin}/_mallok/setup`;
+
+  if (result.setupKey !== null) {
+    // Printed once and never stored. The wizard asks for it before it will
+    // create the administrator, so a deployed-but-unclaimed site cannot be
+    // taken by whoever finds the address first.
+    report.step('');
+    report.step('Setup key (needed once, by the wizard, and shown only here):');
+    report.step(`    ${result.setupKey}`);
+  }
   if (setupUrl !== '') {
     report.step(`\nOpen ${setupUrl} to finish setting up the site.`);
   }
@@ -456,11 +472,61 @@ async function runCreate(
       slug: result.slug,
       origin: result.origin,
       deployed: result.deployed,
+      alreadyComplete: result.alreadyComplete,
       setupUrl,
+      // Deliberately absent from the machine-readable summary: a value piped
+      // to a file or a log is a value that outlives its one use.
     },
     table(
       ['directory', 'slug', 'origin'],
       [[directory, result.slug, result.origin ?? '—']],
+    ),
+  );
+  return EXIT.ok;
+}
+
+async function runPrepare(report: Reporter): Promise<number> {
+  const result = await prepareAssets(process.cwd(), report);
+  report.done(
+    { command: 'prepare', ...result },
+    table(
+      ['assets', 'project theme'],
+      [[String(result.assets), result.projectTheme ?? '—']],
+    ),
+  );
+  return EXIT.ok;
+}
+
+async function runUpgrade(
+  args: ReturnType<typeof parseArgs>,
+  report: Reporter,
+): Promise<number> {
+  const to = stringFlag(args, 'to');
+  if (to === undefined) {
+    throw new CliError(
+      EXIT.user,
+      'mallok upgrade needs --to <version>.',
+      'For example: mallok upgrade --to 0.1.0-rc.3',
+    );
+  }
+  const result = await upgradeProject(
+    {
+      to,
+      projectDir: process.cwd(),
+      packageManager: resolvePackageManager(
+        stringFlag(args, 'package-manager'),
+      ),
+      dryRun: boolFlag(args, 'dry-run'),
+      skipChecks: boolFlag(args, 'skip-checks'),
+      run: spawnRunner,
+    },
+    report,
+  );
+  report.done(
+    { command: 'upgrade', ...result },
+    table(
+      ['from', 'to', 'changed'],
+      [[result.from, result.to, result.changed ? 'yes' : 'no']],
     ),
   );
   return EXIT.ok;
@@ -474,71 +540,35 @@ async function runDestroy(
   if (slug === undefined) {
     throw new CliError(EXIT.user, 'mallok destroy needs a site slug.');
   }
-  const sites = await readRegistry();
-  const record = sites.find((site) => site.slug === slug);
-  if (record === undefined) {
-    throw new CliError(
-      EXIT.user,
-      `"${slug}" is not in .mallok/sites.json.`,
-      `Known sites: ${sites.map((site) => site.slug).join(', ') || 'none'}.`,
-    );
-  }
-  if (stringFlag(args, 'confirm') !== slug) {
-    // Deleting a site destroys its content, its media and its inquiries.
-    throw new CliError(
-      EXIT.user,
-      'This permanently deletes the Worker, the database and the bucket.',
-      `Export a backup first, then run: mallok destroy ${slug} --confirm ${slug}`,
-    );
-  }
+  const result = await destroySite(
+    {
+      slug,
+      confirm: stringFlag(args, 'confirm'),
+      dryRun: boolFlag(args, 'dry-run'),
+      emptyBucket: boolFlag(args, 'empty-bucket'),
+      projectDir: process.cwd(),
+      run: spawnRunner,
+    },
+    report,
+  );
 
-  const results: { step: string; ok: boolean; detail: string }[] = [];
-  for (const step of destroySteps(slug)) {
-    report.step(`${step.label}…`);
-    if (boolFlag(args, 'dry-run')) {
-      results.push({ step: step.label, ok: true, detail: 'dry run' });
-      continue;
-    }
-    const run = await runWrangler(step.args);
-    const missing = /not found|does not exist|no such/i.test(run.stderr);
-    const ok = run.code === 0 || (step.tolerateMissing && missing);
-    results.push({
-      step: step.label,
-      ok,
-      detail: ok
-        ? missing
-          ? 'already gone'
-          : 'deleted'
-        : (run.stderr.trim().split('\n').at(-1) ?? 'failed'),
-    });
-    if (!ok) {
-      // Stop rather than continue past a failure: a half-deleted site with no
-      // report is worse than one that says where it stopped.
-      report.done(
-        { command: 'destroy', slug, results, stoppedAt: step.label },
-        table(
-          ['step', 'result'],
-          results.map((row) => [row.step, row.detail]),
-        ),
-      );
-      return EXIT.remote;
-    }
-  }
-
-  if (!boolFlag(args, 'dry-run')) {
-    await writeRegistry(sites.filter((site) => site.slug !== slug));
-  }
-  for (const line of MANUAL_CLEANUP) {
+  for (const line of result.manual) {
     report.warn(`Still to do by hand: ${line}`);
   }
   report.done(
-    { command: 'destroy', slug, results, manual: MANUAL_CLEANUP },
+    {
+      command: 'destroy',
+      slug,
+      results: result.results,
+      ...(result.stoppedAt === null ? {} : { stoppedAt: result.stoppedAt }),
+      manual: result.manual,
+    },
     table(
       ['step', 'result'],
-      results.map((row) => [row.step, row.detail]),
+      result.results.map((row) => [row.step, row.detail]),
     ),
   );
-  return EXIT.ok;
+  return result.stoppedAt === null ? EXIT.ok : EXIT.remote;
 }
 
 async function runMediaPush(
@@ -633,6 +663,10 @@ export async function main(argv: readonly string[]): Promise<number> {
         return await runMediaPush(args, report);
       case 'create':
         return await runCreate(args, report);
+      case 'prepare':
+        return await runPrepare(report);
+      case 'upgrade':
+        return await runUpgrade(args, report);
       case 'destroy':
         return await runDestroy(args, report);
       default:

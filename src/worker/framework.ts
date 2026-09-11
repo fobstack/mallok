@@ -14,6 +14,7 @@
  * ```
  */
 
+import { parseThemeManifest, type ThemeFiles } from '../core/index.js';
 import { inquiryPlugin } from '../plugins/inquiry/index.js';
 import type { MallokPlugin } from '../plugins/types.js';
 import type { BundledTheme } from '../themes/index.js';
@@ -35,6 +36,28 @@ export const manual: BundledTheme = THEMES.manual as BundledTheme;
 
 /** The official inquiry plugin (docs/PLUGIN_API.md §9). */
 export const inquiry: MallokPlugin = inquiryPlugin;
+
+/**
+ * Builds a theme from a project's own files.
+ *
+ * The five official themes above are ready-made; this is for a theme that
+ * lives in the site's repository. `files` is keyed by the theme's own paths
+ * (`layouts/base.liquid`, `partials/header.liquid`, `locales/en.json`), with
+ * the file's text as the value — `wrangler.jsonc` already declares the Text
+ * rule that makes those imports strings.
+ *
+ * The manifest is validated here rather than at first render: a typo in
+ * `theme.json` should fail the build, not the site.
+ */
+export function defineTheme(
+  manifest: unknown,
+  files: Readonly<Record<string, string>>,
+): BundledTheme {
+  return {
+    manifest: parseThemeManifest(manifest),
+    files: files as ThemeFiles,
+  };
+}
 
 /** What a site declares about itself at build time. */
 export interface MallokOptions {

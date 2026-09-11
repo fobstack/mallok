@@ -1,0 +1,13 @@
+# Copy to `.dev.vars` for `wrangler dev`. Never commit `.dev.vars`.
+#
+# Local only: the deployed Worker reads these from Worker secrets, which
+# `mallok create` sets with `wrangler secret put`.
+
+# Signs sessions and encrypts stored plugin keys. Any 32 random bytes:
+#   openssl rand -base64 32
+MALLOK_SECRET=change-me-to-32-random-bytes
+
+# Optional. With a zone-scoped Cache Purge token, an edit is visible
+# immediately; without one it is visible when the cached page expires.
+# CF_API_TOKEN=
+# CF_ZONE_ID=

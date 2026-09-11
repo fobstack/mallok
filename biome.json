@@ -6,7 +6,14 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!dist", "!node_modules", "!.wrangler", "!.mallok"]
+    "includes": [
+      "**",
+      "!dist",
+      "!node_modules",
+      "!.wrangler",
+      "!.mallok",
+      "!template"
+    ]
   },
   "formatter": {
     "enabled": true,

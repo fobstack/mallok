@@ -69,27 +69,3 @@ export function nextNamespace(sites: readonly SiteRecord[]): number {
   }
   return candidate;
 }
-
-/** Resource names for a slug (docs/CLOUDFLARE_RESOURCES.md §3). */
-export function resourceNames(slug: string): {
-  worker: string;
-  database: string;
-  bucket: string;
-} {
-  return {
-    worker: `mallok-${slug}`,
-    database: `mallok-${slug}-db`,
-    bucket: `mallok-${slug}-media`,
-  };
-}
-
-/** Rejects a slug that would produce an invalid resource name. */
-export function validateSlug(slug: string): string | null {
-  if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(slug)) {
-    return 'A slug is 3–32 characters of lowercase letters, digits and hyphens, and cannot start or end with a hyphen.';
-  }
-  if (slug.startsWith('mallok-')) {
-    return 'The "mallok-" prefix is added automatically; leave it off the slug.';
-  }
-  return null;
-}

@@ -1,0 +1,14 @@
+{
+  "name": "My Mallok site",
+  "tagline": "",
+  "defaultLocale": "en",
+  "locales": ["en"],
+  "kinds": {
+    "page": { "base": "" },
+    "article": { "base": "news" }
+  },
+  "nav": {
+    "en": [{ "label": "News", "href": "/news" }]
+  },
+  "themeOptions": {}
+}

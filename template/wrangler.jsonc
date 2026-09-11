@@ -1,0 +1,68 @@
+/**
+ * This site's Cloudflare configuration.
+ *
+ * `mallok create` fills in the Worker name, the D1 database id, the R2 bucket
+ * and — if you gave one — the custom domain. It edits this file in place;
+ * there is no second, nested config anywhere.
+ *
+ * The "Deploy to Cloudflare" button reads this file too, which is why every
+ * binding carries a default name.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mallok-site",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-08-01",
+  "workers_dev": true,
+  "minify": true,
+  // Static Assets carries the admin app (`_mallok/app/**`) and the theme's
+  // files (`theme/<id>/<version>/**`). `mallok prepare` stages both into
+  // `dist/assets` before a build. A request that matches one is served by
+  // Cloudflare without invoking the Worker.
+  "assets": {
+    "directory": "./dist/assets",
+    "binding": "ASSETS",
+    "not_found_handling": "none"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mallok-site-db",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "mallok-site-media"
+    }
+  ],
+  // One trigger per site: scheduled publishing and the media reclaim.
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  // Best-effort protection for plugin routes such as inquiry submission. The
+  // namespace id must be unique within the account; `mallok create` derives a
+  // stable one from the site slug.
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1000",
+      "simple": { "limit": 10, "period": 60 }
+    }
+  ],
+  "vars": {
+    "MALLOK_SITE": "site"
+  },
+  // A theme's templates and stylesheets are bundled as plain text.
+  "rules": [
+    {
+      "type": "Text",
+      "globs": ["**/*.liquid", "**/*.css", "**/*.sql", "**/*.md"],
+      "fallthrough": true
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
