@@ -8,8 +8,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { startLocalRegistry } from '../../scripts/local-registry.mjs';
 import { makeReporter } from '../../src/cli/output.js';
 import {
+  finalizeUpgrade,
   type ProjectMigration,
-  upgradeProject,
 } from '../../src/cli/upgrade.js';
 
 const execFileAsync = promisify(execFile);
@@ -318,7 +318,10 @@ describe('mallok upgrade, between two real releases', () => {
  *
  * `PROJECT_MIGRATIONS` is empty in this release — inventing one to
  * demonstrate the mechanism would be a lie in the shape of a feature — so the
- * mechanism is tested with a migration injected here.
+ * mechanism is tested with a migration injected into `finalizeUpgrade`, which
+ * is the half of an upgrade the **target** version runs.
+ * `test/cli/upgrade-target-owned.test.ts` proves the same thing end to end,
+ * with two packages built from two source trees.
  */
 describe('project migrations run exactly once', () => {
   const report = makeReporter(true);
@@ -327,7 +330,7 @@ describe('project migrations run exactly once', () => {
     let runs = 0;
     return {
       migration: {
-        id: '2026-09-11-fixture',
+        id: '2026-09-12-fixture',
         description: 'a fixture migration',
         apply: async (dir) => {
           runs++;
@@ -342,37 +345,50 @@ describe('project migrations run exactly once', () => {
   it('applies a pending migration, then never again', async () => {
     const { migration, runs } = counting();
     const options = {
+      from: FIRST,
+      to: SECOND,
       projectDir: project,
       migrations: [migration],
       skipChecks: true,
       run: async () => ({ code: 0, stdout: '', stderr: '' }),
     };
 
-    const first = await upgradeProject({ ...options, to: '9.9.2' }, report);
-    expect(first.migrationsApplied).toEqual(['2026-09-11-fixture']);
+    const first = await finalizeUpgrade(options, report);
+    expect(first.ok).toBe(true);
+    expect(first.migrationsApplied).toEqual(['2026-09-12-fixture']);
     expect(runs()).toBe(1);
 
-    // Same version again: nothing pending, nothing done.
-    const second = await upgradeProject({ ...options, to: '9.9.2' }, report);
-    expect(second.changed).toBe(false);
+    // Run again, as a later upgrade would: the id is recorded, so nothing
+    // happens.
+    const second = await finalizeUpgrade(options, report);
+    expect(second.migrationsApplied).toEqual([]);
     expect(runs()).toBe(1);
 
-    // A *later* version: the framework moves, but a migration that has
-    // already been applied is not applied a second time.
-    const third = await upgradeProject({ ...options, to: '9.9.3' }, report);
-    expect(third.migrationsApplied).toEqual([]);
-    expect(runs()).toBe(1);
+    const state = JSON.parse(
+      await readFile(join(project, 'mallok.json'), 'utf8'),
+    ) as { appliedMigrations: string[]; history: { to: string }[] };
+    expect(state.appliedMigrations).toEqual(['2026-09-12-fixture']);
+    expect(state.history.length).toBeGreaterThanOrEqual(2);
+  }, 120_000);
 
-    const history = JSON.parse(
-      await readFile(join(project, '.mallok/upgrades.json'), 'utf8'),
-    ) as { applied: string[]; versions: { to: string }[] };
-    expect(history.applied).toEqual(['2026-09-11-fixture']);
-    // The earlier real upgrade to 9.9.1 is in this history too: it is the
-    // same project, and the record is cumulative on purpose.
-    expect(history.versions.map((entry) => entry.to)).toEqual([
-      SECOND,
-      '9.9.2',
-      '9.9.3',
-    ]);
+  it('reports a failed check instead of claiming success', async () => {
+    const options = {
+      from: FIRST,
+      to: SECOND,
+      projectDir: project,
+      migrations: [],
+      run: async (_command: string, args: readonly string[]) => ({
+        code: args.includes('typecheck') ? 1 : 0,
+        stdout: '',
+        stderr: 'error TS2304: Cannot find name',
+      }),
+    };
+
+    const result = await finalizeUpgrade(options, report);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('typecheck failed');
+    // The protocol version is what lets an older CLI read this at all.
+    expect(result.protocol).toBe(1);
   }, 120_000);
 });

@@ -35,7 +35,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/core/tsconfig.json --noEmit && tsc -p src/runtime/core/tsconfig.json --noEmit && tsc -p src/runtime/react/tsconfig.json --noEmit && tsc -p src/admin/tsconfig.json --noEmit",
     "lint": "biome check . && cd template && biome check .",
     "lint:fix": "biome check --write . && cd template && biome check --write .",
-    "test": "vitest run",
+    "test": "vitest run --project core --project worker --project worker-setup-key --project worker-unclaimable --project runtime --project runtime-workerd --project runtime-dom --project runtime-build",
     "test:watch": "vitest",
     "bench:fragment": "pnpm run build:core && node scripts/bench-fragment.mjs",
     "bench:pbkdf2": "node scripts/bench-pbkdf2.mjs",
@@ -54,7 +54,8 @@
     "test:a11y": "playwright test 01-wizard 05-accessibility",
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "build:package": "node scripts/build-package.mjs",
-    "build:types": "tsc -p tsconfig.types.json"
+    "build:types": "tsc -p tsconfig.types.json",
+    "test:release": "vitest run --project release"
   },
   "dependencies": {
     "hast-util-to-string": "3.0.1",

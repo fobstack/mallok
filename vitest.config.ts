@@ -115,9 +115,25 @@ export default defineConfig({
             'test/admin/**/*.test.ts',
             'test/cli/**/*.test.ts',
           ],
+          // Its own project below: it builds two complete packages from two
+          // source trees and drives four real installs, which is fifteen
+          // minutes. `pnpm test` stays usable; `pnpm test:release` runs it,
+          // and the release gate runs that.
+          exclude: ['test/cli/upgrade-target-owned.test.ts'],
           // Builds `dist/pkg` once. Two CLI test files need it, they run
           // concurrently, and the build starts by removing the directory.
           globalSetup: ['test/cli/helpers/build-package.ts'],
+        },
+      },
+      {
+        plugins: [textModules()],
+        test: {
+          name: 'release',
+          environment: 'node',
+          include: ['test/cli/upgrade-target-owned.test.ts'],
+          globalSetup: ['test/cli/helpers/build-package.ts'],
+          testTimeout: 1_800_000,
+          hookTimeout: 1_800_000,
         },
       },
       {

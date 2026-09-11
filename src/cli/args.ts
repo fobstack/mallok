@@ -104,6 +104,17 @@ const COMMANDS: Readonly<Record<string, CommandSpec>> = {
     values: ['to'],
     positional: { max: 0, what: 'no arguments' },
   },
+  /*
+   * Run by an older CLI, inside a copy of a project, after it has installed
+   * this version. Not a command anybody types — but a real one, with a
+   * documented protocol, because the alternative is an old binary guessing
+   * what a new release needs.
+   */
+  'upgrade-finalize': {
+    booleans: ['skip-checks'],
+    values: ['from', 'to'],
+    positional: { max: 0, what: 'no arguments' },
+  },
   'setup-key': {
     booleans: [],
     values: ['account-id'],
