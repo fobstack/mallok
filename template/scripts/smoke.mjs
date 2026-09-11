@@ -91,7 +91,9 @@ try {
     );
   }
 
-  process.stdout.write(`smoke: ok (setup status, GET /, admin shell) on ${base}\n`);
+  process.stdout.write(
+    `smoke: ok (setup status, GET /, admin shell) on ${base}\n`,
+  );
 } catch (error) {
   failure = error;
 } finally {

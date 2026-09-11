@@ -20,6 +20,7 @@
  * consumer's platform, not inlined (docs/TECH_STACK.md §5).
  */
 
+import { execFile } from 'node:child_process';
 import {
   chmod,
   copyFile,
@@ -29,11 +30,31 @@ import {
   rm,
   writeFile,
 } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import { build } from 'esbuild';
+
+const run = promisify(execFile);
 
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 
 const OUT = 'dist/pkg';
+
+/**
+ * The three builds this one packages.
+ *
+ * Run here rather than chained in `package.json` so that one command produces
+ * a complete package: the release test calls this script and nothing else,
+ * and a package built from a stale `dist/` is the kind of green that means
+ * nothing.
+ */
+for (const [label, command, args] of [
+  ['themes', 'node', ['scripts/build-themes.mjs']],
+  ['admin', 'npx', ['vite', 'build']],
+  ['types', 'npx', ['tsc', '-p', 'tsconfig.types.json']],
+]) {
+  process.stdout.write(`building ${label}…\n`);
+  await run(command, args, { maxBuffer: 32 * 1024 * 1024 });
+}
 
 /** Text the Worker bundle inlines, matching wrangler.jsonc's Text rule. */
 const TEXT_LOADERS = {
@@ -131,7 +152,9 @@ await writeFile(
         lint: 'biome check .',
         'lint:fix': 'biome check --write .',
         typecheck: 'tsc --noEmit',
-        test: 'vitest run',
+        // Node's own runner: a site should not need a test framework and a
+        // version of it to keep in step with the framework's own.
+        test: 'node --experimental-strip-types --test "test/*.test.ts"',
         smoke: 'node scripts/smoke.mjs',
       },
       dependencies: {
@@ -140,8 +163,8 @@ await writeFile(
       devDependencies: {
         '@biomejs/biome': '2.5.11',
         '@cloudflare/workers-types': '5.20260828.1',
+        '@types/node': '22.20.1',
         typescript: '5.9.3',
-        vitest: '4.1.11',
         wrangler: '4.124.0',
       },
     },

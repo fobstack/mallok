@@ -1,15 +1,21 @@
+import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, it } from 'node:test';
 
 /**
  * Checks on this project's own configuration and content.
  *
- * Mallok's own behaviour is tested in the `mallok` package; what is left for
- * a site to check is the part a site can get wrong: a binding removed from
+ * Mallok's own behaviour is tested in the `mallok` package; what is left for a
+ * site to check is what a site can get wrong — a binding removed from
  * `wrangler.jsonc`, a settings file that stopped being valid JSON, a content
- * bundle with no title. `npm run smoke` adds the other half — a real request
- * to a real Worker.
+ * bundle with no title. `npm run smoke` adds the other half: a real request to
+ * a real Worker.
+ *
+ * Node's own test runner, deliberately. A site should not need a test
+ * framework, a config file and a version to keep in step with its framework's
+ * — `node --test` is already installed on any machine that can run the
+ * project at all.
  */
 
 /** `wrangler.jsonc` is JSONC; comments and trailing commas are allowed. */
@@ -26,27 +32,30 @@ describe('wrangler.jsonc', () => {
   it('declares every binding the Worker reads', async () => {
     const config = await readJsonc('wrangler.jsonc');
 
-    expect((config.d1_databases as { binding: string }[])[0]?.binding).toBe(
+    assert.equal(
+      (config.d1_databases as { binding: string }[])[0]?.binding,
       'DB',
     );
-    expect((config.r2_buckets as { binding: string }[])[0]?.binding).toBe(
+    assert.equal(
+      (config.r2_buckets as { binding: string }[])[0]?.binding,
       'MEDIA',
     );
-    expect((config.assets as { binding: string }).binding).toBe('ASSETS');
+    assert.equal((config.assets as { binding: string }).binding, 'ASSETS');
+
     // Optional to the Worker, but its absence silently disables the rate
     // limit on plugin routes such as inquiry submission.
     const limits = config.ratelimits as
       | { name: string; namespace_id: string }[]
       | undefined;
-    expect(limits?.[0]?.name).toBe('RATE_LIMITER');
-    expect(limits?.[0]?.namespace_id).toMatch(/^\d+$/);
+    assert.equal(limits?.[0]?.name, 'RATE_LIMITER');
+    assert.match(limits?.[0]?.namespace_id ?? '', /^\d+$/);
   });
 
-  it('keeps the cron trigger a site needs for scheduling and cleanup', async () => {
+  it('keeps the cron trigger scheduling and cleanup need', async () => {
     const config = await readJsonc('wrangler.jsonc');
     const crons = (config.triggers as { crons: string[] }).crons;
 
-    expect(crons).toHaveLength(1);
+    assert.equal(crons.length, 1);
   });
 });
 
@@ -57,8 +66,8 @@ describe('site.json', () => {
       locales?: string[];
     };
 
-    expect(typeof site.defaultLocale).toBe('string');
-    expect(site.locales).toContain(site.defaultLocale);
+    assert.equal(typeof site.defaultLocale, 'string');
+    assert.ok(site.locales?.includes(site.defaultLocale ?? ''));
   });
 });
 
@@ -78,14 +87,17 @@ describe('content/', () => {
             continue;
           }
           const text = await readFile(join(dir, file), 'utf8');
-          expect(text.startsWith('---\n'), `${dir}/${file}`).toBe(true);
+          assert.ok(
+            text.startsWith('---\n'),
+            `${dir}/${file} has no front matter`,
+          );
           const end = text.indexOf('\n---', 4);
-          expect(text.slice(4, end), `${dir}/${file}`).toMatch(/(^|\n)title:/);
+          assert.match(text.slice(4, end), /(^|\n)title:/, `${dir}/${file}`);
           checked++;
         }
       }
     }
 
-    expect(checked).toBeGreaterThan(0);
+    assert.ok(checked > 0, 'no content bundles were checked');
   });
 });

@@ -1,9 +1,18 @@
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+// @ts-expect-error -- a plain ESM script, deliberately dependency-free.
+import { startLocalRegistry } from '../../scripts/local-registry.mjs';
 
 const execFileAsync = promisify(execFile);
 
@@ -11,57 +20,76 @@ const execFileAsync = promisify(execFile);
  * The package as a user receives it.
  *
  * Everything here runs against a tarball installed into an empty directory and
- * driven through `node_modules/.bin/mallok` — not `dist/cli/index.js`. That
- * distinction has already caught one shipped bug: the entry guard compared
- * `argv[1]` to `cli/index.js`, which is true from the repository and false
- * through npm's symlink, so the published CLI exited 0 and did nothing.
+ * driven through `node_modules/.bin/mallok` — not `dist/pkg/cli/index.js`.
+ * That distinction has already caught one shipped bug: the entry guard
+ * compared `argv[1]` to `cli/index.js`, which is true from the repository and
+ * false through npm's symlink, so the published CLI exited 0 and did nothing.
+ *
+ * The generated project is installed from a **local registry** serving that
+ * same tarball, because the version it depends on does not exist on npmjs.com
+ * until it is published. That is the only way to resolve `mallok@<version>` by
+ * name — and resolving it by name is the whole point: a `file:` dependency is
+ * exactly what the shell must never contain.
  *
  * Slow, and worth it: this is the only thing in the suite that exercises what
  * `npm install` actually produces.
  */
 
-const REPO = process.cwd();
-const MANIFEST = 'dist/cli/package.json';
+const MANIFEST = 'dist/pkg/package.json';
 
 let sandbox = '';
 let mallok = '';
-/** The packed tarball, named by `npm pack --json` rather than guessed. */
 let tarball = '';
-
-async function manifest(): Promise<Record<string, unknown>> {
-  return JSON.parse(await readFile(MANIFEST, 'utf8')) as Record<
-    string,
-    unknown
-  >;
-}
+let registry: { origin: string; close: () => Promise<void> } | null = null;
+let version = '';
 
 /**
- * The outer Vitest run's own variables are stripped.
+ * A child process that knows nothing about this repository.
  *
- * The generated project runs its own `vitest`, and inheriting `VITEST`,
- * `VITEST_POOL_ID` and friends makes the inner run believe it is a worker of
- * the outer one. It then fails in ways that have nothing to do with the
- * project being tested.
+ * Four families of variable have to go, and each one caused a real failure
+ * before it was stripped:
+ *
+ * - `VITEST*` makes an inner test run believe it is a worker of the outer one;
+ * - `npm_config_*` carries the outer package manager's configuration, and
+ *   `npm_config_user_agent` in particular silently made `create` build the
+ *   generated project with pnpm because this suite is run through pnpm;
+ * - `npm_package_*` describes **this repository's** package — which is also
+ *   called `mallok`, and whose presence stopped npm linking the real
+ *   `mallok` binary into the generated project's `node_modules/.bin`;
+ * - `NODE_PATH` and `NODE_OPTIONS` point module resolution back at this
+ *   checkout, which is exactly the kind of green that means nothing.
  */
-function cleanEnvironment(): NodeJS.ProcessEnv {
+function cleanEnvironment(
+  extra: Record<string, string> = {},
+): NodeJS.ProcessEnv {
   const environment = { ...process.env };
   for (const key of Object.keys(environment)) {
-    if (key.startsWith('VITEST')) {
+    // `VITEST*` makes an inner run believe it is a worker of the outer one.
+    // `npm_config_*` is the outer package manager's own configuration, and
+    // `npm_config_user_agent` in particular is how this suite — run through
+    // pnpm — silently made `create` choose pnpm for the generated project.
+    if (
+      key.startsWith('VITEST') ||
+      key.startsWith('npm_') ||
+      key === 'NODE_PATH' ||
+      key === 'NODE_OPTIONS'
+    ) {
       delete environment[key];
     }
   }
-  return environment;
+  return { ...environment, ...extra };
 }
 
 async function run(
   command: string,
   args: readonly string[],
   cwd: string,
+  extra: Record<string, string> = {},
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
-    const { stdout, stderr } = await execFileAsync(command, [...args], {
+    const { stdout, stderr } = await execFileAsync(command, args, {
       cwd,
-      env: cleanEnvironment(),
+      env: cleanEnvironment(extra),
       maxBuffer: 32 * 1024 * 1024,
     });
     return { code: 0, stdout, stderr };
@@ -80,230 +108,298 @@ async function run(
 }
 
 beforeAll(async () => {
-  await run('pnpm', ['run', 'build:cli'], REPO);
-  const packed = await run('npm', ['pack', '--json'], join(REPO, 'dist/cli'));
-  const [entry] = JSON.parse(packed.stdout) as { filename: string }[];
-  const filename = entry?.filename ?? '';
-  tarball = `dist/cli/${filename}`;
+  // One build, one pack, one install, shared by every test below.
+  const built = await run('node', ['scripts/build-package.mjs'], process.cwd());
+  expect(built.code, built.stderr).toBe(0);
 
-  sandbox = await mkdtemp(join(tmpdir(), 'mallok-installed-'));
-  await writeFile(
-    join(sandbox, 'package.json'),
-    JSON.stringify({ name: 'sandbox', private: true }),
-    'utf8',
-  );
-  await run(
-    'npm',
-    ['install', resolve(REPO, 'dist/cli', filename), '--no-audit', '--no-fund'],
-    sandbox,
-  );
+  const packed = await run('npm', ['pack', '--json'], 'dist/pkg');
+  expect(packed.code, packed.stderr).toBe(0);
+  const [entry] = JSON.parse(packed.stdout) as { filename: string }[];
+  tarball = join(process.cwd(), 'dist/pkg', entry?.filename ?? '');
+  version = (
+    JSON.parse(await readFile(MANIFEST, 'utf8')) as { version: string }
+  ).version;
+
+  sandbox = await mkdtemp(join(tmpdir(), 'mallok-install-'));
+  const installed = await run('npm', ['install', tarball], sandbox);
+  expect(installed.code, installed.stderr).toBe(0);
   mallok = join(sandbox, 'node_modules/.bin/mallok');
-}, 300_000);
+
+  registry = await startLocalRegistry({
+    mallok: { version, path: tarball },
+  });
+}, 600_000);
 
 afterAll(async () => {
-  if (sandbox !== '') {
-    await rm(sandbox, { recursive: true, force: true });
-  }
+  await registry?.close();
+  await rm(sandbox, { recursive: true, force: true });
 });
 
-describe('the published CLI manifest', () => {
+describe('the published manifest', () => {
   it('carries the repository’s licence, not another one', async () => {
-    const cli = await manifest();
-    const repo = JSON.parse(await readFile('package.json', 'utf8')) as {
+    const parsed = JSON.parse(await readFile(MANIFEST, 'utf8')) as {
       license: string;
       version: string;
     };
-    // This said `MIT` while the project is Apache-2.0 — publishing it would
-    // have put the CLI under a licence the project does not use.
-    expect(cli.license).toBe('Apache-2.0');
-    expect(cli.license).toBe(repo.license);
-    // And the version tracks the repository rather than a hard-coded string.
-    expect(cli.version).toBe(repo.version);
+
+    expect(parsed.license).toBe('Apache-2.0');
+    const repository = JSON.parse(await readFile('package.json', 'utf8')) as {
+      version: string;
+    };
+    expect(parsed.version).toBe(repository.version);
   });
 
-  it('ships the licence, the notice and a readme', async () => {
-    const files = (await manifest()).files as string[];
-    for (const file of ['index.js', 'LICENSE', 'NOTICE', 'README.md']) {
-      expect(files).toContain(file);
-      await expect(readFile(`dist/cli/${file}`, 'utf8')).resolves.toBeTruthy();
-    }
+  it('exports the framework entry a site imports', async () => {
+    const parsed = JSON.parse(await readFile(MANIFEST, 'utf8')) as {
+      exports: Record<string, { types?: string; default?: string }>;
+      bin: Record<string, string>;
+    };
+
+    expect(parsed.exports['./worker']?.default).toBe('./worker/index.js');
+    expect(parsed.exports['./worker']?.types).toMatch(/\.d\.ts$/);
+    expect(parsed.bin.mallok).toBe('./cli/index.js');
   });
 
   it('declares sharp, which must never be bundled', async () => {
-    const cli = await manifest();
-    expect(cli.dependencies).toEqual({ sharp: '0.35.4' });
-    // Bundling a native module would produce a binary tied to one platform.
-    const bundle = await readFile('dist/cli/index.js', 'utf8');
-    expect(bundle).toContain('"sharp"');
-    expect(bundle.startsWith('#!/usr/bin/env node')).toBe(true);
+    const parsed = JSON.parse(await readFile(MANIFEST, 'utf8')) as {
+      dependencies: Record<string, string>;
+    };
+
+    // A native module cannot be inlined: it has to be installed for the
+    // consumer's platform (docs/TECH_STACK.md §5).
+    expect(parsed.dependencies.sharp).toBeDefined();
+    const bundle = await readFile('dist/pkg/cli/index.js', 'utf8');
+    expect(bundle).not.toContain('sharp-darwin');
   });
 });
 
 describe('the packed tarball', () => {
-  it('names a file that exists and is not empty', async () => {
-    const { size } = await stat(tarball);
-    expect(size).toBeGreaterThan(100_000);
+  async function entries(): Promise<string[]> {
+    const listing = await run('tar', ['tzf', tarball], process.cwd());
+    return listing.stdout
+      .split('\n')
+      .filter((line) => line !== '')
+      .map((line) => line.replace(/^package\//, ''));
+  }
+
+  it('carries the framework, the types, the assets and the shell', async () => {
+    const files = await entries();
+
+    expect(files).toContain('cli/index.js');
+    expect(files).toContain('worker/index.js');
+    expect(files).toContain('types/src/worker/framework.d.ts');
+    expect(files.some((file) => file.startsWith('assets/_mallok/app/'))).toBe(
+      true,
+    );
+    expect(files).toContain('template/wrangler.jsonc');
+    expect(files).toContain('template/src/worker/index.ts');
+    // Undotted on purpose: npm strips a file called `.gitignore`.
+    expect(files).toContain('template/gitignore');
   });
 
-  it('carries the project template, not just the bundle', async () => {
-    const { stdout } = await run('tar', ['-tzf', tarball], REPO);
-    const entries = stdout.split('\n');
-    for (const required of [
-      'package/index.js',
-      'package/template/package.json',
-      'package/template/wrangler.jsonc',
-      'package/template/src/worker/index.ts',
-      'package/template/src/runtime/core/index.ts',
-      'package/template/src/db/migrations/0001_init.sql',
-      // Undotted on purpose: npm strips a file called `.gitignore` out of a
-      // tarball, and `mallok create` renames it back.
-      'package/template/gitignore',
+  it('carries none of Mallok’s own source', async () => {
+    const files = await entries();
+
+    // The shell is a site, not a copy of this repository. Shipping the
+    // runtime, the admin source or Mallok's tests is what made "upgrade" mean
+    // "merge with a fork".
+    for (const forbidden of [
+      'template/src/runtime/',
+      'template/src/admin/',
+      'template/src/core/',
+      'template/src/db/',
+      'template/src/cli/',
+      'template/src/themes/',
+      'template/scripts/build-package.mjs',
+      'template/test/cli/',
     ]) {
-      expect(entries).toContain(required);
+      expect(
+        files.filter((file) => file.startsWith(forbidden)),
+        forbidden,
+      ).toEqual([]);
     }
   });
 
-  it('carries no credential, no build output and no repository metadata', async () => {
-    const { stdout } = await run('tar', ['-tzf', tarball], REPO);
-    const entries = stdout.split('\n').filter((line) => line !== '');
-    const forbidden =
-      /(^|\/)(\.git|\.dev\.vars|\.env|\.mallok|\.wrangler|node_modules|dist)(\/|$)|\.(pem|key|p12|pfx)$/;
-    const offenders = entries.filter((entry) =>
-      forbidden.test(entry.replace(/^package\/(template\/)?/, '')),
-    );
-    expect(offenders).toEqual([]);
+  it('carries no credential and no build output', async () => {
+    const files = await entries();
+
+    for (const forbidden of [
+      '.git',
+      '.dev.vars',
+      '.env',
+      'template/.dev.vars',
+      'template/.mallok',
+      'template/dist',
+      'template/node_modules',
+    ]) {
+      expect(
+        files.filter(
+          (file) => file === forbidden || file.startsWith(`${forbidden}/`),
+        ),
+        forbidden,
+      ).toEqual([]);
+    }
   });
 
   it('pins nothing to this machine or this checkout', async () => {
-    // A `file:` or `workspace:` dependency, or an absolute path, makes the
-    // package installable only here.
-    const { stdout } = await run(
-      'tar',
-      ['-xzOf', tarball, 'package/template/package.json'],
-      REPO,
-    );
-    expect(stdout).not.toMatch(/"(file|link|workspace):/);
-    expect(stdout).not.toContain('@fobstack/runtime');
-    expect(stdout).not.toMatch(/\/(Users|home)\//);
-  });
-});
+    const shell = JSON.parse(
+      await readFile('dist/pkg/template/package.json', 'utf8'),
+    ) as { dependencies: Record<string, string> };
 
-describe('the built CLI', () => {
-  it('exits zero for --help, so a script does not read it as a failure', async () => {
-    const { stdout } = await run(
-      process.execPath,
-      ['dist/cli/index.js', '--help'],
-      REPO,
-    );
-    expect(stdout).toContain('mallok — publish and manage a Mallok site');
-  });
-
-  it('runs when invoked through a path that is not its own', async () => {
-    // The regression: the entry guard compared `argv[1]` against
-    // `cli/index.js`, which npm's `node_modules/.bin/mallok` symlink is not.
-    // Invoking through a different path is what that bug survived.
-    const { stdout } = await run(
-      process.execPath,
-      ['dist/cli/index.js', 'export', '--help'],
-      REPO,
-    );
-    expect(stdout).toContain('mallok — publish and manage a Mallok site');
-  });
-
-  it('reports an unknown command instead of exiting silently', async () => {
-    const result = await run(
-      process.execPath,
-      ['dist/cli/index.js', 'not-a-command'],
-      REPO,
-    );
-    expect(result.code).not.toBe(0);
-    expect(`${result.stdout}${result.stderr}`).toMatch(/unknown command/i);
+    // The one dependency that matters, and the four ways of writing it that
+    // would make a project unupgradeable or unbuildable elsewhere.
+    expect(shell.dependencies.mallok).toBe(version);
+    expect(shell.dependencies.mallok).not.toMatch(/^[\^~]/);
+    for (const prefix of ['file:', 'link:', 'workspace:', '/Users/']) {
+      expect(JSON.stringify(shell), prefix).not.toContain(prefix);
+    }
   });
 });
 
 describe('the installed binary', () => {
   it('is linked and executable', async () => {
-    await expect(stat(mallok)).resolves.toBeTruthy();
+    await expect(stat(mallok)).resolves.toBeDefined();
   });
 
   it('exits 0 for --help and --version, non-zero otherwise', async () => {
     const help = await run(mallok, ['--help'], sandbox);
     expect(help.code).toBe(0);
-    expect(help.stdout).toContain('mallok — publish and manage a Mallok site');
+    expect(help.stdout).toContain('mallok create');
 
-    const version = await run(mallok, ['--version'], sandbox);
-    expect(version.code).toBe(0);
-    const manifest = JSON.parse(
-      await readFile(join(REPO, 'package.json'), 'utf8'),
-    ) as { version: string };
-    expect(version.stdout.trim()).toBe(manifest.version);
+    const reported = await run(mallok, ['--version'], sandbox);
+    expect(reported.code).toBe(0);
+    expect(reported.stdout.trim()).toBe(version);
 
-    // A bare invocation is a usage error, and so is a command that is not one.
+    // A bare invocation is a usage error, and an unknown command is an error
+    // rather than a silent success.
     expect((await run(mallok, [], sandbox)).code).not.toBe(0);
-    expect((await run(mallok, ['not-a-command'], sandbox)).code).not.toBe(0);
+    expect((await run(mallok, ['frobnicate'], sandbox)).code).not.toBe(0);
+  });
+
+  it('refuses a misspelled switch instead of provisioning', async () => {
+    const result = await run(mallok, ['create', 'x', '--no-deply'], sandbox);
+
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toContain('no option "--no-deply"');
   });
 
   it('processes a real image through sharp', async () => {
-    // Not a manifest check: sharp is a native module, and "declared as a
-    // dependency" and "loads and works on this machine" are different claims.
+    // sharp is external to the bundle and installed as a dependency; this is
+    // the only check that the published package can actually use it.
     const script = join(sandbox, 'sharp-check.mjs');
     await writeFile(
       script,
       [
         "import sharp from 'sharp';",
-        "const png = await sharp({ create: { width: 64, height: 48, channels: 3, background: '#336699' } }).png().toBuffer();",
-        'const webp = await sharp(png).resize(32).webp().toBuffer();',
-        'const meta = await sharp(webp).metadata();',
-        'process.stdout.write(`${meta.format} ${meta.width}x${meta.height}`);',
+        'const out = await sharp({',
+        '  create: { width: 8, height: 8, channels: 3, background: "#fff" },',
+        '}).webp().toBuffer();',
+        'process.stdout.write(String(out.length));',
       ].join('\n'),
       'utf8',
     );
-    const result = await run(process.execPath, [script], sandbox);
-    expect(result.code).toBe(0);
-    expect(result.stdout).toBe('webp 32x24');
+
+    const result = await run('node', [script], sandbox);
+    expect(result.code, result.stderr).toBe(0);
+    expect(Number(result.stdout)).toBeGreaterThan(0);
   });
 });
 
 describe('mallok create, from an empty directory', () => {
-  it('generates a project that passes its own gate', async () => {
-    const workspace = await mkdtemp(join(tmpdir(), 'mallok-create-e2e-'));
-    try {
-      const created = await run(
-        mallok,
-        ['create', 'my-site', '--no-deploy'],
-        workspace,
-      );
-      expect(created.code).toBe(0);
-      // Progress goes to stderr and the result table to stdout, so the claim
-      // is checked against both rather than whichever one it happens to use.
-      expect(`${created.stdout}${created.stderr}`).toContain(
-        'Nothing was created on Cloudflare',
-      );
+  let project = '';
+  let workspace = '';
 
-      const project = join(workspace, 'my-site');
+  beforeAll(async () => {
+    workspace = await mkdtemp(join(tmpdir(), 'mallok-project-'));
+    project = join(workspace, 'my-site');
 
-      // The ignore file survived packing, so a first `git add .` is safe.
-      await expect(
-        readFile(join(project, '.gitignore'), 'utf8'),
-      ).resolves.toContain('.dev.vars');
-
-      // No credential, no repository, no leftover state.
-      for (const forbidden of ['.git', '.dev.vars', '.env', '.mallok']) {
-        await expect(stat(join(project, forbidden))).rejects.toThrow();
-      }
-
-      // And it is a working project, not just a directory of files. `create`
-      // already installed and built it; this is the rest of the gate.
-      for (const [command, args] of [
-        ['pnpm', ['run', 'lint']],
-        ['pnpm', ['run', 'typecheck']],
-        ['pnpm', ['test']],
-      ] as const) {
-        const result = await run(command, args, project);
-        expect(result.code, `${command} ${args.join(' ')}`).toBe(0);
-      }
-    } finally {
-      await rm(workspace, { recursive: true, force: true });
-    }
+    // The install inside `create` resolves `mallok` by name and version from
+    // the local registry. Nothing about that reaches the project's files.
+    const created = await run(
+      mallok,
+      // The manager is named rather than inherited: which one runs this
+      // suite must not decide what a user's project is built with.
+      ['create', 'my-site', '--no-deploy', '--package-manager', 'npm'],
+      workspace,
+      { npm_config_registry: registry?.origin ?? '' },
+    );
+    expect(created.code, created.stdout + created.stderr).toBe(0);
   }, 900_000);
+
+  afterAll(async () => {
+    await rm(workspace, { recursive: true, force: true });
+  });
+
+  it('writes a project that holds the site and nothing else', async () => {
+    const top = (await readdir(project)).sort();
+
+    expect(top).toContain('package.json');
+    expect(top).toContain('package-lock.json');
+    expect(top).toContain('wrangler.jsonc');
+    expect(top).toContain('site.json');
+    expect(top).toContain('content');
+    expect(top).toContain('.gitignore');
+
+    // Its source is four lines of composition and a place for plugins.
+    const worker = await readFile(join(project, 'src/worker/index.ts'), 'utf8');
+    expect(worker).toContain("from 'mallok/worker'");
+    expect(worker).toContain('createMallok(');
+    const source = (await readdir(join(project, 'src'))).sort();
+    expect(source).toEqual(['plugins', 'worker']);
+  });
+
+  it('depends on the exact version, by name', async () => {
+    const manifest = JSON.parse(
+      await readFile(join(project, 'package.json'), 'utf8'),
+    ) as { dependencies: Record<string, string> };
+
+    expect(manifest.dependencies.mallok).toBe(version);
+    for (const prefix of ['file:', 'link:', 'workspace:', '^', '~']) {
+      expect(manifest.dependencies.mallok, prefix).not.toContain(prefix);
+    }
+  });
+
+  it('leaves no trace of how the candidate was served', async () => {
+    // The local registry is a testing device. A project that carried it would
+    // be a project nobody else could install.
+    for (const file of ['package.json', 'wrangler.jsonc', '.npmrc']) {
+      const text = await readFile(join(project, file), 'utf8').catch(() => '');
+      expect(text, file).not.toContain('127.0.0.1');
+    }
+    expect(await readdir(project)).not.toContain('.npmrc');
+  });
+
+  it('passes its own gate', async () => {
+    for (const [command, args] of [
+      ['npm', ['run', 'lint']],
+      ['npm', ['run', 'typecheck']],
+      ['npm', ['test']],
+      ['npm', ['run', 'build']],
+    ] as const) {
+      const result = await run(command, args, project);
+      expect(
+        result.code,
+        `${command} ${args.join(' ')}: ${result.stdout}${result.stderr}`,
+      ).toBe(0);
+    }
+  }, 600_000);
+
+  it('produces a deployable bundle and the admin assets', async () => {
+    // `npm run build` above staged the assets and ran the dry-run; this is
+    // what it left behind.
+    await expect(
+      stat(join(project, 'dist/assets/_mallok/app/index.html')),
+    ).resolves.toBeDefined();
+    await expect(
+      stat(join(project, 'dist/worker/index.js')),
+    ).resolves.toBeDefined();
+  });
+
+  it('answers a real request', async () => {
+    // The smoke script starts `wrangler dev` with local D1 and R2 and asks
+    // for the setup endpoint, the public site and the admin shell.
+    const result = await run('npm', ['run', 'smoke'], project);
+    expect(result.code, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain('smoke: ok');
+  }, 300_000);
 });

@@ -23,27 +23,18 @@
     "headless-cms",
     "b2b"
   ],
-  "files": [
-    "dist/cli/",
-    "README.md",
-    "LICENSE",
-    "NOTICE"
-  ],
-  "bin": {
-    "mallok": "dist/cli/index.js"
-  },
   "type": "module",
   "engines": {
     "node": ">=22"
   },
   "packageManager": "pnpm@10.34.5",
   "scripts": {
-    "build": "pnpm run build:themes && pnpm run build:admin && pnpm run build:cli && wrangler deploy --dry-run --outdir dist/worker",
+    "build": "pnpm run build:themes && pnpm run build:admin && wrangler deploy --dry-run --outdir dist/worker",
     "dev": "pnpm run build:themes && pnpm run build:admin && wrangler dev",
     "deploy": "pnpm run build && node scripts/ensure-secret.mjs && wrangler deploy",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/core/tsconfig.json --noEmit && tsc -p src/runtime/core/tsconfig.json --noEmit && tsc -p src/runtime/react/tsconfig.json --noEmit && tsc -p src/admin/tsconfig.json --noEmit",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
+    "lint": "biome check . && cd template && biome check .",
+    "lint:fix": "biome check --write . && cd template && biome check --write .",
     "test": "vitest run",
     "test:watch": "vitest",
     "bench:fragment": "pnpm run build:core && node scripts/bench-fragment.mjs",
@@ -55,14 +46,15 @@
     "build:admin": "vite build",
     "dev:admin": "vite",
     "admin:size": "node scripts/admin-size.mjs",
-    "build:cli": "node scripts/build-cli.mjs",
-    "build:site": "pnpm run build:cli && node dist/cli/index.js build . --theme ./src/themes/atelier --out dist/site",
-    "release:pack": "pnpm run build:cli && cd dist/cli && npm pack",
+    "build:site": "pnpm run build:package && node dist/pkg/cli/index.js build . --theme ./src/themes/atelier --out dist/site",
+    "release:pack": "pnpm run build:types && pnpm run build:package && cd dist/pkg && npm pack",
     "prepublishOnly": "node scripts/refuse-publish.mjs",
     "test:coverage": "vitest run --project core --project runtime --project runtime-dom --project runtime-build --coverage",
     "test:e2e": "playwright test",
     "test:a11y": "playwright test 01-wizard 05-accessibility",
-    "scan:secrets": "node scripts/scan-secrets.mjs"
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "build:package": "node scripts/build-package.mjs",
+    "build:types": "tsc -p tsconfig.types.json"
   },
   "dependencies": {
     "hast-util-to-string": "3.0.1",
