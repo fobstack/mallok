@@ -62,11 +62,40 @@ a static build has no inquiry form, no admin, and needs rebuilding after edits.
 
 ## Status
 
-**Feature complete locally; Gate A run for real, not yet released.** The rendering core, database schema, Worker request path, edge cache, management API, media pipeline, SEO endpoints, multilingual model, plugin runtime with the official inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the CLI, the page runtime that turns a request into a page, and the `trade-b2b` starter with its setup wizard all exist and are covered by 573 tests across five environments — plain Node, real `workerd`, a DOM and real Vite builds — plus 24 browser tests that drive a real `wrangler dev` through the wizard, sign-in, the publish loop and the public site, and scan the admin and all five themes with axe.
+**Feature complete locally; not released, and no real-account evidence stands
+for this version.** The rendering core, database schema, Worker request path,
+edge cache, management API, media pipeline, SEO endpoints, multilingual model,
+plugin runtime with the official inquiry plugin, five zero-JavaScript themes,
+the admin app, import/export, the CLI, the page runtime and the `trade-b2b`
+starter with its setup wizard all exist, and the local gate that covers them
+is one command line:
 
-**Gate A ran for real 2026-09-03/04** — seven of the nine `ARCHITECTURE.md §18` measurements against a real Cloudflare account, including `mallok create` end to end (which found and fixed a real deploy-breaking bug). [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the honest status: of 66 acceptance criteria — split into 74 rows where a criterion bundled a testable half with an untestable one — 59 are verified locally, 5 are verified on a real account, and 10 still need a real account for reasons Gate A itself could not close (a public repository, a second real deployment, elapsed real time or cron, and Resend/Turnstile/Lighthouse accounts). No criterion is waiting on a product decision. `mallok create` is proven; the release-gate walkthrough — deploy, wizard, real content, a real inquiry received — has not. Nothing is published to npm, and the repository is private. Treat this as a codebase to try, not a product to deploy.
+```sh
+pnpm lint && pnpm typecheck && pnpm test && pnpm build \
+  && pnpm bundle:size && pnpm admin:size \
+  && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
+```
 
-The version is `0.1.0-rc.2`: every criterion that can be closed without a
+That runs unit and integration tests across Node, real `workerd`, a DOM and
+real Vite builds; browser tests that drive a real `wrangler dev` through the
+wizard, sign-in, the publish loop and the public site; axe over the admin and
+all five themes; an enforced coverage floor; and a scan of every blob in Git
+history for credential shapes. It also builds the publishable package,
+installs it from a throwaway registry and creates a project from it — the same
+thing a user does.
+
+**Gate A ran for real on 2026-09-03/04, and its evidence does not carry over.**
+Those five criteria were verified against the previous `mallok create`, a
+Worker whose theme and plugins were compiled-in constants, and a package that
+shipped a copy of this repository. All three were replaced in 0.1.0-rc.3, so
+those rows are `STALE` (`docs/TESTING.md §6`) and **no criterion is
+`VERIFIED_STAGING`**. [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the
+row-by-row status; [`docs/RELEASE_GATE.md`](docs/RELEASE_GATE.md) is what a
+real account has to do to change it. Nothing is published to npm and the
+repository is private. Treat this as a codebase to try, not a product to
+deploy.
+
+The version is `0.1.0-rc.3`: every criterion that can be closed without a
 Cloudflare account, a domain or a third-party key is closed. What remains is
 listed with exact commands, pass conditions and rollbacks in
 [`docs/RELEASE_GATE.md`](docs/RELEASE_GATE.md). A local `workerd` result is

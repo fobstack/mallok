@@ -4,6 +4,89 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.3] — unreleased
+
+**Mallok became a package a site depends on, instead of a repository a site is
+a copy of.** That is the whole release; everything else follows from it.
+
+### Changed
+
+- **The `mallok` npm package now carries the framework**: the CLI, the
+  `mallok/worker` entry with `createMallok`, generated type declarations, the
+  compiled admin application, the official themes and plugins, and the project
+  shell. `docs/PRODUCT_CONTRACT.md` is the new canonical statement of what
+  Mallok is — a complete Cloudflare-native framework — replacing "not a
+  framework", which was true only while the sole deployment was this
+  repository.
+- **`mallok create` writes a thin project.** Its configuration, content, theme
+  choice, plugins and a four-line Worker entry; nothing of Mallok's own source.
+  It depends on `mallok` at an **exact** version — no caret, no `file:`, no
+  `workspace:`, no absolute path.
+- **A site's theme and plugins are an argument, not a source edit.**
+  `createMallok({ theme, plugins })` replaces the `ACTIVE_THEME` and `PLUGINS`
+  constants. This repository's own Worker entry is those same four lines.
+- **npm is the default package manager**, with pnpm selectable. The previous
+  default assumed a global pnpm and failed with `pnpm: not found` on a machine
+  that had exactly the documented prerequisite.
+- Generated projects use `node --test` rather than a test framework: one fewer
+  dependency, one fewer version to keep in step, and `npm install vitest@4.1.11`
+  crashes npm 10.9.7 outright.
+
+### Added
+
+- **`mallok upgrade --to <exact-version>`** — sets the version, installs,
+  applies project migrations once each by id, and re-runs the site's
+  typecheck, tests, build and deploy dry-run. Verified between two real
+  tarballs: content, settings, theme and plugins survive byte-identical, a
+  second run changes nothing, and a failed upgrade leaves the project on the
+  version that worked.
+- **`mallok prepare`** — stages the compiled admin and theme assets a site
+  cannot build for itself.
+- **A one-time setup key.** `mallok create` generates `MALLOK_SETUP_KEY`, sets
+  it as a Worker secret and prints it once; the wizard will not create the
+  administrator without it. Until now, whoever reached `/_mallok/setup` first
+  became the administrator of somebody else's site — a race against a scanner
+  on every deployment.
+- A local npm registry for verifying a candidate package by installing it
+  under its real name, and a `STALE` status for evidence that has outlived its
+  code.
+
+### Fixed
+
+- **`--dry-run=true` parsed as the string `"true"`**, which every `=== true`
+  check downstream read as false: the most explicit way to ask for a dry run
+  was the one way that deployed. Switches are booleans now, and an undeclared
+  flag such as `--no-deply` is refused instead of ignored.
+- **A second `create` on a finished project redeployed and rotated
+  `MALLOK_SECRET`**, signing every user out and making stored plugin keys
+  unreadable. It now exits 0 having called nothing, and secrets are reconciled
+  by name.
+- **A half-finished `create` was invisible to `destroy`.** The registry is
+  only written at the end; `destroy` now reads the ledger too.
+- **A non-empty R2 bucket was reported as deleted.** `destroy` stops and says
+  so; `--empty-bucket` is the explicit way to mean it.
+- **Every site shared rate-limit namespace `1000`**, so one site's traffic
+  throttled another's. Each slug gets a stable namespace of its own.
+- **`site.domain` was only set if somebody retyped the domain in the admin**,
+  so a site serving a custom domain published canonical links to its
+  `.workers.dev` preview. Provisioning writes it; the wizard copies it in.
+- `create` and `destroy` refuse to act on a ledger belonging to a different
+  Cloudflare account, and a corrupt ledger stops a run instead of being
+  treated as absent.
+- **The secret scanner** silenced a whole file per acknowledgement, skipped
+  lines over 4096 characters (every minified bundle), and could not tell a
+  crashed scan from a clean one. All three are fixed, with regression tests
+  that plant real credential shapes in real Git histories.
+- The accessibility suite built themes with `dist/cli/index.js`, a path the
+  build stopped writing — it had been passing against an artifact from an
+  earlier release.
+
+### Not carried over
+
+Gate A's five real-account rows are `STALE`. The code they tested — `mallok
+create`, the Worker's composition, the package layout — has been replaced, and
+no row is `VERIFIED_STAGING` in this release.
+
 ## [0.1.0-rc.2] — unreleased
 
 `mallok create` became a product contract rather than a script, and the two

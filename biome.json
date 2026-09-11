@@ -95,7 +95,8 @@
       "includes": [
         "test/runtime/workerd/worker.ts",
         "test/runtime/fixtures/**",
-        "src/runtime/vite/virtual.d.ts"
+        "src/runtime/vite/virtual.d.ts",
+        "test/cli/helpers/build-package.ts"
       ],
       "linter": {
         "rules": {

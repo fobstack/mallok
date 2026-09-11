@@ -1,6 +1,6 @@
 {
   "name": "mallok",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "private": true,
   "description": "Open-source, Cloudflare-native content website. Markdown in D1, instant publishing, no build step.",
   "license": "Apache-2.0",
