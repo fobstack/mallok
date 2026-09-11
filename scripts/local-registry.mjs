@@ -36,8 +36,11 @@ const UPSTREAM = 'https://registry.npmjs.org';
  * Returns the origin to point `npm_config_registry` at, and a `close`.
  */
 export async function startLocalRegistry(tarballs) {
-  const entries = new Map();
-  for (const [name, { version, path }] of Object.entries(tarballs)) {
+  // name → version → entry. More than one version per name is what makes an
+  // upgrade testable: `mallok upgrade --to <next>` has to resolve a version
+  // the project is not on yet.
+  const packages = new Map();
+  for (const { name, version, path } of normalise(tarballs)) {
     const bytes = await readFile(path);
     // The **real** manifest, read out of the tarball.
     //
@@ -50,11 +53,10 @@ export async function startLocalRegistry(tarballs) {
     const { stdout } = await run(
       'tar',
       ['-xzOf', path, 'package/package.json'],
-      {
-        maxBuffer: 1 << 24,
-      },
+      { maxBuffer: 1 << 24 },
     );
-    entries.set(name, {
+    const versions = packages.get(name) ?? new Map();
+    versions.set(version, {
       version,
       bytes,
       manifest: JSON.parse(stdout),
@@ -62,6 +64,7 @@ export async function startLocalRegistry(tarballs) {
       shasum: createHash('sha1').update(bytes).digest('hex'),
       integrity: `sha512-${createHash('sha512').update(bytes).digest('base64')}`,
     });
+    packages.set(name, versions);
   }
 
   const server = createServer((request, response) => {
@@ -69,24 +72,27 @@ export async function startLocalRegistry(tarballs) {
     const path = decodeURIComponent(url.pathname);
     const origin = `http://127.0.0.1:${server.address().port}`;
 
-    for (const [name, entry] of entries) {
+    for (const [name, versions] of packages) {
       if (path === `/${name}`) {
-        // The packument: one version, pointing at the tarball below.
+        const latest = [...versions.keys()].at(-1);
         const body = JSON.stringify({
           name,
-          'dist-tags': { latest: entry.version },
-          versions: {
-            [entry.version]: {
-              ...entry.manifest,
-              name,
-              version: entry.version,
-              dist: {
-                tarball: `${origin}/${name}/-/${entry.file}`,
-                shasum: entry.shasum,
-                integrity: entry.integrity,
+          'dist-tags': { latest },
+          versions: Object.fromEntries(
+            [...versions.values()].map((entry) => [
+              entry.version,
+              {
+                ...entry.manifest,
+                name,
+                version: entry.version,
+                dist: {
+                  tarball: `${origin}/${name}/-/${entry.file}`,
+                  shasum: entry.shasum,
+                  integrity: entry.integrity,
+                },
               },
-            },
-          },
+            ]),
+          ),
         });
         response.writeHead(200, {
           'content-type': 'application/json',
@@ -95,7 +101,10 @@ export async function startLocalRegistry(tarballs) {
         response.end(body);
         return;
       }
-      if (path === `/${name}/-/${entry.file}`) {
+      const entry = [...versions.values()].find(
+        (candidate) => path === `/${name}/-/${candidate.file}`,
+      );
+      if (entry !== undefined) {
         response.writeHead(200, {
           'content-type': 'application/octet-stream',
           'content-length': entry.bytes.length,
@@ -116,6 +125,14 @@ export async function startLocalRegistry(tarballs) {
     origin,
     close: () => new Promise((done) => server.close(() => done())),
   };
+}
+
+/** Accepts `{ name: {version, path} }` or `[{name, version, path}]`. */
+function normalise(tarballs) {
+  if (Array.isArray(tarballs)) {
+    return tarballs;
+  }
+  return Object.entries(tarballs).map(([name, entry]) => ({ name, ...entry }));
 }
 
 // Runnable directly, for working on a shell by hand:

@@ -283,8 +283,13 @@ export async function upgradeProject(
     }
 
     if (options.skipChecks !== true) {
+      // Lint is deliberately not here. It checks the site's own formatting,
+      // which the site owns and which says nothing about whether the upgrade
+      // worked — failing someone's upgrade because their JSON is indented
+      // differently from the formatter's preference is hostile. What is
+      // checked is whether the site still type-checks, tests, builds and
+      // would deploy against the new framework.
       for (const [label, command, args] of [
-        ['lint', manager, runArgs(manager, 'lint')],
         ['typecheck', manager, runArgs(manager, 'typecheck')],
         ['test', manager, runArgs(manager, 'test')],
         ['build', manager, runArgs(manager, 'build')],

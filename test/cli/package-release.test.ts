@@ -125,9 +125,9 @@ beforeAll(async () => {
   expect(installed.code, installed.stderr).toBe(0);
   mallok = join(sandbox, 'node_modules/.bin/mallok');
 
-  registry = await startLocalRegistry({
-    mallok: { version, path: tarball },
-  });
+  registry = await startLocalRegistry([
+    { name: 'mallok', version, path: tarball },
+  ]);
 }, 600_000);
 
 afterAll(async () => {
