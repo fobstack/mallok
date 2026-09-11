@@ -115,6 +115,7 @@ export default defineConfig({
               bindings: {
                 MALLOK_SECRET: 'test-secret-do-not-use',
                 MALLOK_SETUP_KEY: 'a-one-time-setup-key-for-this-test',
+                MALLOK_DOMAIN: 'provisioned.example',
               },
             },
           }),

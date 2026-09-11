@@ -223,7 +223,13 @@ export function renderConfig(base: string, input: SiteConfigInput): string {
       /"namespace_id":\s*"[^"]*"/,
       `"namespace_id": "${input.rateLimitNamespace}"`,
     )
-    .replace(/"MALLOK_SITE":\s*"[^"]*"/, `"MALLOK_SITE": "${input.slug}"`);
+    .replace(/"MALLOK_SITE":\s*"[^"]*"/, `"MALLOK_SITE": "${input.slug}"`)
+    // The Worker is told its own domain, so `site.domain` can be set from
+    // provisioning rather than from someone retyping it in the admin.
+    .replace(
+      /"MALLOK_DOMAIN":\s*"[^"]*"/,
+      `"MALLOK_DOMAIN": "${input.domain ?? ''}"`,
+    );
   if (input.domain !== null && !config.includes('"routes"')) {
     // A custom_domain route makes the deploy create the DNS record and the
     // certificate (docs/CLOUDFLARE_RESOURCES.md §6).
@@ -278,6 +284,13 @@ export function assertUsableConfig(
     (config.assets as { binding?: string } | undefined)?.binding !== 'ASSETS'
   ) {
     problems.push('no assets binding named ASSETS');
+  }
+  const vars = config.vars as Record<string, string> | undefined;
+  if ((vars?.MALLOK_SITE ?? '') !== input.slug) {
+    problems.push('the site slug was not written');
+  }
+  if ((vars?.MALLOK_DOMAIN ?? '') !== (input.domain ?? '')) {
+    problems.push('the domain was not written into vars');
   }
   if (input.domain !== null) {
     const routes = config.routes as

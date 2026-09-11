@@ -48,7 +48,7 @@ export async function writeFakeTemplate(): Promise<string> {
       "simple": { "limit": 10, "period": 60 }
     }
   ],
-  "vars": { "MALLOK_SITE": "site" },
+  "vars": { "MALLOK_SITE": "site", "MALLOK_DOMAIN": "" },
   "triggers": { "crons": ["* * * * *"] }
 }
 `,

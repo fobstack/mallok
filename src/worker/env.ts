@@ -4,6 +4,16 @@ export interface Env {
   readonly MEDIA: R2Bucket;
   /** Site slug, informational only. */
   readonly MALLOK_SITE: string;
+  /**
+   * The custom domain this site was provisioned with, if any.
+   *
+   * Written into `wrangler.jsonc` by `mallok create --domain`, and copied into
+   * `site.domain` when the wizard finishes. Provisioning knows the domain;
+   * before this, the database only learned it if somebody typed it again in
+   * the admin, and a site with a bound domain and an empty `site.domain`
+   * emits canonical URLs for the wrong host.
+   */
+  readonly MALLOK_DOMAIN?: string;
   /** Random 32-byte secret set at deploy time. */
   readonly MALLOK_SECRET: string;
   /**

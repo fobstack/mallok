@@ -84,3 +84,65 @@ describe('the first-run wizard, with a setup key', () => {
     expect(site?.setup_key_used_at).not.toBeNull();
   });
 });
+
+/**
+ * The domain a site was provisioned with reaches the database.
+ *
+ * `site.domain` decides canonical URLs, hreflang and the sitemap. Before the
+ * Worker was told its own domain, the database only learned it if somebody
+ * retyped it in the admin — so a site serving example.com published canonical
+ * links to its `.workers.dev` preview until they did.
+ */
+describe('provisioning and site.domain', () => {
+  it('copies MALLOK_DOMAIN into the site row when setup finishes', async () => {
+    // The administrator created by the test above, in this file's database.
+    // Logging in as somebody else and skipping when that fails would be a
+    // test that passes by doing nothing.
+    const login = await SELF.fetch(`${ORIGIN}/_mallok/api/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: 'owner@example.com',
+        password: 'a-sufficiently-long-password',
+      }),
+    });
+    expect(login.status).toBe(200);
+    const cookie = (login.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+    const csrf = ((await login.json()) as { csrf: string }).csrf;
+
+    const site = await SELF.fetch(`${ORIGIN}/_mallok/api/setup/site`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie,
+        'x-mallok-csrf': csrf,
+      },
+      body: JSON.stringify({
+        name: 'Provisioned',
+        defaultLocale: 'en',
+        locales: ['en'],
+      }),
+    });
+    expect(site.status).toBe(200);
+
+    const finished = await SELF.fetch(`${ORIGIN}/_mallok/api/setup/complete`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        cookie,
+        'x-mallok-csrf': csrf,
+      },
+      body: '{}',
+    });
+    expect(finished.status).toBe(200);
+
+    const row = await env.DB.prepare(
+      'SELECT domain, media_base_url FROM site',
+    ).first<{ domain: string | null; media_base_url: string | null }>();
+    expect(row?.domain).toBe('provisioned.example');
+    // And the media domain is *not* invented: `media.provisioned.example` is
+    // attached in the dashboard, so it is checked before it is written, and
+    // this environment has nothing at that hostname.
+    expect(row?.media_base_url ?? null).toBeNull();
+  });
+});

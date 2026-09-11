@@ -52,7 +52,11 @@
     }
   ],
   "vars": {
-    "MALLOK_SITE": "site"
+    "MALLOK_SITE": "site",
+    // Filled in by `mallok create --domain`. The Worker copies it into
+    // `site.domain` when the wizard finishes, so canonical URLs, hreflang and
+    // the sitemap describe the host the site is actually served on.
+    "MALLOK_DOMAIN": ""
   },
   // A theme's templates and stylesheets are bundled as plain text.
   "rules": [

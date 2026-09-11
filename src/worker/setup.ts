@@ -304,7 +304,56 @@ async function applyStarter(
 
 async function complete(env: Env, ctx: ExecutionContext): Promise<Response> {
   const now = new Date().toISOString();
-  await updateSite(env.DB, { setup_completed_at: now }, now);
+  const row = await loadSite(env.DB);
+  // Mutable while it is assembled; `SitePatch`'s fields are readonly.
+  const patch: {
+    setup_completed_at: string;
+    domain?: string;
+    media_base_url?: string;
+  } = { setup_completed_at: now };
+
+  // The domain provisioning bound, written where the renderer reads it.
+  // `site.domain` decides canonical URLs, hreflang and the sitemap; a site
+  // serving example.com while the database says nothing publishes canonical
+  // links to its `.workers.dev` preview.
+  const provisioned = env.MALLOK_DOMAIN ?? '';
+  if (provisioned !== '' && (row?.domain ?? '') === '') {
+    patch.domain = provisioned;
+  }
+
+  const domain = patch.domain ?? row?.domain ?? '';
+  if (domain !== '' && (row?.media_base_url ?? '') === '') {
+    // The R2 custom domain is attached in the dashboard, so its existence is
+    // a fact about the world rather than about this deployment: it is checked
+    // rather than assumed. Guessing would point every image at a hostname
+    // that may not resolve.
+    const mediaBase = `https://media.${domain}`;
+    if (await respondsAsMediaDomain(mediaBase)) {
+      patch.media_base_url = mediaBase;
+    }
+  }
+
+  await updateSite(env.DB, patch, now);
   ctx.waitUntil(purgeTags(env, ['site']));
-  return json({ completed: now });
+  return json({
+    completed: now,
+    domain: patch.domain ?? row?.domain ?? null,
+    mediaBaseUrl: patch.media_base_url ?? row?.media_base_url ?? null,
+  });
+}
+
+/**
+ * Whether `media.<domain>` is actually serving.
+ *
+ * A HEAD to the root is enough: an attached R2 custom domain answers (with a
+ * 404 for the empty key, which is still an answer), while an unattached one
+ * fails DNS or TLS.
+ */
+async function respondsAsMediaDomain(base: string): Promise<boolean> {
+  try {
+    const response = await fetch(base, { method: 'HEAD' });
+    return response.status < 500;
+  } catch {
+    return false;
+  }
 }

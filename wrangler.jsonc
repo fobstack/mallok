@@ -39,7 +39,8 @@
     "crons": ["* * * * *"]
   },
   "vars": {
-    "MALLOK_SITE": "site"
+    "MALLOK_SITE": "site",
+    "MALLOK_DOMAIN": ""
   },
   // Theme templates, stylesheets and SQL migrations are bundled as plain text.
   "rules": [
