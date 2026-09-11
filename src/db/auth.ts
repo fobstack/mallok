@@ -70,6 +70,63 @@ export async function createAdminUser(
     .run();
 }
 
+/**
+ * Claims the site: the first administrator and the spent setup key, at once.
+ *
+ * One D1 batch, which runs as a single implicit transaction. `setup_claim`
+ * holds at most one row (`CHECK (id = 1)`), so a second concurrent caller
+ * fails on the primary key and **its whole batch is rolled back** — no
+ * administrator, no consumed key, nothing half-done.
+ *
+ * Returns false when the claim was lost, which is a 409 and not an error:
+ * somebody else owns this site now.
+ */
+export async function claimSite(
+  db: D1Database,
+  user: NewAdminUser,
+  keyUsed: boolean,
+): Promise<boolean> {
+  const statements = [
+    db
+      .prepare(
+        'INSERT INTO setup_claim (id, admin_user_id, claimed_at) VALUES (1, ?, ?)',
+      )
+      .bind(user.id, user.now),
+    db
+      .prepare(
+        `INSERT INTO admin_user (id, email, password_hash, password_params, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .bind(
+        user.id,
+        user.email,
+        user.passwordHash,
+        user.passwordParams,
+        user.now,
+      ),
+  ];
+  if (keyUsed) {
+    statements.push(
+      db
+        .prepare(
+          'UPDATE site SET setup_key_used_at = ?, updated_at = ? WHERE setup_key_used_at IS NULL',
+        )
+        .bind(user.now, user.now),
+    );
+  }
+  try {
+    await db.batch(statements);
+    return true;
+  } catch (error) {
+    // A primary-key conflict means somebody else claimed it first. Anything
+    // else is a real failure and is not swallowed.
+    if (/UNIQUE|PRIMARY KEY|constraint/i.test(String(error))) {
+      return false;
+    }
+    throw error;
+  }
+}
+
 /** Looks up an administrator by email. */
 export async function findAdminUserByEmail(
   db: D1Database,

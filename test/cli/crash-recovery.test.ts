@@ -71,6 +71,10 @@ async function create(
       cwd: workspace,
       run,
       templateDir: template,
+      // The deployed site is a fake, so nothing here asks the network what it
+      // thinks. `false` is the state that matters: no administrator yet, so a
+      // setup key that was set but never delivered may be rotated.
+      hasAdministrator: async () => false,
       ...options,
     },
     report,
@@ -85,6 +89,7 @@ async function resume(run: Runner): Promise<unknown> {
       slug: 'my-site',
       run,
       templateDir: template,
+      hasAdministrator: async () => false,
     },
     report,
   ).catch((error: unknown) => error);

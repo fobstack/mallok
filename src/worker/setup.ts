@@ -65,7 +65,18 @@ export async function getSetupStatus(env: Env): Promise<Response> {
     // Whether the wizard will ask for the one-time key `mallok create`
     // printed. The key itself is never sent anywhere, in either direction.
     requiresSetupKey:
-      env.MALLOK_SETUP_KEY !== undefined && env.MALLOK_SETUP_KEY !== '',
+      (env.MALLOK_REQUIRE_SETUP_KEY ?? '').toLowerCase() === 'true' ||
+      (env.MALLOK_SETUP_KEY !== undefined && env.MALLOK_SETUP_KEY !== ''),
+    /**
+     * Whether the wizard can be completed at all.
+     *
+     * False on a site that requires a key it has not been given: the form
+     * would be unsubmittable, and saying so is better than a refusal per
+     * attempt.
+     */
+    ready:
+      (env.MALLOK_REQUIRE_SETUP_KEY ?? '').toLowerCase() !== 'true' ||
+      (env.MALLOK_SETUP_KEY !== undefined && env.MALLOK_SETUP_KEY !== ''),
     theme: {
       id: activeTheme().manifest.id,
       name: activeTheme().manifest.name,

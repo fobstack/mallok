@@ -136,8 +136,13 @@ export default defineConfig({
         test: {
           name: 'worker',
           include: ['test/worker/**/*.test.ts'],
-          // Its own project below: it needs a binding the rest must not have.
-          exclude: ['test/worker/setup-key.test.ts'],
+          // Their own projects below: each needs an environment the rest
+          // must not have.
+          exclude: [
+            'test/worker/setup-key.test.ts',
+            'test/worker/setup-concurrency.test.ts',
+            'test/worker/setup-claim.test.ts',
+          ],
         },
       },
       {
@@ -161,7 +166,31 @@ export default defineConfig({
         ],
         test: {
           name: 'worker-setup-key',
-          include: ['test/worker/setup-key.test.ts'],
+          include: [
+            'test/worker/setup-key.test.ts',
+            'test/worker/setup-concurrency.test.ts',
+          ],
+        },
+      },
+      {
+        /*
+         * A site between its first deploy and its secrets being set.
+         *
+         * `MALLOK_REQUIRE_SETUP_KEY` is declared and `MALLOK_SETUP_KEY` is
+         * not — the exact window an automated scanner needs, and the one a
+         * site must refuse to be claimed in.
+         */
+        plugins: [
+          cloudflareTest({
+            main: 'src/worker/index.ts',
+            miniflare: workerEnvironment({
+              MALLOK_REQUIRE_SETUP_KEY: 'true',
+            }),
+          }),
+        ],
+        test: {
+          name: 'worker-unclaimable',
+          include: ['test/worker/setup-claim.test.ts'],
         },
       },
       {

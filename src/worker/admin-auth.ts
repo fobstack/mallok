@@ -8,8 +8,8 @@
 
 import { z } from 'zod';
 import {
+  claimSite,
   countAdminUsers,
-  createAdminUser,
   createApiToken,
   createSession,
   deleteSession,
@@ -20,7 +20,7 @@ import {
   revokeApiToken,
   updateAdminPassword,
 } from '../db/auth.js';
-import { loadSite, updateSite } from '../db/queries.js';
+import { loadSite } from '../db/queries.js';
 import {
   clearedSessionCookie,
   isScope,
@@ -73,6 +73,20 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 /**
+ * Whether this deployment insists on a setup key.
+ *
+ * Set by `mallok create` as a plain var, alongside the secret itself. The two
+ * are separate on purpose: a var is visible in `wrangler.jsonc` and survives
+ * a lost secret, so a site can say "I require a key" even in the window where
+ * it has not been given one — which is exactly the window an automated
+ * scanner needs, and exactly when falling back to "no key configured, anyone
+ * may proceed" would hand the site away.
+ */
+function requiresSetupKey(env: Env): boolean {
+  return (env.MALLOK_REQUIRE_SETUP_KEY ?? '').toLowerCase() === 'true';
+}
+
+/**
  * The one-time credential that makes the first-run wizard safe.
  *
  * A freshly deployed site has no administrator, and its address is not a
@@ -93,32 +107,47 @@ function constantTimeEqual(a: string, b: string): boolean {
 async function checkSetupKey(
   env: Env,
   supplied: string | undefined,
-  now: Date,
-): Promise<Response | null> {
+): Promise<{ refusal: Response } | { keyUsed: boolean }> {
   const expected = env.MALLOK_SETUP_KEY;
+  const required = requiresSetupKey(env);
+
   if (expected === undefined || expected === '') {
-    return null;
+    if (required) {
+      // Deployed, and its secrets not set yet. **Fail closed**: there is
+      // nothing to compare a key against, so accepting any request here would
+      // mean the first caller to guess any string becomes the owner.
+      return {
+        refusal: problem(
+          503,
+          'This site is not finished being set up: its setup key has not ' +
+            'been deployed yet. Run `mallok create .` again in the project ' +
+            'directory to complete it.',
+        ),
+      };
+    }
+    // A site deployed by hand, before this existed. It behaves as it did.
+    return { keyUsed: false };
   }
+
   const site = await loadSite(env.DB);
   if (site?.setup_key_used_at != null) {
-    return problem(
-      403,
-      'The setup key has already been used. Deploy a new key with ' +
-        '`wrangler secret put MALLOK_SETUP_KEY` if you need to run setup again.',
-    );
+    return {
+      refusal: problem(
+        409,
+        'The setup key has already been used. Deploy a new key with ' +
+          '`wrangler secret put MALLOK_SETUP_KEY` if you need to run setup again.',
+      ),
+    };
   }
   if (supplied === undefined || !constantTimeEqual(supplied, expected)) {
-    return problem(
-      403,
-      'That setup key is not correct. It was printed once, by `mallok create`.',
-    );
+    return {
+      refusal: problem(
+        403,
+        'That setup key is not correct. It was printed once, by `mallok create`.',
+      ),
+    };
   }
-  await updateSite(
-    env.DB,
-    { setup_key_used_at: now.toISOString() },
-    now.toISOString(),
-  );
-  return null;
+  return { keyUsed: true };
 }
 
 const passwordChangeSchema = z.object({
@@ -150,21 +179,36 @@ export async function bootstrapAdmin(
       `Provide an email and a password of at least ${MIN_PASSWORD_LENGTH} characters.`,
     );
   }
-  // Checked after the payload parses and before the account is created, so a
-  // bad key costs an attacker the same work as a bad password.
-  const refused = await checkSetupKey(env, parsed.data.setupKey, now);
-  if (refused !== null) {
-    return refused;
+  // Checked after the payload parses and before any work is done, so a bad
+  // key costs an attacker the same as a bad password.
+  const check = await checkSetupKey(env, parsed.data.setupKey);
+  if ('refusal' in check) {
+    return check.refusal;
   }
 
+  // Hashing first, and deliberately outside the claim: it is the slow part,
+  // and doing it inside would hold the claim open for the length of a
+  // PBKDF2 derivation. If this throws, nothing has been consumed.
   const derived = await hashPassword(parsed.data.password);
-  await createAdminUser(env.DB, {
-    id: crypto.randomUUID(),
-    email: parsed.data.email.toLowerCase(),
-    passwordHash: derived.hash,
-    passwordParams: JSON.stringify(derived.params),
-    now: now.toISOString(),
-  });
+
+  // One batch: the claim, the administrator and the spent key. The database
+  // decides who wins, and the loser's work is rolled back entirely — no
+  // administrator, and a key that is still usable by whoever actually holds
+  // it.
+  const claimed = await claimSite(
+    env.DB,
+    {
+      id: crypto.randomUUID(),
+      email: parsed.data.email.toLowerCase(),
+      passwordHash: derived.hash,
+      passwordParams: JSON.stringify(derived.params),
+      now: now.toISOString(),
+    },
+    check.keyUsed,
+  );
+  if (!claimed) {
+    return problem(409, 'An administrator already exists.');
+  }
   return json({ ok: true }, { status: 201 });
 }
 

@@ -50,6 +50,7 @@ describe('walking skeleton', () => {
     expect(migrations.results.map((row) => row.id)).toEqual([
       '0001_init',
       '0002_setup_key',
+      '0003_setup_claim',
       'plugin:inquiry:0001_inquiry',
     ]);
     const sites = await env.DB.prepare('SELECT COUNT(*) AS n FROM site').first<{

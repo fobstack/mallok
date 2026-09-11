@@ -114,6 +114,13 @@ export interface CreateOptions {
   readonly dryRun?: boolean;
   /** The Cloudflare account to act on; checked against `whoami`. */
   readonly accountId?: string | undefined;
+  /**
+   * Asks the deployed site whether it already has an administrator.
+   *
+   * Injected so that tests do not reach the network; the default asks the
+   * site's own public setup endpoint.
+   */
+  readonly hasAdministrator?: (origin: string) => Promise<boolean | null>;
   readonly cwd?: string;
   readonly run?: CommandRunner;
   readonly templateDir?: string;
@@ -354,6 +361,7 @@ export async function createSite(
         configInput,
         runner,
         accountId: options.accountId,
+        hasAdministrator: options.hasAdministrator ?? siteHasAdministrator,
       },
       existing,
       report,
@@ -374,6 +382,7 @@ interface ProvisionInput {
   readonly fingerprint: string;
   readonly configInput: SiteConfigInput;
   readonly runner: CommandRunner;
+  readonly hasAdministrator: (origin: string) => Promise<boolean | null>;
 }
 
 /**
@@ -677,7 +686,7 @@ async function provision(
     report.step('Setting MALLOK_SETUP_KEY…');
     await putSecret(wrangler, 'MALLOK_SETUP_KEY', setupKey);
   } else if (ledger.setupKeyDeliveredAt === undefined) {
-    const claimed = await siteHasAdministrator(origin);
+    const claimed = await input.hasAdministrator(origin);
     if (claimed === true) {
       report.step(
         'The site already has an administrator, so the setup key is spent.',
@@ -783,7 +792,7 @@ async function siteHasAdministrator(origin: string): Promise<boolean | null> {
   }
   try {
     const response = await fetch(`${origin}/_mallok/api/setup/status`, {
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(3_000),
     });
     if (!response.ok) {
       return null;

@@ -23,6 +23,15 @@ export interface Env {
    * as it did before this existed (docs/SECURITY.md §4).
    */
   readonly MALLOK_SETUP_KEY?: string;
+  /**
+   * `"true"` on a site that insists on a setup key.
+   *
+   * A plain var rather than a secret, because it has to be readable in the
+   * window where the secret is missing: that is when a site is claimable by
+   * a stranger, and when "no key configured" must mean "refuse" rather than
+   * "let anyone in".
+   */
+  readonly MALLOK_REQUIRE_SETUP_KEY?: string;
   /** Zone-scoped token with Cache Purge permission; optional. */
   readonly CF_API_TOKEN?: string;
   readonly CF_ZONE_ID?: string;

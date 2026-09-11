@@ -282,6 +282,13 @@ export function renderConfig(base: string, input: SiteConfigInput): string {
     .replace(
       /"MALLOK_DOMAIN":\s*"[^"]*"/,
       `"MALLOK_DOMAIN": "${input.domain ?? ''}"`,
+    )
+    // A site this command creates always gets a setup key, so it always
+    // requires one. The flag is a var rather than a secret because it must
+    // still be readable in the window where the secret is missing.
+    .replace(
+      /"MALLOK_REQUIRE_SETUP_KEY":\s*"[^"]*"/,
+      '"MALLOK_REQUIRE_SETUP_KEY": "true"',
     );
   if (input.domain !== null && !config.includes('"routes"')) {
     // A custom_domain route makes the deploy create the DNS record and the
@@ -344,6 +351,9 @@ export function assertUsableConfig(
   }
   if ((vars?.MALLOK_DOMAIN ?? '') !== (input.domain ?? '')) {
     problems.push('the domain was not written into vars');
+  }
+  if ((vars?.MALLOK_REQUIRE_SETUP_KEY ?? '') !== 'true') {
+    problems.push('the site would accept setup without a key');
   }
   if (input.domain !== null) {
     const routes = config.routes as

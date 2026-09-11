@@ -36,6 +36,7 @@ import {
 import { prepareAssets } from './prepare.js';
 import { publishBundles, reportMissing, reportWarnings } from './publish.js';
 import { scanDirectory } from './scan.js';
+import { rotateSetupKey } from './setup-key.js';
 import { upgradeProject } from './upgrade.js';
 
 /**
@@ -60,6 +61,7 @@ const USAGE = `mallok — publish and manage a Mallok site
   mallok build <dir>       Build a whole static site from local files (no D1)
   mallok media push <dir>  Upload media without touching content
   mallok create <dir>      Create a Mallok project, then deploy it
+  mallok setup-key         Issue a new first-run key, if nobody owns the site yet
   mallok destroy <slug>    Delete a site's Worker, database and bucket
 
 Options
@@ -484,6 +486,33 @@ async function runCreate(
   return EXIT.ok;
 }
 
+async function runSetupKey(
+  args: ReturnType<typeof parseArgs>,
+  report: Reporter,
+): Promise<number> {
+  const result = await rotateSetupKey(
+    {
+      projectDir: process.cwd(),
+      ...(stringFlag(args, 'account-id') === undefined
+        ? {}
+        : { accountId: stringFlag(args, 'account-id') as string }),
+      run: spawnRunner,
+    },
+    report,
+  );
+
+  // Printed to the terminal and nowhere else — not in the JSON summary, which
+  // is what gets piped into a file or a CI log.
+  report.step('');
+  report.step('Setup key (shown only here):');
+  report.step(`    ${result.setupKey}`);
+  report.done(
+    { command: 'setup-key', slug: result.slug, rotated: true },
+    table(['site', 'result'], [[result.slug, 'a new setup key was set']]),
+  );
+  return EXIT.ok;
+}
+
 async function runPrepare(report: Reporter): Promise<number> {
   const result = await prepareAssets(process.cwd(), report);
   report.done(
@@ -663,6 +692,8 @@ export async function main(argv: readonly string[]): Promise<number> {
         return await runCreate(args, report);
       case 'prepare':
         return await runPrepare(report);
+      case 'setup-key':
+        return await runSetupKey(args, report);
       case 'upgrade':
         return await runUpgrade(args, report);
       case 'destroy':

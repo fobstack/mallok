@@ -55,7 +55,11 @@ const BASE = `{
   "ratelimits": [
     { "name": "RATE_LIMITER", "namespace_id": "1000", "simple": { "limit": 10, "period": 60 } }
   ],
-  "vars": { "MALLOK_SITE": "site", "MALLOK_DOMAIN": "" },
+  "vars": {
+    "MALLOK_SITE": "site",
+    "MALLOK_DOMAIN": "",
+    "MALLOK_REQUIRE_SETUP_KEY": "false"
+  },
   "triggers": { "crons": ["* * * * *"] }
 }
 `;
@@ -156,6 +160,9 @@ describe('rendering the configuration', () => {
     expect(rendered).toContain('"pattern": "shop.example.com"');
     expect(rendered).toContain('"custom_domain": true');
     expect(rendered).toContain('"MALLOK_DOMAIN": "shop.example.com"');
+    // A created site always requires its setup key, whatever the template
+    // said: the window between deploy and secrets is when it is claimable.
+    expect(rendered).toContain('"MALLOK_REQUIRE_SETUP_KEY": "true"');
     assertUsableConfig(parseJsonc(rendered, 'wrangler.jsonc'), withDomain);
   });
 

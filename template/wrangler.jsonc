@@ -56,7 +56,14 @@
     // Filled in by `mallok create --domain`. The Worker copies it into
     // `site.domain` when the wizard finishes, so canonical URLs, hreflang and
     // the sitemap describe the host the site is actually served on.
-    "MALLOK_DOMAIN": ""
+    "MALLOK_DOMAIN": "",
+    // Set by `mallok create`. While this is "true", the first-run wizard will
+    // not create an administrator without the one-time key the CLI printed —
+    // and, crucially, it refuses outright if the key secret is missing rather
+    // than falling back to letting anyone through. That window, between the
+    // first deploy and the secrets being set, is when a site is claimable by
+    // whoever finds its address.
+    "MALLOK_REQUIRE_SETUP_KEY": "true"
   },
   // A theme's templates and stylesheets are bundled as plain text.
   "rules": [

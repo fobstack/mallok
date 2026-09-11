@@ -40,7 +40,8 @@
   },
   "vars": {
     "MALLOK_SITE": "site",
-    "MALLOK_DOMAIN": ""
+    "MALLOK_DOMAIN": "",
+    "MALLOK_REQUIRE_SETUP_KEY": "false"
   },
   // Theme templates, stylesheets and SQL migrations are bundled as plain text.
   "rules": [
