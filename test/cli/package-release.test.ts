@@ -108,10 +108,9 @@ async function run(
 }
 
 beforeAll(async () => {
-  // One build, one pack, one install, shared by every test below.
-  const built = await run('node', ['scripts/build-package.mjs'], process.cwd());
-  expect(built.code, built.stderr).toBe(0);
-
+  // `dist/pkg` is built once for the whole project by the `globalSetup` in
+  // vitest.config.ts; building it here as well would race the other file
+  // that needs it.
   const packed = await run('npm', ['pack', '--json'], 'dist/pkg');
   expect(packed.code, packed.stderr).toBe(0);
   const [entry] = JSON.parse(packed.stdout) as { filename: string }[];

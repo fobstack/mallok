@@ -134,8 +134,8 @@ suite actually reaches today, so the gate's job is to catch a regression:
 
 | Directory | Line coverage | Branch coverage | Measured 2026-09-10 |
 | --- | --- | --- | --- |
-| `src/core/` | ≥ 90% | ≥ 82% | 91.3 / 82.3 |
-| `src/cli/` | ≥ 80% | ≥ 68% | 82.2 / 70.2 |
+| `src/core/` | ≥ 90% | ≥ 82% | 91.3 / 82.5 |
+| `src/cli/` | ≥ 83% | ≥ 72% | 84.4 / 73.3 |
 | `src/runtime/` | ≥ 88% | ≥ 85% | 89.4 / 85.9 |
 
 ### What the gate cannot measure
@@ -155,12 +155,12 @@ in this document was the actual defect.
 
 Two more honest limits inside the measured directories:
 
-- `src/cli/index.ts` sits at 48% because the parts below it — `mallok build`,
-  `mallok media push` and the wrangler-driven half of `destroy` — are covered
+- `src/cli/index.ts` sits around 41% because the parts below it — `mallok
+  build`, `mallok media push`, `prepare` and `upgrade`'s wiring — are covered
   by running the **installed binary as a subprocess**
-  (`test/cli/package-release.test.ts`), and a subprocess reports no coverage
-  to the parent. That is the right test for a published package; the number is
-  the price.
+  (`test/cli/package-release.test.ts`, `test/cli/upgrade.test.ts`), and a
+  subprocess reports no coverage to the parent. That is the right test for a
+  published package; the number is the price.
 - `src/admin/` has no threshold. Its components are exercised through
   `test/admin/**`, but the coverage that matters for the admin is the
   end-to-end and axe run in §7, not a line count.

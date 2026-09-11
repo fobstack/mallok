@@ -116,9 +116,6 @@ async function packAs(version: string): Promise<string> {
 }
 
 beforeAll(async () => {
-  const built = await run('node', ['scripts/build-package.mjs'], process.cwd());
-  expect(built.code, built.stderr).toBe(0);
-
   const [first, second] = await Promise.all([packAs(FIRST), packAs(SECOND)]);
   registry = await startLocalRegistry([
     { name: 'mallok', version: FIRST, path: first },

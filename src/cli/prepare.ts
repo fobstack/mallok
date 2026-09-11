@@ -58,12 +58,19 @@ async function countFiles(dir: string): Promise<number> {
   }
 }
 
-/** Stages the package's assets, and the project's own theme if it has one. */
+/**
+ * Stages the package's assets, and the project's own theme if it has one.
+ *
+ * `assetsDir` is injected by the tests, which run from this repository rather
+ * than from an installed package and so have no `<package>/assets` above
+ * them.
+ */
 export async function prepareAssets(
   projectDir: string,
   report: Reporter,
+  assetsDir: string = assetsRoot(),
 ): Promise<PrepareResult> {
-  const source = assetsRoot();
+  const source = assetsDir;
   const target = join(projectDir, 'dist/assets');
 
   const staged = await countFiles(source);
@@ -94,7 +101,10 @@ export async function prepareAssets(
   // rather than at first render on a deployed site.
   let pkg: ReturnType<typeof readThemePackage>;
   try {
-    pkg = readThemePackage(await readTree(themeDir), 'theme');
+    // No directory-name check: a project's theme always lives at
+    // `src/theme`, and requiring its id to match would force every site to
+    // call its theme "theme".
+    pkg = readThemePackage(await readTree(themeDir));
   } catch (error) {
     throw new CliError(
       EXIT.user,

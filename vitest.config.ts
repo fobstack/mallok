@@ -66,7 +66,7 @@ export default defineConfig({
       exclude: ['**/*.d.ts', '**/tsconfig.json'],
       thresholds: {
         'src/core/**': { lines: 90, branches: 82 },
-        'src/cli/**': { lines: 80, branches: 68 },
+        'src/cli/**': { lines: 83, branches: 72 },
         'src/runtime/**': { lines: 88, branches: 85 },
       },
     },
@@ -81,6 +81,9 @@ export default defineConfig({
             'test/admin/**/*.test.ts',
             'test/cli/**/*.test.ts',
           ],
+          // Builds `dist/pkg` once. Two CLI test files need it, they run
+          // concurrently, and the build starts by removing the directory.
+          globalSetup: ['test/cli/helpers/build-package.ts'],
         },
       },
       {
