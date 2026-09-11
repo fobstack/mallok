@@ -89,7 +89,71 @@ const FORBIDDEN_PATHS =
  * report, it just does not fail the run. Each one names an exact path and
  * rule, so a *new* finding in the same file is still a failure.
  */
+/**
+ * Why this scanner's own tests are full of credential shapes.
+ *
+ * `test/cli/scan-secrets.test.ts` plants one of each into throwaway
+ * repositories and asserts the scan fails on them. The strings are the public
+ * example values from each provider's documentation, and they are written out
+ * in full on purpose: a test that assembled them from fragments to dodge this
+ * scan would be teaching the technique for getting a real key past it.
+ *
+ * Each is acknowledged **by fingerprint**, so a genuine credential added to
+ * that file later is still a finding.
+ */
+const FIXTURE_REASON =
+  "A fixture in the scanner's own tests, planted to prove the scan fails on " +
+  'it. Documentation example values, never live credentials.';
+
 const ACKNOWLEDGED = [
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'private key block',
+    fingerprint: '8bcac7908eb95041',
+    reason: FIXTURE_REASON,
+  },
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'AWS access key id',
+    fingerprint: '1a5d44a2dca19669',
+    reason: FIXTURE_REASON,
+  },
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'GitHub token',
+    fingerprint: '6ec359a75c2ee8ad',
+    reason: FIXTURE_REASON,
+  },
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'Resend API key',
+    fingerprint: '1a5f96abd839f988',
+    reason: FIXTURE_REASON,
+  },
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'Resend API key',
+    fingerprint: '8c822d27ba59d1b3',
+    reason: FIXTURE_REASON,
+  },
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'Mallok API token',
+    fingerprint: 'fc200f5ca6cb4b58',
+    reason: FIXTURE_REASON,
+  },
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'Cloudflare-shaped token in an assignment',
+    fingerprint: '931345270cf39455',
+    reason: FIXTURE_REASON,
+  },
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'secret assigned a long literal',
+    fingerprint: 'e43dd183706039ad',
+    reason: FIXTURE_REASON,
+  },
   {
     path: 'test/worker/secret-check.test.ts',
     rule: 'Resend API key',
