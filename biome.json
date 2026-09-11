@@ -191,7 +191,12 @@
       }
     },
     {
-      "includes": ["vite.config.ts", "vitest.config.ts", "src/worker/index.ts"],
+      "includes": [
+        "vite.config.ts",
+        "vitest.config.ts",
+        "playwright.config.ts",
+        "src/worker/index.ts"
+      ],
       "linter": {
         "rules": {
           "style": {

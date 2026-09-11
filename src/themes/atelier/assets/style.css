@@ -8,7 +8,7 @@
   --bg-faint: #fbfcfb;
   --ink: #14201f;
   --muted: #57645f;
-  --faint: #7b8783;
+  --faint: #5c6764;
   --line: #e8ebe9;
   --line-soft: #eef1ef;
   --brand: #0d4f4a;
@@ -314,7 +314,7 @@ h3,
   display: block;
   font-size: 0.72rem;
   font-weight: 600;
-  color: #7b8783;
+  color: #5c6764;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }

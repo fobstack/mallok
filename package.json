@@ -59,7 +59,9 @@
     "build:site": "pnpm run build:cli && node dist/cli/index.js build . --theme ./src/themes/atelier --out dist/site",
     "release:pack": "pnpm run build:cli && cd dist/cli && npm pack",
     "prepublishOnly": "node scripts/refuse-publish.mjs",
-    "test:coverage": "vitest run --project core --project runtime --project runtime-dom --project runtime-build --coverage"
+    "test:coverage": "vitest run --project core --project runtime --project runtime-dom --project runtime-build --coverage",
+    "test:e2e": "playwright test",
+    "test:a11y": "playwright test 01-wizard 05-accessibility"
   },
   "dependencies": {
     "hast-util-to-string": "3.0.1",
@@ -77,6 +79,8 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@babel/core": "^8.0.5",
     "@biomejs/biome": "2.5.11",
     "@cloudflare/vitest-pool-workers": "0.22.0",
     "@cloudflare/workers-types": "5.20260828.1",
@@ -84,6 +88,7 @@
     "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/state": "^6.7.1",
     "@codemirror/view": "^6.43.9",
+    "@playwright/test": "^1.63.0",
     "@preact/signals-react": "^3.12.0",
     "@preact/signals-react-transform": "^0.8.2",
     "@tailwindcss/vite": "4.3.3",

@@ -14,6 +14,10 @@ coverage/
 # Scratch space for things being retired; never part of a release.
 _to_delete/
 
+# Playwright's own output; the run writes into .tmp/ as well.
+playwright-report/
+test-results/
+
 # Editor and local tooling directories
 .idea/
 .vscode/

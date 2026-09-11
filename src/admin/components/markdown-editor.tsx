@@ -105,6 +105,13 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
             lang.markdown(),
             missingField,
             view.EditorView.lineWrapping,
+            // CodeMirror's editable element is a `role="textbox"` with no
+            // label of its own, so a screen reader announced the whole
+            // Markdown pane as an unnamed text box. The fallback textarea
+            // already carried this name; the rich editor has to as well.
+            view.EditorView.contentAttributes.of({
+              'aria-label': 'Markdown source',
+            }),
             view.EditorView.updateListener.of((update) => {
               if (update.docChanged) {
                 latest.current.onChange(update.state.doc.toString());
