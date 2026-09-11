@@ -321,17 +321,16 @@ async function complete(env: Env, ctx: ExecutionContext): Promise<Response> {
     patch.domain = provisioned;
   }
 
-  const domain = patch.domain ?? row?.domain ?? '';
-  if (domain !== '' && (row?.media_base_url ?? '') === '') {
-    // The R2 custom domain is attached in the dashboard, so its existence is
-    // a fact about the world rather than about this deployment: it is checked
-    // rather than assumed. Guessing would point every image at a hostname
-    // that may not resolve.
-    const mediaBase = `https://media.${domain}`;
-    if (await respondsAsMediaDomain(mediaBase)) {
-      patch.media_base_url = mediaBase;
-    }
-  }
+  // `media_base_url` is deliberately **not** guessed here.
+  //
+  // Attaching `media.<domain>` to the R2 bucket happens in the Cloudflare
+  // dashboard, so whether it exists is a fact about the account rather than
+  // about this deployment. An earlier version probed the hostname with a
+  // HEAD from inside the Worker, which made the wizard's last step depend on
+  // DNS and left a "Network connection lost" in the logs when it did not
+  // resolve. `mallok create` reports the bucket's real custom domains through
+  // `wrangler r2 bucket domain list`, and the value is set in
+  // Settings → Site, where the person who attached it can confirm it.
 
   await updateSite(env.DB, patch, now);
   ctx.waitUntil(purgeTags(env, ['site']));
@@ -340,20 +339,4 @@ async function complete(env: Env, ctx: ExecutionContext): Promise<Response> {
     domain: patch.domain ?? row?.domain ?? null,
     mediaBaseUrl: patch.media_base_url ?? row?.media_base_url ?? null,
   });
-}
-
-/**
- * Whether `media.<domain>` is actually serving.
- *
- * A HEAD to the root is enough: an attached R2 custom domain answers (with a
- * 404 for the empty key, which is still an answer), while an unattached one
- * fails DNS or TLS.
- */
-async function respondsAsMediaDomain(base: string): Promise<boolean> {
-  try {
-    const response = await fetch(base, { method: 'HEAD' });
-    return response.status < 500;
-  } catch {
-    return false;
-  }
 }

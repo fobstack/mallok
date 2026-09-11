@@ -42,6 +42,40 @@ function textModules(): Plugin {
  * came with it unchanged, because they are the reason its cache and routing
  * rules can be trusted.
  */
+/**
+ * The Workers environment every worker test runs in.
+ *
+ * Declared here in full rather than read from `wrangler.jsonc`, because
+ * reading that file makes the pool load the `.dev.vars` beside it — a
+ * developer's local secrets, in a test run. Everything the Worker needs is
+ * listed; anything it should not have in a test (a real purge token, for
+ * instance) is absent by construction.
+ */
+function workerEnvironment(
+  extra: Record<string, string> = {},
+): Record<string, unknown> {
+  return {
+    compatibilityDate: '2026-08-01',
+    compatibilityFlags: ['nodejs_compat'],
+    d1Databases: ['DB'],
+    r2Buckets: ['MEDIA'],
+    bindings: {
+      MALLOK_SECRET: 'test-secret-do-not-use',
+      MALLOK_SITE: 'test',
+      ...extra,
+    },
+    // The same Text rule wrangler.jsonc declares: themes, stylesheets and
+    // migrations are imported as strings.
+    modulesRules: [
+      {
+        type: 'Text',
+        include: ['**/*.liquid', '**/*.css', '**/*.sql', '**/*.md'],
+        fallthrough: true,
+      },
+    ],
+  };
+}
+
 export default defineConfig({
   test: {
     /**
@@ -89,10 +123,14 @@ export default defineConfig({
       {
         plugins: [
           cloudflareTest({
-            wrangler: { configPath: './wrangler.jsonc' },
-            miniflare: {
-              bindings: { MALLOK_SECRET: 'test-secret-do-not-use' },
-            },
+            // No `wrangler.configPath`. Pointing at the repository's own
+            // configuration made the pool load the `.dev.vars` beside it, so
+            // every worker test ran with a developer's local secret — green
+            // on one laptop, red on another, and green *because* of a value
+            // the repository does not contain.
+            // `test/worker/environment-isolation.test.ts` is the tripwire.
+            main: 'src/worker/index.ts',
+            miniflare: workerEnvironment(),
           }),
         ],
         test: {
@@ -113,14 +151,12 @@ export default defineConfig({
          */
         plugins: [
           cloudflareTest({
-            wrangler: { configPath: './wrangler.jsonc' },
-            miniflare: {
-              bindings: {
-                MALLOK_SECRET: 'test-secret-do-not-use',
-                MALLOK_SETUP_KEY: 'a-one-time-setup-key-for-this-test',
-                MALLOK_DOMAIN: 'provisioned.example',
-              },
-            },
+            main: 'src/worker/index.ts',
+            miniflare: workerEnvironment({
+              MALLOK_SETUP_KEY: 'a-one-time-setup-key-for-this-test',
+              MALLOK_REQUIRE_SETUP_KEY: 'true',
+              MALLOK_DOMAIN: 'provisioned.example',
+            }),
           }),
         ],
         test: {

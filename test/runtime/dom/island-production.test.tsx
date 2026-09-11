@@ -217,7 +217,17 @@ describe('the production island chain', () => {
   });
 
   it('mounts both same-named islands with their own props', async () => {
-    document.body.innerHTML = built.html;
+    // The page's markup, minus its `<script src>` tag.
+    //
+    // Happy DOM would try to fetch that script, find file loading disabled,
+    // and throw a `NotSupportedError` from a promise nobody awaits: stderr
+    // noise on a passing run, and noise that can hide a real failure. The
+    // tag's presence is asserted by the test above; here the bundle is
+    // executed directly, which is the stronger check anyway.
+    document.body.innerHTML = built.html.replace(
+      /<script type="module"[^>]*><\/script>/g,
+      '',
+    );
     // The real built bundle, executed as the browser would run it. Its
     // dynamic import of the island chunk resolves relative to this file.
     await import(/* @vite-ignore */ pathToFileURL(built.bootstrapFile).href);
