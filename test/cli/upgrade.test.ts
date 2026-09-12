@@ -324,7 +324,11 @@ describe('mallok upgrade, between two real releases', () => {
  * with two packages built from two source trees.
  */
 describe('project migrations run exactly once', () => {
-  const report = makeReporter(true);
+  // Quiet: the second argument silences the step-by-step progress the CLI
+  // writes to stderr. Without it a passing run buries any real warning under a
+  // few hundred lines of "Creating database…", and "is stderr clean?" stops
+  // being a question anybody can answer by looking.
+  const report = makeReporter(true, true);
 
   function counting(): { migration: ProjectMigration; runs: () => number } {
     let runs = 0;

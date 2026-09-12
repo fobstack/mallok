@@ -76,6 +76,15 @@ binary.
 `pnpm test:coverage` runs the Node projects again with coverage and
 enforces §5.
 
+**What a passing run writes to stderr.** Two lines from `mallok destroy`'s
+refusal tests, which are the CLI warning exactly as it should, and one Node
+deprecation warning — `DEP0040`, the `punycode` builtin — emitted by
+**Wrangler's own bundled CLI**, which `@cloudflare/vitest-pool-workers` loads.
+It is not Mallok's code and cannot be silenced without patching Wrangler.
+Anything else is a defect: the CLI tests pass a **quiet** reporter, because a
+few hundred lines of "Creating database…" made a real warning invisible and
+turned "is stderr clean?" into a question nobody could answer by looking.
+
 ## 4. Contracts that must have tests
 
 These are not "recommended coverage" — **failing one means the work is not

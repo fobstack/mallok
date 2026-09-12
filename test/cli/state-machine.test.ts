@@ -23,7 +23,11 @@ import { type FakeAccount, fakeCloudflare } from './helpers/fake-wrangler.js';
  * does.
  */
 
-const report = makeReporter(true);
+// Quiet: the second argument silences the step-by-step progress the CLI
+// writes to stderr. Without it a passing run buries any real warning under a
+// few hundred lines of "Creating database…", and "is stderr clean?" stops
+// being a question anybody can answer by looking.
+const report = makeReporter(true, true);
 
 let workspace = '';
 let template = '';

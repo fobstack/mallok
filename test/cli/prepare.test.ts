@@ -24,7 +24,11 @@ import { prepareAssets } from '../../src/cli/prepare.js';
  * on a machine that has only what the documentation asks for.
  */
 
-const report = makeReporter(true);
+// Quiet: the second argument silences the step-by-step progress the CLI
+// writes to stderr. Without it a passing run buries any real warning under a
+// few hundred lines of "Creating database…", and "is stderr clean?" stops
+// being a question anybody can answer by looking.
+const report = makeReporter(true, true);
 
 /**
  * The assets the built package carries.
