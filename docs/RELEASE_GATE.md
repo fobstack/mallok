@@ -231,6 +231,14 @@ shasum        05bde77f759478a3b8c3a268b356ddf23e8e59c5
 sha256        6394300411cee2cc7bbd77681003d06b631bc5c588aab7423fc0fb665b494115
 ```
 
+**The build is reproducible, and that was checked rather than assumed.**
+Rebuilding from a second clean clone at `c8536e8` — two commits later, both
+touching only documentation and one code comment — produced a **byte-identical
+tarball**: the same size, the same `entryCount`, the same npm `integrity`, the
+same SHA-256. That is the property §5 leans on when it insists on publishing
+the *file* rather than the directory, and it means this record stays valid for
+any commit that does not change what goes into the package.
+
 Then that exact file, installed into a directory that had nothing else:
 the strict consumer compiled with `skipLibCheck: false`;
 `THIRD_PARTY_NOTICES` listed 89 bundled packages; `mallok create` exited 0 and
