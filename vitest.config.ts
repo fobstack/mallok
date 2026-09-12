@@ -100,7 +100,7 @@ export default defineConfig({
       exclude: ['**/*.d.ts', '**/tsconfig.json'],
       thresholds: {
         'src/core/**': { lines: 90, branches: 82 },
-        'src/cli/**': { lines: 83, branches: 72 },
+        'src/cli/**': { lines: 85, branches: 74 },
         'src/runtime/**': { lines: 88, branches: 85 },
       },
     },
