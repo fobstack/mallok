@@ -23,20 +23,38 @@ function textModules(): Plugin {
 }
 
 /**
- * Six test projects, because the things being tested genuinely run in
- * different places:
+ * The projects below exist because the things being tested genuinely run in
+ * different places — or, for the two `worker-*` ones, because a **binding**
+ * is what they differ in:
  *
- *  - `core`            plain Node. `src/core`, which must not depend on the
- *                      Workers runtime, plus the admin's pure logic.
- *  - `worker`          real workerd. The full request path: D1, R2, Cache API.
- *  - `runtime`         plain Node. The page runtime's routing, cache
- *                      semantics, Liquid engine and Vite plugin — none of
- *                      which may need a platform to work.
- *  - `runtime-workerd` real workerd. The runtime's Cloudflare adapter,
- *                      including what may and may not enter a shared cache.
- *  - `runtime-dom`     a browser-like DOM. The island client, and the built
- *                      client bundle executed against server-rendered markup.
- *  - `runtime-build`   real Vite builds and a real dev server.
+ *  - `core`               plain Node. `src/core`, which must not depend on
+ *                         the Workers runtime, plus the CLI and the admin's
+ *                         pure logic.
+ *  - `worker`             real workerd. The full request path: D1, R2, the
+ *                         Cache API.
+ *  - `worker-setup-key`   real workerd, with a one-time setup key bound.
+ *  - `worker-unclaimable` real workerd, with the key *required* and absent —
+ *                         the window between a first deploy and its secrets,
+ *                         which a site must refuse to be claimed in.
+ *  - `runtime`            plain Node. The page runtime's routing, cache
+ *                         semantics, Liquid engine and Vite plugin — none of
+ *                         which may need a platform to work.
+ *  - `runtime-workerd`    real workerd. The runtime's Cloudflare adapter,
+ *                         including what may and may not enter a shared
+ *                         cache.
+ *  - `runtime-dom`        a browser-like DOM. The island client, and the
+ *                         built client bundle executed against
+ *                         server-rendered markup.
+ *  - `runtime-build`      real Vite builds and a real dev server.
+ *  - `release`            **not** part of `pnpm test`. It builds two complete
+ *                         packages from two source trees and drives a real
+ *                         upgrade between them, which is a quarter of an
+ *                         hour; `pnpm test:release` runs it, and the release
+ *                         gate runs that.
+ *
+ * Binding `MALLOK_SETUP_KEY` for every worker test would make them all
+ * exercise the same path instead of the ones they are about, which is why the
+ * two `worker-*` projects are separate rather than a flag.
  *
  * The runtime moved into this repository from a separate package; its tests
  * came with it unchanged, because they are the reason its cache and routing
