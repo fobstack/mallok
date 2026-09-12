@@ -195,7 +195,7 @@ received.
 
 | Package | Version | Licence | Layer | Transitive | Bundle delta (gzip) | Install scripts | Reason |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `rehype-raw` | `7.0.0` | MIT | Render | 9 new: `entities` (BSD-2-Clause), `hast-util-from-parse5`, `hast-util-parse-selector`, `hast-util-raw`, `hast-util-to-parse5`, `hastscript`, `parse5`, `vfile-location`, `web-namespaces` (all MIT). None carry an `install`/`postinstall`/`preinstall` script | +53.2 KiB (Worker: 232.3 → 285.5 KiB, 7.6% → 9.3% of the Free plan) | None, across all 10 packages | Gate B', settled 2026-09-02: makes `CONTENT_FORMAT §3.4`'s promise true — inline HTML is sanitised and kept, not dropped outright (`SECURITY.md §4`) |
+| `rehype-raw` | `7.0.0` | MIT | Render | 9 new: `entities` (BSD-2-Clause), `hast-util-from-parse5`, `hast-util-parse-selector`, `hast-util-raw`, `hast-util-to-parse5`, `hastscript`, `parse5`, `vfile-location`, `web-namespaces` (all MIT). None carry an `install`/`postinstall`/`preinstall` script | +53.2 KiB (Worker: 232.3 → 285.5 KiB gzip, 7.6% → 9.3% of Mallok's own 3 MiB render-path budget — not of a Cloudflare limit; theirs is 64 MiB uncompressed on either plan) | None, across all 10 packages | Gate B', settled 2026-09-02: makes `CONTENT_FORMAT §3.4`'s promise true — inline HTML is sanitised and kept, not dropped outright (`SECURITY.md §4`) |
 
 Before this, the table had no rows: `fflate` was briefly added to unpack theme zips and removed when themes moved to build-time bundling (`tasks/TASK-04.md`).
 

@@ -485,7 +485,10 @@ replaces it. What was checked, and what changed:
 resolver, so no deduplication is needed on Mallok's side.
 
 Full gate on 2026-09-07: `pnpm lint && pnpm typecheck && pnpm test && pnpm
-build && pnpm bundle:size && pnpm admin:size`, all green, 359 tests.
+build && pnpm bundle:size && pnpm admin:size`, all green. (That row used to
+carry a test count; counts drift and are not written down — the command
+prints the current one. The 0.1.0-rc.4 run is recorded in
+`docs/RELEASE_GATE.md §4.1`.)
 
 ### 14.2.2 Pre-release hardening (2026-09-07)
 

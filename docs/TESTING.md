@@ -40,11 +40,11 @@ globals in Node is not accepted — it cannot exercise the real semantics of
 
 ## 3. The current baseline
 
-`pnpm test` runs eight Vitest projects and is green:
+`pnpm test` runs eight Vitest projects, and what it must do is exit 0. The
+count of files and tests is deliberately **not** written here: that number
+starts drifting the day it is typed, and the command prints the current one.
 
 ```
-72 test files, 733 tests, exit code 0   (2026-09-12)
-
   core               Node       src/core, src/admin, src/cli
   worker             workerd    routing, cache, migration, the management API, plugins
   worker-setup-key   workerd    the wizard with a one-time key bound

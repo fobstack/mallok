@@ -45,8 +45,10 @@ rest are the contracts for individual subsystems.
 
 ## Status
 
-- **Implementation**: all seventeen tasks are implemented; 357 tests pass;
-  the Worker is 284.7 KiB gzip, well inside Mallok's own 3 MiB gzip budget.
+- **Implementation**: all seventeen tasks are implemented and `pnpm test`
+  exits 0 — the number of tests is not written here, because it drifts and
+  the command prints it. The Worker is 290.0 KiB gzip, well inside Mallok's
+  own 3 MiB gzip budget.
   (Cloudflare's own limit is 64 MiB uncompressed on either plan; the
   "free-plan ceiling" this line used to cite does not exist.)
 - **Verification**: **Gate A ran for real 2026-09-03/04** — seven of the nine

@@ -9,16 +9,22 @@ Cloudflare account, a domain, a third-party API key, or a published npm
 package. That is the only reason they are not done. Each one names the exact
 command, what a pass looks like, and how to undo it.
 
-**Nothing here has been run.** Every row is `NOT_RUN` until an operator
-records otherwise, and a local `workerd` result never promotes a row —
-`docs/ACCEPTANCE.md §14` explains why that distinction is load-bearing.
+**Only §4 has been run**, because it is the only step that does not need an
+account: the local gate and the artefact it produces (`§4.1`, 2026-09-12).
+Everything else is `NOT_RUN` until an operator records otherwise, and a local
+`workerd` result never promotes one of those rows — `docs/ACCEPTANCE.md §14`
+explains why that distinction is load-bearing. §15.1 is the one row that is
+neither: `NOT_AVAILABLE`, withdrawn rather than pending.
 
 ## 0. Vocabulary
 
 The statuses are `docs/TESTING.md §6`'s and no others — the same set
-`docs/ACCEPTANCE.md` uses. Every row in this file is `NOT_RUN`, with one
-exception: §15.1, the Deploy to Cloudflare button, is **`NOT_AVAILABLE`** —
-withdrawn from what 0.1.0-rc.4 claims rather than waiting for an operator.
+`docs/ACCEPTANCE.md` uses. Every row in this file is `NOT_RUN` but two:
+
+- **§4** is `VERIFIED_LOCAL` — it needs no account, it has been run, and its
+  output is what §5 is checked against (`§4.1`);
+- **§15.1**, the Deploy to Cloudflare button, is `NOT_AVAILABLE` — withdrawn
+  from what 0.1.0-rc.4 claims rather than waiting for an operator.
 
 A conclusion about platform behaviour can only reach `VERIFIED_STAGING` or
 `VERIFIED_HUMAN`, and only from a run recorded with a command, its output and
@@ -135,8 +141,10 @@ the registry stopped, `node_modules` removed and an empty npm cache, `npm ci`
 
 ## 4. Build the release tarball
 
-**Status:** `NOT_RUN`. No account needed; this step is local and is the input
-to everything after it.
+**Status:** `VERIFIED_LOCAL`, 2026-09-12, for 0.1.0-rc.4 (commit `302ae77`).
+No account needed; this step is local and is the input to everything after
+it — which is why it is the one step in this document that can be, and has
+been, closed.
 
 ```sh
 set -euo pipefail
@@ -180,6 +188,59 @@ recompute with a tool that is not npm.
 `npm publish` from the repository root is **refused** by `prepublishOnly`
 (`scripts/refuse-publish.mjs`); the publishable package is `dist/pkg` and
 nothing else.
+
+### 4.1 What the 0.1.0-rc.4 run produced
+
+Run 2026-09-12 in a **clean clone** of `302ae77`, installed from zero, every
+step consecutively. Recorded here because §5 compares against it, and a
+number kept in a terminal is a number nobody can check. Test *counts* are
+left out on purpose — they drift, and the command prints them (`CLAUDE.md`);
+what is worth writing down is that each step exited 0 and what it wrote to
+stderr.
+
+| Step | Exit | stderr |
+| --- | --- | --- |
+| `pnpm install --frozen-lockfile` | 0 | 0 B |
+| `pnpm lint` | 0 | 12 607 B — Biome's own report of 6 warnings, which is its output and not a failure |
+| `pnpm typecheck` | 0 | 0 B |
+| `pnpm test` | 0 | 616 B |
+| `pnpm test:coverage` | 0 | 616 B — 87.53% statements, 78.74% branches, 87.48% lines, all above their floors |
+| `pnpm test:release` | 0 | 198 B — the two-real-version upgrade |
+| `pnpm build` | 0 | 360 B |
+| `pnpm bundle:size` | 0 | 360 B — 1062.0 KiB raw (1.6% of Cloudflare's 64 MiB), 290.0 KiB gzip (9.4% of Mallok's own 3 MiB budget) |
+| `pnpm admin:size` | 0 | 0 B — 71.2 KiB gzip first load, budget 150 KiB |
+| `pnpm build:site` | 0 | 1584 B — the static build's own warnings about `[[inquiry]]` forms it cannot serve |
+| `pnpm test:e2e` | 0 | 402 B — Playwright with axe, against a real `wrangler dev` |
+| `pnpm scan:secrets` | 0 | 0 B |
+
+**The stderr column is the point, not decoration.** A passing run writes 616
+bytes: two `!` lines from `destroy`'s refusal tests, which those tests are
+about, and Wrangler's own `DEP0040 punycode` deprecation warning, which comes
+from the bundled CLI that `@cloudflare/vitest-pool-workers` loads and is not
+Mallok's to silence (`docs/TESTING.md §3`). Anything beyond those is a defect.
+
+The artefact, built once and packed once:
+
+```
+filename      mallok-0.1.0-rc.4.tgz
+size          1259682
+unpackedSize  5751960
+entryCount    46
+integrity     sha512-IlGTbd+uNc9KYPcfV0c4iQuBCt3FQZQsFEcR4oD75Dzcu/U0L7F220oyUWQW5mDeKUSX5EKf5LR8rF3kbcy7IQ==
+shasum        05bde77f759478a3b8c3a268b356ddf23e8e59c5
+sha256        6394300411cee2cc7bbd77681003d06b631bc5c588aab7423fc0fb665b494115
+```
+
+Then that exact file, installed into a directory that had nothing else:
+the strict consumer compiled with `skipLibCheck: false`;
+`THIRD_PARTY_NOTICES` listed 89 bundled packages; `mallok create` exited 0 and
+the generated project passed its own lint, typecheck, test, build and smoke;
+`mallok upgrade --to 0.1.0-rc.4` reported `changed: false`; a downgrade was
+refused. The tarball's SHA-256 was unchanged afterwards.
+
+**This closes §4 and nothing else.** Every step from §6 onwards still needs a
+real Cloudflare account, and §5 needs npm publish rights. A green local gate
+is the precondition for this document, not a substitute for it.
 
 ## 5. Publish the package — after §7–§14, not before
 
