@@ -48,7 +48,7 @@ on which document a reader had open. The mapping applied on 2026-09-11:
 | `NOT_AVAILABLE` ("needs a real account") | `NOT_RUN` | It *can* be run; it needs an account nobody has run it on. `NOT_AVAILABLE` means "there is nothing to test yet" |
 | `NOT_RUN` | `NOT_RUN` | None remain; the last one was settled 2026-09-06 |
 
-**Every Gate A row is `STALE` as of 0.1.0-rc.3.** Those five were verified on a
+**Every Gate A row is `STALE` as of 0.1.0-rc.4.** Those five were verified on a
 real account on 2026-09-03/04 — against the previous `mallok create`, which
 wrote a nested per-site config and provisioned before it built; against a
 Worker whose theme and plugins were compiled-in constants; and against a
@@ -291,7 +291,7 @@ became two halves each.
 | `AC-INV` | 10 | 10 | 0 | 0 |
 | **Total** | **74** | **59** | **5** | **10** |
 
-**No row is `VERIFIED_STAGING` as of 0.1.0-rc.3.** The five that were
+**No row is `VERIFIED_STAGING` as of 0.1.0-rc.4.** The five that were
 real-account verified are `STALE`: the code they tested has been replaced.
 
 **Gate A's history, kept because it is worth knowing.** Gate A
@@ -416,7 +416,7 @@ against measurement variance across regions and load, and is still a
 meaningfully differentiated promise against the static-generator
 commit-build-redeploy cycle this product competes against. The existing Gate
 A measurement already satisfied the reworded criterion when it was taken. It
-is `STALE` as of 0.1.0-rc.3 and needs re-running (`docs/RELEASE_GATE.md §9`).
+is `STALE` as of 0.1.0-rc.4 and needs re-running (`docs/RELEASE_GATE.md §9`).
 
 **7. `AC-CONTENT-10`'s CPU-overrun handling — settled 2026-09-05: a
 pre-flight length check, option (a) below.** Real stage-one CPU measured at

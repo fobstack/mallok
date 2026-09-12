@@ -136,7 +136,7 @@ function normalise(tarballs) {
 }
 
 // Runnable directly, for working on a shell by hand:
-//   node scripts/local-registry.mjs dist/pkg/mallok-0.1.0-rc.3.tgz
+//   node scripts/local-registry.mjs dist/pkg/mallok-0.1.0-rc.4.tgz
 if (process.argv[1]?.endsWith('local-registry.mjs')) {
   const tarball = process.argv[2];
   if (tarball === undefined) {

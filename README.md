@@ -93,7 +93,7 @@ real account has to do to change it. Nothing is published to npm and the
 repository is private. Treat this as a codebase to try, not a product to
 deploy.
 
-The version is `0.1.0-rc.3`: every criterion that can be closed without a
+The version is `0.1.0-rc.4`: every criterion that can be closed without a
 Cloudflare account, a domain or a third-party key is closed. What remains is
 listed with exact commands, pass conditions and rollbacks in
 [`docs/RELEASE_GATE.md`](docs/RELEASE_GATE.md). A local `workerd` result is

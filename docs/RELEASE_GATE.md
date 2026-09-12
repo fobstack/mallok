@@ -1,6 +1,7 @@
 # The 0.1 release gate
 
-- Status: runbook. Written 2026-09-09, rewritten 2026-09-11.
+- Status: runbook. Written 2026-09-09, rewritten 2026-09-11, corrected for
+  0.1.0-rc.4 on 2026-09-12 (§3, §5.1, §8, §9, §11, §12, §14, §15.1, §17).
 - Scope: everything between "all local work is done" and "0.1.0 is released".
 
 Every step below needs something this repository cannot provide: a real
@@ -15,14 +16,16 @@ records otherwise, and a local `workerd` result never promotes a row —
 ## 0. Vocabulary
 
 The statuses are `docs/TESTING.md §6`'s and no others — the same set
-`docs/ACCEPTANCE.md` uses. Every row in this file is `NOT_RUN`.
+`docs/ACCEPTANCE.md` uses. Every row in this file is `NOT_RUN`, with one
+exception: §15.1, the Deploy to Cloudflare button, is **`NOT_AVAILABLE`** —
+withdrawn from what 0.1.0-rc.4 claims rather than waiting for an operator.
 
 A conclusion about platform behaviour can only reach `VERIFIED_STAGING` or
 `VERIFIED_HUMAN`, and only from a run recorded with a command, its output and
 a date.
 
 **Gate A's evidence does not carry over.** Five criteria were verified against
-a real account on 2026-09-03/04, and all five are `STALE` as of 0.1.0-rc.3:
+a real account on 2026-09-03/04, and all five are `STALE` as of 0.1.0-rc.4:
 `mallok create` was rewritten, the Worker's theme and plugins became an
 argument instead of a compiled-in constant, and the package became a framework
 rather than a copy of this repository. Those measurements are history worth
@@ -431,7 +434,7 @@ done
 Take the widths from the media library's own record for that image rather than
 from this list; a theme can ask for a different set.
 
-**Also check what provisioning wrote**, because these are new in 0.1.0-rc.3 and
+**Also check what provisioning wrote**, because these are new since 0.1.0-rc.2 and
 have never run against a real account:
 
 ```sh
