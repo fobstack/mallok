@@ -148,6 +148,38 @@ it.
 non-null (`ARCHITECTURE §15`). This is a hard gate: a wizard still answering
 is an unauthenticated administrator-creation endpoint.
 
+### 3.7 The one-time setup key
+
+Before that gate closes, a freshly deployed site has no administrator and its
+address is not a secret: a `.workers.dev` name is guessable, and certificate
+transparency publishes a custom domain within minutes of its first request.
+Whoever reached `/_mallok/setup` first became the administrator of somebody
+else's site — a race against a scanner, on every deployment.
+
+`mallok create` generates `MALLOK_SETUP_KEY`, sets it as a Worker secret and
+prints it once. Four properties matter, and each is tested:
+
+- **Fail closed in the window before the secret exists.** `MALLOK_REQUIRE_SETUP_KEY`
+  is a plain **var**, not a secret, precisely so it is readable when the
+  secret is not. A site that declares it and has no key answers **503** and
+  creates no administrator — the alternative, "no key configured, anyone may
+  proceed", hands the site to whoever asks during the deploy window.
+  A site deployed by hand, which never declared it, behaves as it always did.
+- **Spent once.** The key is checked against `site.setup_key_used_at`; a
+  replay is 409, even if the value is later found in a terminal's scrollback.
+- **Claiming is atomic.** The password is hashed *before* the claim, and the
+  administrator row, the `setup_claim` row and the key's consumption go in one
+  D1 `batch()`. `setup_claim` holds at most one row (`CHECK (id = 1)`), so two
+  concurrent correct-key requests with different addresses end with exactly
+  one administrator: the loser's whole batch rolls back — no half-created
+  user, no consumed key. A failed attempt never spends the key.
+- **Recoverable.** The key is written to no file, so it can be lost.
+  `mallok setup-key` issues a new one, and only while the site has no
+  administrator — including refusing when it cannot tell, because an
+  unreachable site is not an unclaimed one (`docs/CLI.md §10.3`). Without
+  this, a lost key would mean a deployed site that can never be set up, since
+  Cloudflare does not return a secret's value.
+
 ## 4. Content sanitisation
 
 - Sanitisation happens **when the fragment is generated**, using

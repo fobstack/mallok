@@ -42,8 +42,13 @@ mallok export <dir>               Export the whole site to a directory
 mallok build <dir>                Compile a local directory into a static site
 mallok preview <dir>              Render bundles locally, offline
 mallok media push <dir>           Upload media only, touching no content
+mallok setup-key                  Issue a new one-time key for a site nobody owns yet
 mallok destroy <slug>             Delete a site's Worker, database and bucket
 ```
+
+One more exists and is never typed: `mallok upgrade-finalize`. An older CLI
+runs it inside a copy of a project, after installing the newer release, so
+that the **target version** applies its own migrations (`§10.1`).
 
 **Every flag is declared per command, and an undeclared one fails.** A
 misspelling used to be accepted and ignored, so `mallok create site
@@ -425,6 +430,35 @@ the installed `mallok` package into the project's `dist/assets`, and validates
 and stages a theme in `src/theme/` if the project has one. It runs before
 every build and every deploy, and rebuilds the directory each time so a stale
 asset from an older version cannot survive an upgrade.
+
+## 10.3 `mallok setup-key`
+
+Issues a new `MALLOK_SETUP_KEY` for the site in this directory and prints it
+once.
+
+The key `mallok create` prints exists only in a terminal — it is deliberately
+written to no file, because a credential in a committed file outlives its one
+use. The cost of that is that it can be lost: a closed window, a killed
+process, a scrolled-off buffer. Cloudflare never gives a secret's value back,
+so without this command a lost key means a deployed site that can never be
+set up and never be recovered.
+
+What makes issuing a new one safe is a single question, asked rather than
+assumed: **does this site already have an administrator?**
+
+| Answer | What happens |
+| --- | --- |
+| Yes | Refused. The key is spent; whoever is asking is either the owner, who should sign in, or somebody who should not be here |
+| No | A new key is set and printed once |
+| **Cannot tell** | **Refused.** An unreachable site is not a site with no administrator, and treating the two alike would let anyone who can reach the Cloudflare account claim a site that is already owned |
+
+It also refuses when the ledger records a different Cloudflare account from
+the one signed in, and reports a failed `secret put` rather than returning a
+key the Worker does not have — a key that does not work is worse than no key,
+because it is tried and refused with nothing saying why.
+
+`--account-id <id>` is checked against `wrangler whoami` first, as everywhere
+else.
 
 ## 11. Output and exit codes
 
