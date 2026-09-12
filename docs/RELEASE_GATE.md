@@ -139,11 +139,19 @@ the registry stopped, `node_modules` removed and an empty npm cache, `npm ci`
 to everything after it.
 
 ```sh
-pnpm lint && pnpm typecheck && pnpm test && pnpm build \
-  && pnpm bundle:size && pnpm admin:size \
+set -euo pipefail
+pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
+  && pnpm build && pnpm bundle:size && pnpm admin:size \
+  && pnpm build:site \
   && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
 pnpm release:pack          # writes dist/pkg/mallok-<version>.tgz
 ```
+
+`pnpm test:release` is its own step because it takes about fifteen minutes:
+it builds two complete packages from two source trees and drives an upgrade
+between them with the older one's published binary. `.github/workflows/
+release.yml` runs this same list on a tag, in one job, with no step allowed to
+be skipped.
 
 **Pass:** every command exits 0 and the tarball exists. **Build once, pack
 once.** Nothing after this step may write to `dist/pkg`; a test that repacks

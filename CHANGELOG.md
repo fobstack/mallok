@@ -138,9 +138,10 @@ a copy of.** That is the whole release; everything else follows from it.
 - **A site's theme and plugins are an argument, not a source edit.**
   `createMallok({ theme, plugins })` replaces the `ACTIVE_THEME` and `PLUGINS`
   constants. This repository's own Worker entry is those same four lines.
-- **npm is the default package manager**, with pnpm selectable. The previous
-  default assumed a global pnpm and failed with `pnpm: not found` on a machine
-  that had exactly the documented prerequisite.
+- **npm is the package manager.** The previous default assumed a global pnpm
+  and failed with `pnpm: not found` on a machine that had exactly the
+  documented prerequisite. (rc.3 also offered pnpm as a selectable second
+  manager; that claim was never verified and was withdrawn in rc.4.)
 - Generated projects use `node --test` rather than a test framework: one fewer
   dependency, one fewer version to keep in step, and `npm install vitest@4.1.11`
   crashes npm 10.9.7 outright.

@@ -40,20 +40,40 @@ globals in Node is not accepted — it cannot exercise the real semantics of
 
 ## 3. The current baseline
 
-`pnpm test` runs six Vitest projects and is green:
+`pnpm test` runs eight Vitest projects and is green:
 
 ```
-59 test files, 571 tests, exit code 0   (2026-09-10)
+72 test files, 733 tests, exit code 0   (2026-09-12)
 
-  core             Node       src/core, src/admin, src/cli
-  worker           workerd    routing, cache, migration, the management API, plugins
-  runtime          Node       the runtime's router, lifecycle and cache semantics
-  runtime-workerd  workerd    the same runtime inside the real platform
-  runtime-dom      happy-dom  island mounting
-  runtime-build    Node       the Vite plugin and the island manifest
+  core               Node       src/core, src/admin, src/cli
+  worker             workerd    routing, cache, migration, the management API, plugins
+  worker-setup-key   workerd    the wizard with a one-time key bound
+  worker-unclaimable workerd    a site between its first deploy and its secrets
+  runtime            Node       the runtime's router, lifecycle and cache semantics
+  runtime-workerd    workerd    the same runtime inside the real platform
+  runtime-dom        happy-dom  island mounting
+  runtime-build      Node       the Vite plugin and the island manifest
 ```
 
-`pnpm test:coverage` runs the four Node projects again with coverage and
+The two extra worker projects exist because a **binding** is what they differ
+in: `MALLOK_SETUP_KEY` present, and `MALLOK_REQUIRE_SETUP_KEY` present without
+it. Binding either one for every worker test would make them all exercise the
+same path instead of the ones they are about.
+
+None of these projects reads `wrangler.jsonc`, and that is deliberate: the
+pool loads the `.dev.vars` beside it, so every worker test used to run with
+whatever secret happened to be on the developer's laptop — green on one
+machine, red on another, and green *because* of a value the repository does
+not contain. `vitest.config.ts` declares the whole environment instead, and
+`test/worker/environment-isolation.test.ts` is the tripwire.
+
+`pnpm test:release` is a ninth project, run separately because it takes about
+fifteen minutes: it builds two complete Mallok packages from two source trees
+— the newer carrying a project migration the older has never heard of — and
+drives `mallok upgrade` between them using the older package's own published
+binary.
+
+`pnpm test:coverage` runs the Node projects again with coverage and
 enforces §5.
 
 ## 4. Contracts that must have tests
@@ -298,14 +318,22 @@ projects, workerd included.
 The full local gate, in the order worth running it:
 
 ```sh
-pnpm lint && pnpm typecheck && pnpm test && pnpm build \
-  && pnpm bundle:size && pnpm admin:size \
+set -euo pipefail
+pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
+  && pnpm build && pnpm bundle:size && pnpm admin:size \
+  && pnpm build:site \
   && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
 ```
 
 `pnpm test:e2e` needs a browser (`npx playwright install chromium`, once).
-Lighthouse still needs a custom domain, so it stays out of the chain and its
-evidence goes in the task report.
+Lighthouse still needs a custom domain, so it stays out of the chain; its
+thresholds are asserted by `pnpm lighthouse:gate` over the reports `lhci`
+writes, and that script's own behaviour is covered by
+`test/cli/lighthouse-gate.test.ts`.
+
+`.github/workflows/release.yml` runs this same list in one sequential job on a
+tag. `ci.yml` may split it across jobs and leave the slow half to a separate
+one; a release candidate may not.
 
 ## 12. Deliberately not done
 

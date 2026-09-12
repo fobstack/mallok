@@ -69,10 +69,14 @@ starter with its setup wizard all exist, and the local gate that covers them
 is one command line:
 
 ```sh
-pnpm lint && pnpm typecheck && pnpm test && pnpm build \
-  && pnpm bundle:size && pnpm admin:size \
+pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
+  && pnpm build && pnpm bundle:size && pnpm admin:size \
+  && pnpm build:site \
   && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
 ```
+
+`.github/workflows/release.yml` runs exactly this, in one sequential job, on
+any tag.
 
 That runs unit and integration tests across Node, real `workerd`, a DOM and
 real Vite builds; browser tests that drive a real `wrangler dev` through the
