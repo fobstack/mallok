@@ -1,0 +1,127 @@
+name: Release gate
+
+# Everything, in one job, on anything that claims to be a release.
+#
+# `ci.yml` is allowed to split work across jobs and skip the slow parts: it
+# runs on every push and its job is fast feedback. This one runs on a tag or a
+# release candidate, and a gate that lets a candidate through because the
+# expensive half was on another job — or was skipped as flaky — is not a gate.
+# So it is sequential, it has no `continue-on-error`, and every step here is a
+# blocker.
+#
+# `workflow_dispatch` exists so the same file can be run against `main` before
+# a tag is cut, which is how a candidate is verified while it is still
+# possible to fix it.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    # Two real packages are built and four projects installed from a local
+    # registry; the default six hours is not the constraint, but an hour is a
+    # useful tripwire for a step that has hung.
+    timeout-minutes: 90
+    steps:
+      # `fetch-depth: 0` is the point of this checkout. The secret scan walks
+      # every blob reachable from every ref, and a shallow clone has one
+      # commit: the scan would pass in seconds and have ruled out nothing.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Refuse a shallow clone
+        run: |
+          set -euo pipefail
+          if [ "$(git rev-parse --is-shallow-repository)" != "false" ]; then
+            echo "The history is shallow; the secret scan would be meaningless." >&2
+            exit 1
+          fi
+          echo "objects reachable: $(git rev-list --objects --all | wc -l)"
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      # Node, workerd, the DOM and real Vite builds — including the package
+      # boundary suites: the strict consumer that installs only the tarball,
+      # the thin `mallok create` from an empty directory, the Wrangler
+      # capability contract and the create/resume/destroy recovery matrix.
+      - name: Unit, worker and package tests
+        run: pnpm test
+
+      - name: Coverage floor
+        run: pnpm test:coverage
+
+      # Two genuinely different packages, built from two source trees, and an
+      # upgrade driven by the older one's published binary. Its own project
+      # because it takes about fifteen minutes.
+      - name: Upgrade between two real versions
+        run: pnpm test:release
+
+      - name: Build
+        run: pnpm build
+
+      - name: Worker bundle budget
+        run: pnpm bundle:size
+
+      - name: Admin bundle budget
+        run: pnpm admin:size
+
+      # The no-D1 path: the same renderer compiling this repository's content/
+      # into a static site.
+      - name: Static build
+        run: pnpm build:site
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Drives a real `wrangler dev` with local D1 and R2, and runs axe
+      # against the wizard and the admin.
+      - name: End-to-end and accessibility
+        run: pnpm test:e2e
+
+      # Last, because it is the one step whose failure means rotating a
+      # credential rather than fixing code.
+      - name: Secret scan, whole history
+        run: pnpm scan:secrets
+
+      # The artefact a release is measured from, packed exactly once. Nothing
+      # after this step may write to dist/pkg.
+      - name: Pack, and record what was packed
+        run: |
+          set -euo pipefail
+          cd dist/pkg
+          npm pack --json > ../../pack.json
+          name=$(node -p "require('../../pack.json')[0].filename")
+          node -e "const p=require('../../pack.json')[0];console.log(JSON.stringify({filename:p.filename,size:p.size,unpackedSize:p.unpackedSize,integrity:p.integrity,shasum:p.shasum},null,2))"
+          shasum -a 256 "$name"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mallok-candidate
+          path: |
+            dist/pkg/*.tgz
+            pack.json
+          if-no-files-found: error

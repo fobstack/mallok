@@ -188,6 +188,41 @@ describe('acknowledgements are tied to a value, not a file', () => {
     expect(result.out).toContain('finding(s)');
   });
 
+  it('fails when the new secret shares a line with the reviewed one', async () => {
+    // The same bug one step further in, and the one the previous test could
+    // not see: the scanner called `exec` once per line per rule, so it found
+    // the *first* match and stopped. Put an acknowledged fixture and a real
+    // credential on one line and the only fingerprint computed was the
+    // acknowledged one — the run printed "Acknowledged" and exited 0.
+    //
+    // Minified output, a `.env` collapsed into one line, an array of keys:
+    // several credentials on one line is not an unusual shape.
+    await commit({
+      'test/worker/secret-check.test.ts':
+        "const KEYS = ['re_live_supersecret_value', 're_live_this_one_is_actually_real_abc'];\n",
+    });
+
+    const result = await scan();
+
+    expect(result.code).toBe(1);
+    expect(result.out).toContain('Acknowledged');
+    expect(result.out).toContain('1 finding(s)');
+  });
+
+  it('reports every distinct value on a line, each by its own fingerprint', async () => {
+    await commit({
+      'app.js':
+        'const a="AKIAIOSFODNN7EXAMPLE",b="AKIA1234567890ABCDEF",c="AKIAIOSFODNN7EXAMPLE";\n',
+    });
+
+    const result = await scan();
+
+    // Three matches, two distinct values, so two findings — and the repeat is
+    // one problem, not two.
+    expect(result.code).toBe(1);
+    expect(result.out).toContain('2 finding(s)');
+  });
+
   it('accepts the exact value that was reviewed', async () => {
     await commit({
       'test/worker/secret-check.test.ts':

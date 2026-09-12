@@ -40,9 +40,10 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # The Worker has a hard 3 MB gzip ceiling on Cloudflare's free plan and
-      # the admin app has a 150 KB first-load budget. Both assert, so a change
-      # that blows either one fails here rather than at deploy time.
+      # Cloudflare's limit is 64 MiB uncompressed on either plan; Mallok holds
+      # itself to a stricter 3 MiB gzip for the render path, and the admin app
+      # to a 150 KB first-load budget. Both assert, so a change that blows
+      # either one fails here rather than at deploy time.
       - name: Worker bundle budget
         run: pnpm bundle:size
 
@@ -52,3 +53,40 @@ jobs:
       # Proves the no-D1 path still compiles the repository's own content/.
       - name: Static build
         run: pnpm build:site
+
+  # Split out because they are slow and independent, which is a luxury the
+  # release gate does not have: `release.yml` runs all of this in one
+  # sequential job on a tag, so a candidate cannot pass on a partial result.
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end and accessibility
+        run: pnpm test:e2e
+      - name: Coverage floor
+        run: pnpm test:coverage
+
+  history:
+    runs-on: ubuntu-latest
+    steps:
+      # The scan reads every blob on every ref; a shallow clone would pass in
+      # seconds having ruled out nothing.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Secret scan, whole history
+        run: pnpm scan:secrets

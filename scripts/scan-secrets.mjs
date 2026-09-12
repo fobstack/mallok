@@ -78,6 +78,18 @@ const RULES = [
   },
 ];
 
+/**
+ * The same rules with the global flag, for enumerating a line.
+ *
+ * Two objects rather than one, because a global regular expression carries
+ * `lastIndex` between calls: the cheap whole-blob `test` below would leave it
+ * pointing into the middle of the text and the line scan would then start
+ * from there. Kept beside the rule so neither can be added without the other.
+ */
+for (const rule of RULES) {
+  rule.global = new RegExp(rule.pattern.source, `${rule.pattern.flags}g`);
+}
+
 /** Paths that must never have been committed at all, whatever they contain. */
 const FORBIDDEN_PATHS =
   /(^|\/)(\.dev\.vars|\.env|\.env\.[^/]+|[^/]+\.(?:pem|p12|pfx|key))$/;
@@ -116,6 +128,14 @@ const ACKNOWLEDGED = [
     path: 'test/cli/scan-secrets.test.ts',
     rule: 'AWS access key id',
     fingerprint: '1a5d44a2dca19669',
+    reason: FIXTURE_REASON,
+  },
+  {
+    path: 'test/cli/scan-secrets.test.ts',
+    rule: 'AWS access key id',
+    // The second of two on one line, in the test that proves this scanner
+    // reports every match on a line rather than the first.
+    fingerprint: '743554670c6065b3',
     reason: FIXTURE_REASON,
   },
   {
@@ -301,16 +321,21 @@ async function main() {
           // used to skip anything over 4096 characters — is an invitation to
           // hide a key on a minified line, and minified lines are exactly
           // where a bundled credential ends up.
-          const match = rule.pattern.exec(line);
-          if (match === null) {
-            continue;
+          //
+          // And **every match on the line**, not the first. `exec` without
+          // the global flag returns one match and stops, so an acknowledged
+          // fixture sitting ahead of a real credential on the same line was
+          // the only value ever fingerprinted: the scan printed
+          // "Acknowledged" and exited 0. One line can hold several — minified
+          // output, a collapsed `.env`, an array of keys.
+          for (const match of line.matchAll(rule.global)) {
+            findings.push({
+              path: blob.path,
+              rule: rule.name,
+              line: number + 1,
+              fingerprint: fingerprint(match[0]),
+            });
           }
-          findings.push({
-            path: blob.path,
-            rule: rule.name,
-            line: number + 1,
-            fingerprint: fingerprint(match[0]),
-          });
         }
       }
     }
