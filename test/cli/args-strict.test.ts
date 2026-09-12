@@ -133,4 +133,48 @@ describe('the rate-limit namespace', () => {
   it('is stable for one slug', () => {
     expect(rateLimitNamespace('acme')).toBe(rateLimitNamespace('acme'));
   });
+
+  it('stays inside the range Cloudflare accepts', () => {
+    // A negative value is what the missing `>>> 0` used to produce, and
+    // Cloudflare rejects it — at deploy time, after the database and the
+    // bucket exist.
+    for (const slug of [
+      'a',
+      'zzzz',
+      'site-9',
+      'acme-trading-co',
+      'x'.repeat(60),
+    ]) {
+      const value = Number(rateLimitNamespace(slug));
+      expect(Number.isInteger(value), slug).toBe(true);
+      expect(value, slug).toBeGreaterThanOrEqual(1001);
+      expect(value, slug).toBeLessThanOrEqual(4_294_967_295);
+    }
+  });
+
+  it('is a hash, so two slugs can collide — and one can be found', () => {
+    // Stated as a test rather than as a claim in a comment. A derivation that
+    // "cannot collide" is the sort of thing that gets believed until a site
+    // throttles another one, so this searches for a real collision in a
+    // deliberately narrowed view of the space and asserts it exists.
+    //
+    // What makes a collision survivable is `--rate-limit-namespace`, not this
+    // function.
+    const seen = new Map<string, string>();
+    let collision: readonly [string, string] | null = null;
+    for (let index = 0; index < 20_000 && collision === null; index += 1) {
+      const slug = `site-${index}`;
+      // The low 16 bits: a narrowed view, standing in for a wider one over a
+      // sample no test can afford to generate.
+      const narrowed = String(Number(rateLimitNamespace(slug)) & 0xffff);
+      const previous = seen.get(narrowed);
+      if (previous === undefined) {
+        seen.set(narrowed, slug);
+      } else {
+        collision = [previous, slug] as const;
+      }
+    }
+
+    expect(collision).not.toBeNull();
+  });
 });

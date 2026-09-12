@@ -4,6 +4,119 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.4] — unreleased
+
+**rc.3's "local release loop is complete" conclusion is withdrawn.** rc.3 is
+`LOCAL_RELEASE_BLOCKED`, and this release is the work of finding out why. Each
+item below began as a regression test that failed on rc.3's code — the tests
+came first, the fixes second, and the documentation last.
+
+### Fixed
+
+- **A site could not compile against the published types.** The `mallok`
+  package shipped a `tsc` emit of the whole source tree, which reached `zod`,
+  `mdast` and `hast` through the core barrel — three packages `mallok` does
+  not depend on. Any project with `skipLibCheck: false` got five
+  `Cannot find module` errors before compiling a line of its own code, and the
+  generated shell had `skipLibCheck` on, so nothing noticed. `mallok/worker`
+  now publishes one hand-written `types/worker.d.ts` that names nothing it
+  does not depend on, and `test/types/public-surface.ts` type-checks the
+  implementation against it on every `pnpm typecheck` so the two cannot drift.
+  `test/cli/strict-consumer.test.ts` compiles a project that installed only
+  the tarball, with `skipLibCheck` off and no path back to this repository.
+- **The package redistributed 89 libraries and attributed none of them.**
+  `THIRD_PARTY_NOTICES` is now generated from esbuild's own metafiles — what
+  was *bundled*, not what was declared, so `sharp` (external by design) is
+  absent and transitive packages that ended up inside `worker/index.js` are
+  present — and shipped in the tarball.
+- **The secret scanner reported one match per line.** It called `exec` once
+  per rule per line, so an acknowledged fixture sitting ahead of a real
+  credential on the same line was the only value ever fingerprinted: the run
+  printed "Acknowledged" and exited 0. Every match on a line is now enumerated
+  and fingerprinted individually. Minified output, a collapsed `.env` and an
+  array of keys are all one-line shapes.
+- **`--empty-bucket` was built on a Wrangler command that does not exist.**
+  `wrangler r2 object list` is not in Wrangler 4.124.0, so the documented safe
+  way to clean up would have failed the first time anybody used it. The flag is
+  gone; `destroy` tries the **bucket first** and stops there if it is not
+  empty, before the Worker and the database are deleted.
+  `test/cli/wrangler-contract.test.ts` checks every subcommand the CLI and its
+  fakes rely on against the locked binary's own `--help`.
+- **The cache-purge gate could only pass when purging was broken.** It edited
+  an article in the admin — which purges — and then asserted the edge was
+  still serving the old copy. `docs/RELEASE_GATE.md §9` now changes the
+  rendered fragment in D1 directly (no code path that purges), proves the edge
+  still HITs the old copy, purges by tag as a separate act, and tests the
+  automatic purge on a save of its own.
+- **The Lighthouse gate had quietly dropped half its threshold.**
+  `docs/SEO_PERFORMANCE.md §7` asks for a median ≥ 0.95 *and* no run below
+  0.90; Lighthouse CI asserts one threshold against the median, so the gate
+  asserted the floor alone. `scripts/lighthouse-gate.mjs` reads all three
+  reports and asserts both, per URL, and refuses a desktop collection or a
+  run count other than three. `@lhci/cli` is pinned at `0.15.1` and run from
+  `node_modules`, not `npx --yes`.
+- **`/cdn-cgi/handler/scheduled` is not a route `wrangler dev` answers on.**
+  The local scheduled endpoint is `/cdn-cgi/local/scheduled`; anyone following
+  the old instruction would have got a 404 and concluded the cron handler was
+  broken.
+- **R2 object paths in the gate were wrong.** Objects live at
+  `media/<sha>.<ext>` with `media/<sha>_<width>.webp` variants, not at the
+  bucket root — a check written against the wrong key reads as "not found"
+  whether the object is there or not, which in the media-reclaim step would
+  have read as success.
+- **Shell pipelines in the gate had no `pipefail`**, so
+  `wrangler … | tail -1` exited with `tail`'s status and a Wrangler that
+  failed on authentication looked exactly like one that found nothing.
+
+### Changed
+
+- **npm only.** rc.3 advertised pnpm as a second supported package manager and
+  nothing ever created, upgraded or reinstalled a project with it.
+  `--package-manager` is gone, `mallok` installs with npm and refuses to run
+  beside a `pnpm-lock.yaml`, `yarn.lock` or `bun.lockb`. One verified path
+  beats two claimed ones.
+- **The Deploy to Cloudflare button is `NOT_AVAILABLE`, not "untested".** It
+  deploys the repository it points at, and since rc.3 this repository is the
+  framework — pointing it here would deploy Mallok's own source as somebody's
+  website. It needs a separate public starter-site repository that does not
+  exist yet, and which is **not** Nundar. The button markup is removed from
+  `README.md`; `AC-DEPLOY-02` is marked `NOT_AVAILABLE`.
+- **"Upgrading means syncing your fork" is gone from every document.** A site
+  depends on `mallok` at an exact version; upgrading is
+  `mallok upgrade --to <version>`.
+- **Cloudflare's Worker size limit is 64 MiB uncompressed**, the same on Free
+  and Paid, and there is no compressed limit at all (checked 2026-09-12).
+  Everything here used to say "3 MB gzip, the free plan's hard limit" and
+  quote percentages of it. The 3 MiB gzip figure survives as **Mallok's own**
+  render-path budget, labelled as such in `pnpm bundle:size` and in the docs.
+- **The rate-limit namespace is collision-*resistant*, not unique**, and
+  nothing claims otherwise now. `mallok create --rate-limit-namespace <n>`
+  sets it outright when two slugs on one account do collide; the value used is
+  recorded in the ledger so a resumed run deploys the same limiter.
+- **The pre-publish gate is no longer circular.** A candidate is verified
+  against a local registry serving the same tarball under its real name, and
+  the resulting lockfile is a gate artefact rather than evidence:
+  `test/cli/package-release.test.ts` proves that with the registry stopped,
+  `node_modules` removed and an empty cache, `npm ci` **fails**. The portable
+  lockfile is regenerated from the public registry after publishing
+  (`docs/RELEASE_GATE.md §5.1`), and the published file must be the
+  byte-identical tarball that was tested.
+
+### Added
+
+- **A release CI workflow** (`.github/workflows/release.yml`) that runs
+  everything in one sequential job on a tag: `fetch-depth: 0` with a shallow
+  clone refused outright, lint, typecheck, the full unit/workerd suite, the
+  coverage floor, the two-real-version upgrade, build and both size budgets,
+  the static build, Playwright with axe, the whole-history secret scan, and a
+  single `npm pack` whose filename, size, unpackedSize, integrity and shasum
+  are recorded. Normal CI may split jobs; a release candidate may not.
+- **A leak scan over every text file of a generated project** — not three
+  files by name — for `localhost`, `127.0.0.1`, `file:`, `link:`,
+  `workspace:` and absolute paths, with the one legitimate loopback
+  (`scripts/smoke.mjs`, which starts a local dev server) written down and
+  reasoned about rather than skipped by directory.
+
 ## [0.1.0-rc.3] — unreleased
 
 **Mallok became a package a site depends on, instead of a repository a site is

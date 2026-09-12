@@ -76,8 +76,19 @@ Pages project, or a second Worker.
   everything at once, and nothing collides with the rest of the account.
 - Binding names are fixed: `DB`, `MEDIA`, `ASSETS`, `RATE_LIMITER`. Code
   refers to binding names only, never to a resource name or id.
-- Rate-limit namespace id: `1000 + the site's index in the registry`, which
-  keeps it unique within the account.
+- Rate-limit namespace id: a 32-bit hash of the slug (`rateLimitNamespace` in
+  `src/cli/site-config.ts`), recorded in the ledger and the registry. The
+  template used to ship `1000` for every site, which meant two Mallok sites on
+  one account shared one limiter; a later version hashed into 64,000 slots,
+  where `s01z` and `s0cg` both landed on 44314.
+
+  **This is collision-resistant, not unique**, and nothing should describe it
+  as unique: it is a hash, so two slugs can land on the same number. Over 2^32
+  slots the chance of any collision stays under 1-in-1000 up to roughly 3,000
+  sites on one account. When it does happen, `mallok create
+  --rate-limit-namespace <n>` sets the value outright; it goes into
+  `wrangler.jsonc`, the ledger and the registry like a derived one, and a
+  resumed run reuses what the ledger recorded rather than re-deriving.
 - The media subdomain is always `media.<domain>`. Changing it requires an
   explicit change in the wizard, which also updates `site.media_base_url`.
 
@@ -243,9 +254,13 @@ this order, **with feasibility deferred to a spike**:
 
 The other differences on this path: custom domains, the R2 custom domain and
 Turnstile are handled by the wizard using `CF_API_TOKEN`, or the wizard shows
-the dashboard steps; upgrading Mallok means syncing the fork on GitHub; and
-installing a third-party plugin means editing a configuration file and letting
-the build run.
+the dashboard steps; upgrading Mallok is `mallok upgrade --to <version>` in
+the starter repository, the same command as every other path, because a site
+depends on the `mallok` package rather than being a copy of it; and installing
+a third-party plugin means editing the composition and letting the build run.
+
+This path is `NOT_AVAILABLE` in 0.1 — the public starter repository it needs
+does not exist yet (ARCHITECTURE §17, entry point 2).
 
 ## 8. Environments
 
@@ -327,7 +342,8 @@ as remaining work at the end of a successful run.
 - The minimum permission set `CF_API_TOKEN` needs to attach an R2 custom
   domain.
 - Whether a rate-limit `namespace_id` must be unique within the account (this
-  document assumes it must).
+  document assumes it must, and Mallok's derivation is collision-*resistant*
+  rather than unique — see §4).
 - The Workers Logs free allowance and retention on the free plan.
 - The token permissions needed to create a Turnstile widget through the API,
   and whether the CLI's OAuth scope already covers them.

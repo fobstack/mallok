@@ -91,7 +91,7 @@ const COMMANDS: Readonly<Record<string, CommandSpec>> = {
   },
   create: {
     booleans: ['dry-run', 'no-deploy'],
-    values: ['slug', 'domain', 'account-id'],
+    values: ['slug', 'domain', 'account-id', 'rate-limit-namespace'],
     positional: { max: 1, what: 'one directory' },
   },
   destroy: {

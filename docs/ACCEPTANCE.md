@@ -70,7 +70,7 @@ contradictory figures (§14.0).
 | ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
 | `AC-DEPLOY-01` | `npx mallok create` creates every resource on a clean Cloudflare account, deploys successfully, and prints a reachable `.workers.dev` address | `STALE` | Run for real 2026-09-03/04 (`TASK-01.md §5`): D1 and R2 created, config written, deployed, `.workers.dev` address returned `200`. **Found and fixed a real bug on this run**: `buildSiteConfig` did not adjust `main`/`assets.directory` for the nested config path, so the deploy step failed until `src/cli/provision.ts` was corrected — see `test/cli/provision.test.ts` for the regression test |
-| `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_RUN` | Needs a public repository and a real account. The button has never been clicked |
+| `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_AVAILABLE` | **Withdrawn from 0.1.0-rc.4's claimed capability**, not merely untested. The button deploys the repository it points at, and since rc.3 this repository is the framework — pointing it here would deploy Mallok's own source as somebody's website. It needs a separate public *starter site* repository that does not exist yet, and which is **not** Nundar. External follow-up after rc.4 (`docs/RELEASE_GATE.md §15.1`) |
 | `AC-DEPLOY-03` | Every step of the setup wizard completes, and `/_mallok/setup` returns 404 afterwards. **The wizard is four steps** (`ARCHITECTURE §15`, `ADMIN.md §5`); media domain and email are configured afterward in Settings, not folded into it — settled 2026-09-02, see §14.2 item 2 | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:53`, `:81`, `:181` |
 | `AC-DEPLOY-04` | With a custom domain bound, the site serves normally and **the cache hits** (`x-mallok-cache: HIT`) | `STALE` | Real custom domain (`spike.mallok.dev`) bound 2026-09-03: first request `MISS`, second `HIT`, identical to the `.workers.dev` behaviour. `TASK-01.md §5`, `ARCHITECTURE §18` item 1 |
 | `AC-DEPLOY-05` | With no custom domain bound, the wizard says plainly that caching is not in effect, and `robots.txt` emits `Disallow: /` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:152`, `:161` |
@@ -187,7 +187,7 @@ Re-verified by every task (`IMPLEMENTATION_PLAN §5`, item 4).
 | `AC-INV-01` | `src/core/` imports no Cloudflare or Node API, and `tsc -p src/core/tsconfig.json` passes | `VERIFIED_LOCAL` |
 | `AC-INV-02` | The same input renders byte-identical HTML | `VERIFIED_LOCAL` |
 | `AC-INV-03` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size` is green | `VERIFIED_LOCAL` |
-| `AC-INV-04` | The Worker's gzipped bundle fits the free plan's 3 MB | `VERIFIED_LOCAL` (2026-09-02: 285.5 KiB, 9.3%, after `rehype-raw`; was 229.2 KiB, 7.5% on 2026-08-30) |
+| `AC-INV-04` | The Worker's bundle fits Cloudflare's 64 MiB uncompressed limit, and its gzipped size stays inside Mallok's own 3 MiB render-path budget | `VERIFIED_LOCAL` (2026-09-02: 285.5 KiB gzip, after `rehype-raw`; was 229.2 KiB on 2026-08-30). The percentages this row used to carry were percentages of a limit Cloudflare does not impose |
 | `AC-INV-05` | A cold render makes **at most 4 D1 round trips**, each with a constant number of queries and bounded row reads — settled 2026-09-02, correcting "one batch, ≤3 queries", which a related-content-plus-media page cannot meet by construction (§14.2 item 1) | `VERIFIED_LOCAL` (measured at 2, on every page tried so far, ceiling of 4 by the architecture) | `test/worker/budget.test.ts` |
 | `AC-INV-06` | A list page parses no body, queries no `render_cache`, and runs no `COUNT(*)` | `VERIFIED_LOCAL` (`listPublished` reads scalar columns only, with `LIMIT n+1`) |
 | `AC-INV-07` | Error responses leak no SQL, bucket name, id or stack trace | `VERIFIED_LOCAL` |
@@ -309,9 +309,10 @@ the budget, with no code path that caught an overrun and stored a draft).
 `AC-CONTENT-10` was settled and implemented 2026-09-05, a length-based check
 ahead of rendering (§14.2 item 7); `AC-CONTENT-02b` was settled 2026-09-06,
 reworded to "within a minute" on the same Gate A measurement (§14.2 item 6);
-that measurement is now `STALE`, like every other Gate A row. The remaining
-ten `NOT_RUN` criteria still need a public
-repository (`AC-DEPLOY-02`), a second real deployment (`AC-DEPLOY-08`),
+that measurement is now `STALE`, like every other Gate A row. `AC-DEPLOY-02`
+is no longer one of the `NOT_RUN` ten: it is **`NOT_AVAILABLE`** for rc.4, a
+capability withdrawn rather than a test outstanding. The remaining
+nine `NOT_RUN` criteria still need a second real deployment (`AC-DEPLOY-08`),
 elapsed real time or cron (`AC-CONTENT-06b`, `AC-MEDIA-06b`), a Resend
 account (`AC-PLUGIN-02b`, `03b`), Turnstile (`AC-PLUGIN-05b`), or Lighthouse
 against a warm cache (`AC-SEO-05/06/07`). Everything still marked
@@ -476,7 +477,7 @@ replaces it. What was checked, and what changed:
 | `x-robots-tag: noindex` off the bound domain | preserved, now decided in `pages/context.ts` |
 | 301 redirects for moved slugs | preserved, absolute `Location` |
 | Drafts and scheduled items | still 404; the visibility rule is unchanged |
-| Worker bundle | 284.5 → 288.9 KiB gzip (9.4% of the Free 3 MB limit) |
+| Worker bundle | 284.5 → 288.9 KiB gzip. The figure this row used to give — "9.4% of the Free 3 MB limit" — was a percentage of a limit that does not exist: Cloudflare's limit is 64 MiB **uncompressed** on both plans (checked 2026-09-12). 3 MiB gzip is Mallok's own budget |
 | **404 for an unknown public path** | **changed**: the theme's own page at status 404 with `x-robots-tag: noindex` and `Cache-Control: no-store`, instead of `{"error":"Not found."}`. Requested; `/_mallok/*` still answers JSON. |
 
 `AC-INV-05` is unaffected: the speculative batch runs once per request in
@@ -653,6 +654,7 @@ thing now, which is `docs/RELEASE_GATE.md`:
 | `AC-SEO` | `05`, `06`, `07` | The three Lighthouse criteria, which need a custom domain with the cache warm |
 
 `AC-THEME`, `AC-EXPORT`, `AC-CLI` and `AC-INV` have **no** criteria needing a
-real account — every row in those four groups is closed locally. `AC-DEPLOY-02` is the only one of the ten that Gate A's own
-measurements could never have closed regardless — it needs a public
-repository, which is a separate decision (§12, blocker 6 territory).
+real account — every row in those four groups is closed locally.
+`AC-DEPLOY-02` is not in this list at all any more: it is `NOT_AVAILABLE` for
+rc.4, because the Deploy button has no repository it could correctly point at
+until a public starter site exists (`docs/RELEASE_GATE.md §15.1`).

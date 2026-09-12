@@ -22,7 +22,7 @@ options those things expose.
 
 | Constraint | Source | Consequence |
 | --- | --- | --- |
-| The admin build goes through Static Assets and **never into the Worker script** | `TECH_STACK §6` | Its size never eats the render pipeline's 3 MB budget |
+| The admin build goes through Static Assets and **never into the Worker script** | `TECH_STACK §6` | Its size never eats the render pipeline's 3 MiB gzip budget |
 | Static-asset requests are free and are not billed as Worker invocations | `TECH_STACK §6` | The admin can be substantial, but still within 20,000 files at 25 MiB each |
 | Everything lives under `_mallok/app/` | `CLOUDFLARE_RESOURCES.md §5` | No public-site path can ever collide with it |
 | A user need not understand Workers, D1, R2, caching or migrations | `PRODUCT_VISION §4` | Those words do not appear in the main interface, only under Advanced and Diagnostics |

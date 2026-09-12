@@ -445,6 +445,14 @@ async function runCreate(
       ...(stringFlag(args, 'account-id') === undefined
         ? {}
         : { accountId: stringFlag(args, 'account-id') as string }),
+      ...(stringFlag(args, 'rate-limit-namespace') === undefined
+        ? {}
+        : {
+            rateLimitNamespace: stringFlag(
+              args,
+              'rate-limit-namespace',
+            ) as string,
+          }),
       run: spawnRunner,
     },
     report,

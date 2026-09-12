@@ -35,7 +35,7 @@ this table, this document is corrected before any code is written.**
 | --- | --- | --- | --- |
 | CPU time per request | **10 ms** | 30 s by default | Applies to **every** Worker invocation, the management API's saves included. The cache-hit path must cost almost nothing, and Markdown parsing moves off the visitor path |
 | Requests | 100k/day | 10M/month | Static assets do not count; images served from an R2 custom domain do not either |
-| Worker script size (gzipped) | 3 MB | 10 MB | The render pipeline, the template engine and the official plugins must all fit together. The admin app goes through Static Assets and is outside this budget |
+| Worker script size | 64 MiB uncompressed | 64 MiB uncompressed | **Cloudflare's limit, checked 2026-09-12: the same on both plans, and there is no compressed limit.** Mallok holds itself to a stricter **3 MiB gzip** budget for the render pipeline, the template engine and the official plugins together — that budget is ours, not a platform rule. The admin app goes through Static Assets and is outside both |
 | Worker startup time | 1 s | 1 s | No heavy initialisation at the top level; theme and template parsing must be lazy |
 | Isolate memory | 128 MB | 128 MB | Never cache a whole site in memory |
 | Subrequests (Cache API calls included) | 50/request | 10,000/request | The total D1, Cache and R2 calls in one render must be a small constant |
@@ -664,7 +664,9 @@ Constraints:
   plugin: the user is responsible for what they install. The documentation
   must say so and must not imply a sandbox.
 - Every added plugin must come with bundle-size evidence; the total must stay
-  within 3 MB on the free plan.
+  within Mallok's own 3 MiB gzip render-path budget. Cloudflare's limit is 64
+  MiB uncompressed on either plan, so this is a choice about cold starts and
+  CPU, not a quota.
 
 ## 13. The inquiry path (the reference design for the official plugin)
 
@@ -741,14 +743,20 @@ wizard. Each site's resources, naming and creation order are in
    print the `.workers.dev` address and open the wizard. It accepts `--slug`,
    `--domain`, `--no-deploy` and `--dry-run`. The locale and the starter are
    the wizard's to collect.
-2. **The Deploy to Cloudflare button**: the official documentation confirms it
+2. **The Deploy to Cloudflare button**: `NOT_AVAILABLE` in 0.1, and not a
+   capability this release claims. The official documentation confirms it
    supports GitHub and GitLab only, requires the source repository to be
    public, and creates D1, R2 and the rest from the wrangler configuration
-   while wiring up Workers Builds. The Mallok repository must therefore carry
-   a wrangler configuration with default resource names, and must not use a
-   monorepo layout. On this path, upgrading Mallok means syncing the fork, and
-   installing a third-party plugin means editing a configuration file and
-   letting the build run.
+   while wiring up Workers Builds — it deploys *the repository it points at*.
+   Pointing it at this repository would deploy the framework's own source as
+   somebody's website, which is the arrangement 0.1 exists to end. What the
+   button needs is a separate, public **starter site** repository: the same
+   thin shell `mallok create` writes, with an exact dependency on `mallok`.
+   Building and publishing that repository is external follow-up work, it has
+   never been clicked, and it is **not Nundar** — Nundar is the commerce
+   engine and has nothing to do with this. On that future path, upgrading is
+   still `mallok upgrade --to <version>` in the starter, and installing a
+   third-party plugin still means editing the composition and redeploying.
 3. **A hosted setup assistant** (1.0): the project site creates the resources
    on the user's behalf. Not part of 0.1.
 
@@ -859,7 +867,9 @@ unmeasured; everything else below is real-account fact, not a projection.
    is confirmed workable; plan B (URL purging) was not separately tested
    since plan A works.
 4. **285.5 KiB gzip** (232.3 KiB before `rehype-raw`, added 2026-09-02 —
-   `docs/ACCEPTANCE.md AC-INV-04`), 9.3% of the Free plan's 3 MB.
+   `docs/ACCEPTANCE.md AC-INV-04`), well inside Mallok's own 3 MiB gzip
+   budget. This line used to read "9.3% of the Free plan's 3 MB": Cloudflare
+   imposes no compressed limit at all, only 64 MiB uncompressed.
 5. **50,000 iterations costs ≈ 10 ms CPU** on real workerd — at the edge of
    the 10 ms budget, not comfortably under it. **100,000 costs ≈ 35 ms**, and
    iteration counts above 100,000 are **rejected outright by workerd's

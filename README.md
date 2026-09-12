@@ -17,11 +17,9 @@ Foreign-trade company sites concentrate both flaws: several languages, a product
 
 Deploy one Worker into your own Cloudflare account. Content is stored as Markdown in D1; images live in R2 behind an R2 custom domain. When you save, the Worker renders the Markdown into an HTML fragment cached in D1; when a visitor arrives, it only applies the theme template and writes the page to the edge cache, so almost every request is served from cache. Saving an article is one database write and one cache purge — live within a minute.
 
-- Three ways in: `npx mallok create`, a Deploy to Cloudflare button, and (in 1.0) a hosted setup assistant
+- One way in for 0.1: `npx mallok create`. A Deploy to Cloudflare button and a hosted setup assistant are planned, and neither is available yet
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/FobStack/mallok)
-
-> The button needs a public GitHub or GitLab repository. It reads `wrangler.jsonc` for the database and bucket names, creates them, and prompts for `MALLOK_SECRET` using the description in `package.json`.
+> **The Deploy to Cloudflare button is withdrawn from 0.1.** It deploys the repository it points at, and this repository is the framework — pointing it here would deploy Mallok's own source as somebody's website, which is exactly what 0.1 stopped doing. The button needs a small public *starter site* repository of its own: four lines of composition, a `wrangler.jsonc` and an exact dependency on `mallok`. That repository does not exist yet, and it is not Nundar. Until it does, `npx mallok create` is the supported path.
 
 - Multilingual content model: every item has a locale and a translation group, URLs are locale-prefixed, `hreflang` is automatic
 - Content kinds are declared by the theme; the trade starter ships products, categories, cases, FAQs and news
@@ -116,12 +114,17 @@ Contributing guidelines, including the code style, are in [CONTRIBUTING.md](CONT
 
 ## Upgrading and rolling back
 
-Themes, plugins and Mallok itself live in the source tree, so upgrading is a
-redeploy:
+A site depends on `mallok` at an exact version, so upgrading is one number and
+a deploy — not a merge against a repository you forked months ago:
 
 ```sh
-git pull && pnpm install && pnpm deploy
+npx mallok upgrade --to <version>
 ```
+
+That installs the target release, lets **it** run its own project migrations
+in a copy it can discard, re-runs the site's typecheck, tests, build and
+deploy dry-run, and only then commits the change. A failure leaves the project
+byte-for-byte as it was.
 
 Migrations apply themselves on the first request after a deploy, once, behind
 a lock — concurrent cold starts cannot race. `npx wrangler rollback` returns

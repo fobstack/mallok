@@ -50,6 +50,15 @@ export interface Ledger {
   readonly domain: string | null;
   /** Identifies the configuration this run intends to deploy. */
   readonly fingerprint: string;
+  /**
+   * The rate-limit namespace this site's Worker was deployed with.
+   *
+   * Recorded rather than re-derived, because `--rate-limit-namespace` can
+   * override the derivation: re-deriving it on resume would write a different
+   * `wrangler.jsonc` from the one that is deployed, and silently move the
+   * site onto a different limiter.
+   */
+  readonly rateLimitNamespace?: string;
   readonly startedAt: string;
   readonly database?: ResourceRecord;
   readonly bucket?: ResourceRecord;

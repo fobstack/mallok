@@ -165,10 +165,10 @@ three tiers and states each one's prerequisite plainly:
 | Entry point | For | Prerequisite | Release |
 | --- | --- | --- | --- |
 | `npx mallok create` | Technical teams, portfolios | Node installed, able to sign in to Cloudflare | 0.1 |
-| The "Deploy to Cloudflare" button | Anyone with a GitHub or GitLab account | A GitHub or GitLab account plus a Cloudflare account | 0.1 |
+| The "Deploy to Cloudflare" button | Anyone with a GitHub or GitLab account | A GitHub or GitLab account plus a Cloudflare account | Deferred — needs a public starter-site repository that does not exist yet, and is not Nundar |
 | A hosted setup assistant on the project site | A non-technical trade company owner | A Cloudflare account and a one-time authorisation | 1.0 |
 
-All three converge on the setup wizard built into the Worker, which configures
+0.1 ships the first of the three. All three converge on the setup wizard built into the Worker, which configures
 the administrator, company details, languages, email and domain. **Binding a
 custom domain is a precondition for caching to work at all** (ARCHITECTURE
 §2); the wizard must say so, and `.workers.dev` is preview only.
@@ -253,7 +253,7 @@ Listed by the four objects; anything absent from this table is not in 0.1:
 | Settings | Site details, enabled and default languages, navigation, SEO defaults, domain status, Resend email, cache lifetime |
 | Plugins | The official `inquiry` plugin (form, Turnstile, storage, Resend in both directions, an admin inquiry list, CSV export); the enable switch and settings panel, both immediate; **installing and updating a plugin needs a redeploy**; the third-party plugin contract and its documentation |
 | Built into the core | The sitemap with hreflang, RSS, canonical and OG, JSON-LD (Organization, Article, Product, FAQ), signed draft preview links, redirects, and a note on Cloudflare's site-level analytics |
-| Deployment | `npx mallok create`, the Deploy to Cloudflare button, the setup wizard, runtime self-migration, the upgrade path and its backup prompt |
+| Deployment | `npx mallok create`, the setup wizard, runtime self-migration, `mallok upgrade --to <version>` and its backup prompt. The Deploy to Cloudflare button is deferred (§5.4) |
 
 ## 7. The cost ladder
 
@@ -264,7 +264,7 @@ until measured:
 
 | Purpose | Product | Free tier | Beyond it |
 | --- | --- | --- | --- |
-| Rendering, admin, API | Workers | 100k requests/day, 10 ms CPU each, a 3 MB script | Workers Paid at $5/month: 10M requests, 30M CPU-ms, 30 s CPU by default, 10 MB |
+| Rendering, admin, API | Workers | 100k requests/day, 10 ms CPU each; a script up to 64 MiB uncompressed | Workers Paid at $5/month: 10M requests, 30M CPU-ms, 30 s CPU by default; the same 64 MiB script limit |
 | Content, inquiries | D1 | 5 GB total, 5M rows read/day, 100k rows written/day; exceeding it makes it unavailable for the day | With Paid: 25B rows read/month, 50M written/month, $0.75/GB past 5 GB |
 | Images, attachments | R2 | 10 GB-month, 1M writes and 10M reads/month, egress permanently free | $0.015/GB-month |
 | The admin app | Workers Static Assets | Unlimited free requests, 20k files, 25 MiB each | With Paid, up to 100k files |

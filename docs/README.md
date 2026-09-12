@@ -20,7 +20,7 @@ rest are the contracts for individual subsystems.
 | [TECH_STACK.md](TECH_STACK.md) | Runtime, the four dependency layers and their hard rules, external services, the admin app, the CLI, the dependency gate, what is explicitly forbidden, external sources |
 | [CONTENT_FORMAT.md](CONTENT_FORMAT.md) | The content bundle format, relative-path rules, common front-matter fields, the import/export contract, missing-image state |
 | [DATA_MODEL.md](DATA_MODEL.md) | The 0.1 D1 schema, indexes, constraints, migration and garbage-collection rules |
-| [CLOUDFLARE_RESOURCES.md](CLOUDFLARE_RESOURCES.md) | Account topology and quotas, the per-site resource list and naming, the wrangler template, creation order, how the Deploy button path differs, environments, site registry, backup and deletion |
+| [CLOUDFLARE_RESOURCES.md](CLOUDFLARE_RESOURCES.md) | Account topology and quotas, the per-site resource list and naming, the wrangler template, creation order, how the Deploy button path would differ once it exists (`NOT_AVAILABLE` in 0.1), environments, site registry, backup and deletion |
 
 ## Subsystem contracts
 
@@ -46,7 +46,9 @@ rest are the contracts for individual subsystems.
 ## Status
 
 - **Implementation**: all seventeen tasks are implemented; 357 tests pass;
-  the Worker is 284.7 KiB gzip, 9.3% of the free-plan ceiling.
+  the Worker is 284.7 KiB gzip, well inside Mallok's own 3 MiB gzip budget.
+  (Cloudflare's own limit is 64 MiB uncompressed on either plan; the
+  "free-plan ceiling" this line used to cite does not exist.)
 - **Verification**: **Gate A ran for real 2026-09-03/04** — seven of the nine
   `ARCHITECTURE.md §18` measurements against a real Cloudflare account, the
   other two needing a public repository and Turnstile/Resend accounts.

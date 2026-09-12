@@ -1,14 +1,31 @@
 {
-  "//": "Lighthouse CI for the release gate (docs/RELEASE_GATE.md §14). Committed rather than typed on the command line, so two runs on two machines measure the same thing; the URLs come from LHCI_URL at run time.",
+  "//": "Lighthouse CI for the release gate (docs/RELEASE_GATE.md §14). Committed rather than typed on the command line, so two runs on two machines measure the same thing; the URLs come from the command line at run time.",
+  "//mobile": "The mobile preset, not desktop. Mallok's users arrive on phones from search and from WhatsApp links, and a desktop run with desktop throttling is the easier test of the two — passing it says little about the request that actually happens.",
+  "//runs": "Exactly three, and every one of them is kept: `scripts/lighthouse-gate.mjs` reads all three reports and asserts a minimum as well as a median. Lighthouse CI's own assertions compare the median only, which is why the floor is enforced outside them.",
   "ci": {
     "collect": {
       "numberOfRuns": 3,
       "settings": {
-        "preset": "desktop",
-        "throttlingMethod": "simulate"
+        "preset": "perf",
+        "formFactor": "mobile",
+        "screenEmulation": {
+          "mobile": true,
+          "width": 412,
+          "height": 823,
+          "deviceScaleFactor": 1.75,
+          "disabled": false
+        },
+        "throttlingMethod": "simulate",
+        "onlyCategories": [
+          "performance",
+          "accessibility",
+          "best-practices",
+          "seo"
+        ]
       }
     },
     "assert": {
+      "//": "The floor Lighthouse CI can express by itself: it asserts the median of the three runs. The per-run minimum and the higher median are asserted by scripts/lighthouse-gate.mjs, which reads the three reports.",
       "assertions": {
         "categories:performance": ["error", { "minScore": 0.9 }],
         "categories:seo": ["error", { "minScore": 1 }],

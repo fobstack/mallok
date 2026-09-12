@@ -168,9 +168,11 @@ describe('the configuration is final before the dry-run', () => {
     expect(dryRun).toBeGreaterThan(configWrite);
   });
 
-  it('gives every slug its own rate-limit namespace', () => {
+  it('derives a different rate-limit namespace for each slug', () => {
     // The template ships one value for every site, so two sites on an account
-    // shared a limiter and a busy one throttled a quiet one.
+    // shared a limiter and a busy one throttled a quiet one. The derivation
+    // is a hash, not a guarantee of uniqueness — see the collision test in
+    // `args-strict.test.ts` and `--rate-limit-namespace` below.
     const namespaces = ['acme', 'beta', 'gamma', 'delta'].map(
       rateLimitNamespace,
     );
@@ -180,6 +182,56 @@ describe('the configuration is final before the dry-run', () => {
       expect(namespace).toMatch(/^\d+$/);
       expect(Number(namespace)).toBeGreaterThan(1000);
     }
+  });
+
+  it('takes an explicit namespace, and records the one it used', async () => {
+    // The way out of a collision. Two slugs that hash to the same number are
+    // unlikely and not impossible, and without this the only remedy would be
+    // renaming the site — which renames its Worker, database and bucket.
+    const fake = fakeCloudflare();
+
+    await createWith(fake.run, {
+      slug: 'acme',
+      rateLimitNamespace: '90210',
+      hasAdministrator: async () => false,
+    });
+
+    const config = await readFile(
+      join(workspace, 'my-site/wrangler.jsonc'),
+      'utf8',
+    );
+    expect(config).toContain('"namespace_id": "90210"');
+    expect(config).not.toContain(
+      `"namespace_id": "${rateLimitNamespace('acme')}"`,
+    );
+
+    // Recorded, so a resumed run deploys the same limiter rather than
+    // re-deriving one and moving the site onto a different bucket of
+    // counters.
+    const ledger = JSON.parse(
+      await readFile(
+        join(workspace, 'my-site/.mallok/create-state.json'),
+        'utf8',
+      ),
+    ) as { rateLimitNamespace?: string };
+    expect(ledger.rateLimitNamespace).toBe('90210');
+  });
+
+  it('refuses a namespace Cloudflare would reject', async () => {
+    // At deploy time this fails after the database and the bucket exist, so
+    // it has to fail before anything is created or not at all.
+    const fake = fakeCloudflare();
+
+    const error = await createWith(fake.run, {
+      slug: 'acme',
+      noDeploy: true,
+      rateLimitNamespace: '-3',
+    });
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain('--rate-limit-namespace');
+    // Nothing was asked of Cloudflare, because the refusal comes first.
+    expect(fake.calls).toEqual([]);
   });
 });
 

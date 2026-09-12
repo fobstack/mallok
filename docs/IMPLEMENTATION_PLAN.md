@@ -27,7 +27,7 @@
 | Task 16 deployment entry points | **Code complete, unverified against a real account**; `create` and `destroy` are implemented with unit tests but have never run on a real Cloudflare account |
 | Task 17 acceptance close-out | **Done**: evidence recorded for all 67 acceptance criteria, recounted 2026-09-01 into 75 rows. 2026-09-02: `NOT_RUN` rows closed by writing tests, `AC-EXPORT-05` removed by product decision, three `PENDING_DECISION` items settled. 2026-09-03/04: **Gate A run for real** against a Cloudflare account — 2 criteria newly `PENDING_DECISION` from real numbers (`AC-CONTENT-02b/10`). 2026-09-05: `AC-CONTENT-10` settled and implemented (a content-length safety net). 2026-09-06: `AC-CONTENT-02b` settled (reworded to "within a minute", promoted to `VERIFIED_HUMAN` on the existing Gate A measurement). Now: 66 criteria in 74 rows: 59 verified locally, **5 verified on a real account** (`AC-DEPLOY-01/04/07b`, `AC-CONTENT-02b`, `AC-MEDIA-04`), 0 `PENDING_DECISION`, 10 still needing a real account for other reasons. See `ACCEPTANCE.md §14` |
 | Five themes | **Done**: the approved designs implemented one to one (atelier, gazette, manual, folio, journal) |
-| The nine measurements in `ARCHITECTURE §18` | **Run 2026-09-03/04** — `TASK-01.md §5`. Seven of nine measured against a real account; items 7 (Deploy button) and 9 (Turnstile/Resend) still need a public repository and those accounts |
+| The nine measurements in `ARCHITECTURE §18` | **Run 2026-09-03/04** — `TASK-01.md §5`. Seven of nine measured against a real account; item 9 (Turnstile/Resend) needs those accounts, and item 7 (Deploy button) is `NOT_AVAILABLE` rather than pending — see `docs/RELEASE_GATE.md §15.1` |
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
@@ -239,7 +239,11 @@ Replaces Task 01's spike shortcut (`Bearer MALLOK_SECRET`).
 **Task 16 — deployment entry points** ⚠️ **Code complete, unverified against a real account (2026-08-30, `tasks/TASK-16.md`)**
 - `mallok create` (the ten steps in `CLOUDFLARE_RESOURCES.md §6`) and
   `mallok destroy` (the nine steps in §10).
-- The Deploy to Cloudflare path and its `MALLOK_SECRET` approach.
+- The Deploy to Cloudflare path and its `MALLOK_SECRET` approach — **deferred
+  past 0.1.0-rc.4 and marked `NOT_AVAILABLE`**: the button deploys the
+  repository it points at, and this one is now the framework rather than a
+  site. It needs a public starter-site repository that does not exist yet, and
+  which is not Nundar (`docs/RELEASE_GATE.md §15.1`).
 - The portfolio registry, `.mallok/sites.json`.
 - The path: `npx mallok create` on a clean account, through to the wizard.
 - Depends on: gate A, Task 15. Contract: `CLOUDFLARE_RESOURCES.md`.

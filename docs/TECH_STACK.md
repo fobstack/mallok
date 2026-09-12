@@ -31,7 +31,7 @@ automatically — the CLI's local half excepted.
 | Development runtime | Node.js 22 LTS | The CLI ships to npm, where Node compatibility matters most. No second runtime |
 | Package manager | pnpm with a lockfile | One repository; the lockfile is a release input |
 | Modules | ESM only | Workers is natively ESM; no CJS double life |
-| Repository layout | A single repository, split under `src/` per ARCHITECTURE §3; **not a monorepo or workspace layout** | The Deploy to Cloudflare button does not support monorepos, and only the CLI publishes separately |
+| Repository layout | A single repository, split under `src/` per ARCHITECTURE §3; **not a monorepo or workspace layout** | One publishable package, built from one tree. (The Deploy to Cloudflare button's dislike of monorepos used to be the reason given; that path is `NOT_AVAILABLE` in 0.1 and is no longer what decides this.) |
 | Build and deploy | `wrangler` | Cloudflare's own tool, which also supplies local D1 and R2 simulation and cron testing |
 
 Exact versions are pinned in the first dependency-only commit and are not
@@ -73,7 +73,7 @@ runs on save and is cached in D1; stage two, fragment to page, runs on the
 visitor request. Both live in `core/` and both must be pure.
 
 **Size is a first-class constraint.** The remark and rehype ecosystem is
-convenient but not small, while a Worker script is capped at 3 MB gzip on the
+convenient but not small, while Mallok's own render-path budget is 3 MiB gzip (Cloudflare's own limit is 64 MiB uncompressed on either plan, checked 2026-09-12) on the
 free plan and 10 MB on Paid, with the official plugins bundled in. The first
 implementation task must report the measured bundled size, and when it is over
 the order of response is: trim remark plugins first, then evaluate

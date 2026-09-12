@@ -410,7 +410,8 @@ Pre-bundling the official plugins is only possible while the total fits
    layer already has — a second Markdown parser, a second validation library.
 3. A plugin must not introduce a vendor SDK; call the API with `fetch`.
 4. The current baseline is 202.65 KiB gzip for the Worker, measured as
-   wrangler's Total Upload, against a 3 MB free-plan ceiling.
+   wrangler's Total Upload, against Mallok's own 3 MiB gzip render-path
+   budget. Cloudflare's limit is 64 MiB uncompressed on either plan.
 
 ## 11. The official plugin
 

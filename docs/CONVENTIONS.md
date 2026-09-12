@@ -101,7 +101,10 @@ looks up rows without rendering belongs to that dead design.
   `src/core/tsconfig.json` (which has only `lib.webworker`) and by an override
   in `biome.json`.
 - A dependency on the render path must be pure JavaScript, must run in
-  workerd, and must fit once bundled — 3 MB gzip on the free plan, 10 MB on
+  workerd, and must fit once bundled — Cloudflare allows 64 MiB uncompressed
+  on either plan, and Mallok holds itself to 3 MiB gzip, which is our own
+  budget and the one that binds in practice. Was documented as "3 MB gzip on
+  the free plan, 10 MB on
   Paid, with the official plugins counted. Native binaries never enter the
   Worker; the CLI may use `sharp` locally.
 - Use mature libraries for Markdown, HTML sanitisation, templating and

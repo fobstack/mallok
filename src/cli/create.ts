@@ -115,6 +115,15 @@ export interface CreateOptions {
   /** The Cloudflare account to act on; checked against `whoami`. */
   readonly accountId?: string | undefined;
   /**
+   * The rate-limit namespace id, when the derived one will not do.
+   *
+   * The derivation is deterministic and collision-*resistant*, not
+   * collision-free (see `rateLimitNamespace`). This is the way out when two
+   * slugs on one account do land on the same number: pick one, set it here,
+   * and it is written to `wrangler.jsonc` and the ledger like any other.
+   */
+  readonly rateLimitNamespace?: string | undefined;
+  /**
    * Asks the deployed site whether it already has an administrator.
    *
    * Injected so that tests do not reach the network; the default asks the
@@ -124,6 +133,27 @@ export interface CreateOptions {
   readonly cwd?: string;
   readonly run?: CommandRunner;
   readonly templateDir?: string;
+}
+
+/**
+ * Checks an explicitly given rate-limit namespace.
+ *
+ * Cloudflare wants a positive 32-bit integer, and a value it rejects is only
+ * discovered at `wrangler deploy` — after the database and the bucket exist.
+ * The whole point of taking an override is that somebody is working around a
+ * collision, so it has to be rejected here or not at all.
+ */
+function assertNamespace(value: string): string {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 1 || number > 4_294_967_295) {
+    throw new CliError(
+      EXIT.user,
+      `--rate-limit-namespace must be a whole number from 1 to 4294967295; got "${value}".`,
+      'Cloudflare rejects anything else, and it would fail at deploy time, ' +
+        'after the database and the bucket had already been created.',
+    );
+  }
+  return String(number);
 }
 
 export interface CreateResult {
@@ -257,7 +287,14 @@ export async function createSite(
     names,
     databaseId: existing?.database?.id ?? PLACEHOLDER_DATABASE_ID,
     domain,
-    rateLimitNamespace: rateLimitNamespace(slug),
+    // The override wins; otherwise the value this project was already
+    // deployed with wins; otherwise the derivation. Re-deriving on resume
+    // would quietly move a site that used `--rate-limit-namespace` onto a
+    // different limiter, and the fingerprint check would blame the domain.
+    rateLimitNamespace:
+      options.rateLimitNamespace === undefined
+        ? (existing?.rateLimitNamespace ?? rateLimitNamespace(slug))
+        : assertNamespace(options.rateLimitNamespace),
   };
   const fingerprint = configFingerprint(configInput);
   if (existing !== null && existing.fingerprint !== fingerprint) {
@@ -503,6 +540,7 @@ async function provision(
     slug,
     domain: input.domain,
     fingerprint: input.fingerprint,
+    rateLimitNamespace: input.configInput.rateLimitNamespace,
     startedAt: new Date().toISOString(),
   };
   const reconciled = {
@@ -771,7 +809,12 @@ async function ensureRegistered(
       accountId,
       databaseId: ledger.database?.id ?? null,
       bucket: ledger.bucket?.name ?? '',
-      ratelimitNs: Number(rateLimitNamespace(ledger.slug)),
+      // The value the Worker was deployed with, not a fresh derivation: a
+      // site created with `--rate-limit-namespace` has a number no
+      // derivation would produce.
+      ratelimitNs: Number(
+        ledger.rateLimitNamespace ?? rateLimitNamespace(ledger.slug),
+      ),
       createdAt: ledger.completedAt ?? new Date().toISOString(),
     }),
     registryPath,

@@ -51,13 +51,21 @@ export const PLACEHOLDER_DATABASE_ID = '00000000-0000-0000-0000-000000000000';
  * The first attempt at fixing that hashed the slug into 1001–65000, which is
  * a 64,000-slot space: `s01z` and `s0cg` both landed on 44314, and with that
  * many slots a collision is a matter of a few hundred sites, not a freak
- * accident. This uses the full 32-bit space the id allows, which moves the
- * first expected collision from "the same afternoon" to "tens of thousands of
- * sites on one account" — and the value is recorded in the ledger and the
- * registry, so a collision is visible rather than mysterious.
+ * accident. This uses the full 32-bit space the id allows.
  *
- * A site that needs a specific value sets it in `wrangler.jsonc` and this
- * leaves it alone (`renderConfig` only fills a placeholder).
+ * **It is not unique per site, and nothing here should claim it is.** It is a
+ * hash, so two slugs can still collide; widening the space changes the odds,
+ * not the guarantee. In 2^32 slots the chance of any collision stays under
+ * 1-in-1000 up to roughly 3,000 sites on one account, which is far past what
+ * one Cloudflare account will hold — but "unlikely" is the honest word.
+ *
+ * Two things make a collision survivable rather than mysterious. The value is
+ * written into the ledger and the registry, so it is visible in the files
+ * rather than only inside Cloudflare; and `mallok create
+ * --rate-limit-namespace <n>` sets it outright, which is the way out when two
+ * slugs on one account do land on the same number. A site that already has a
+ * value in `wrangler.jsonc` keeps it — `renderConfig` only fills a
+ * placeholder.
  */
 export function rateLimitNamespace(slug: string): string {
   // FNV-1a over the slug, then mixed, so neighbouring slugs land far apart.
