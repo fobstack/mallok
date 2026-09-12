@@ -63,7 +63,7 @@ const REQUIRED = [
 /** Files whose presence means the framework half of the package arrived. */
 const REQUIRED_PACKAGE = [
   'worker/index.js',
-  'types/src/worker/framework.d.ts',
+  'types/worker.d.ts',
   'assets/_mallok/app/index.html',
 ];
 

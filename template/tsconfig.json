@@ -14,6 +14,12 @@
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
+    // On, and it has to be: `@cloudflare/workers-types` and `@types/node` both
+    // declare `console`, `crypto`, `Blob`, `TextDecoder` and two dozen more,
+    // so checking them together reports about forty conflicts that belong to
+    // neither package. Mallok's own published declarations are checked with it
+    // off, by a consumer project that installs the tarball and nothing else —
+    // that is the setting that caught them reaching for zod, mdast and hast.
     "skipLibCheck": true,
     "noEmit": true
   },

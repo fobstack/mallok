@@ -73,15 +73,20 @@ Arguments the site commands (`publish`, `import`, `export`, `media push`) take:
 
 ### 3.1 Which package manager
 
-`mallok create` and `mallok upgrade` install a project's dependencies, and the
-supported managers are **npm** and **pnpm**. npm is the default, because it
-ships with Node and the documented prerequisite is Node 22 and nothing else —
-this used to assume a global pnpm and failed with `pnpm: not found` after
-generating the project and before verifying anything.
+**npm, and only npm.** `mallok create` and `mallok upgrade` install with npm,
+write a `package-lock.json`, and refuse to run in a project that carries a
+`pnpm-lock.yaml`, `yarn.lock` or `bun.lockb` rather than installing beside
+somebody else's lockfile.
 
-`--package-manager npm|pnpm` chooses explicitly. Without it, the manager
-running the CLI is used when it is one of the two (so `pnpm dlx mallok create`
-keeps using pnpm), and npm otherwise.
+There is no `--package-manager`. rc.3 advertised pnpm as a second supported
+manager, and nothing in the suite ever created, upgraded or reinstalled a
+project with it — so "supported" meant "we believe it would work". One
+verified path is worth more than two claimed ones. npm is the one that ships
+with Node, and Node 22 is the only documented prerequisite.
+
+Working *on* Mallok itself still uses pnpm (`README.md`); that is this
+repository's own toolchain and has nothing to do with the projects the CLI
+generates.
 
 ## 4. Authentication
 
@@ -130,6 +135,15 @@ The essentials:
   create is refused**, not adopted: it may belong to another site.
 - `--no-deploy` stops after that local verification; `--dry-run` does the same
   in a temporary directory and removes it.
+- `--account-id <id>` names the Cloudflare account to act on, and is checked
+  against `wrangler whoami` before anything is created; it is then passed to
+  every Wrangler subprocess.
+- `--rate-limit-namespace <n>` overrides the namespace derived from the slug.
+  The derivation is a 32-bit hash, so it is collision-**resistant**, not
+  unique (`docs/CLOUDFLARE_RESOURCES.md §4`); this is the remedy when two
+  slugs on one account do collide, and it avoids the alternative of renaming
+  the site — which would rename its Worker, database and bucket too. The value
+  used is recorded in the ledger, so a resumed run deploys the same limiter.
 - Every resource it creates is recorded in `.mallok/create-state.json` before
   the call that creates it — names, ids and the account, and **never a secret
   value**. Running `mallok create . --slug <slug>` from inside the project
@@ -359,9 +373,16 @@ Three refusals:
 - it stops if the current Cloudflare account is not the one the ledger
   records, because a same-named resource on another account is somebody
   else's site;
-- it will not report a bucket as deleted when the bucket still holds objects,
-  because Cloudflare refuses that. `--empty-bucket` deletes them first, and is
-  opt-in because it destroys every uploaded image and file.
+- it tries the **bucket first** and stops there if Cloudflare refuses because
+  it is not empty — before the Worker and the database are gone, because the
+  opposite order leaves a site that is down with two resources still billing
+  and nothing to serve its pages.
+
+There is **no `--empty-bucket`**. The flag existed, was documented as deleting
+every object first, and was built on `wrangler r2 object list` — a subcommand
+Wrangler 4.124.0 does not have, so it would have failed the first time anybody
+used it. Emptying a bucket is dashboard work until a supported API exists;
+`destroy` says so and resumes at the bucket when it is run again.
 
 What it cannot do, and says so at the end: R2 and Worker custom domains, DNS
 records, the Turnstile widget and `CF_API_TOKEN` are dashboard work.
@@ -373,14 +394,22 @@ Moves a project onto another Mallok release:
 1. sets the **exact** version in `package.json` (a range is refused — an
    upgrade is a decision, not something an install does to you);
 2. installs;
-3. applies any project migrations that release needs, once each, recorded by
-   id in `.mallok/upgrades.json`;
-4. re-runs the project's typecheck, tests, build and `wrangler deploy
-   --dry-run`.
+3. hands over to the **target version's own** `mallok upgrade-finalize`, in an
+   isolated copy of the project, so the migrations that run are the ones the
+   release being installed carries — not the ones the older CLI was compiled
+   with. A migration introduced by a release would otherwise never run on the
+   upgrade that introduces it;
+4. records each applied migration by id in the project's tracked
+   `mallok.json`, not in the git-ignored `.mallok/` — a record the next clone
+   cannot see is not a record of "exactly once";
+5. re-runs the project's typecheck, tests, build and `wrangler deploy
+   --dry-run`, and only then moves the finished copy over the real project.
 
-Running it again on the same version changes nothing and exits 0. A failure
-restores `package.json` and the lockfile, so the project is left on the
-version that worked.
+Running it again on the same version changes nothing and exits 0. **A failure
+leaves the project byte-for-byte as it was** — every file, including the ones
+a migration had already rewritten — because all of it happened in a copy that
+is thrown away. It also refuses to move backwards: `--to` an older version is
+an error, since a migration has no down-path.
 
 Lint is deliberately **not** among the checks: it examines the site's own
 formatting, which the site owns, and failing an upgrade over indentation is

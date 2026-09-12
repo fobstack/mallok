@@ -7,7 +7,7 @@
  *   worker/index.js  `mallok/worker` — createMallok, the official themes and
  *                    the official plugins, with every template, stylesheet
  *                    and migration inlined as text
- *   types/           declarations for that entry, emitted from the source
+ *   types/worker.d.ts  the declarations for that entry
  *   assets/          the compiled admin app and the official themes' assets,
  *                    staged into a site's `dist/assets` by `mallok prepare`
  *   template/        the thin project shell `mallok create` writes
@@ -32,6 +32,7 @@ import {
 } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { build } from 'esbuild';
+import { thirdPartyNotices } from './third-party-notices.mjs';
 
 const run = promisify(execFile);
 
@@ -40,7 +41,7 @@ const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 const OUT = 'dist/pkg';
 
 /**
- * The three builds this one packages.
+ * The two builds this one packages.
  *
  * Run here rather than chained in `package.json` so that one command produces
  * a complete package: the release test calls this script and nothing else,
@@ -50,7 +51,6 @@ const OUT = 'dist/pkg';
 for (const [label, command, args] of [
   ['themes', 'node', ['scripts/build-themes.mjs']],
   ['admin', 'npx', ['vite', 'build']],
-  ['types', 'npx', ['tsc', '-p', 'tsconfig.types.json']],
 ]) {
   process.stdout.write(`building ${label}…\n`);
   await run(command, args, { maxBuffer: 32 * 1024 * 1024 });
@@ -118,7 +118,15 @@ const cli = await build({
 await chmod(`${OUT}/cli/index.js`, 0o755);
 
 // ---- Types ---------------------------------------------------------------
-await cp('dist/types', `${OUT}/types`, { recursive: true });
+//
+// The hand-written public surface, not a declaration emit. `tsc` follows
+// every `.d.ts` it loads, and an emitted tree reaches `zod`, `mdast` and
+// `hast` through the core barrel — packages this one does not depend on, so a
+// site with `skipLibCheck` turned off could not compile at all. What keeps
+// this file honest is `test/types/public-surface.ts`, which type-checks the
+// implementation against it (src/worker/public.d.ts explains the choice).
+await mkdir(`${OUT}/types`, { recursive: true });
+await copyFile('src/worker/public.d.ts', `${OUT}/types/worker.d.ts`);
 
 // ---- Assets --------------------------------------------------------------
 //
@@ -176,6 +184,12 @@ await writeFile(
 // ---- Package metadata ----------------------------------------------------
 await copyFile('LICENSE', `${OUT}/LICENSE`);
 await copyFile('NOTICE', `${OUT}/NOTICE`);
+
+// Attribution for what the two bundles above actually inlined, read from
+// their own metafiles. Redistributing a bundle without the notices of what is
+// inside it is a licence breach, not a documentation gap.
+const notices = await thirdPartyNotices([worker, cli]);
+await writeFile(`${OUT}/THIRD_PARTY_NOTICES`, notices.text, 'utf8');
 await writeFile(`${OUT}/README.md`, packageReadme(version));
 
 await writeFile(
@@ -190,11 +204,11 @@ await writeFile(
       bin: { mallok: './cli/index.js' },
       exports: {
         '.': {
-          types: './types/src/worker/framework.d.ts',
+          types: './types/worker.d.ts',
           default: './worker/index.js',
         },
         './worker': {
-          types: './types/src/worker/framework.d.ts',
+          types: './types/worker.d.ts',
           default: './worker/index.js',
         },
         './package.json': './package.json',
@@ -207,6 +221,7 @@ await writeFile(
         'template',
         'LICENSE',
         'NOTICE',
+        'THIRD_PARTY_NOTICES',
         'README.md',
       ],
       engines: { node: '>=22' },
@@ -244,6 +259,7 @@ console.log(`worker entry: ${(workerBytes / 1024).toFixed(1)} KiB`);
 console.log(
   `cli bundle:   ${(cliBytes / 1024).toFixed(1)} KiB (sharp external)`,
 );
+console.log(`notices:      ${notices.packages.length} bundled packages`);
 
 /**
  * The readme npm shows on the package page.

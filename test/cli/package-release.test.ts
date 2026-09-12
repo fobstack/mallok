@@ -1,5 +1,7 @@
 import { execFile } from 'node:child_process';
 import {
+  cp,
+  mkdir,
   mkdtemp,
   readdir,
   readFile,
@@ -186,7 +188,8 @@ describe('the packed tarball', () => {
 
     expect(files).toContain('cli/index.js');
     expect(files).toContain('worker/index.js');
-    expect(files).toContain('types/src/worker/framework.d.ts');
+    expect(files).toContain('types/worker.d.ts');
+    expect(files).toContain('THIRD_PARTY_NOTICES');
     expect(files.some((file) => file.startsWith('assets/_mallok/app/'))).toBe(
       true,
     );
@@ -357,13 +360,32 @@ describe('mallok create, from an empty directory', () => {
   });
 
   it('leaves no trace of how the candidate was served', async () => {
-    // The local registry is a testing device. A project that carried it would
-    // be a project nobody else could install.
-    for (const file of ['package.json', 'wrangler.jsonc', '.npmrc']) {
-      const text = await readFile(join(project, file), 'utf8').catch(() => '');
-      expect(text, file).not.toContain('127.0.0.1');
-    }
+    // Checking three files by name is how a trace survives in the fourth.
+    // Every text file the project owns is read — the manifest, any npmrc, the
+    // configuration, the content, the source — because anything pointing at
+    // this machine makes a project nobody else can install.
+    //
+    // The lockfile is examined separately below: it genuinely does record the
+    // registry a package came from, and pretending otherwise is what would
+    // make a local-registry lockfile look like evidence of portability.
+    const offenders = await traces(project, (path) => !LOCKFILES.has(path));
+
+    expect(offenders).toEqual([]);
     expect(await readdir(project)).not.toContain('.npmrc');
+  });
+
+  it('records the local registry in its lockfile, and nowhere else', async () => {
+    // Stated rather than asserted away. `npm` writes a `resolved` URL for
+    // every package, and here that URL is a port on this machine — so this
+    // lockfile installs on no other computer, and the external gate has to
+    // regenerate it from the public registry after publishing rather than
+    // ship this one (docs/RELEASE.md).
+    const inLockfile = await traces(project, (path) => LOCKFILES.has(path));
+
+    expect(inLockfile.length).toBeGreaterThan(0);
+    expect(
+      inLockfile.every((line) => line.startsWith('package-lock.json:')),
+    ).toBe(true);
   });
 
   it('passes its own gate', async () => {
@@ -399,4 +421,138 @@ describe('mallok create, from an empty directory', () => {
     expect(result.code, result.stdout + result.stderr).toBe(0);
     expect(result.stdout).toContain('smoke: ok');
   }, 300_000);
+
+  /**
+   * What this lockfile is worth on another machine: nothing, yet.
+   *
+   * Runs last, because it shuts the registry down. Everything above proves
+   * the candidate installs *here*, from a server on a port that exists for
+   * the length of this test. The question that matters to a release is
+   * whether the same project installs anywhere else, and the honest answer
+   * before publishing is no — the version is not on npmjs.com and the
+   * lockfile points at 127.0.0.1.
+   *
+   * So this asserts the failure rather than skipping it. A green "clean
+   * reinstall" here would mean the resolution came from a cache, and that is
+   * the exact mistake this replaces: it would have been read as evidence the
+   * published package installs cleanly, before anything was published.
+   */
+  it('cannot be reinstalled once the registry is gone', async () => {
+    await registry?.close();
+    registry = null;
+
+    const elsewhere = join(workspace, 'elsewhere');
+    await cp(project, elsewhere, { recursive: true });
+    await rm(join(elsewhere, 'node_modules'), { recursive: true, force: true });
+    const cache = join(workspace, 'empty-cache');
+    await mkdir(cache, { recursive: true });
+
+    const result = await run('npm', ['ci', '--cache', cache], elsewhere);
+
+    expect(result.code, result.stdout).not.toBe(0);
+    // Named so the failure cannot be mistaken for a broken test: npm could
+    // not reach the registry the lockfile recorded.
+    expect(result.stderr).toMatch(/ECONNREFUSED|127\.0\.0\.1|E404|ENOTFOUND/);
+    await expect(
+      stat(join(elsewhere, 'node_modules/mallok')),
+    ).rejects.toBeDefined();
+  }, 600_000);
 });
+
+/** Lockfiles any of the three package managers might have written. */
+const LOCKFILES = new Set([
+  'package-lock.json',
+  'npm-shrinkwrap.json',
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'bun.lockb',
+]);
+
+/**
+ * Every readable text file in a project, keyed by its path within it.
+ *
+ * `node_modules` and build output are excluded: they are reinstalled and
+ * regenerated, and neither travels with the project.
+ */
+async function projectText(
+  dir: string,
+): Promise<ReadonlyArray<readonly [string, string]>> {
+  const found: (readonly [string, string])[] = [];
+  const walk = async (current: string, prefix: string): Promise<void> => {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      if (['node_modules', 'dist', '.wrangler', '.git'].includes(entry.name)) {
+        continue;
+      }
+      const path = join(current, entry.name);
+      if (entry.isDirectory()) {
+        await walk(path, `${prefix}${entry.name}/`);
+        continue;
+      }
+      const text = await readFile(path, 'utf8').catch(() => null);
+      // A NUL byte means binary, and a compiled asset has no markers to find
+      // either way. Written as an escape: a literal NUL in a source file makes
+      // Git treat the file as binary, which has already cost one debugging
+      // session in this repository.
+      if (text !== null && !text.includes('\u0000')) {
+        found.push([`${prefix}${entry.name}`, text] as const);
+      }
+    }
+  };
+  await walk(dir, '');
+  return found;
+}
+
+/**
+ * Places where a loopback address is the project's own, not a leak.
+ *
+ * Reviewed one by one and written down, rather than left to a rule like "skip
+ * `scripts/`": the point of the scan is that a marker nobody expected is a
+ * failure, and an exemption that covers a whole directory hides the next one.
+ */
+const EXPECTED: ReadonlyArray<{
+  readonly path: string;
+  readonly marker: string;
+  readonly reason: string;
+}> = [
+  {
+    path: 'scripts/smoke.mjs',
+    marker: '127.0.0.1',
+    reason:
+      'The smoke script starts `wrangler dev` on a loopback port and asks it ' +
+      'for three pages. The address is the server it just started on the ' +
+      "reader's own machine, not a registry this project was built against.",
+  },
+];
+
+/** Every place a project's files point at the machine that built it. */
+async function traces(
+  dir: string,
+  include: (path: string) => boolean,
+): Promise<string[]> {
+  const offenders: string[] = [];
+  for (const [path, text] of await projectText(dir)) {
+    if (!include(path)) {
+      continue;
+    }
+    for (const marker of [
+      'localhost',
+      '127.0.0.1',
+      'file:',
+      'link:',
+      'workspace:',
+    ]) {
+      const expected = EXPECTED.some(
+        (entry) => entry.path === path && entry.marker === marker,
+      );
+      if (text.includes(marker) && !expected) {
+        offenders.push(`${path}: ${marker}`);
+      }
+    }
+    for (const match of text.matchAll(
+      /(?:\/Users|\/home|\/private\/var\/folders)\/[A-Za-z0-9._-]+\//g,
+    )) {
+      offenders.push(`${path}: ${match[0]}`);
+    }
+  }
+  return offenders;
+}

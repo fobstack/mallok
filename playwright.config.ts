@@ -46,7 +46,7 @@ export default defineConfig({
       // with the packaged CLI. Without it the spec used a `dist/` directory
       // left over from an earlier release and passed against an artifact this
       // run never produced.
-      'rm -rf .tmp/e2e-state && pnpm run build:types && pnpm run build:package && npx wrangler dev --port 8788 --persist-to .tmp/e2e-state',
+      'rm -rf .tmp/e2e-state && pnpm run build:package && npx wrangler dev --port 8788 --persist-to .tmp/e2e-state',
     url: 'http://127.0.0.1:8788/_mallok/api/setup/status',
     // Off by default so a run always tests the build it just made. Set
     // MALLOK_E2E_REUSE=1 to attach to a `wrangler dev` you started yourself,

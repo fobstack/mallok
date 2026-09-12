@@ -35,7 +35,6 @@ const SOURCES = [
   'package.json',
   'tsconfig.json',
   'tsconfig.base.json',
-  'tsconfig.types.json',
   'vite.config.ts',
   'text-modules.d.ts',
   'site.json',

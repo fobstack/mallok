@@ -47,14 +47,14 @@
     "dev:admin": "vite",
     "admin:size": "node scripts/admin-size.mjs",
     "build:site": "pnpm run build:package && node dist/pkg/cli/index.js build . --theme ./src/themes/atelier --out dist/site",
-    "release:pack": "pnpm run build:types && pnpm run build:package && cd dist/pkg && npm pack",
+    "release:pack": "pnpm run build:package && cd dist/pkg && npm pack",
     "prepublishOnly": "node scripts/refuse-publish.mjs",
     "test:coverage": "vitest run --project core --project runtime --project runtime-dom --project runtime-build --coverage",
     "test:e2e": "playwright test",
     "test:a11y": "playwright test 01-wizard 05-accessibility",
     "scan:secrets": "node scripts/scan-secrets.mjs",
+    "lighthouse:gate": "node scripts/lighthouse-gate.mjs",
     "build:package": "node scripts/build-package.mjs",
-    "build:types": "tsc -p tsconfig.types.json",
     "test:release": "vitest run --project release"
   },
   "dependencies": {
@@ -82,6 +82,7 @@
     "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/state": "^6.7.1",
     "@codemirror/view": "^6.43.9",
+    "@lhci/cli": "0.15.1",
     "@playwright/test": "^1.63.0",
     "@preact/signals-react": "^3.12.0",
     "@preact/signals-react-transform": "^0.8.2",
@@ -109,13 +110,13 @@
   "cloudflare": {
     "bindings": {
       "MALLOK_SECRET": {
-        "description": "Required. Signs sessions and encrypts plugin API keys. Generate one with `openssl rand -base64 32`. Keep it \u2014 changing it signs everyone out and makes stored plugin keys unreadable."
+        "description": "Required. Signs sessions and encrypts plugin API keys. Generate one with `openssl rand -base64 32`. Keep it — changing it signs everyone out and makes stored plugin keys unreadable."
       },
       "CF_API_TOKEN": {
-        "description": "Optional. A Cloudflare API token with **Zone \u2192 Cache Purge \u2192 Purge**, scoped to this site\u2019s zone. Without it the site works, but an edit becomes visible when the cached page expires rather than immediately."
+        "description": "Optional. A Cloudflare API token with **Zone → Cache Purge → Purge**, scoped to this site’s zone. Without it the site works, but an edit becomes visible when the cached page expires rather than immediately."
       },
       "CF_ZONE_ID": {
-        "description": "Optional, and only useful together with `CF_API_TOKEN`. The Zone ID shown on your domain\u2019s overview page in the Cloudflare dashboard."
+        "description": "Optional, and only useful together with `CF_API_TOKEN`. The Zone ID shown on your domain’s overview page in the Cloudflare dashboard."
       }
     }
   }
