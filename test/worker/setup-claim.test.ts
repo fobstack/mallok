@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest';
 /**
  * Claiming a site: the one moment when a stranger can become its owner.
  *
- * This project runs with `MALLOK_REQUIRE_SETUP_KEY=true` and **no**
- * `MALLOK_SETUP_KEY`, which is the state a site is in between its first
- * deploy and its secrets being set. A site in that state must refuse to be
- * claimed at all — not fall back to "no key configured, anyone may proceed",
- * which is precisely the window an automated scanner needs.
+ * This project binds **nothing** — no `MALLOK_SETUP_KEY`, and no var asking
+ * for one. That is the point: refusing is the **default**, not something a
+ * configuration has to request. It used to depend on
+ * `MALLOK_REQUIRE_SETUP_KEY` being present and `"true"`, so a site deployed
+ * by hand, a site whose var was dropped in an edit, or one provisioned by an
+ * older Mallok all fell through to "no key configured, anyone may proceed" —
+ * precisely the window an automated scanner needs.
  */
 
 const ORIGIN = 'https://claim.example';
@@ -32,7 +34,7 @@ describe('a site that requires a key it has not been given', () => {
     // ready. Either way it must not be claimable.
     expect(response.status).toBe(503);
     const body = await response.text();
-    expect(body.toLowerCase()).toContain('not finished');
+    expect(body.toLowerCase()).toContain('no setup key');
   });
 
   it('refuses even when a key is supplied', async () => {

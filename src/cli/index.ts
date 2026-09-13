@@ -464,14 +464,11 @@ async function runCreate(
       ? ''
       : `${result.origin}/_mallok/setup`;
 
-  if (result.setupKey !== null) {
-    // Printed once and never stored. The wizard asks for it before it will
-    // create the administrator, so a deployed-but-unclaimed site cannot be
-    // taken by whoever finds the address first.
-    report.step('');
-    report.step('Setup key (needed once, by the wizard, and shown only here):');
-    report.step(`    ${result.setupKey}`);
-  }
+  // The setup key is **not** printed here. `createSite` hands it over through
+  // `deliverSetupKey` and records the delivery only once that returns, which
+  // is what stops an interrupted run leaving a site whose key exists remotely
+  // and is known to nobody. Printing it a second time here would put a
+  // credential in the scrollback twice for no gain.
   if (setupUrl !== '') {
     report.step(`\nOpen ${setupUrl} to finish setting up the site.`);
   }

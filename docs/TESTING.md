@@ -56,9 +56,13 @@ starts drifting the day it is typed, and the command prints the current one.
 ```
 
 The two extra worker projects exist because a **binding** is what they differ
-in: `MALLOK_SETUP_KEY` present, and `MALLOK_REQUIRE_SETUP_KEY` present without
-it. Binding either one for every worker test would make them all exercise the
-same path instead of the ones they are about.
+in: `worker-setup-key` binds a key, and `worker-unclaimable` binds **nothing**
+— which is the point, because refusing a keyless setup is the default rather
+than something a configuration requests. The ordinary `worker` project binds
+`MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY`, since its tests bootstrap an
+administrator through the wizard and there is no `mallok create` behind
+`wrangler dev` to mint a secret. Binding a key for every worker test would
+make them all exercise the same path instead of the ones they are about.
 
 None of these projects reads `wrangler.jsonc`, and that is deliberate: the
 pool loads the `.dev.vars` beside it, so every worker test used to run with

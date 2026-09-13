@@ -157,6 +157,11 @@ export default defineConfig({
       {
         plugins: [
           cloudflareTest({
+            // The development switch, which is what it is for: these tests
+            // bootstrap an administrator through the wizard, and there is no
+            // `mallok create` behind `wrangler dev` to mint a setup key. A
+            // site with no key refuses setup by default — that default is
+            // held by the `worker-unclaimable` project, which binds nothing.
             // No `wrangler.configPath`. Pointing at the repository's own
             // configuration made the pool load the `.dev.vars` beside it, so
             // every worker test ran with a developer's local secret — green
@@ -164,7 +169,9 @@ export default defineConfig({
             // the repository does not contain.
             // `test/worker/environment-isolation.test.ts` is the tripwire.
             main: 'src/worker/index.ts',
-            miniflare: workerEnvironment(),
+            miniflare: workerEnvironment({
+              MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY: 'true',
+            }),
           }),
         ],
         test: {
@@ -193,7 +200,6 @@ export default defineConfig({
             main: 'src/worker/index.ts',
             miniflare: workerEnvironment({
               MALLOK_SETUP_KEY: 'a-one-time-setup-key-for-this-test',
-              MALLOK_REQUIRE_SETUP_KEY: 'true',
               MALLOK_DOMAIN: 'provisioned.example',
             }),
           }),
@@ -208,18 +214,20 @@ export default defineConfig({
       },
       {
         /*
-         * A site between its first deploy and its secrets being set.
+         * A site with no setup key — which is every site that has not been
+         * given one, and the state a site is in between its first deploy and
+         * its secrets being set. It must refuse to be claimed.
          *
-         * `MALLOK_REQUIRE_SETUP_KEY` is declared and `MALLOK_SETUP_KEY` is
-         * not — the exact window an automated scanner needs, and the one a
-         * site must refuse to be claimed in.
+         * Nothing is bound here, and that is the test: refusing is the
+         * **default**. It used to depend on `MALLOK_REQUIRE_SETUP_KEY` being
+         * present and `"true"`, so a site deployed by hand, or one whose var
+         * was dropped in an edit, fell through to "no key configured, anyone
+         * may proceed" — which is precisely the window a scanner needs.
          */
         plugins: [
           cloudflareTest({
             main: 'src/worker/index.ts',
-            miniflare: workerEnvironment({
-              MALLOK_REQUIRE_SETUP_KEY: 'true',
-            }),
+            miniflare: workerEnvironment(),
           }),
         ],
         test: {

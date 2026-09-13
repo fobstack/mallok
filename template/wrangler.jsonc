@@ -56,14 +56,18 @@
     // Filled in by `mallok create --domain`. The Worker copies it into
     // `site.domain` when the wizard finishes, so canonical URLs, hreflang and
     // the sitemap describe the host the site is actually served on.
-    "MALLOK_DOMAIN": "",
-    // Set by `mallok create`. While this is "true", the first-run wizard will
-    // not create an administrator without the one-time key the CLI printed —
-    // and, crucially, it refuses outright if the key secret is missing rather
-    // than falling back to letting anyone through. That window, between the
-    // first deploy and the secrets being set, is when a site is claimable by
-    // whoever finds its address.
-    "MALLOK_REQUIRE_SETUP_KEY": "true"
+    "MALLOK_DOMAIN": ""
+    // There is no var here asking for a setup key. The first-run wizard
+    // requires one by **default**: a site with no `MALLOK_SETUP_KEY` refuses
+    // to create an administrator at all, rather than falling back to letting
+    // anyone through. That window — between the first deploy and the secrets
+    // being set — is when a site is claimable by whoever finds its address,
+    // and it used to depend on a var being present and spelled correctly.
+    //
+    // `MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY` turns the requirement off for
+    // local `wrangler dev`, where there is no `mallok create` to mint a
+    // secret. It must never appear here: `mallok create` refuses to deploy a
+    // configuration that carries it.
   },
   // A theme's templates and stylesheets are bundled as plain text.
   "rules": [

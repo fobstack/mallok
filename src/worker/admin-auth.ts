@@ -73,17 +73,33 @@ function constantTimeEqual(a: string, b: string): boolean {
 }
 
 /**
- * Whether this deployment insists on a setup key.
+ * The one switch that lets a site be set up without a key.
  *
- * Set by `mallok create` as a plain var, alongside the secret itself. The two
- * are separate on purpose: a var is visible in `wrangler.jsonc` and survives
- * a lost secret, so a site can say "I require a key" even in the window where
- * it has not been given one — which is exactly the window an automated
- * scanner needs, and exactly when falling back to "no key configured, anyone
- * may proceed" would hand the site away.
+ * **A setup key is required by default.** It did not used to be: a site
+ * refused a keyless setup only when `MALLOK_REQUIRE_SETUP_KEY` was present
+ * and `"true"`, so a site deployed by hand, a site whose var was lost in an
+ * edit, a site provisioned by an older Mallok, or a config that simply never
+ * carried the line all fell through to "no key configured, let them in" — and
+ * the first caller to reach `/_mallok/setup` became the administrator of
+ * somebody else's site. A `.workers.dev` name is guessable and certificate
+ * transparency publishes a custom domain within minutes of its first request,
+ * so "nobody will find it in time" was never the defence it sounded like.
+ *
+ * Local development genuinely needs a keyless wizard — `wrangler dev` has no
+ * `mallok create` behind it to mint a secret — so there is exactly one way to
+ * get one, and it is named so that nobody sets it by accident or mistakes it
+ * for a tuning knob. `assertUsableConfig` refuses a `wrangler.jsonc` that
+ * carries it, the shell never ships it, and `mallok create` will not deploy a
+ * configuration containing it.
  */
-function requiresSetupKey(env: Env): boolean {
-  return (env.MALLOK_REQUIRE_SETUP_KEY ?? '').toLowerCase() === 'true';
+const DEV_SWITCH = 'MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY';
+
+function allowsSetupWithoutKey(env: Env): boolean {
+  return (
+    (
+      (env[DEV_SWITCH as keyof Env] as string | undefined) ?? ''
+    ).toLowerCase() === 'true'
+  );
 }
 
 /**
@@ -109,24 +125,25 @@ async function checkSetupKey(
   supplied: string | undefined,
 ): Promise<{ refusal: Response } | { keyUsed: boolean }> {
   const expected = env.MALLOK_SETUP_KEY;
-  const required = requiresSetupKey(env);
 
   if (expected === undefined || expected === '') {
-    if (required) {
-      // Deployed, and its secrets not set yet. **Fail closed**: there is
-      // nothing to compare a key against, so accepting any request here would
-      // mean the first caller to guess any string becomes the owner.
-      return {
-        refusal: problem(
-          503,
-          'This site is not finished being set up: its setup key has not ' +
-            'been deployed yet. Run `mallok create .` again in the project ' +
-            'directory to complete it.',
-        ),
-      };
+    if (allowsSetupWithoutKey(env)) {
+      // Local development only, and only because somebody wrote the switch
+      // out in full. Nothing that ships sets it.
+      return { keyUsed: false };
     }
-    // A site deployed by hand, before this existed. It behaves as it did.
-    return { keyUsed: false };
+    // **Fail closed, and this is the default.** There is nothing to compare a
+    // key against, so accepting the request would mean the first caller to
+    // guess any string becomes the owner — including a scanner that found the
+    // hostname in a certificate transparency log minutes after the deploy.
+    return {
+      refusal: problem(
+        503,
+        'This site has no setup key, so it will not create an administrator. ' +
+          'Run `mallok create .` in the project directory to finish ' +
+          'provisioning it, or `mallok setup-key` to issue one.',
+      ),
+    };
   }
 
   const site = await loadSite(env.DB);

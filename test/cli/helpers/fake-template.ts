@@ -50,8 +50,7 @@ export async function writeFakeTemplate(): Promise<string> {
   ],
   "vars": {
     "MALLOK_SITE": "site",
-    "MALLOK_DOMAIN": "",
-    "MALLOK_REQUIRE_SETUP_KEY": "false"
+    "MALLOK_DOMAIN": ""
   },
   "triggers": { "crons": ["* * * * *"] }
 }

@@ -159,12 +159,27 @@ else's site — a race against a scanner, on every deployment.
 `mallok create` generates `MALLOK_SETUP_KEY`, sets it as a Worker secret and
 prints it once. Four properties matter, and each is tested:
 
-- **Fail closed in the window before the secret exists.** `MALLOK_REQUIRE_SETUP_KEY`
-  is a plain **var**, not a secret, precisely so it is readable when the
-  secret is not. A site that declares it and has no key answers **503** and
-  creates no administrator — the alternative, "no key configured, anyone may
-  proceed", hands the site to whoever asks during the deploy window.
-  A site deployed by hand, which never declared it, behaves as it always did.
+- **Fail closed, by default.** A site with no `MALLOK_SETUP_KEY` answers
+  **503** and creates no administrator. Full stop — there is no var to set and
+  no configuration to get right.
+
+  This used to be opt-in: refusal required `MALLOK_REQUIRE_SETUP_KEY` to be
+  present and `"true"`, so a site deployed by hand, a site whose var was
+  dropped in an edit, a site provisioned by an older Mallok, or a
+  `wrangler.jsonc` that simply never carried the line all fell through to "no
+  key configured, anyone may proceed". That is the window an automated
+  scanner needs, and it was reached by *omission* — the least visible way for
+  a security control to be off. The var is gone; the requirement is the
+  default.
+
+  `MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY="true"` is the one way to get a keyless
+  wizard, for local `wrangler dev` where there is no `mallok create` to mint a
+  secret. It is named so that nobody sets it by accident or mistakes it for a
+  tuning knob, and three things keep it out of production:
+  `assertUsableConfig` refuses a `wrangler.jsonc` that carries it, so
+  `mallok create` will not deploy one; the project shell never ships it; and
+  `test/cli/site-config.test.ts` asserts a rendered configuration never
+  contains it.
 - **Spent once.** The key is checked against `site.setup_key_used_at`; a
   replay is 409, even if the value is later found in a terminal's scrollback.
 - **Claiming is atomic.** The password is hashed *before* the claim, and the

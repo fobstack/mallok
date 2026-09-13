@@ -115,6 +115,20 @@ export interface CreateOptions {
   /** The Cloudflare account to act on; checked against `whoami`. */
   readonly accountId?: string | undefined;
   /**
+   * Hands the one-time setup key to a person, and throws if it cannot.
+   *
+   * The ledger records `setupKeyDeliveredAt` **after** this returns, never
+   * before: Cloudflare does not give a secret's value back, so a key that was
+   * set and never shown is a key nobody has, and a ledger that claims
+   * otherwise stops the next run from rotating it. The site would then be
+   * deployed, unclaimable and unrecoverable.
+   *
+   * The default writes to stdout and waits for the write to be accepted. A
+   * caller that cannot deliver — a closed pipe, a full disk — must throw, so
+   * that this run fails loudly and the next one rotates.
+   */
+  readonly deliverSetupKey?: (key: string) => Promise<void> | void;
+  /**
    * The rate-limit namespace id, when the derived one will not do.
    *
    * The derivation is deterministic and collision-*resistant*, not
@@ -399,6 +413,7 @@ export async function createSite(
         runner,
         accountId: options.accountId,
         hasAdministrator: options.hasAdministrator ?? siteHasAdministrator,
+        deliverSetupKey: options.deliverSetupKey ?? printSetupKey,
       },
       existing,
       report,
@@ -420,6 +435,7 @@ interface ProvisionInput {
   readonly configInput: SiteConfigInput;
   readonly runner: CommandRunner;
   readonly hasAdministrator: (origin: string) => Promise<boolean | null>;
+  readonly deliverSetupKey: (key: string) => Promise<void> | void;
 }
 
 /**
@@ -766,12 +782,23 @@ async function provision(
   }
   recorded.add('MALLOK_SETUP_KEY');
 
+  // ---- Hand the key over, and only then record that it was handed over ----
+  //
+  // The order here is the whole guarantee. `setupKeyDeliveredAt` is what stops
+  // a resumed run rotating a key that somebody already holds, so recording it
+  // before the value reaches a person turns an interrupted run into a
+  // permanently unclaimable site: the secret exists, nobody knows it, and the
+  // resume that exists to fix that sees a delivery already recorded.
+  //
+  // This used to write the ledger first and let the caller print afterwards.
+  if (setupKey !== null) {
+    await input.deliverSetupKey(setupKey);
+  }
+
   ledger = {
     ...ledger,
     // Names only. This file is meant to be committed.
     secrets: [...recorded].sort(),
-    // Recorded *after* the value has been produced for printing. The caller
-    // prints it; if this process dies first, the next run rotates.
     setupKeyDeliveredAt: new Date().toISOString(),
     completedAt: new Date().toISOString(),
   };
@@ -846,6 +873,29 @@ async function ensureRegistered(
     registryPath,
   );
   return existing === undefined;
+}
+
+/**
+ * The default hand-over: stdout, and an error if it does not get there.
+ *
+ * `process.stdout.write` returns false when the buffer is full and reports a
+ * failed write through its callback — a closed pipe (`mallok create | head`)
+ * is the ordinary way to see one. Waiting for that callback is what makes
+ * "delivered" a fact rather than an intention.
+ */
+async function printSetupKey(key: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    process.stdout.write(
+      `\nSetup key (needed once, by the wizard, and shown only here):\n    ${key}\n`,
+      (error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      },
+    );
+  });
 }
 
 /**

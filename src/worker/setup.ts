@@ -50,6 +50,12 @@ const starterStepSchema = z.object({
 export async function getSetupStatus(env: Env): Promise<Response> {
   const row = await loadSite(env.DB);
   const admins = await countAdminUsers(env.DB);
+  const hasSetupKey =
+    env.MALLOK_SETUP_KEY !== undefined && env.MALLOK_SETUP_KEY !== '';
+  // The same judgement `checkSetupKey` makes, read from the same switch: a
+  // key is required unless the explicit development switch is set.
+  const allowsSetupWithoutKey =
+    (env.MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY ?? '').toLowerCase() === 'true';
   return json({
     completed: row?.setup_completed_at !== null && row !== null,
     hasAdmin: admins > 0,
@@ -64,9 +70,11 @@ export async function getSetupStatus(env: Env): Promise<Response> {
           },
     // Whether the wizard will ask for the one-time key `mallok create`
     // printed. The key itself is never sent anywhere, in either direction.
-    requiresSetupKey:
-      (env.MALLOK_REQUIRE_SETUP_KEY ?? '').toLowerCase() === 'true' ||
-      (env.MALLOK_SETUP_KEY !== undefined && env.MALLOK_SETUP_KEY !== ''),
+    //
+    // A key is required unless the explicit development switch says
+    // otherwise, which is the same rule `checkSetupKey` applies — the two
+    // must agree, or the form asks for something the endpoint ignores.
+    requiresSetupKey: !allowsSetupWithoutKey,
     /**
      * Whether the wizard can be completed at all.
      *
@@ -74,9 +82,7 @@ export async function getSetupStatus(env: Env): Promise<Response> {
      * would be unsubmittable, and saying so is better than a refusal per
      * attempt.
      */
-    ready:
-      (env.MALLOK_REQUIRE_SETUP_KEY ?? '').toLowerCase() !== 'true' ||
-      (env.MALLOK_SETUP_KEY !== undefined && env.MALLOK_SETUP_KEY !== ''),
+    ready: allowsSetupWithoutKey || hasSetupKey,
     theme: {
       id: activeTheme().manifest.id,
       name: activeTheme().manifest.name,

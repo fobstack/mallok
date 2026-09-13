@@ -19,19 +19,21 @@ export interface Env {
   /**
    * One-time credential for the first-run wizard, set by `mallok create`.
    *
-   * Optional: a site deployed by hand has none, and the wizard then behaves
-   * as it did before this existed (docs/SECURITY.md §4).
+   * A site without one refuses to create an administrator at all. That is the
+   * **default** (docs/SECURITY.md §3.7): it used to depend on a var asking
+   * for it, and the var's absence meant "let anyone in".
    */
   readonly MALLOK_SETUP_KEY?: string;
   /**
-   * `"true"` on a site that insists on a setup key.
+   * Local development only: allows the wizard to run with no setup key.
    *
-   * A plain var rather than a secret, because it has to be readable in the
-   * window where the secret is missing: that is when a site is claimable by
-   * a stranger, and when "no key configured" must mean "refuse" rather than
-   * "let anyone in".
+   * A setup key is required by default (`admin-auth.ts`). This is the one way
+   * to get a keyless wizard, spelled out in full so that nobody sets it by
+   * accident: `assertUsableConfig` refuses a `wrangler.jsonc` carrying it,
+   * the project shell never ships it, and `mallok create` will not deploy a
+   * configuration containing it.
    */
-  readonly MALLOK_REQUIRE_SETUP_KEY?: string;
+  readonly MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY?: string;
   /** Zone-scoped token with Cache Purge permission; optional. */
   readonly CF_API_TOKEN?: string;
   readonly CF_ZONE_ID?: string;

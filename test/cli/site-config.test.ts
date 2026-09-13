@@ -57,8 +57,7 @@ const BASE = `{
   ],
   "vars": {
     "MALLOK_SITE": "site",
-    "MALLOK_DOMAIN": "",
-    "MALLOK_REQUIRE_SETUP_KEY": "false"
+    "MALLOK_DOMAIN": ""
   },
   "triggers": { "crons": ["* * * * *"] }
 }
@@ -160,9 +159,11 @@ describe('rendering the configuration', () => {
     expect(rendered).toContain('"pattern": "shop.example.com"');
     expect(rendered).toContain('"custom_domain": true');
     expect(rendered).toContain('"MALLOK_DOMAIN": "shop.example.com"');
-    // A created site always requires its setup key, whatever the template
-    // said: the window between deploy and secrets is when it is claimable.
-    expect(rendered).toContain('"MALLOK_REQUIRE_SETUP_KEY": "true"');
+    // No var asks for the setup key any more: a site requires one by
+    // default, so the var said nothing and its *absence* used to mean "let
+    // anyone in". What a rendered config must never carry is the
+    // development switch that turns the requirement off.
+    expect(rendered).not.toContain('MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY');
     assertUsableConfig(parseJsonc(rendered, 'wrangler.jsonc'), withDomain);
   });
 

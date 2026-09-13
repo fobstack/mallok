@@ -291,13 +291,10 @@ export function renderConfig(base: string, input: SiteConfigInput): string {
       /"MALLOK_DOMAIN":\s*"[^"]*"/,
       `"MALLOK_DOMAIN": "${input.domain ?? ''}"`,
     )
-    // A site this command creates always gets a setup key, so it always
-    // requires one. The flag is a var rather than a secret because it must
-    // still be readable in the window where the secret is missing.
-    .replace(
-      /"MALLOK_REQUIRE_SETUP_KEY":\s*"[^"]*"/,
-      '"MALLOK_REQUIRE_SETUP_KEY": "true"',
-    );
+    // `MALLOK_REQUIRE_SETUP_KEY` is gone. A setup key is required by
+    // default now, so a var asking for one said nothing — and the shape that
+    // mattered was its *absence*, which used to mean "let anyone in".
+    .replace(/\s*"MALLOK_REQUIRE_SETUP_KEY":\s*"[^"]*",?/, '');
   if (input.domain !== null && !config.includes('"routes"')) {
     // A custom_domain route makes the deploy create the DNS record and the
     // certificate (docs/CLOUDFLARE_RESOURCES.md §6).
@@ -360,8 +357,16 @@ export function assertUsableConfig(
   if ((vars?.MALLOK_DOMAIN ?? '') !== (input.domain ?? '')) {
     problems.push('the domain was not written into vars');
   }
-  if ((vars?.MALLOK_REQUIRE_SETUP_KEY ?? '') !== 'true') {
-    problems.push('the site would accept setup without a key');
+  // The one switch that turns the wizard's key requirement off. It exists for
+  // `wrangler dev`, where there is no `mallok create` to mint a secret, and a
+  // deployed site must never carry it: anybody who reached the address before
+  // its owner did would become its administrator.
+  if (vars?.MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY !== undefined) {
+    problems.push(
+      'MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY is set, which would let anyone who ' +
+        'reaches /_mallok/setup become the administrator — it is for local ' +
+        '`wrangler dev` only and must not be deployed',
+    );
   }
   if (input.domain !== null) {
     const routes = config.routes as
