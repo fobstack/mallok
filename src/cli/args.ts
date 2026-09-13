@@ -120,6 +120,19 @@ const COMMANDS: Readonly<Record<string, CommandSpec>> = {
     values: ['account-id'],
     positional: { max: 0, what: 'no arguments' },
   },
+  /**
+   * `--adopt database,bucket` names what to claim, comma separated.
+   *
+   * Adopting is the one thing here that points a site at a resource it cannot
+   * prove it created, so it is spelled out rather than inferred — and the
+   * names are validated, because a typo that silently adopted nothing would
+   * look exactly like success.
+   */
+  repair: {
+    booleans: [],
+    values: ['account-id', 'adopt'],
+    positional: { max: 1, what: 'one site slug' },
+  },
   prepare: {
     booleans: [],
     values: [],

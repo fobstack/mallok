@@ -35,6 +35,7 @@ import {
 
 import { prepareAssets } from './prepare.js';
 import { publishBundles, reportMissing, reportWarnings } from './publish.js';
+import { ADOPTABLE, type Adoptable, repairSite } from './repair.js';
 import { scanDirectory } from './scan.js';
 import { rotateSetupKey } from './setup-key.js';
 import { finalizeUpgrade, nodeRunner, upgradeProject } from './upgrade.js';
@@ -494,6 +495,62 @@ async function runCreate(
   return EXIT.ok;
 }
 
+async function runRepair(
+  args: ReturnType<typeof parseArgs>,
+  report: Reporter,
+): Promise<number> {
+  const slug = args.positional[0];
+  if (slug === undefined) {
+    throw new CliError(
+      EXIT.user,
+      'Which site? `mallok repair <slug>`.',
+      'The slug is the one in .mallok/sites.json, or the one the ledger ' +
+        'records.',
+    );
+  }
+  const adopt = (stringFlag(args, 'adopt') ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '');
+  for (const kind of adopt) {
+    if (!(ADOPTABLE as readonly string[]).includes(kind)) {
+      // A typo that adopted nothing would look exactly like success.
+      throw new CliError(
+        EXIT.user,
+        `"${kind}" is not something this can adopt.`,
+        `Use one or more of: ${ADOPTABLE.join(', ')}.`,
+      );
+    }
+  }
+
+  const result = await repairSite(
+    {
+      slug,
+      projectDir: process.cwd(),
+      ...(stringFlag(args, 'account-id') === undefined
+        ? {}
+        : { accountId: stringFlag(args, 'account-id') as string }),
+      ...(adopt.length === 0 ? {} : { adopt: adopt as Adoptable[] }),
+      run: spawnRunner,
+    },
+    report,
+  );
+
+  report.done(
+    {
+      command: 'repair',
+      slug: result.slug,
+      accountId: result.accountId,
+      adopted: result.adopted,
+      changed: result.changed,
+    },
+    result.changed.length === 0
+      ? `${result.slug} already records account ${result.accountId}.`
+      : `${result.slug}: ${result.changed.join(', ')}.`,
+  );
+  return EXIT.ok;
+}
+
 async function runSetupKey(
   args: ReturnType<typeof parseArgs>,
   report: Reporter,
@@ -735,6 +792,8 @@ export async function main(argv: readonly string[]): Promise<number> {
         return await runPrepare(report);
       case 'setup-key':
         return await runSetupKey(args, report);
+      case 'repair':
+        return await runRepair(args, report);
       case 'upgrade':
         return await runUpgrade(args, report);
       case 'upgrade-finalize':

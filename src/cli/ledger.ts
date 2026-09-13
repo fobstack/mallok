@@ -192,6 +192,20 @@ export async function clearLedger(projectDir: string): Promise<void> {
  * a same-named resource belonging to someone else.
  */
 export function assertSameAccount(ledger: Ledger, accountId: string): void {
+  // `typeof '' === 'string'`, so an empty account id survives the ledger's
+  // own validation and then compares unequal to everything — which happens to
+  // fail, but with a message about "a different account" that is false and
+  // sends the reader looking in the wrong place.
+  if (ledger.accountId.trim() === '') {
+    throw new CliError(
+      EXIT.user,
+      `${LEDGER_FILE} does not record which Cloudflare account these resources belong to.`,
+      `Acting on them by name alone would act on account ${short(accountId)}, ` +
+        'which may not be the one that created them. Record it first: ' +
+        `\`mallok repair ${ledger.slug}\` checks the signed-in account and ` +
+        'writes it down.',
+    );
+  }
   if (ledger.accountId === accountId) {
     return;
   }

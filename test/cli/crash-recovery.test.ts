@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createSite } from '../../src/cli/create.js';
 import { readLedger } from '../../src/cli/ledger.js';
 import { makeReporter } from '../../src/cli/output.js';
+import { repairSite } from '../../src/cli/repair.js';
 import { writeFakeTemplate } from './helpers/fake-template.js';
 import { fakeCloudflare } from './helpers/fake-wrangler.js';
 
@@ -147,6 +148,24 @@ describe.each([
     await create(first.run);
     expect(first.account.applied).toContain(step);
 
+    // Claim anything the crash left `pending`, which is the explicit step
+    // that replaced automatic adoption.
+    const pending = await readLedger(join(workspace, 'my-site'));
+    for (const kind of ['database', 'bucket', 'worker'] as const) {
+      if (pending?.[kind]?.status === 'pending') {
+        const claim = fakeCloudflare({ account: first.account });
+        await repairSite(
+          {
+            slug: 'my-site',
+            projectDir: join(workspace, 'my-site'),
+            adopt: [kind],
+            run: claim.run,
+          },
+          report,
+        );
+      }
+    }
+
     const second = fakeCloudflare({ account: first.account });
     await resume(second.run);
 
@@ -163,6 +182,26 @@ describe.each([
     const first = fakeCloudflare({ failWhen: fails, failAfterEffect: true });
     await create(first.run);
 
+    // A resource left `pending` by an after-effect crash is no longer adopted
+    // silently — a same-named resource on a shared account may be somebody
+    // else's (`ownership.test.ts`). The operator claims it explicitly, which
+    // is one command, and then the resume runs to the end.
+    const pending = await readLedger(join(workspace, 'my-site'));
+    for (const kind of ['database', 'bucket', 'worker'] as const) {
+      if (pending?.[kind]?.status === 'pending') {
+        const claim = fakeCloudflare({ account: first.account });
+        await repairSite(
+          {
+            slug: 'my-site',
+            projectDir: join(workspace, 'my-site'),
+            adopt: [kind],
+            run: claim.run,
+          },
+          report,
+        );
+      }
+    }
+
     const second = fakeCloudflare({ account: first.account });
     const result = (await resume(second.run)) as { deployed?: boolean };
 
@@ -174,10 +213,12 @@ describe.each([
 });
 
 describe('reconciling a pending resource', () => {
-  it('adopts the database it created, matching on the id', async () => {
-    // Killed after `d1 create` succeeded: the ledger says `pending` and the
-    // database exists. It is ours — same account, same name, and the id
-    // Cloudflare reports is the one we can read back.
+  it('refuses to claim it, and says how to claim it on purpose', async () => {
+    // Killed after `d1 create` succeeded: the ledger says `pending` and a
+    // database of that name exists. That pair *is* consistent with "the call
+    // worked and we never heard" — and equally consistent with the name
+    // already belonging to somebody else on a shared account. Adopting it
+    // automatically means running migrations against their data.
     const first = fakeCloudflare({
       failWhen: MUTATIONS.database,
       failAfterEffect: true,
@@ -187,6 +228,33 @@ describe('reconciling a pending resource', () => {
     expect(before?.database?.status).toBe('pending');
 
     const second = fakeCloudflare({ account: first.account });
+    const error = (await resume(second.run)) as Error & { hint?: string };
+
+    expect(`${error.message}\n${error.hint ?? ''}`).toContain(
+      'mallok repair my-site --adopt database',
+    );
+    expect(second.mutations()).toEqual([]);
+  });
+
+  it('adopts it when told to, recording the id Cloudflare reports', async () => {
+    const first = fakeCloudflare({
+      failWhen: MUTATIONS.database,
+      failAfterEffect: true,
+    });
+    await create(first.run);
+
+    const claim = fakeCloudflare({ account: first.account });
+    await repairSite(
+      {
+        slug: 'my-site',
+        projectDir: join(workspace, 'my-site'),
+        adopt: ['database'],
+        run: claim.run,
+      },
+      report,
+    );
+
+    const second = fakeCloudflare({ account: first.account });
     await resume(second.run);
 
     expect(
@@ -194,8 +262,7 @@ describe('reconciling a pending resource', () => {
     ).toEqual([]);
     const after = await readLedger(join(workspace, 'my-site'));
     // `adopted`, not `created`: this run did not create it, it recognised it.
-    // The distinction is kept because it is the honest record of what
-    // happened, and a later reader deserves to know.
+    // The distinction is the honest record of what happened.
     expect(after?.database?.status).toBe('adopted');
     expect(after?.database?.id).toBe(
       first.account.databases['mallok-my-site-db'],
@@ -279,6 +346,20 @@ describe('read-only probes fail closed', () => {
       failAfterEffect: true,
     });
     await create(first.run);
+
+    // The deploy took effect, so the Worker is `pending` in the ledger and
+    // has to be claimed explicitly before the resume can get as far as the
+    // secrets — which is the step this test is actually about.
+    const claim = fakeCloudflare({ account: first.account });
+    await repairSite(
+      {
+        slug: 'my-site',
+        projectDir: join(workspace, 'my-site'),
+        adopt: ['worker'],
+        run: claim.run,
+      },
+      report,
+    );
 
     const second = fakeCloudflare({
       account: first.account,

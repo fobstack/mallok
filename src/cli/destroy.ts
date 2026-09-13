@@ -220,13 +220,33 @@ export async function destroySite(
   if (ledger !== null) {
     assertSameAccount(ledger, accountId);
   }
-  if (record?.accountId != null && record.accountId !== accountId) {
-    throw new CliError(
-      EXIT.user,
-      `"${slug}" was provisioned on a different Cloudflare account.`,
-      'Switch accounts, or pass --account-id for the one that owns it. ' +
-        'Deleting by name on the wrong account deletes somebody else’s site.',
-    );
+  if (record !== undefined) {
+    // A record with **no** account id used to skip this comparison entirely,
+    // because it was guarded on the value being set. That is the wrong way
+    // round: an unproven record is exactly the one not to delete by name.
+    if (
+      typeof record.accountId !== 'string' ||
+      record.accountId.trim() === ''
+    ) {
+      throw new CliError(
+        EXIT.user,
+        `The registry entry for "${slug}" does not record which Cloudflare account it belongs to.`,
+        'Deleting by name alone would delete whatever carries that name on ' +
+          `the account you happen to be signed in to (${accountId}). Record ` +
+          `it first: \`mallok repair ${slug}\` checks the signed-in account ` +
+          'and writes it down.',
+      );
+    }
+    if (record.accountId !== accountId) {
+      throw new CliError(
+        EXIT.user,
+        `"${slug}" was provisioned on a different Cloudflare account.`,
+        `The registry records ${record.accountId}; you are signed in to ` +
+          `${accountId}. Switch accounts, or pass --account-id for the one ` +
+          'that owns it. Deleting by name on the wrong account deletes ' +
+          'somebody else’s site.',
+      );
+    }
   }
 
   const names = resourceNames(slug);

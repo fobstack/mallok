@@ -43,6 +43,7 @@ mallok build <dir>                Compile a local directory into a static site
 mallok preview <dir>              Render bundles locally, offline
 mallok media push <dir>           Upload media only, touching no content
 mallok setup-key                  Issue a new one-time key for a site nobody owns yet
+mallok repair <slug>              Record the Cloudflare account, or adopt a pending resource
 mallok destroy <slug>             Delete a site's Worker, database and bucket
 ```
 
@@ -459,6 +460,44 @@ because it is tried and refused with nothing saying why.
 
 `--account-id <id>` is checked against `wrangler whoami` first, as everywhere
 else.
+
+## 10.4 `mallok repair <slug>`
+
+Nothing in this CLI acts on a Cloudflare resource it cannot prove belongs to
+the project, and the proof is the **account id** recorded when the resource
+was created. That default is right, and it leaves a gap: a project whose
+records lost their account id — an old registry, a hand-edited file, a
+half-finished `create` — becomes undeletable and unrecoverable by the checks
+meant to protect it. This is the deliberate way out.
+
+It never creates or deletes anything on Cloudflare. It does two things:
+
+**Record the account.** It asks `wrangler whoami`, and writes that id into the
+ledger and `.mallok/sites.json`. With `--account-id <id>` the id must match
+what Wrangler reports, so this cannot be used to *assert* an account the
+current login cannot reach. A record that already names a **different**
+account is refused rather than overwritten — that record is a statement, and
+overwriting it would reopen the hole this closes.
+
+**Adopt a pending resource, by name.** `--adopt database,bucket,worker`
+(comma separated; an unknown name is refused rather than silently skipped).
+
+A `create` interrupted between "about to make the database" and "made it"
+leaves a `pending` record, and possibly a real resource. Earlier versions
+reconciled that pair automatically — same account, same name, so it must be
+ours. It is a guess: on a shared account a same-named database belongs to
+whoever made it, and pointing a site at it means running that site's
+migrations against their data. `create` now stops and prints both halves —
+what Cloudflare reports, including the id, and what the ledger believes — and
+this is how a person says *yes, that one is mine*:
+
+```sh
+mallok repair my-site --adopt database
+mallok create .              # resumes, and does not create a second one
+```
+
+Adoption is refused when the resource is not actually on the account, so a
+stale `pending` cannot be claimed into existence.
 
 ## 11. Output and exit codes
 

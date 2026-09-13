@@ -515,13 +515,26 @@ async function provision(
       return record;
     }
     if (record?.status === 'pending') {
-      adopted.push(`${kind} ${name}`);
-      return {
-        status: 'adopted',
-        name,
-        ...(found.id === undefined ? {} : { id: found.id }),
-        at: new Date().toISOString(),
-      };
+      // A pending record says this project was *about* to create something of
+      // that name. It does not say the thing now sitting there is the thing
+      // it created. On a shared account a same-named database belongs to
+      // whoever made it, and adopting it means running migrations against
+      // their data on the next boot.
+      //
+      // So this stops and prints both halves — what Cloudflare reports and
+      // what the ledger believes — and leaves the decision to a person.
+      throw new CliError(
+        EXIT.user,
+        `A ${kind} named ${name} exists on this account, and this project cannot prove it created it.`,
+        `The ledger records the ${kind} as "pending": the last run was about ` +
+          'to create it and did not record an answer. That is consistent ' +
+          'with the call having succeeded — and equally consistent with ' +
+          `something else already owning the name.\n` +
+          `  on Cloudflare: ${name}${found.id === undefined ? '' : ` (${found.id})`}\n` +
+          `  in the ledger:  ${kind} pending${record.id === undefined ? '' : `, id ${record.id}`}\n` +
+          'Compare them, and if it is yours, adopt it explicitly:\n' +
+          `  mallok repair ${slug} --adopt ${kind === 'Worker' ? 'worker' : kind}`,
+      );
     }
     throw new CliError(
       EXIT.user,
@@ -728,6 +741,19 @@ async function provision(
     if (claimed === true) {
       report.step(
         'The site already has an administrator, so the setup key is spent.',
+      );
+    } else if (claimed === null) {
+      // `null` is "could not tell", and it used to fall into the same branch
+      // as "no administrator". Rotating there replaces a key that may be in
+      // the hands of the site's actual owner, and hands the replacement to
+      // whoever ran this — on the strength of a request that timed out.
+      throw new CliError(
+        EXIT.remote,
+        `Could not ask ${origin === '' ? 'the site' : origin} whether it already has an administrator.`,
+        'A setup key was set on a previous run and never shown, so it would ' +
+          'have to be rotated — and rotating one on a site that may already ' +
+          'be owned is a way in for whoever asks. Check the site is ' +
+          'reachable and run this again; it resumes from here.',
       );
     } else {
       report.step(

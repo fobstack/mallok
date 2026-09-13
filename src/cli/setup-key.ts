@@ -96,6 +96,26 @@ export async function rotateSetupKey(
   const accountId = await currentAccountId(wrangler, options.accountId);
   if (ledger !== null) {
     assertSameAccount(ledger, accountId);
+  } else {
+    // No ledger, so the registry is the only proof there is — and a record
+    // without an account id proves nothing. Setting a setup key on a site
+    // this project cannot show it owns is handing somebody a way in.
+    const known = sites.find((site) => site.slug === slug)?.accountId;
+    if (typeof known !== 'string' || known.trim() === '') {
+      throw new CliError(
+        EXIT.user,
+        `The registry entry for "${slug}" does not record which Cloudflare account it belongs to.`,
+        `Refusing rather than setting a key on whatever answers to that name ` +
+          `on account ${accountId}. Record it first: \`mallok repair ${slug}\`.`,
+      );
+    }
+    if (known !== accountId) {
+      throw new CliError(
+        EXIT.user,
+        `"${slug}" was provisioned on a different Cloudflare account.`,
+        `The registry records ${known}; you are signed in to ${accountId}.`,
+      );
+    }
   }
 
   // The check that makes this safe. `null` means the site could not be asked,
