@@ -170,15 +170,15 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
         ),
       );
     }
-    if (
-      first === 'r2' &&
-      second === 'bucket' &&
-      third === 'domain' &&
-      args[3] === 'list'
-    ) {
-      const bucket = args[4] ?? '';
-      return ok(JSON.stringify({ domains: account.domains[bucket] ?? [] }));
-    }
+    // No `r2 bucket domain list` here, deliberately.
+    //
+    // This fake used to answer it with JSON, which is how a call passing
+    // `--json` — a flag the real Wrangler 4.124.0 does not have for that
+    // subcommand — survived review and a test suite. A fake that answers a
+    // shape the real CLI cannot produce is not a test double; it is a second,
+    // friendlier CLI. `destroy` no longer lists domains, and nothing else
+    // should start: it learns about an attached domain from the delete it
+    // attempts (`classifyDeleteFailure`).
     if (
       first === 'r2' &&
       second === 'bucket' &&
@@ -230,7 +230,24 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
       return ok('Deleted');
     }
     if (first === 'r2' && second === 'bucket' && third === 'delete') {
-      account.buckets = account.buckets.filter((name) => name !== args[3]);
+      const bucket = args[3] ?? '';
+      // Cloudflare refuses both of these, and refusing them *here* — at the
+      // delete — is the only place a real account would. There is no command
+      // that reports them in advance (`r2 bucket domain list` has no `--json`
+      // in 4.124.0), so `destroy` has to learn from the refusal.
+      if ((account.domains[bucket] ?? []).length > 0) {
+        return fail(
+          'A request to the Cloudflare API failed. The bucket you tried to ' +
+            'delete has a custom domain attached to it. [code: 10041]',
+        );
+      }
+      if ((account.objects[bucket] ?? []).length > 0) {
+        return fail(
+          'A request to the Cloudflare API failed. The bucket you tried to ' +
+            'delete is not empty. [code: 10011]',
+        );
+      }
+      account.buckets = account.buckets.filter((name) => name !== bucket);
       return ok('Deleted');
     }
     if (first === 'r2' && second === 'object' && third === 'delete') {
@@ -292,7 +309,6 @@ export const FAKE_SUBCOMMANDS: readonly string[] = [
   'r2 bucket create',
   'r2 bucket delete',
   'r2 bucket info',
-  'r2 bucket domain list',
   'r2 bucket domain remove',
   'r2 object delete',
   'secret put',

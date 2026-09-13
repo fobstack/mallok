@@ -771,10 +771,16 @@ describe('destroy', () => {
     );
 
     // An attached custom domain keeps the hostname claimed after the bucket
-    // is gone, so it is detached first — by the operator, with the real
-    // command named in the message.
-    expect(destroyer.mutations()).toEqual([]);
-    expect(result.stoppedAt).toContain('custom domains');
+    // is gone, and Cloudflare refuses the delete while one is attached. The
+    // refusal is where this is learned: there is no command that reports it
+    // beforehand — `r2 bucket domain list` has no `--json` in the locked
+    // Wrangler, and the probe that used to pass it worked only against a
+    // fake. So the bucket delete is attempted, it fails, and the run stops
+    // there with the Worker and the database untouched.
+    expect(result.stoppedAt).toContain('bucket');
+    const attempted = destroyer.calls.map((call) => call.args.join(' '));
+    expect(attempted.some((call) => call.startsWith('delete '))).toBe(false);
+    expect(attempted.some((call) => call.startsWith('d1 delete'))).toBe(false);
   });
 
   it('deletes the bucket first, so a refusal costs nothing', async () => {

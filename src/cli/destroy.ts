@@ -24,9 +24,9 @@
 
 import { join } from 'node:path';
 import {
-  bucketDomains,
   type CommandRunner,
   currentAccountId,
+  isDefiniteAbsence,
   lastLine,
   type Wrangler,
   wranglerFor,
@@ -108,8 +108,42 @@ export const MANUAL_CLEANUP: readonly string[] = [
   'Delete the CF_API_TOKEN you created for cache purging.',
 ];
 
-/** What a bucket has to be before Cloudflare will delete it. */
+/** Why a delete was refused, as far as the message can be trusted. */
+export type DeleteFailure =
+  | 'absent'
+  | 'not-empty'
+  | 'domain-attached'
+  | 'unknown';
+
 const NOT_EMPTY = /not empty|contains objects|bucket is not empty/i;
+const DOMAIN_ATTACHED = /custom domain|domain attached|attached domain/i;
+
+/**
+ * Classifies a failed delete.
+ *
+ * Only `absent` lets a run continue, and the default is `unknown`, which
+ * stops it. That asymmetry is the whole design: a recogniser that misses a
+ * case costs an operator one confusing message, while a recogniser that is
+ * too generous deletes a Worker and a database because a token expired.
+ *
+ * `absent` is decided by {@link isDefiniteAbsence}, which rules out
+ * authentication, permission, transport and API-routing failures **before**
+ * looking for "not found" — every one of those can contain the phrase.
+ */
+export function classifyDeleteFailure(text: string): DeleteFailure {
+  if (isDefiniteAbsence(text)) {
+    return 'absent';
+  }
+  // Checked before "not empty": a bucket can be both, and the domain is the
+  // one the operator has to deal with first.
+  if (DOMAIN_ATTACHED.test(text)) {
+    return 'domain-attached';
+  }
+  if (NOT_EMPTY.test(text)) {
+    return 'not-empty';
+  }
+  return 'unknown';
+}
 
 /**
  * Everything this project is known to own, from either record.
@@ -197,28 +231,20 @@ export async function destroySite(
 
   const names = resourceNames(slug);
 
-  // An attached R2 custom domain keeps the hostname claimed after the bucket
-  // is gone. It is read here, reported, and removed by the operator — there
-  // is no need to guess whether one exists.
-  const domains = await bucketDomains(wrangler, names.bucket);
-  for (const domain of domains as { domain: string }[]) {
-    report.warn(
-      `${names.bucket} still has the custom domain ${domain.domain}. Remove ` +
-        `it first: wrangler r2 bucket domain remove ${names.bucket} --domain ${domain.domain}`,
-    );
-  }
-  if (domains.length > 0) {
-    results.push({
-      step: `Detach the custom domains on ${names.bucket}`,
-      ok: false,
-      detail: domains.map((entry) => entry.domain).join(', '),
-    });
-    return finish(
-      results,
-      `Detach the custom domains on ${names.bucket}`,
-      slug,
-    );
-  }
+  // No pre-flight probe for an attached R2 custom domain.
+  //
+  // There used to be one, and it asked `wrangler r2 bucket domain list
+  // <bucket> --json`. The subcommand is real; **`--json` is not** — the
+  // locked Wrangler 4.124.0 documents only `-J, --jurisdiction` for it. The
+  // probe could therefore only ever have worked against the fake that
+  // answered it. `test/cli/wrangler-flags.test.ts` drives these functions
+  // with a recording runner and checks the argument vectors they really build
+  // against the binary's own `--help`, so a flag that does not exist fails
+  // the suite rather than the operator's account.
+  //
+  // The delete itself is the probe. It is attempted first, while the Worker
+  // and the database are still intact, and whatever it refuses with is
+  // classified below.
 
   let progress: Ledger | null = ledger;
   for (const step of destroySteps(slug)) {
@@ -232,15 +258,13 @@ export async function destroySite(
 
     const run = await wrangler.run(step.args);
     const output = `${run.stderr}${run.stdout}`;
-    const missing = /not found|does not exist|no such|couldn'?t find/i.test(
-      output,
-    );
-    const ok = run.code === 0 || missing;
+    const failure = run.code === 0 ? null : classifyDeleteFailure(output);
+    const ok = failure === null || failure === 'absent';
 
-    if (!ok && step.id === 'bucket' && NOT_EMPTY.test(output)) {
-      // The one refusal worth explaining, and the reason the bucket goes
-      // first: everything else is still intact, so the site still works while
-      // its owner decides what to do with the objects.
+    if (failure === 'not-empty') {
+      // The refusal the bucket-first order exists for: everything else is
+      // still intact, so the site keeps serving while its owner decides what
+      // to do with the objects.
       results.push({
         step: step.label,
         ok: false,
@@ -255,14 +279,48 @@ export async function destroySite(
       return finish(results, step.label, slug);
     }
 
+    if (failure === 'domain-attached') {
+      // Both commands below exist in the locked Wrangler with exactly these
+      // flags, which is the point: a message that tells somebody to run
+      // something that does not exist is worse than no message.
+      results.push({
+        step: step.label,
+        ok: false,
+        detail: 'a custom domain is still attached to the bucket',
+      });
+      report.warn(
+        `${names.bucket} still has a custom domain attached, and Cloudflare ` +
+          'will not delete a bucket while one is. Nothing else has been ' +
+          'deleted: the site is still running. See which domains are ' +
+          `attached with:\n    wrangler r2 bucket domain list ${names.bucket}` +
+          '\nthen detach each one with:\n    wrangler r2 bucket domain ' +
+          `remove ${names.bucket} --domain <domain>\nand run this again.`,
+      );
+      return finish(results, step.label, slug);
+    }
+
+    if (failure === 'unknown') {
+      // Not "already gone". Wrangler failed for a reason this cannot read —
+      // an expired token, a network that is down, a permission the account
+      // lacks — and none of those says anything about the resource. Stopping
+      // here is what keeps a dead token from deleting a live site.
+      results.push({
+        step: step.label,
+        ok: false,
+        detail: lastLine(run.stderr, run.stdout),
+      });
+      report.warn(
+        `${step.label} failed, and the reason is not "it is already gone". ` +
+          'Nothing further has been deleted. Check the account and the ' +
+          'network, then run this again — it resumes from here.',
+      );
+      return finish(results, step.label, slug);
+    }
+
     results.push({
       step: step.label,
       ok,
-      detail: ok
-        ? missing
-          ? 'already gone'
-          : 'deleted'
-        : lastLine(run.stderr, run.stdout),
+      detail: failure === 'absent' ? 'already gone' : 'deleted',
     });
     if (!ok) {
       // Stop rather than continue past a failure: a half-deleted site with no

@@ -169,12 +169,47 @@ export interface Existing {
  * against the shapes it uses for "not found" and **everything else fails
  * closed**. A new wording on Cloudflare's side therefore makes this stricter,
  * not looser, which is the right direction for a mistake to lean.
+ *
+ * Matching the absence wording alone was not enough, because the wording is
+ * not exclusive to absence. All of these are real failures that said nothing
+ * about whether the resource exists, and every one of them contains a phrase
+ * the pattern below accepts:
+ *
+ *     Authentication error [code: 10000]: token not found
+ *     getaddrinfo ENOTFOUND api.cloudflare.com: no such host
+ *     A request to the Cloudflare API failed. Route not found [code: 7003]
+ *     Authentication error [code: 10001]: no such permission on this token
+ *
+ * Read as absence, the first two make a resumed `create` build a second
+ * database beside the one it could not see. In `destroy` they were worse: the
+ * bucket step was recorded as "already gone" and the run went on to delete
+ * the Worker and the database, on evidence that concerned neither.
+ *
+ * So authentication, authorisation, transport and API-routing failures are
+ * recognised **first**, and they are never absence whatever else the message
+ * happens to contain.
  */
+const CANNOT_TELL =
+  /\bauthenticat\w*|\bunauthori[sz]ed\b|\bforbidden\b|\bpermission\b|\bcredential\w*|\btoken\b|\[code: (?:10000|10001|7003)\]|\bENOTFOUND\b|\bECONNREFUSED\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|\bEPROTO\b|\bsocket hang up\b|\bfetch failed\b|\bgetaddrinfo\b|\bno such host\b|\bnetwork\b|\btimed? ?out\b|\brate limit\w*\b|\btoo many requests\b|\b(?:429|5\d\d) \b/i;
+
 const ABSENT =
   /couldn'?t find|not found|does not exist|no such|unknown (?:database|bucket|script)/i;
 
+/**
+ * Whether a failure is a *definite* "this resource is not there".
+ *
+ * Exported because `destroy` has to make the same judgement about a delete
+ * that failed, and two copies of this reasoning is one copy too many.
+ */
+export function isDefiniteAbsence(text: string): boolean {
+  if (CANNOT_TELL.test(text)) {
+    return false;
+  }
+  return ABSENT.test(text);
+}
+
 function isAbsence(result: RunResult): boolean {
-  return ABSENT.test(`${result.stderr}\n${result.stdout}`);
+  return isDefiniteAbsence(`${result.stderr}\n${result.stdout}`);
 }
 
 /** Turns anything that is not a clean "absent" into a stop. */
@@ -290,47 +325,17 @@ export async function secretNames(
     .filter((name) => name !== '');
 }
 
-/** A custom domain attached to an R2 bucket. */
-export interface BucketDomain {
-  readonly domain: string;
-  readonly enabled: boolean;
-}
-
-/**
- * The custom domains attached to a bucket.
+/*
+ * There is no `bucketDomains` here any more, and there must not be one.
  *
- * A real Cloudflare API (`wrangler r2 bucket domain list`) rather than a DNS
- * probe: whether `media.<domain>` is attached is a fact about the account,
- * and asking the account is both faster and correct.
+ * It called `wrangler r2 bucket domain list <bucket> --json`. The subcommand
+ * is real; the flag is not — Wrangler 4.124.0 documents only
+ * `-J, --jurisdiction` for it, so the call could only ever have worked
+ * against a fake that answered it. `destroy` now learns about an attached
+ * domain the only way that is true on a real account: by attempting the
+ * delete, with the Worker and the database still intact, and classifying
+ * what Cloudflare refuses with (`classifyDeleteFailure`).
  */
-export async function bucketDomains(
-  wrangler: Wrangler,
-  bucket: string,
-): Promise<BucketDomain[]> {
-  const result = await wrangler.run([
-    'r2',
-    'bucket',
-    'domain',
-    'list',
-    bucket,
-    '--json',
-  ]);
-  if (result.code !== 0) {
-    if (isAbsence(result)) {
-      return [];
-    }
-    throw new CliError(
-      EXIT.remote,
-      `Could not list the custom domains on ${bucket}.`,
-      lastLine(result.stderr, result.stdout),
-    );
-  }
-  const payload = asJson<{ domains?: BucketDomain[] } | BucketDomain[]>(
-    result,
-    "the bucket's custom domains",
-  );
-  return Array.isArray(payload) ? payload : (payload.domains ?? []);
-}
 
 /**
  * The line most likely to explain a failure.
