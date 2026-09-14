@@ -51,7 +51,6 @@ export function assetsRoot(): string {
 /** Files whose presence means the shell arrived intact. */
 const REQUIRED = [
   'package.json',
-  'mallok.json',
   'wrangler.jsonc',
   'tsconfig.json',
   'site.json',

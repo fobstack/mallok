@@ -46,11 +46,11 @@ function textModules(): Plugin {
  *                         built client bundle executed against
  *                         server-rendered markup.
  *  - `runtime-build`      real Vite builds and a real dev server.
- *  - `release`            **not** part of `pnpm test`. It builds two complete
- *                         packages from two source trees and drives a real
- *                         upgrade between them, which is a quarter of an
- *                         hour; `pnpm test:release` runs it, and the release
- *                         gate runs that.
+ *  - `release`            **not** part of `pnpm test`. It builds two real
+ *                         tarballs, serves them from a local registry and
+ *                         upgrades a real project between them, which is
+ *                         minutes; `pnpm test:release` runs it, and the
+ *                         release gate runs that.
  *
  * Binding `MALLOK_SETUP_KEY` for every worker test would make them all
  * exercise the same path instead of the ones they are about, which is why the
@@ -133,11 +133,11 @@ export default defineConfig({
             'test/admin/**/*.test.ts',
             'test/cli/**/*.test.ts',
           ],
-          // Its own project below: it builds two complete packages from two
-          // source trees and drives four real installs, which is fifteen
-          // minutes. `pnpm test` stays usable; `pnpm test:release` runs it,
-          // and the release gate runs that.
-          exclude: ['test/cli/upgrade-target-owned.test.ts'],
+          // Its own project below: it builds two real tarballs, serves them
+          // from a local registry and drives real installs, which is minutes
+          // rather than seconds. `pnpm test` stays usable; `pnpm test:release`
+          // runs it, and the release gate runs that.
+          exclude: ['test/cli/upgrade.test.ts'],
           // Builds `dist/pkg` once. Two CLI test files need it, they run
           // concurrently, and the build starts by removing the directory.
           globalSetup: ['test/cli/helpers/build-package.ts'],
@@ -148,7 +148,7 @@ export default defineConfig({
         test: {
           name: 'release',
           environment: 'node',
-          include: ['test/cli/upgrade-target-owned.test.ts'],
+          include: ['test/cli/upgrade.test.ts'],
           globalSetup: ['test/cli/helpers/build-package.ts'],
           testTimeout: 1_800_000,
           hookTimeout: 1_800_000,

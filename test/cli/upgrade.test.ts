@@ -6,11 +6,6 @@ import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // @ts-expect-error -- a plain ESM script, deliberately dependency-free.
 import { startLocalRegistry } from '../../scripts/local-registry.mjs';
-import { makeReporter } from '../../src/cli/output.js';
-import {
-  finalizeUpgrade,
-  type ProjectMigration,
-} from '../../src/cli/upgrade.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -122,7 +117,7 @@ beforeAll(async () => {
     { name: 'mallok', version: SECOND, path: second },
   ]);
 
-  sandbox = await mkdtemp(join(tmpdir(), 'mallok-upgrade-'));
+  sandbox = await mkdtemp(join(tmpdir(), 'mallok-upgraded-'));
   const installed = await run('npm', ['install', first], sandbox);
   expect(installed.code, installed.stderr).toBe(0);
   mallok = join(sandbox, 'node_modules/.bin/mallok');
@@ -310,89 +305,5 @@ describe('mallok upgrade, between two real releases', () => {
       );
       expect(refused.code, version).not.toBe(0);
     }
-  }, 120_000);
-});
-
-/**
- * The migration record, exercised with a fixture.
- *
- * `PROJECT_MIGRATIONS` is empty in this release — inventing one to
- * demonstrate the mechanism would be a lie in the shape of a feature — so the
- * mechanism is tested with a migration injected into `finalizeUpgrade`, which
- * is the half of an upgrade the **target** version runs.
- * `test/cli/upgrade-target-owned.test.ts` proves the same thing end to end,
- * with two packages built from two source trees.
- */
-describe('project migrations run exactly once', () => {
-  // Quiet: the second argument silences the step-by-step progress the CLI
-  // writes to stderr. Without it a passing run buries any real warning under a
-  // few hundred lines of "Creating database…", and "is stderr clean?" stops
-  // being a question anybody can answer by looking.
-  const report = makeReporter(true, true);
-
-  function counting(): { migration: ProjectMigration; runs: () => number } {
-    let runs = 0;
-    return {
-      migration: {
-        id: '2026-09-12-fixture',
-        description: 'a fixture migration',
-        apply: async (dir) => {
-          runs++;
-          await writeFile(join(dir, 'migrated.txt'), String(runs), 'utf8');
-          return true;
-        },
-      },
-      runs: () => runs,
-    };
-  }
-
-  it('applies a pending migration, then never again', async () => {
-    const { migration, runs } = counting();
-    const options = {
-      from: FIRST,
-      to: SECOND,
-      projectDir: project,
-      migrations: [migration],
-      skipChecks: true,
-      run: async () => ({ code: 0, stdout: '', stderr: '' }),
-    };
-
-    const first = await finalizeUpgrade(options, report);
-    expect(first.ok).toBe(true);
-    expect(first.migrationsApplied).toEqual(['2026-09-12-fixture']);
-    expect(runs()).toBe(1);
-
-    // Run again, as a later upgrade would: the id is recorded, so nothing
-    // happens.
-    const second = await finalizeUpgrade(options, report);
-    expect(second.migrationsApplied).toEqual([]);
-    expect(runs()).toBe(1);
-
-    const state = JSON.parse(
-      await readFile(join(project, 'mallok.json'), 'utf8'),
-    ) as { appliedMigrations: string[]; history: { to: string }[] };
-    expect(state.appliedMigrations).toEqual(['2026-09-12-fixture']);
-    expect(state.history.length).toBeGreaterThanOrEqual(2);
-  }, 120_000);
-
-  it('reports a failed check instead of claiming success', async () => {
-    const options = {
-      from: FIRST,
-      to: SECOND,
-      projectDir: project,
-      migrations: [],
-      run: async (_command: string, args: readonly string[]) => ({
-        code: args.includes('typecheck') ? 1 : 0,
-        stdout: '',
-        stderr: 'error TS2304: Cannot find name',
-      }),
-    };
-
-    const result = await finalizeUpgrade(options, report);
-
-    expect(result.ok).toBe(false);
-    expect(result.error).toContain('typecheck failed');
-    // The protocol version is what lets an older CLI read this at all.
-    expect(result.protocol).toBe(1);
   }, 120_000);
 });

@@ -56,7 +56,6 @@ export async function writeFakeTemplate(): Promise<string> {
 }
 `,
     'tsconfig.json': '{}',
-    'mallok.json': '{"schemaVersion":1,"appliedMigrations":[],"history":[]}',
     'site.json': '{"defaultLocale":"en","locales":["en"]}',
     'src/worker/index.ts': 'export default {};\n',
     'scripts/smoke.mjs': 'process.exit(0);\n',

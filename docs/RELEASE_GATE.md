@@ -155,9 +155,9 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
 pnpm release:pack          # writes dist/pkg/mallok-<version>.tgz
 ```
 
-`pnpm test:release` is its own step because it takes about fifteen minutes:
-it builds two complete packages from two source trees and drives an upgrade
-between them with the older one's published binary. `.github/workflows/
+`pnpm test:release` is its own step because it is minutes rather than
+seconds: it builds two real tarballs, serves them from a local registry, and
+upgrades a real project from one to the other. `.github/workflows/
 release.yml` runs this same list on a tag, in one job, with no step allowed to
 be skipped.
 
@@ -1034,14 +1034,9 @@ once, and `wrangler tail` during step 3 shows no window of failed requests.
 
 Until a second version exists, this step is `NOT_RUN` for a reason nobody can
 fix on the day: **it needs two published releases.** The local half is
-`VERIFIED_LOCAL` in `test/cli/upgrade-target-owned.test.ts`, and it is a
-stronger test than it used to be: two packages are built from **two different
-source trees**, the newer one carrying a project migration the older one has
-never heard of, and the upgrade is driven by the *older* package's published
-binary. That is what proves the target version runs its own migrations rather
-than the installed CLI running whatever it was compiled with. The same file
-checks that a failed upgrade leaves every file byte-identical, that a retry
-still works, and that a downgrade is refused.
+`VERIFIED_LOCAL` in `test/cli/upgrade.test.ts` — two real tarballs, a local
+registry, a project created on the first and upgraded to the second, with its
+content, settings, theme and plugins compared before and after.
 
 **Rollback:** `wrangler rollback` returns the previous Worker version. It does
 **not** undo a D1 migration, so an upgrade whose migration is destructive needs

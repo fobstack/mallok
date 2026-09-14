@@ -71,11 +71,10 @@ machine, red on another, and green *because* of a value the repository does
 not contain. `vitest.config.ts` declares the whole environment instead, and
 `test/worker/environment-isolation.test.ts` is the tripwire.
 
-`pnpm test:release` is a ninth project, run separately because it takes about
-fifteen minutes: it builds two complete Mallok packages from two source trees
-— the newer carrying a project migration the older has never heard of — and
-drives `mallok upgrade` between them using the older package's own published
-binary.
+`pnpm test:release` is a ninth project, run separately because it is minutes
+rather than seconds: it builds two real tarballs, serves them from a local
+registry, creates a project on the first and upgrades it to the second — the
+only test that exercises what `npm install` actually does to a site.
 
 `pnpm test:coverage` runs the Node projects again with coverage and
 enforces §5.

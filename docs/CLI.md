@@ -47,9 +47,6 @@ mallok repair <slug>              Record the Cloudflare account, or adopt a pend
 mallok destroy <slug>             Delete a site's Worker, database and bucket
 ```
 
-One more exists and is never typed: `mallok upgrade-finalize`. An older CLI
-runs it inside a copy of a project, after installing the newer release, so
-that the **target version** applies its own migrations (`§10.1`).
 
 **Every flag is declared per command, and an undeclared one fails.** A
 misspelling used to be accepted and ignored, so `mallok create site
@@ -399,30 +396,47 @@ Moves a project onto another Mallok release:
 
 1. sets the **exact** version in `package.json` (a range is refused — an
    upgrade is a decision, not something an install does to you);
-2. installs;
-3. hands over to the **target version's own** `mallok upgrade-finalize`, in an
-   isolated copy of the project, so the migrations that run are the ones the
-   release being installed carries — not the ones the older CLI was compiled
-   with. A migration introduced by a release would otherwise never run on the
-   upgrade that introduces it;
-4. records each applied migration by id in the project's tracked
-   `mallok.json`, not in the git-ignored `.mallok/` — a record the next clone
-   cannot see is not a record of "exactly once";
-5. re-runs the project's typecheck, tests, build and `wrangler deploy
-   --dry-run`, and only then moves the finished copy over the real project.
+2. installs it;
+3. runs the project's **own** checks — `typecheck`, `test`, `build` and
+   `wrangler deploy --dry-run`. They run against the package that was just
+   installed, which is what makes them the target version's checks rather
+   than the previous version's idea of them;
+4. on any failure, restores `package.json` and the lockfile **and reinstalls
+   the previous version**, so the files and `node_modules` agree.
 
-Running it again on the same version changes nothing and exits 0. **A failure
-leaves the project byte-for-byte as it was** — every file, including the ones
-a migration had already rewritten — because all of it happened in a copy that
-is thrown away. It also refuses to move backwards: `--to` an older version is
-an error, since a migration has no down-path.
+Versions are compared with `semver`, which matters more than it sounds:
+`0.1.0-rc.10` is newer than `0.1.0-rc.2`, and build metadata does not affect
+precedence. A hand-rolled comparison compared pre-release tags as strings and
+therefore refused rc.2 → rc.10 as a downgrade — a bug that would have appeared
+on the tenth release candidate and not one release earlier. Downgrading is
+still refused: a release can migrate a database forward and there is no
+general way back.
 
-Lint is deliberately **not** among the checks: it examines the site's own
-formatting, which the site owns, and failing an upgrade over indentation is
-hostile.
+Running it again on the same version changes nothing and exits 0.
 
-Database schema migrations are not this command's job — the Worker applies
-those itself on its first request after a deploy.
+### What this deliberately does not do
+
+There is **no project-file migration system**, and there is no staging copy.
+
+An earlier version had both. It copied the whole project into a temporary
+directory, installed the target there, handed control to that release's own
+binary over a small inter-version protocol (`upgrade-finalize`) so it could
+apply the migrations *it* carried, ran the checks in the copy, and swapped the
+copy over the original with a rename. The reasoning behind it was sound: a
+release that has to rewrite a file in somebody's project should be the release
+that decides how, and a half-applied rewrite should never reach the real
+directory.
+
+It guarded zero migrations. `PROJECT_MIGRATIONS` was empty in every published
+release, so the machinery protected nothing while contributing failure modes
+of its own — most obviously a failure between the two renames, which leaves no
+project at all. It also wrote a tracked `mallok.json` at the project root,
+which is already the name of the per-bundle sidecar in
+`docs/CONTENT_FORMAT.md §6`.
+
+When the first real project migration exists, this gets designed again with
+that migration in front of us. A mechanism built for a migration nobody has
+written is a guess about what that migration will need.
 
 ## 10.2 `mallok prepare`
 

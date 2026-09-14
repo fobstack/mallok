@@ -38,7 +38,7 @@ import { publishBundles, reportMissing, reportWarnings } from './publish.js';
 import { ADOPTABLE, type Adoptable, repairSite } from './repair.js';
 import { scanDirectory } from './scan.js';
 import { rotateSetupKey } from './setup-key.js';
-import { finalizeUpgrade, nodeRunner, upgradeProject } from './upgrade.js';
+import { upgradeProject } from './upgrade.js';
 
 /**
  * The published version.
@@ -596,7 +596,7 @@ async function runUpgrade(
     throw new CliError(
       EXIT.user,
       'mallok upgrade needs --to <version>.',
-      'For example: mallok upgrade --to 0.1.0-rc.4',
+      'For example: mallok upgrade --to 0.1.0-rc.5',
     );
   }
   const result = await upgradeProject(
@@ -617,39 +617,6 @@ async function runUpgrade(
     ),
   );
   return EXIT.ok;
-}
-
-/**
- * The target version's half of an upgrade (docs/CLI.md §10.1).
- *
- * Its stdout is a protocol, so the summary is the *only* thing on it and the
- * progress goes to stderr like every other command's.
- */
-async function runUpgradeFinalize(
-  args: ReturnType<typeof parseArgs>,
-  report: Reporter,
-): Promise<number> {
-  const from = stringFlag(args, 'from');
-  const to = stringFlag(args, 'to');
-  if (from === undefined || to === undefined) {
-    throw new CliError(
-      EXIT.user,
-      'mallok upgrade-finalize needs --from and --to.',
-      'It is run by `mallok upgrade`, not by hand.',
-    );
-  }
-  const result = await finalizeUpgrade(
-    {
-      from,
-      to,
-      projectDir: process.cwd(),
-      skipChecks: boolFlag(args, 'skip-checks'),
-      run: nodeRunner,
-    },
-    report,
-  );
-  process.stdout.write(`${JSON.stringify(result)}\n`);
-  return result.ok ? EXIT.ok : EXIT.user;
 }
 
 async function runDestroy(
@@ -793,8 +760,6 @@ export async function main(argv: readonly string[]): Promise<number> {
         return await runRepair(args, report);
       case 'upgrade':
         return await runUpgrade(args, report);
-      case 'upgrade-finalize':
-        return await runUpgradeFinalize(args, report);
       case 'destroy':
         return await runDestroy(args, report);
       default:

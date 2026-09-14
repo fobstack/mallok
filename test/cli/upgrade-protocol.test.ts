@@ -1,28 +1,36 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CliError, makeReporter } from '../../src/cli/output.js';
-import {
-  compareVersions,
-  type FinalizeReport,
-  readProjectState,
-  upgradeProject,
-} from '../../src/cli/upgrade.js';
+import { compareVersions, upgradeProject } from '../../src/cli/upgrade.js';
 
 /**
- * The half of an upgrade the **old** CLI runs.
+ * What an upgrade is, now that it is only what it needs to be.
  *
- * `test/cli/upgrade-target-owned.test.ts` proves the whole thing with two
- * packages built from two source trees, and it takes a quarter of an hour —
- * so it lives in its own project and is not what runs on every change. What
- * is here instead is the orchestration: the refusals that happen before
- * anything is copied, the handover protocol, and what is left behind when the
- * target version says no.
+ * A site's project holds its own files and depends on `mallok` at an exact
+ * version, so moving between releases is: change the number, install, run the
+ * project's own checks against what was installed, and put everything back if
+ * any of that fails.
  *
- * The runner is a fake. That is the point: `npm install` and the target's own
- * binary are the two things this code must drive correctly, and driving them
- * for real is the other file's job.
+ * The previous implementation copied the whole project into a temporary
+ * directory, installed there, handed control to the target's binary over an
+ * inter-version protocol so that release could apply its own project
+ * migrations, and swapped the copy in with a rename. It guarded **zero**
+ * migrations — the list was empty — and a directory-swapping transaction that
+ * protects nothing contributes only its own failure modes: a failure between
+ * the two renames leaves no project at all.
+ *
+ * The runner here is a fake. `npm install` and the project's own scripts are
+ * what this code has to drive correctly; driving them for real is
+ * `upgrade.test.ts`'s job.
  */
 
 const report = makeReporter(true, true);
@@ -35,61 +43,83 @@ async function project(version = '1.0.0'): Promise<string> {
   await mkdir(join(dir, 'src/worker'), { recursive: true });
   await writeFile(
     join(dir, 'package.json'),
-    JSON.stringify({
-      name: 'my-site',
-      private: true,
-      dependencies: { mallok: version },
-    }),
+    `${JSON.stringify(
+      { name: 'my-site', private: true, dependencies: { mallok: version } },
+      null,
+      2,
+    )}\n`,
     'utf8',
   );
-  await writeFile(join(dir, 'package-lock.json'), '{}', 'utf8');
-  await writeFile(join(dir, 'wrangler.jsonc'), '{}', 'utf8');
+  await writeFile(
+    join(dir, 'package-lock.json'),
+    `{"mallok":"${version}"}\n`,
+    'utf8',
+  );
+  await writeFile(join(dir, 'wrangler.jsonc'), '{}\n', 'utf8');
   await writeFile(join(dir, 'src/worker/index.ts'), '// site\n', 'utf8');
-  await writeFile(join(dir, 'content.md'), 'the site’s own words\n', 'utf8');
   return dir;
 }
 
 /**
- * A runner standing in for `npm install` and the target's `upgrade-finalize`.
+ * A runner standing in for `npm` and the project's Wrangler.
  *
- * `finalize` is what the newer Mallok would print. Returning `null` models a
- * version too old to understand the protocol at all — it prints nothing a
- * caller can parse, which must be a failure and not a silent success.
+ * Its `install` rewrites the lockfile, as a real one does — which is what
+ * makes "the lockfile was restored" a claim worth asserting.
  */
-function runner(options: {
-  installFails?: boolean;
-  finalize?: Partial<FinalizeReport> | null;
-  noise?: string;
-}) {
+function runner(
+  options: {
+    installFails?: boolean;
+    failCheck?: string;
+    dryRunFails?: boolean;
+    restoreFails?: boolean;
+  } = {},
+) {
   const calls: string[] = [];
+  let installs = 0;
   return {
     calls,
-    run: async (command: string, args: readonly string[]) => {
-      calls.push(`${command.split('/').pop()} ${args.join(' ')}`);
+    run: async (
+      command: string,
+      args: readonly string[],
+      opts?: { cwd?: string },
+    ) => {
+      const name = command.split('/').pop() ?? command;
+      calls.push(`${name} ${args.join(' ')}`);
       if (args[0] === 'install' || args[0] === 'ci') {
-        return options.installFails === true
-          ? { code: 1, stdout: '', stderr: 'ENOTFOUND registry.npmjs.org' }
+        installs += 1;
+        if (installs > 1 && options.restoreFails === true) {
+          return { code: 1, stdout: '', stderr: 'ENOTFOUND registry' };
+        }
+        if (installs === 1 && options.installFails === true) {
+          return {
+            code: 1,
+            stdout: '',
+            stderr: 'ENOTFOUND registry.npmjs.org',
+          };
+        }
+        // A real install regenerates the lockfile *from the manifest*, so
+        // restoring the manifest and installing again reproduces the original
+        // lockfile. A fake that merely bumped a counter would make the
+        // rollback assertion below unfalsifiable in the wrong direction.
+        const manifest = JSON.parse(
+          await readFile(join(opts?.cwd ?? '', 'package.json'), 'utf8'),
+        ) as { dependencies?: Record<string, string> };
+        await writeFile(
+          join(opts?.cwd ?? '', 'package-lock.json'),
+          `{"mallok":"${manifest.dependencies?.mallok ?? ''}"}\n`,
+          'utf8',
+        );
+        return { code: 0, stdout: '', stderr: '' };
+      }
+      if (args[0] === 'run') {
+        return args[1] === options.failCheck
+          ? { code: 1, stdout: '', stderr: `${args[1]} failed` }
           : { code: 0, stdout: '', stderr: '' };
       }
-      if (args[0] === 'upgrade-finalize') {
-        if (options.finalize === null) {
-          return { code: 1, stdout: 'usage: mallok <command>', stderr: '' };
-        }
-        const body: FinalizeReport = {
-          protocol: 1,
-          ok: true,
-          version: '2.0.0',
-          migrationsApplied: [],
-          checks: ['typecheck', 'test', 'build'],
-          ...options.finalize,
-        };
-        return {
-          code: body.ok ? 0 : 1,
-          // Real output has progress before the JSON; the parser has to find
-          // it rather than assume the whole stream is the report.
-          stdout: `${options.noise ?? ''}${JSON.stringify(body)}\n`,
-          stderr: '',
-        };
+      if (args[0] === 'deploy') {
+        return options.dryRunFails === true
+          ? { code: 1, stdout: '', stderr: 'binding missing' }
+          : { code: 0, stdout: '', stderr: '' };
       }
       return { code: 0, stdout: '', stderr: '' };
     },
@@ -97,7 +127,7 @@ function runner(options: {
 }
 
 beforeEach(async () => {
-  workspace = await mkdtemp(join(tmpdir(), 'mallok-upgrade-protocol-'));
+  workspace = await mkdtemp(join(tmpdir(), 'mallok-upgradetest-'));
 });
 
 afterEach(async () => {
@@ -109,17 +139,39 @@ describe('comparing versions', () => {
     expect(compareVersions('1.0.0', '0.9.9')).toBeGreaterThan(0);
     expect(compareVersions('0.1.0', '0.1.0')).toBe(0);
     expect(compareVersions('0.2.0', '0.10.0')).toBeLessThan(0);
-    // The one that matters for a release train: rc.3 → rc.4 → the release.
     expect(compareVersions('0.1.0-rc.4', '0.1.0-rc.3')).toBeGreaterThan(0);
     expect(compareVersions('0.1.0', '0.1.0-rc.4')).toBeGreaterThan(0);
     expect(compareVersions('0.1.0-rc.4', '0.1.0')).toBeLessThan(0);
   });
+
+  it('orders rc.10 after rc.2, not before it', () => {
+    // The hand-rolled comparison this replaced compared pre-release tags as
+    // **strings**, so '10' sorted before '2' and rc.10 looked older than
+    // rc.2. Upgrading from rc.2 to rc.10 was refused as a downgrade — a bug
+    // that appears on a release train's tenth candidate and not one earlier.
+    expect(compareVersions('0.1.0-rc.10', '0.1.0-rc.2')).toBeGreaterThan(0);
+    expect(compareVersions('0.1.0-rc.2', '0.1.0-rc.10')).toBeLessThan(0);
+    expect(compareVersions('1.0.0-alpha.9', '1.0.0-alpha.11')).toBeLessThan(0);
+  });
+
+  it('ignores build metadata, which semver says is not precedence', () => {
+    expect(compareVersions('1.0.0+build.2', '1.0.0+build.1')).toBe(0);
+    expect(compareVersions('1.0.0+abc', '1.0.0')).toBe(0);
+  });
+
+  it('orders the pre-release identifier kinds the way semver does', () => {
+    expect(compareVersions('1.0.0-alpha.1', '1.0.0-alpha.beta')).toBeLessThan(
+      0,
+    );
+    expect(compareVersions('1.0.0-alpha.1', '1.0.0-alpha')).toBeGreaterThan(0);
+    expect(compareVersions('1.0.0-beta', '1.0.0-alpha')).toBeGreaterThan(0);
+  });
 });
 
-describe('what is refused before anything is copied', () => {
+describe('what is refused before anything is installed', () => {
   it('a range, rather than a version', async () => {
     const dir = await project();
-    const fake = runner({});
+    const fake = runner();
 
     for (const version of ['^2.0.0', 'latest', '2.0', 'next', '']) {
       await expect(
@@ -130,17 +182,28 @@ describe('what is refused before anything is copied', () => {
     expect(fake.calls).toEqual([]);
   });
 
-  it('going backwards', async () => {
-    // A release can migrate a project forward; there is no general way back,
-    // so this refuses rather than leaving a half-converted project on an old
-    // version that no longer understands it.
-    const dir = await project('2.0.0');
-    const fake = runner({});
+  it('going backwards, including across pre-releases', async () => {
+    const dir = await project('0.1.0-rc.10');
+    const fake = runner();
 
     await expect(
-      upgradeProject({ to: '1.0.0', projectDir: dir, run: fake.run }, report),
+      upgradeProject(
+        { to: '0.1.0-rc.2', projectDir: dir, run: fake.run },
+        report,
+      ),
     ).rejects.toThrow(/older than/);
     expect(fake.calls).toEqual([]);
+  });
+
+  it('a project pinned to something that is not a version', async () => {
+    const dir = await project('^1.0.0');
+
+    await expect(
+      upgradeProject(
+        { to: '2.0.0', projectDir: dir, run: runner().run },
+        report,
+      ),
+    ).rejects.toThrow(/not an exact version/);
   });
 
   it('a directory that is not a Mallok project', async () => {
@@ -155,7 +218,7 @@ describe('what is refused before anything is copied', () => {
 
     await expect(
       upgradeProject(
-        { to: '2.0.0', projectDir: dir, run: runner({}).run },
+        { to: '2.0.0', projectDir: dir, run: runner().run },
         report,
       ),
     ).rejects.toThrow(/not a Mallok project/);
@@ -171,15 +234,13 @@ describe('what is refused before anything is copied', () => {
 
     await expect(
       upgradeProject(
-        { to: '2.0.0', projectDir: dir, run: runner({}).run },
+        { to: '2.0.0', projectDir: dir, run: runner().run },
         report,
       ),
     ).rejects.toThrow(/does not depend on mallok/);
   });
 
   it('a project holding another package manager’s lockfile', async () => {
-    // Installing npm's tree beside a pnpm lockfile leaves a project whose
-    // lockfile no longer describes what is installed.
     const dir = await project();
     await writeFile(
       join(dir, 'pnpm-lock.yaml'),
@@ -189,7 +250,7 @@ describe('what is refused before anything is copied', () => {
 
     await expect(
       upgradeProject(
-        { to: '2.0.0', projectDir: dir, run: runner({}).run },
+        { to: '2.0.0', projectDir: dir, run: runner().run },
         report,
       ),
     ).rejects.toThrow();
@@ -199,7 +260,7 @@ describe('what is refused before anything is copied', () => {
 describe('upgrading to the version already installed', () => {
   it('changes nothing and says so', async () => {
     const dir = await project('2.0.0');
-    const fake = runner({});
+    const fake = runner();
 
     const result = await upgradeProject(
       { to: '2.0.0', projectDir: dir, run: fake.run },
@@ -207,9 +268,6 @@ describe('upgrading to the version already installed', () => {
     );
 
     expect(result.changed).toBe(false);
-    expect(result.migrationsApplied).toEqual([]);
-    // Nothing was installed and nothing was handed over: there is nothing to
-    // install, and this release carries no outstanding project migrations.
     expect(fake.calls).toEqual([]);
   });
 });
@@ -217,7 +275,7 @@ describe('upgrading to the version already installed', () => {
 describe('a dry run', () => {
   it('reports the move and writes nothing', async () => {
     const dir = await project('1.0.0');
-    const fake = runner({});
+    const fake = runner();
 
     const result = await upgradeProject(
       { to: '2.0.0', projectDir: dir, dryRun: true, run: fake.run },
@@ -237,14 +295,10 @@ describe('a dry run', () => {
   });
 });
 
-describe('the handover to the target version', () => {
-  it('asks the installed target to finish, and takes its answer', async () => {
+describe('a successful upgrade', () => {
+  it('installs the target and runs the project’s own checks against it', async () => {
     const dir = await project('1.0.0');
-    const fake = runner({
-      finalize: { migrationsApplied: ['2026-09-12-example'] },
-      // Progress lines before the JSON, as a real run has.
-      noise: 'Applying 2026-09-12-example…\nChecking typecheck…\n',
-    });
+    const fake = runner();
 
     const result = await upgradeProject(
       { to: '2.0.0', projectDir: dir, run: fake.run },
@@ -252,18 +306,20 @@ describe('the handover to the target version', () => {
     );
 
     expect(result.changed).toBe(true);
-    expect(result.migrationsApplied).toEqual(['2026-09-12-example']);
-    expect(result.checks).toEqual(['typecheck', 'test', 'build']);
-
-    // The binary that ran is the **target's**, from the copy's own
-    // node_modules — not this CLI, which knows nothing about 2.0.0's
-    // migrations.
-    const handover = fake.calls.find((call) =>
-      call.includes('upgrade-finalize'),
+    expect(result.checks).toEqual([
+      'typecheck',
+      'test',
+      'build',
+      'deploy --dry-run',
+    ]);
+    // The checks ran **after** the install, which is what makes them the
+    // target version's checks rather than the previous version's.
+    const installAt = fake.calls.findIndex((call) => call.includes('install'));
+    const firstCheck = fake.calls.findIndex((call) =>
+      call.includes('run typecheck'),
     );
-    expect(handover).toContain(
-      'mallok upgrade-finalize --from 1.0.0 --to 2.0.0',
-    );
+    expect(installAt).toBeGreaterThanOrEqual(0);
+    expect(firstCheck).toBeGreaterThan(installAt);
 
     const manifest = JSON.parse(
       await readFile(join(dir, 'package.json'), 'utf8'),
@@ -271,18 +327,19 @@ describe('the handover to the target version', () => {
     expect(manifest.dependencies.mallok).toBe('2.0.0');
   });
 
-  it('passes --skip-checks through when asked', async () => {
+  it('skips the checks when asked', async () => {
     const dir = await project('1.0.0');
-    const fake = runner({});
+    const fake = runner();
 
-    await upgradeProject(
+    const result = await upgradeProject(
       { to: '2.0.0', projectDir: dir, skipChecks: true, run: fake.run },
       report,
     );
 
-    expect(
-      fake.calls.find((call) => call.includes('upgrade-finalize')),
-    ).toContain('--skip-checks');
+    expect(result.checks).toEqual([]);
+    expect(fake.calls.some((call) => call.includes('run typecheck'))).toBe(
+      false,
+    );
   });
 
   it('needs a command runner', async () => {
@@ -294,197 +351,94 @@ describe('the handover to the target version', () => {
   });
 });
 
-describe('when the upgrade fails, the project is untouched', () => {
-  /** Every file in the project, with its bytes. */
-  async function snapshot(dir: string): Promise<Record<string, string>> {
-    const { readdir } = await import('node:fs/promises');
-    const out: Record<string, string> = {};
-    const walk = async (current: string, prefix: string): Promise<void> => {
-      for (const entry of await readdir(current, { withFileTypes: true })) {
-        const path = join(current, entry.name);
-        if (entry.isDirectory()) {
-          await walk(path, `${prefix}${entry.name}/`);
-        } else {
-          out[`${prefix}${entry.name}`] = await readFile(path, 'utf8');
-        }
-      }
+describe('when it fails, the project goes back to the version that worked', () => {
+  /** The manifest's pinned version and the lockfile's bytes. */
+  async function state(dir: string): Promise<{ pinned: string; lock: string }> {
+    const manifest = JSON.parse(
+      await readFile(join(dir, 'package.json'), 'utf8'),
+    ) as { dependencies: Record<string, string> };
+    return {
+      pinned: manifest.dependencies.mallok ?? '',
+      lock: await readFile(join(dir, 'package-lock.json'), 'utf8'),
     };
-    await walk(dir, '');
-    return out;
   }
 
-  it('when the install fails', async () => {
+  for (const [label, options] of [
+    ['the install fails', { installFails: true }],
+    ['the first check fails', { failCheck: 'typecheck' }],
+    ['a later check fails', { failCheck: 'build' }],
+    ['the deploy dry-run fails', { dryRunFails: true }],
+  ] as const) {
+    it(`when ${label}`, async () => {
+      const dir = await project('1.0.0');
+      const before = await state(dir);
+      const fake = runner(options);
+
+      await expect(
+        upgradeProject({ to: '2.0.0', projectDir: dir, run: fake.run }, report),
+      ).rejects.toThrow();
+
+      // Both files back, **and** the previous version reinstalled: a project
+      // whose manifest says one version while `node_modules` holds another
+      // fails in a way nobody can read.
+      expect(await state(dir)).toEqual(before);
+      expect(fake.calls.at(-1)).toContain('install');
+    });
+  }
+
+  it('says so plainly when even the rollback install fails', async () => {
+    // The one case that leaves a project needing a hand: the files are back
+    // and `node_modules` is not. Saying so is the only honest option.
     const dir = await project('1.0.0');
-    const before = await snapshot(dir);
-
-    await expect(
-      upgradeProject(
-        {
-          to: '2.0.0',
-          projectDir: dir,
-          run: runner({ installFails: true }).run,
-        },
-        report,
-      ),
-    ).rejects.toThrow(/Installing mallok 2.0.0 failed/);
-
-    expect(await snapshot(dir)).toEqual(before);
-  });
-
-  it('when the target reports a failed check', async () => {
-    // The manifest in the copy was already rewritten and the migrations may
-    // already have edited files there. None of that reaches the project,
-    // because all of it happened somewhere that is now deleted.
-    const dir = await project('1.0.0');
-    const before = await snapshot(dir);
+    const fake = runner({ failCheck: 'typecheck', restoreFails: true });
 
     const error = await upgradeProject(
-      {
-        to: '2.0.0',
-        projectDir: dir,
-        run: runner({
-          finalize: { ok: false, error: 'typecheck failed' },
-        }).run,
-      },
-      report,
-    ).catch((thrown: unknown) => thrown);
-
-    expect(error).toBeInstanceOf(CliError);
-    expect((error as CliError).message).toMatch(/could not finish the upgrade/);
-    // The target's own reason, carried back to the person who ran the old
-    // CLI. Without it they would be told only that "something" failed inside
-    // a directory that has since been deleted.
-    expect((error as CliError).hint).toBe('typecheck failed');
-
-    expect(await snapshot(dir)).toEqual(before);
-  });
-
-  it('when the target is too old to understand the protocol', async () => {
-    // An older binary prints usage, not a report. "Could not parse an answer"
-    // has to be a failure: treating it as success would commit a copy nobody
-    // migrated or checked.
-    const dir = await project('1.0.0');
-    const before = await snapshot(dir);
-
-    await expect(
-      upgradeProject(
-        { to: '2.0.0', projectDir: dir, run: runner({ finalize: null }).run },
-        report,
-      ),
-    ).rejects.toThrow(/could not finish the upgrade/);
-
-    expect(await snapshot(dir)).toEqual(before);
-  });
-});
-
-describe('the migration record a clone can see', () => {
-  it('is absent before any upgrade, and is not an error', async () => {
-    const dir = await project();
-
-    expect(await readProjectState(dir)).toEqual({
-      schemaVersion: 1,
-      appliedMigrations: [],
-      history: [],
-    });
-  });
-
-  it('refuses to read a corrupt one rather than treating it as empty', async () => {
-    // Fail closed, like the create ledger: a record that cannot be read is
-    // not an empty record, and reading it as empty is how a project gets
-    // migrated twice.
-    const dir = await project();
-    await writeFile(join(dir, 'mallok.json'), '{ not json', 'utf8');
-
-    await expect(readProjectState(dir)).rejects.toThrow(/could not be read/);
-  });
-
-  it('refuses one that has lost its migration list', async () => {
-    const dir = await project();
-    await writeFile(
-      join(dir, 'mallok.json'),
-      JSON.stringify({ schemaVersion: 1 }),
-      'utf8',
-    );
-
-    await expect(readProjectState(dir)).rejects.toThrow(/could not be read/);
-  });
-
-  it('survives the upgrade that carried it', async () => {
-    const dir = await project('1.0.0');
-    await writeFile(
-      join(dir, 'mallok.json'),
-      JSON.stringify({
-        schemaVersion: 1,
-        appliedMigrations: ['2026-01-01-earlier'],
-        history: [],
-      }),
-      'utf8',
-    );
-
-    await upgradeProject(
-      { to: '2.0.0', projectDir: dir, run: runner({}).run },
-      report,
-    );
-
-    // The copy carried it across; the finalize step in the target is what
-    // appends to it, and that is `upgrade.test.ts`'s subject.
-    expect((await readProjectState(dir)).appliedMigrations).toEqual([
-      '2026-01-01-earlier',
-    ]);
-  });
-});
-
-describe('what is copied into the staging directory', () => {
-  it('the site’s own files, and not its node_modules', async () => {
-    // `node_modules` is reinstalled from the manifest. Copying it would be
-    // slow, and worse, would carry the *old* framework into the tree the
-    // target version is about to check itself against.
-    const dir = await project('1.0.0');
-    await mkdir(join(dir, 'node_modules/mallok'), { recursive: true });
-    await writeFile(
-      join(dir, 'node_modules/mallok/marker.txt'),
-      'the old framework\n',
-      'utf8',
-    );
-
-    const seen: string[] = [];
-    const fake = {
-      run: async (
-        _command: string,
-        args: readonly string[],
-        opts?: unknown,
-      ) => {
-        const cwd = (opts as { cwd?: string } | undefined)?.cwd ?? '';
-        if (args[0] === 'install') {
-          const { readdir } = await import('node:fs/promises');
-          seen.push(...(await readdir(cwd)));
-          // The install is what creates the target's binary in the copy.
-          await mkdir(join(cwd, 'node_modules/.bin'), { recursive: true });
-        }
-        if (args[0] === 'upgrade-finalize') {
-          return {
-            code: 0,
-            stdout: `${JSON.stringify({
-              protocol: 1,
-              ok: true,
-              version: '2.0.0',
-              migrationsApplied: [],
-              checks: [],
-            })}\n`,
-            stderr: '',
-          };
-        }
-        return { code: 0, stdout: '', stderr: '' };
-      },
-    };
-
-    await upgradeProject(
       { to: '2.0.0', projectDir: dir, run: fake.run },
       report,
+    ).then(
+      () => null,
+      (thrown: unknown) => thrown as CliError,
     );
 
-    expect(seen).toContain('content.md');
-    expect(seen).toContain('wrangler.jsonc');
-    expect(seen).not.toContain('node_modules');
+    expect(error).toBeInstanceOf(CliError);
+    expect(error?.message).toMatch(/rolled back/i);
+    expect(error?.hint).toContain('npm install');
+    const manifest = JSON.parse(
+      await readFile(join(dir, 'package.json'), 'utf8'),
+    ) as { dependencies: Record<string, string> };
+    expect(manifest.dependencies.mallok).toBe('1.0.0');
+  });
+});
+
+describe('what was removed, and stays removed', () => {
+  it('makes no staging copy, so a failure cannot strand one', async () => {
+    // The previous design copied the whole project into `os.tmpdir()` and
+    // swapped it in with two renames. A failure between them left no project
+    // at all — a failure mode invented entirely by the machinery meant to
+    // prevent one, and guarding an empty list of migrations.
+    const staging = (entry: string) => entry.startsWith('mallok-upgrade-');
+    const before = (await readdir(tmpdir())).filter(staging);
+
+    const dir = await project('1.0.0');
+    const fake = runner({ failCheck: 'test' });
+
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: fake.run }, report),
+    ).rejects.toThrow();
+
+    // Compared before and after rather than asserted empty: the temporary
+    // directory is shared, and what matters is that this run added nothing to
+    // it. `mallok-upgrade-` was the staging prefix.
+    expect((await readdir(tmpdir())).filter(staging)).toEqual(before);
+  });
+
+  it('writes no project-migration state file', async () => {
+    const dir = await project('1.0.0');
+    await upgradeProject(
+      { to: '2.0.0', projectDir: dir, run: runner().run },
+      report,
+    );
+
+    expect(await readdir(dir)).not.toContain('mallok.json');
   });
 });
