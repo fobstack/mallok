@@ -270,7 +270,6 @@ function isAbsence(result: RunResult, kind: ResourceKind): boolean {
   return isDefiniteAbsence(`${result.stderr}\n${result.stdout}`, kind);
 }
 
-
 /** Turns anything that is not a clean "absent" into a stop. */
 function probeFailed(what: string, result: RunResult): never {
   throw new CliError(

@@ -26,9 +26,10 @@ import { join } from 'node:path';
 import {
   type CommandRunner,
   currentAccountId,
+  findDatabase,
   isDefiniteAbsence,
-  type ResourceKind,
   lastLine,
+  type ResourceKind,
   type Wrangler,
   wranglerFor,
 } from './cloudflare.js';
@@ -255,6 +256,64 @@ export async function destroySite(
   }
 
   const names = resourceNames(slug);
+
+  // ---- The database is identified, not just named -------------------------
+  //
+  // A name is reusable. `mallok-acme-db` can be a database this project
+  // created, or one somebody else made after a previous site of that name was
+  // destroyed, or a colleague's. Cloudflare gives D1 a UUID and the ledger
+  // records the one it saw, so the two are compared before anything is
+  // deleted — and "could not read it" stops as well, because that is not the
+  // same as "it matches".
+  //
+  // The locked Wrangler's `d1 delete` takes a name or a binding, not a UUID,
+  // so the delete itself is still by name. The check is what makes that name
+  // refer to the right thing at the moment it is used.
+  //
+  // **R2 buckets and Workers have no comparable id.** `r2 bucket info` and
+  // `deployments list` report nothing stable to compare against, so for those
+  // two the evidence is the account plus the name — which is weaker, and
+  // saying so is better than implying a proof that does not exist.
+  const recordedDatabaseId =
+    (ledger?.database?.status === 'created' ||
+    ledger?.database?.status === 'adopted'
+      ? ledger.database.id
+      : undefined) ??
+    record?.databaseId ??
+    undefined;
+  if (
+    typeof recordedDatabaseId === 'string' &&
+    recordedDatabaseId !== '' &&
+    ledger?.deleted?.includes('database') !== true
+  ) {
+    // `findDatabase` fails closed: an authentication, network or unrecognised
+    // failure throws rather than reporting absence.
+    const found = await findDatabase(wrangler, names.database);
+    if (
+      found.exists &&
+      found.id !== undefined &&
+      found.id !== recordedDatabaseId
+    ) {
+      report.warn(
+        `${names.database} on this account is a different database from the ` +
+          `one this project created. Recorded: ${recordedDatabaseId}; found: ` +
+          `${found.id}. Nothing has been deleted — a name can be reused, and ` +
+          'this one now refers to something else.',
+      );
+      const label = `Delete the database ${names.database}`;
+      return finish(
+        [
+          {
+            step: label,
+            ok: false,
+            detail: `recorded ${recordedDatabaseId}, found ${found.id}`,
+          },
+        ],
+        label,
+        slug,
+      );
+    }
+  }
 
   // No pre-flight probe for an attached R2 custom domain.
   //

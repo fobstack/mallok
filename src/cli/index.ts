@@ -528,6 +528,9 @@ async function runRepair(
         ? {}
         : { accountId: stringFlag(args, 'account-id') as string }),
       ...(adopt.length === 0 ? {} : { adopt: adopt as Adoptable[] }),
+      ...(stringFlag(args, 'expect-id') === undefined
+        ? {}
+        : { expectId: stringFlag(args, 'expect-id') as string }),
       run: spawnRunner,
     },
     report,
@@ -539,6 +542,7 @@ async function runRepair(
       slug: result.slug,
       accountId: result.accountId,
       adopted: result.adopted,
+      unverifiable: result.unverifiable,
       changed: result.changed,
     },
     result.changed.length === 0

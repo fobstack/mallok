@@ -265,7 +265,12 @@ describe('mallok repair', () => {
       ledger: null,
       record: { ...RECORD, accountId: null },
     });
-    const fake = fakeCloudflare();
+    // The record names a database id, so `repair` checks it against the
+    // account before writing that account down — filling it in from `whoami`
+    // alone would record "whoever is signed in" as the owner.
+    const fake = fakeCloudflare({
+      account: { databases: { 'mallok-acme-db': 'db-1' } },
+    });
 
     const result = await repairSite(
       { slug: 'acme', projectDir: dir, run: fake.run },
@@ -304,8 +309,16 @@ describe('mallok repair', () => {
       account: { databases: { 'mallok-acme-db': 'db-remote-1' } },
     });
 
+    // A D1 adoption has to repeat back the id the operator read: a name can
+    // be reused between looking and deciding.
     const result = await repairSite(
-      { slug: 'acme', projectDir: dir, adopt: ['database'], run: fake.run },
+      {
+        slug: 'acme',
+        projectDir: dir,
+        adopt: ['database'],
+        expectId: 'db-remote-1',
+        run: fake.run,
+      },
       report,
     );
 

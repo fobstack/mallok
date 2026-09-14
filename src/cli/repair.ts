@@ -60,6 +60,19 @@ export interface RepairOptions {
   readonly accountId?: string | undefined;
   /** Resources to adopt, named one at a time and never inferred. */
   readonly adopt?: readonly Adoptable[];
+  /**
+   * The id the operator read, repeated back.
+   *
+   * Required to adopt a D1 database. `create` prints the id it found, and
+   * between that and somebody running this command the resource can be
+   * replaced — a name is reusable, and the second thing under it is not the
+   * thing that was looked at. Repeating the id is what ties the decision to
+   * the resource it was made about.
+   *
+   * R2 buckets and Workers have no comparable id that Wrangler will report,
+   * so this does not apply to them and is not pretended to (`unverifiable`).
+   */
+  readonly expectId?: string | undefined;
   readonly run?: CommandRunner;
 }
 
@@ -67,6 +80,16 @@ export interface RepairResult {
   readonly slug: string;
   readonly accountId: string;
   readonly adopted: readonly Adoptable[];
+  /**
+   * Adopted resources whose identity could only be checked by name.
+   *
+   * Cloudflare gives a D1 database a UUID that Wrangler reports, so adopting
+   * one can be tied to a specific database. R2 buckets and Workers are
+   * addressed by name and nothing else, so "this is ours" rests on the
+   * account plus the name — which is weaker, and is reported rather than
+   * quietly treated as the same thing.
+   */
+  readonly unverifiable: readonly Adoptable[];
   /** What changed on disk, for the report. */
   readonly changed: readonly string[];
 }
@@ -122,19 +145,16 @@ export async function repairSite(
   // claim an account rather than record one.
   const accountId = await currentAccountId(wrangler, options.accountId);
 
-  // A record that already names a *different* account is not repaired. It is
-  // a statement that these resources belong elsewhere, and overwriting it is
-  // how this command would become the hole it exists to close.
+  // A record that already names a *different* account is never repaired, and
+  // **`--adopt` does not change that**. The guard used to read "refuse a
+  // mismatch unless we are adopting", which is exactly backwards: adopting is
+  // the operation that points a site at a resource, so it is the last one
+  // that should skip the check.
   for (const [what, known] of [
     ['ledger', ledger?.accountId],
     ['registry', record?.accountId],
   ] as const) {
-    if (
-      typeof known === 'string' &&
-      known !== '' &&
-      known !== accountId &&
-      options.adopt === undefined
-    ) {
+    if (typeof known === 'string' && known !== '' && known !== accountId) {
       throw new CliError(
         EXIT.user,
         `The ${what} says this site belongs to another Cloudflare account.`,
@@ -148,7 +168,47 @@ export async function repairSite(
 
   const changed: string[] = [];
   const adopted: Adoptable[] = [];
+  const unverifiable: Adoptable[] = [];
   const names = resourceNames(options.slug);
+
+  // Filling in a missing account id from `whoami` alone records "whoever is
+  // signed in" as the owner. When the records already name a D1 UUID, that is
+  // a second, stronger piece of evidence and it is checked: if the database
+  // of that name on this account reports a different id, these records
+  // describe some other site and must not be stamped with this account.
+  const knownDatabaseId =
+    (ledger?.database?.status === 'created' ||
+    ledger?.database?.status === 'adopted'
+      ? ledger.database.id
+      : undefined) ??
+    record?.databaseId ??
+    undefined;
+  if (
+    typeof knownDatabaseId === 'string' &&
+    knownDatabaseId !== '' &&
+    options.adopt === undefined
+  ) {
+    const found = await findDatabase(wrangler, names.database);
+    if (!found.exists) {
+      throw new CliError(
+        EXIT.user,
+        `There is no database called ${names.database} on account ${accountId}.`,
+        `The records name the database ${knownDatabaseId}. Either this is ` +
+          'not the account that owns this site, or the database is gone — ' +
+          'and recording this account would make the records say something ' +
+          'nobody has checked.',
+      );
+    }
+    if (found.id !== undefined && found.id !== knownDatabaseId) {
+      throw new CliError(
+        EXIT.user,
+        `${names.database} on this account is a different database from the one recorded.`,
+        `The records name ${knownDatabaseId}; account ${accountId} reports ` +
+          `${found.id}. A name can be reused, so this is somebody else's ` +
+          'database or a later one of your own. Nothing has been changed.',
+      );
+    }
+  }
 
   let next: Ledger | null = ledger;
   for (const kind of options.adopt ?? []) {
@@ -180,6 +240,38 @@ export async function repairSite(
           'instead — it will create it.',
       );
     }
+
+    // A D1 database has a UUID, so adopting one can be tied to a specific
+    // database rather than to a name. The operator has to repeat that id
+    // back: between `create` printing what it saw and this command running,
+    // the resource under that name can be replaced, and an adoption that
+    // cannot tell the difference is an adoption of whatever is there now.
+    if (found.id !== undefined) {
+      if (options.expectId === undefined || options.expectId === '') {
+        throw new CliError(
+          EXIT.user,
+          `Adopting the ${kind} ${name} needs the id it is expected to have.`,
+          `It currently reports ${found.id}. Check that against what \`mallok ` +
+            'create` printed, then repeat it back:\n' +
+            `  mallok repair ${options.slug} --adopt ${kind} --expect-id ${found.id}`,
+        );
+      }
+      if (options.expectId !== found.id) {
+        throw new CliError(
+          EXIT.user,
+          `The ${kind} ${name} is no longer ${options.expectId}.`,
+          `It now reports ${found.id}. A name can be reused, so this is not ` +
+            'the resource the decision was made about. Nothing has been ' +
+            'changed.',
+        );
+      }
+    } else {
+      // R2 buckets and Workers are addressed by name and nothing else, so the
+      // evidence here is the account plus the name. Weaker, and reported as
+      // such rather than quietly treated as the same thing.
+      unverifiable.push(kind);
+    }
+
     report.step(
       `Adopting the ${kind} ${name}${found.id === undefined ? '' : ` (${found.id})`}…`,
     );
@@ -217,5 +309,5 @@ export async function repairSite(
       : `Repaired ${options.slug}: ${changed.join(', ')}.`,
   );
 
-  return { slug: options.slug, accountId, adopted, changed };
+  return { slug: options.slug, accountId, adopted, unverifiable, changed };
 }

@@ -125,7 +125,7 @@ const COMMANDS: Readonly<Record<string, CommandSpec>> = {
    */
   repair: {
     booleans: [],
-    values: ['account-id', 'adopt'],
+    values: ['account-id', 'adopt', 'expect-id'],
     positional: { max: 1, what: 'one site slug' },
   },
   prepare: {

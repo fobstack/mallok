@@ -159,6 +159,9 @@ describe.each([
             slug: 'my-site',
             projectDir: join(workspace, 'my-site'),
             adopt: [kind],
+            // A D1 adoption repeats back the id the operator read; R2 and
+            // Workers have no id to repeat, and this is ignored for them.
+            expectId: first.account.databases['mallok-my-site-db'] ?? '',
             run: claim.run,
           },
           report,
@@ -195,6 +198,9 @@ describe.each([
             slug: 'my-site',
             projectDir: join(workspace, 'my-site'),
             adopt: [kind],
+            // A D1 adoption repeats back the id the operator read; R2 and
+            // Workers have no id to repeat, and this is ignored for them.
+            expectId: first.account.databases['mallok-my-site-db'] ?? '',
             run: claim.run,
           },
           report,
@@ -249,6 +255,9 @@ describe('reconciling a pending resource', () => {
         slug: 'my-site',
         projectDir: join(workspace, 'my-site'),
         adopt: ['database'],
+        // The id Cloudflare reports, repeated back: a name can be reused
+        // between the operator reading it and deciding to claim it.
+        expectId: first.account.databases['mallok-my-site-db'] ?? '',
         run: claim.run,
       },
       report,

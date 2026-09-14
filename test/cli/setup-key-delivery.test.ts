@@ -102,6 +102,9 @@ describe('when the key cannot be handed over', () => {
             slug: 'my-site',
             projectDir: join(workspace, 'my-site'),
             adopt: [kind],
+            // A D1 adoption repeats back the id the operator read; R2 and
+            // Workers have no id to repeat, and this is ignored for them.
+            expectId: first.account.databases['mallok-my-site-db'] ?? '',
             run: claim.run,
           },
           report,

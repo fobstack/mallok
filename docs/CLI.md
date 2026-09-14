@@ -376,6 +376,14 @@ Three refusals:
 - it stops if the current Cloudflare account is not the one the ledger
   records, because a same-named resource on another account is somebody
   else's site;
+- before deleting anything it checks the **database's UUID**. The ledger
+  records the id Cloudflare reported when the database was created; a name is
+  reusable, so a database of that name today may be one somebody else made
+  after a previous site was destroyed. A mismatch stops the run, and so does
+  a failure to read the id — "could not check" is not "it matches". (`d1
+  delete` in the locked Wrangler takes a name or a binding, not a UUID, so
+  the delete is still by name; the check is what makes that name refer to the
+  right thing at the moment it is used. R2 and Workers have no such id.)
 - it tries the **bucket first** and stops there if Cloudflare refuses because
   it is not empty — before the Worker and the database are gone, because the
   opposite order leaves a site that is down with two resources still billing
@@ -493,8 +501,29 @@ current login cannot reach. A record that already names a **different**
 account is refused rather than overwritten — that record is a statement, and
 overwriting it would reopen the hole this closes.
 
+The account check is **not** relaxed by `--adopt`. A record that names a
+different account is refused whatever else was asked for: adopting is the
+operation that points a site at a resource, so it is the last one that should
+skip it.
+
+Filling in a *missing* account id takes more than `whoami`. If the records
+already name a D1 UUID, the database of that name on the signed-in account
+must report the same one; otherwise the records describe a different site and
+nothing is written.
+
 **Adopt a pending resource, by name.** `--adopt database,bucket,worker`
 (comma separated; an unknown name is refused rather than silently skipped).
+
+Adopting a **database** also needs `--expect-id <uuid>`: the id the operator
+read, repeated back. Between `create` printing what it found and somebody
+running this command, the resource under that name can be replaced, and an
+adoption that cannot tell the difference adopts whatever is there now.
+
+**R2 buckets and Workers have no comparable id**, and this is not pretended
+otherwise. Wrangler reports nothing stable for either, so the evidence is the
+account plus the name — weaker than a UUID. Those adoptions are listed under
+`unverifiable` in the JSON output so that the difference is visible rather
+than implied away.
 
 A `create` interrupted between "about to make the database" and "made it"
 leaves a `pending` record, and possibly a real resource. Earlier versions
