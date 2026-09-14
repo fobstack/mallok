@@ -44,6 +44,43 @@ WordPress plugin's: the user is responsible for what they install.
 The documentation and the interface must say this outright. Concealing it is
 more dangerous than the absence of a sandbox.
 
+## 2.2 `definePlugin`, and what it refuses
+
+A plugin is built by calling `definePlugin` once, at module scope, and
+exporting the result:
+
+```ts
+import { definePlugin } from 'mallok/worker';
+import manifest from './plugin.json';
+
+export default definePlugin({ manifest, hooks: { … }, routes: { … } });
+```
+
+It exists because the runtime reads `manifest.hooks` and `manifest.settings`
+directly. Mallok's own plugins are fine — their manifests come from
+`plugin.json` through a schema that supplies every default — but both fields
+are **optional** in the format below, so a hand-written manifest made the
+runtime throw `Cannot read properties of undefined` on a visitor request,
+from inside Mallok, naming nothing the author could act on. `definePlugin`
+runs the same schema, so a hand-written object and a parsed file end up
+identical.
+
+It then checks the two halves against each other, and refuses:
+
+| What | Why it is worth failing a build over |
+| --- | --- |
+| A hook the manifest declares with no implementation | The runtime calls what the manifest lists, so it does nothing — silently, on every request |
+| An implemented hook the manifest does not declare | It never runs, and its author has no way to tell |
+| The same, for routes | A declared route with no handler answers 500; an undeclared one is never mounted |
+| A hook name that is not one of the five | Named in the message, because zod's own error lists the allowed options and not the offending value |
+| Anything the manifest schema rejects | An id that cannot form a table prefix, a settings field of an unknown type, a panel table without the plugin's `p_<id>_` prefix |
+
+Every refusal names the plugin, because a build log that says only which
+*field* was wrong is not much use when several plugins are compiled in.
+
+Refusals are `PluginDefinitionError`, which carries a `hint` alongside its
+message.
+
 ## 3. Package structure
 
 ```text
@@ -202,6 +239,15 @@ therefore batch its own work: do a little, leave the rest for the next minute,
 and do not try to finish everything at once.
 
 ## 6. The context objects
+
+All of these are exported from `mallok/worker`, so a third-party plugin
+annotates its own handlers with the same types the official one uses:
+`PluginContext`, `PluginRequestContext`, `PluginRenderContext`,
+`ContentDraft`, `RouteInput`, `EmailMessage` and `PluginSiteSettings`, plus
+`MallokPlugin` and `PluginInput`. There is no private interface (§1), and
+until 0.1.0-rc.5 the package exported only `MallokPlugin` with an opaque
+manifest — enough to *name* a plugin and not enough to write one.
+
 
 ```ts
 interface PluginContext {

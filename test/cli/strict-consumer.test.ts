@@ -210,6 +210,135 @@ describe('a project that installed only the tarball', () => {
     expect(result.code, result.stdout + result.stderr).toBe(0);
   }, 300_000);
 
+  it('compiles a real third-party plugin, written against the package alone', async () => {
+    // The surface `docs/PLUGIN_API.md` promises, exercised the way an author
+    // would meet it: a manifest, a declared hook and a declared route, with
+    // the handlers annotated using the context types the package exports.
+    //
+    // Before this, `mallok/worker` exported `MallokPlugin` with an opaque
+    // four-field manifest and nothing else — enough for a site to *name* a
+    // plugin, and not nearly enough to write one. An author had to reach into
+    // the package's internals, which is the private interface §1 says does
+    // not exist.
+    await writeFile(
+      join(sandbox, 'src/plugin.ts'),
+      [
+        'import type {',
+        '  ContentDraft,',
+        '  MallokPlugin,',
+        '  PluginContext,',
+        '  PluginRenderContext,',
+        '  PluginRequestContext,',
+        '  RouteInput,',
+        "} from 'mallok/worker';",
+        "import { definePlugin } from 'mallok/worker';",
+        '',
+        'const manifest = {',
+        "  id: 'guestbook',",
+        "  name: 'Guestbook',",
+        "  version: '1.0.0',",
+        '  pluginApi: 1,',
+        "  hooks: ['afterRender', 'onContentSave'],",
+        "  routes: [{ path: 'sign', method: 'POST' }],",
+        '  settings: {',
+        "    heading: { type: 'string', label: 'Heading' },",
+        '  },',
+        '};',
+        '',
+        '// A route handler, with the context type the package exports.',
+        'async function sign(',
+        '  input: RouteInput,',
+        '  ctx: PluginRequestContext,',
+        '): Promise<Response> {',
+        "  const name = input.fields.name ?? 'anonymous';",
+        '  await ctx.db',
+        "    .prepare('INSERT INTO p_guestbook_entries (name) VALUES (?)')",
+        '    .bind(name)',
+        '    .run();',
+        '  ctx.waitUntil(ctx.purgeTags([`kind:page`]));',
+        "  return new Response('ok', { status: 201 });",
+        '}',
+        '',
+        'const plugin: MallokPlugin = definePlugin({',
+        '  manifest,',
+        '  hooks: {',
+        '    afterRender: (html: string, ctx: PluginRenderContext) =>',
+        '      `${html}<!-- ${ctx.site.name} ${ctx.locale} -->`,',
+        '    onContentSave: async (draft: ContentDraft, ctx: PluginContext) => {',
+        '      await ctx.sendEmail({',
+        "        to: 'editor@example.com',",
+        '        subject: `Saved ${draft.title}`,',
+        '        html: `<p>${draft.slug}</p>`,',
+        '        text: draft.slug,',
+        '      });',
+        '      return undefined;',
+        '    },',
+        '  },',
+        '  routes: { sign },',
+        '});',
+        '',
+        'export default plugin;',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const result = await run(
+      join(sandbox, 'node_modules/.bin/tsc'),
+      ['-p', 'tsconfig.json'],
+      sandbox,
+    );
+    expect(result.code, result.stdout + result.stderr).toBe(0);
+  }, 300_000);
+
+  it('runs that plugin’s definition, and refuses a broken one', async () => {
+    // Compiling is not enough: `definePlugin` does its work at run time, so
+    // the package has to be *executed* from the installed tarball.
+    const script = join(sandbox, 'plugin-check.mjs');
+    await writeFile(
+      script,
+      [
+        "import { definePlugin } from 'mallok/worker';",
+        '',
+        'const manifest = {',
+        "  id: 'guestbook',",
+        "  name: 'Guestbook',",
+        "  version: '1.0.0',",
+        '  pluginApi: 1,',
+        '};',
+        '',
+        '// A manifest with no hooks and no settings: the shape that made the',
+        '// runtime throw "Cannot read properties of undefined" on a request.',
+        'const ok = definePlugin({ manifest });',
+        'if (!Array.isArray(ok.manifest.hooks) || ok.manifest.hooks.length) {',
+        '  throw new Error("hooks were not defaulted");',
+        '}',
+        'if (typeof ok.manifest.settings !== "object") {',
+        '  throw new Error("settings were not defaulted");',
+        '}',
+        '',
+        '// And a declared hook with no implementation must refuse, naming it.',
+        'let refused = null;',
+        'try {',
+        '  definePlugin({ manifest: { ...manifest, hooks: ["scheduled"] } });',
+        '} catch (error) {',
+        '  refused = error;',
+        '}',
+        'if (refused === null) throw new Error("a broken plugin was accepted");',
+        'if (!String(refused.message).includes("guestbook")) {',
+        '  throw new Error("the refusal did not name the plugin");',
+        '}',
+        'process.stdout.write("plugin: ok\\n");',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const result = await run('node', [script], sandbox);
+    expect(result.code, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain('plugin: ok');
+  }, 120_000);
+
   it('ships declarations that name no package it does not depend on', async () => {
     const declarations = await readFile(
       join(sandbox, 'node_modules/mallok/types/worker.d.ts'),
@@ -220,10 +349,18 @@ describe('a project that installed only the tarball', () => {
     ) as { dependencies?: Record<string, string> };
     const declared = new Set(Object.keys(manifest.dependencies ?? {}));
 
+    // Comments first. The declarations carry a worked example showing
+    // `import { definePlugin } from 'mallok/worker'`, and a scan of the raw
+    // text reads that as the package importing itself — which it then
+    // reports as an undeclared dependency.
+    const code = declarations
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
     // Every bare import in the published declarations must be a dependency.
     // Relative imports are fine; there are none, which is the simplest way to
     // keep this true.
-    for (const match of declarations.matchAll(
+    for (const match of code.matchAll(
       /^\s*(?:import|export)[^'"]*from\s*['"]([^'"]+)['"]/gm,
     )) {
       const specifier = match[1] ?? '';

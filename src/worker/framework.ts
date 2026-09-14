@@ -23,7 +23,26 @@ import { configure } from './composition.js';
 import type { Env } from './env.js';
 import { mallokHandler } from './handler.js';
 
-export type { MallokPlugin } from '../plugins/types.js';
+export type { PluginInput } from '../plugins/define.js';
+export { definePlugin, PluginDefinitionError } from '../plugins/define.js';
+/**
+ * The plugin author's surface (docs/PLUGIN_API.md §5–§7).
+ *
+ * All of it, not just the marker type. `MallokPlugin` alone described what a
+ * site *names*; writing one needs the context objects the hooks receive, the
+ * draft `onContentSave` sees and the parsed body a route handler gets — and
+ * without them a third-party author has to reach into the package's internals
+ * or re-declare them by hand.
+ */
+export type {
+  ContentDraft,
+  EmailMessage,
+  MallokPlugin,
+  PluginContext,
+  PluginRenderContext,
+  PluginRequestContext,
+  RouteInput,
+} from '../plugins/types.js';
 export type { BundledTheme } from '../themes/index.js';
 export type { Env } from './env.js';
 

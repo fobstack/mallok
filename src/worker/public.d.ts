@@ -84,20 +84,169 @@ export interface BundledTheme {
 }
 
 /**
- * A plugin compiled into this build (docs/PLUGIN_API.md §5–§7).
+ * The plugin author's surface (docs/PLUGIN_API.md §5–§7).
  *
- * Also described by its manifest alone. A site *names* plugins; writing one
- * means working inside `src/plugins/` against the hooks the documentation
- * describes, and the context types those hooks receive are Worker-internal.
+ * This used to be `MallokPlugin` alone, with an opaque four-field manifest —
+ * enough for a site to *name* a plugin and not nearly enough to write one. A
+ * third-party author had to reach into the package's internals or re-declare
+ * the context objects by hand, which is the private interface §1 says does
+ * not exist.
+ *
+ * The manifest itself stays described by the fields a *site* reads. Its full
+ * schema is `plugin.json`'s (§4), validated by `definePlugin` at build time,
+ * and it is data rather than something an author should have to satisfy in a
+ * type — a field list here would drift from the schema and be wrong in a way
+ * nobody notices.
  */
+
+/** An email handed to `ctx.sendEmail` (§7.6). */
+export interface EmailMessage {
+  readonly to: string;
+  readonly subject: string;
+  readonly html: string;
+  readonly text: string;
+  readonly replyTo?: string;
+}
+
+/**
+ * A site's settings, as a plugin sees them.
+ *
+ * Declared in full rather than narrowed to the fields that seemed useful. A
+ * narrowed copy is not the same type: the context is passed *into* a handler,
+ * so a subset here would make an author's correctly-typed handler unusable by
+ * the runtime, and `test/types/public-surface.ts` catches exactly that.
+ */
+export interface PluginSiteSettings {
+  readonly name: string;
+  readonly tagline: string;
+  readonly defaultLocale: string;
+  readonly locales: readonly string[];
+  readonly kinds: Readonly<Record<string, { readonly base: string }>>;
+  readonly nav: Readonly<
+    Record<string, readonly { readonly label: string; readonly href: string }[]>
+  >;
+  readonly themeOptions: Readonly<Record<string, unknown>>;
+  readonly domain: string | null;
+  readonly mediaBaseUrl: string;
+  readonly cacheTtl: number;
+}
+
+/** Capabilities every plugin call receives (§7). */
+export interface PluginContext {
+  readonly db: D1Database;
+  readonly media: R2Bucket;
+  /** This plugin's settings, validated against its manifest. */
+  readonly settings: Readonly<Record<string, unknown>>;
+  /** Decrypted secrets. Never logged, never returned to a client. */
+  readonly secrets: Readonly<Record<string, string>>;
+  readonly site: PluginSiteSettings;
+  /** Queues and sends via the configured provider; returns the job id. */
+  readonly sendEmail: (message: EmailMessage) => Promise<string>;
+  readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
+  readonly waitUntil: (promise: Promise<unknown>) => void;
+}
+
+/** Context for a plugin route call (§7.2). */
+export interface PluginRequestContext extends PluginContext {
+  readonly request: Request;
+  readonly url: URL;
+  readonly locale: string;
+  /** ISO country from the edge, when the platform provides it. */
+  readonly country: string | null;
+  /** `sha256(ip || MALLOK_SECRET)`; the raw address is never stored. */
+  readonly ipHash: string | null;
+}
+
+/**
+ * Context for `afterRender` (§5.3).
+ *
+ * Secrets are deliberately absent: it runs on the visitor path, and public
+ * markup never needs them.
+ */
+export interface PluginRenderContext {
+  readonly settings: Readonly<Record<string, unknown>>;
+  readonly site: PluginSiteSettings;
+  readonly locale: string;
+  readonly path: string;
+  /** Kind and id of the content being rendered; null on home and list pages. */
+  readonly content: { readonly id: string; readonly kind: string } | null;
+}
+
+/** The draft `onContentSave` sees before anything is written (§5.4). */
+export interface ContentDraft {
+  readonly kind: string;
+  readonly locale: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly markdown: string;
+  readonly frontmatter: Readonly<Record<string, unknown>>;
+  readonly status: string;
+}
+
+/** Body already parsed and, when declared, Turnstile already verified (§7.2). */
+export interface RouteInput {
+  readonly fields: Readonly<Record<string, string>>;
+}
+
+/** A plugin compiled into this build. */
 export interface MallokPlugin {
   readonly manifest: {
     readonly id: string;
     readonly name: string;
     readonly version: string;
     readonly pluginApi: number;
+    readonly hooks: readonly string[];
+    readonly routes: readonly { readonly path: string }[];
+    readonly settings: Readonly<Record<string, unknown>>;
   };
+  /**
+   * The implementations, as the runtime holds them.
+   *
+   * Opaque here on purpose. An author writes their handlers against the
+   * context types above and passes them to {@link definePlugin}, which is
+   * what checks that the manifest and the implementations agree; restating
+   * the handler signatures in this shape would make a plugin's own correctly
+   * typed functions fail to assign for reasons that are about variance
+   * rather than about the plugin.
+   */
+  readonly hooks?: Readonly<Record<string, unknown>>;
+  readonly routes?: Readonly<Record<string, unknown>>;
+  readonly migrations?: readonly unknown[];
 }
+
+/** What {@link definePlugin} accepts: a plugin whose manifest is unparsed. */
+export interface PluginInput extends Omit<MallokPlugin, 'manifest'> {
+  readonly manifest: unknown;
+}
+
+/** A refusal from {@link definePlugin}, carrying what to do about it. */
+export declare class PluginDefinitionError extends Error {
+  readonly hint: string;
+  constructor(message: string, hint: string);
+}
+
+/**
+ * Validates and normalises a plugin. Call it once, at module scope.
+ *
+ * It runs the manifest through the same schema `plugin.json` goes through,
+ * filling the defaults the runtime reads without checking — a hand-written
+ * manifest with no `hooks` used to make the runtime throw
+ * `Cannot read properties of undefined` on a visitor request, from inside
+ * Mallok, naming nothing the author could act on.
+ *
+ * It also checks the two halves against each other: a hook the manifest
+ * declares must be implemented, and an implemented hook must be declared.
+ * Neither mistake is visible to a type system, and both are silent at run
+ * time.
+ *
+ * ```ts
+ * import { definePlugin } from 'mallok/worker';
+ * import manifest from './plugin.json';
+ *
+ * export default definePlugin({ manifest, hooks: { … }, routes: { … } });
+ * ```
+ */
+export declare function definePlugin(input: PluginInput): MallokPlugin;
 
 /** The five official themes, ready to pass to {@link createMallok}. */
 export declare const atelier: BundledTheme;
