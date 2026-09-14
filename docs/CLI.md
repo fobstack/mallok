@@ -420,7 +420,44 @@ on the tenth release candidate and not one release earlier. Downgrading is
 still refused: a release can migrate a database forward and there is no
 general way back.
 
-Running it again on the same version changes nothing and exits 0.
+Running it again on the same version changes nothing and exits 0 — but that
+is **checked**, not read off `package.json`. A manifest saying 2.0.0 beside a
+lockfile and a `node_modules` holding 1.0.0 is a run that was interrupted
+after the manifest was written, and it needs the install it never finished.
+The comparison there is exact rather than semver precedence: `1.0.0+build.1`
+and `1.0.0+build.2` compare equal under semver — build metadata is explicitly
+not precedence — and they are not the same artefact.
+
+### What protects the two files it edits
+
+`package.json` and the lockfile are the only state an upgrade touches, and a
+site cannot afford to lose either.
+
+- **A readable `package-lock.json` is required up front.** The rollback
+  restores it; a rollback that cannot restore what it never read leaves the
+  manifest on the old version beside a tree holding the new one.
+- **Another package manager is refused, not worked around**:
+  `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`, **`bun.lock`** (Bun's newer
+  text format), **`npm-shrinkwrap.json`** — which overrides
+  `package-lock.json`, so an install would resolve from it and could pin the
+  version being upgraded away from — and a `packageManager` field naming
+  pnpm, yarn or bun, which is what Corepack reads.
+- **An exclusive lock**, `.mallok/upgrade.lock`, taken with an
+  `O_EXCL` create. Two upgrades in one directory would both read the same
+  "before", and the loser would restore a manifest the winner had already
+  replaced.
+- **A journal**, `.mallok/upgrade-journal.json`, holding the bytes of both
+  files, written *before* the manifest changes and removed only when the run
+  has finished or been undone. Every write goes through a temporary file in
+  the same directory and a rename, so a reader sees one version or the other
+  and never half of one. The next `mallok upgrade` in that project recovers
+  from it first.
+- **The rollback verifies what it restored.** It reinstalls with `npm ci` —
+  not `install`, which is free to rewrite the lockfile it just put back — and
+  then checks the version that actually landed in `node_modules`.
+
+`.mallok/` is git-ignored, so neither the lock nor the journal reaches a
+site's repository.
 
 ### What this deliberately does not do
 

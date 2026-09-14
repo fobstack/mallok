@@ -57,6 +57,15 @@ async function project(version = '1.0.0'): Promise<string> {
   );
   await writeFile(join(dir, 'wrangler.jsonc'), '{}\n', 'utf8');
   await writeFile(join(dir, 'src/worker/index.ts'), '// site\n', 'utf8');
+  // The installed tree, because "already on that version" is now checked in
+  // all three places rather than read off the manifest
+  // (`upgrade-safety.test.ts`).
+  await mkdir(join(dir, 'node_modules/mallok'), { recursive: true });
+  await writeFile(
+    join(dir, 'node_modules/mallok/package.json'),
+    JSON.stringify({ name: 'mallok', version }),
+    'utf8',
+  );
   return dir;
 }
 
@@ -104,9 +113,18 @@ function runner(
         const manifest = JSON.parse(
           await readFile(join(opts?.cwd ?? '', 'package.json'), 'utf8'),
         ) as { dependencies?: Record<string, string> };
+        const pinned = manifest.dependencies?.mallok ?? '';
         await writeFile(
           join(opts?.cwd ?? '', 'package-lock.json'),
-          `{"mallok":"${manifest.dependencies?.mallok ?? ''}"}\n`,
+          `{"mallok":"${pinned}"}\n`,
+          'utf8',
+        );
+        await mkdir(join(opts?.cwd ?? '', 'node_modules/mallok'), {
+          recursive: true,
+        });
+        await writeFile(
+          join(opts?.cwd ?? '', 'node_modules/mallok/package.json'),
+          JSON.stringify({ name: 'mallok', version: pinned }),
           'utf8',
         );
         return { code: 0, stdout: '', stderr: '' };
@@ -382,7 +400,9 @@ describe('when it fails, the project goes back to the version that worked', () =
       // whose manifest says one version while `node_modules` holds another
       // fails in a way nobody can read.
       expect(await state(dir)).toEqual(before);
-      expect(fake.calls.at(-1)).toContain('install');
+      // `ci`, not `install`: the restored lockfile is the record of what
+      // this project was working with, and `install` is free to rewrite it.
+      expect(fake.calls.at(-1)).toContain('ci');
     });
   }
 
@@ -402,7 +422,7 @@ describe('when it fails, the project goes back to the version that worked', () =
 
     expect(error).toBeInstanceOf(CliError);
     expect(error?.message).toMatch(/rolled back/i);
-    expect(error?.hint).toContain('npm install');
+    expect(error?.hint).toContain('npm ci');
     const manifest = JSON.parse(
       await readFile(join(dir, 'package.json'), 'utf8'),
     ) as { dependencies: Record<string, string> };

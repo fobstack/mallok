@@ -17,15 +17,33 @@
  * which manager owns it so that `upgrade` cannot pick the other one.
  */
 
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CliError, EXIT } from './output.js';
 
 /** The lockfile npm writes, and the one a project is expected to carry. */
 export const LOCKFILE = 'package-lock.json';
 
-/** Lockfiles belonging to managers this version does not drive. */
-const FOREIGN_LOCKFILES = ['pnpm-lock.yaml', 'yarn.lock', 'bun.lockb'];
+/**
+ * Lockfiles that mean this project is not an npm project.
+ *
+ * `bun.lock` as well as `bun.lockb`: Bun's newer format is text, and a check
+ * that knew only the binary one would wave it through. `npm-shrinkwrap.json`
+ * is npm's own, and is here for a different reason — it **overrides**
+ * `package-lock.json`, so an install would resolve from it and could pin the
+ * very version an upgrade is moving away from, while the lockfile the
+ * rollback saved describes something else entirely.
+ */
+const FOREIGN_LOCKFILES = [
+  'pnpm-lock.yaml',
+  'yarn.lock',
+  'bun.lockb',
+  'bun.lock',
+  'npm-shrinkwrap.json',
+];
+
+/** Package managers a `packageManager` field can name, other than npm. */
+const FOREIGN_MANAGERS = ['pnpm', 'yarn', 'bun'];
 
 /** The arguments that install a project's dependencies for the first time. */
 export function installArgs(): string[] {
@@ -43,6 +61,20 @@ export function frozenInstallArgs(): string[] {
 /** The arguments that run one of the project's own scripts. */
 export function runArgs(script: string): string[] {
   return ['run', script];
+}
+
+/** The `packageManager` a manifest declares, if it declares one. */
+async function packageManagerField(projectDir: string): Promise<string | null> {
+  try {
+    const manifest = JSON.parse(
+      await readFile(join(projectDir, 'package.json'), 'utf8'),
+    ) as { packageManager?: unknown };
+    return typeof manifest.packageManager === 'string'
+      ? manifest.packageManager
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -69,6 +101,18 @@ export async function assertNpmProject(projectDir: string): Promise<void> {
       foreign.push(lockfile);
     }
   }
+
+  // `packageManager` is what Corepack reads, so a project declaring pnpm runs
+  // pnpm however it is invoked — and this command would be driving npm at a
+  // tree somebody else's tool owns.
+  const declared = await packageManagerField(projectDir);
+  if (declared !== null) {
+    const name = declared.split('@')[0] ?? '';
+    if (FOREIGN_MANAGERS.includes(name)) {
+      foreign.push(`"packageManager": "${declared}"`);
+    }
+  }
+
   if (foreign.length === 0) {
     return;
   }
