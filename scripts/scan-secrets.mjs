@@ -175,6 +175,20 @@ const ACKNOWLEDGED = [
     reason: FIXTURE_REASON,
   },
   {
+    path: 'scripts/e2e-config.mjs',
+    rule: 'secret assigned a long literal',
+    fingerprint: 'f52e2b6021d62d00',
+    reason:
+      'The MALLOK_SECRET the browser suite gives its own `wrangler dev`. ' +
+      'That Worker is local, its D1 and R2 are files under .tmp/, and the ' +
+      'value cannot reach Cloudflare — it is written out in full, and named ' +
+      'so, because the suite asserts the Worker used *this* value rather ' +
+      "than one leaking from a developer's .dev.vars " +
+      '(test/e2e/00-isolation.spec.ts). Assembling it from fragments to ' +
+      'dodge this scan would teach the technique for getting a real key past ' +
+      'it.',
+  },
+  {
     path: 'test/worker/secret-check.test.ts',
     rule: 'Resend API key',
     // The fingerprint of the exact string that was reviewed. Another match of
