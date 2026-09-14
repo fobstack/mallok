@@ -1,7 +1,10 @@
 /**
  * Default Wrangler configuration for a single Mallok site.
  *
- * This file is what the "Deploy to Cloudflare" button reads, so every binding
+ * This is the repository's own development configuration. (It used to say the
+ * "Deploy to Cloudflare" button reads it; that path is `NOT_AVAILABLE` in 0.1
+ * — the button deploys the repository it points at, and this repository is
+ * the framework, not a site. See `docs/RELEASE_GATE.md §15.1`.) Every binding
  * carries a default resource name. `mallok create` copies it into the project
  * it generates and edits this same file in place with the real names and ids —
  * there is no second, nested config. See docs/CLOUDFLARE_RESOURCES.md.
@@ -40,8 +43,7 @@
   },
   "vars": {
     "MALLOK_SITE": "site",
-    "MALLOK_DOMAIN": "",
-    "MALLOK_REQUIRE_SETUP_KEY": "false"
+    "MALLOK_DOMAIN": ""
   },
   // Theme templates, stylesheets and SQL migrations are bundled as plain text.
   "rules": [

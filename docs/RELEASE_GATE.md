@@ -9,22 +9,24 @@ Cloudflare account, a domain, a third-party API key, or a published npm
 package. That is the only reason they are not done. Each one names the exact
 command, what a pass looks like, and how to undo it.
 
-**Only §4 has been run**, because it is the only step that does not need an
-account: the local gate and the artefact it produces (`§4.1`, 2026-09-12).
-Everything else is `NOT_RUN` until an operator records otherwise, and a local
-`workerd` result never promotes one of those rows — `docs/ACCEPTANCE.md §14`
-explains why that distinction is load-bearing. §15.1 is the one row that is
-neither: `NOT_AVAILABLE`, withdrawn rather than pending.
+**Nothing here is currently evidence for this release.** §4 was run on
+2026-09-12 and is now `STALE`: it is pinned to a commit that several
+release-code changes have since replaced (`§4.1`). Everything else is
+`NOT_RUN` until an operator records otherwise, and a local `workerd` result
+never promotes one of those rows — `docs/ACCEPTANCE.md §14` explains why that
+distinction is load-bearing. §15.1 is the one row that is neither:
+`NOT_AVAILABLE`, withdrawn rather than pending.
 
 ## 0. Vocabulary
 
 The statuses are `docs/TESTING.md §6`'s and no others — the same set
 `docs/ACCEPTANCE.md` uses. Every row in this file is `NOT_RUN` but two:
 
-- **§4** is `VERIFIED_LOCAL` — it needs no account, it has been run, and its
-  output is what §5 is checked against (`§4.1`);
+- **§4** is `STALE` — it needs no account and has been run, but against a
+  commit since replaced, so its output is a record rather than evidence
+  (`§4.1`);
 - **§15.1**, the Deploy to Cloudflare button, is `NOT_AVAILABLE` — withdrawn
-  from what 0.1.0-rc.4 claims rather than waiting for an operator.
+  from what this release claims rather than waiting for an operator.
 
 A conclusion about platform behaviour can only reach `VERIFIED_STAGING` or
 `VERIFIED_HUMAN`, and only from a run recorded with a command, its output and
@@ -141,10 +143,15 @@ the registry stopped, `node_modules` removed and an empty npm cache, `npm ci`
 
 ## 4. Build the release tarball
 
-**Status:** `VERIFIED_LOCAL`, 2026-09-12, for 0.1.0-rc.4 (commit `302ae77`).
-No account needed; this step is local and is the input to everything after
-it — which is why it is the one step in this document that can be, and has
-been, closed.
+**Status:** `STALE`. It was run on 2026-09-12 against commit `302ae77` and
+recorded below, and **that result is no longer evidence for this release**:
+every release-code commit since then changed what goes into the package.
+`docs/TESTING.md §6` defines `STALE` for exactly this — it was true, and it is
+not true of what is here now.
+
+No account is needed, so this is still the one step in this document that can
+be closed locally. It has to be run again, at the commit being released, and
+§4.1 replaced with what that run produces.
 
 ```sh
 set -euo pipefail
@@ -189,7 +196,15 @@ recompute with a tool that is not npm.
 (`scripts/refuse-publish.mjs`); the publishable package is `dist/pkg` and
 nothing else.
 
-### 4.1 What the 0.1.0-rc.4 run produced
+### 4.1 What the 2026-09-12 run produced — `STALE`
+
+**Kept as a record of a run that happened, not as evidence for this release.**
+It is pinned to commit `302ae77`, and the commits after it changed the
+Wrangler contract, the absence classification, the ownership checks, the
+setup-key default and delivery path, the upgrade command and the browser
+suite's configuration. None of the numbers below describes the current tree,
+and none of them may be quoted as though it did — not the tarball's SHA, not
+the commit, not the stderr size.
 
 Run 2026-09-12 in a **clean clone** of `302ae77`, installed from zero, every
 step consecutively. Recorded here because §5 compares against it, and a
@@ -231,7 +246,9 @@ shasum        05bde77f759478a3b8c3a268b356ddf23e8e59c5
 sha256        6394300411cee2cc7bbd77681003d06b631bc5c588aab7423fc0fb665b494115
 ```
 
-**The build is reproducible, and that was checked rather than assumed.**
+**The build was reproducible at that commit, and that was checked rather than
+assumed** — a property of the build, not of any particular artefact, so it is
+worth recording even though the tarball above is stale.
 Rebuilding from a second clean clone at `c8536e8` — two commits later, both
 touching only documentation and one code comment — produced a **byte-identical
 tarball**: the same size, the same `entryCount`, the same npm `integrity`, the
@@ -246,9 +263,10 @@ the generated project passed its own lint, typecheck, test, build and smoke;
 `mallok upgrade --to 0.1.0-rc.4` reported `changed: false`; a downgrade was
 refused. The tarball's SHA-256 was unchanged afterwards.
 
-**This closes §4 and nothing else.** Every step from §6 onwards still needs a
-real Cloudflare account, and §5 needs npm publish rights. A green local gate
-is the precondition for this document, not a substitute for it.
+**This closed §4 for that commit and nothing else**, and it no longer closes
+even that: see the heading. Every step from §6 onwards still needs a real
+Cloudflare account, and §5 needs npm publish rights. A green local gate is
+the precondition for this document, not a substitute for it.
 
 ## 5. Publish the package — after §7–§14, not before
 
@@ -1009,7 +1027,7 @@ build over it" was the previous wording and it describes nothing: there is no
 set -euo pipefail
 cd gate-site
 
-# 1. Publish content on the version this gate deployed (0.1.0-rc.4), and note
+# 1. Publish content on the version this gate deployed, and note
 #    a page that must survive.
 curl -fsS https://gate.example.com/news/<slug> | grep -c 'MARKER'   # 1
 
@@ -1024,10 +1042,11 @@ curl -fsS https://gate.example.com/news/<slug> | grep -c 'MARKER'   # 1
 curl -fsS https://gate.example.com/news/<slug> | grep -c 'MARKER'   # 1
 ./node_modules/.bin/wrangler d1 execute mallok-gate-20260911-db --remote \
   --command "SELECT id FROM migration ORDER BY id"
-
-# 5. And the project's own record, which is tracked rather than git-ignored:
-cat mallok.json
 ```
+
+There is no `mallok.json` to read: 0.1 has no project-file migration system,
+so an upgrade leaves nothing in the site's own directory to inspect
+(`docs/CLI.md §10.1`).
 
 **Pass:** step 4 finds the content intact, every migration id appears exactly
 once, and `wrangler tail` during step 3 shows no window of failed requests.
@@ -1047,8 +1066,17 @@ its down-path written before the upgrade, not after it.
 **Status:** `NOT_RUN`. This is a step, not a courtesy: a gate site holds one of
 five free cron triggers and keeps a database and a bucket alive.
 
-An R2 bucket cannot be deleted while it holds objects, so the order is:
-objects, then the three resources, then the things only the dashboard can do.
+The order is **bucket, Worker, database** — the step that can refuse runs
+first, while everything else is still intact, so a refusal costs nothing and
+the site keeps serving. Before any of it, `destroy` compares the **database's
+UUID** against the one the ledger recorded: a name is reusable, so a database
+of that name today may be one somebody else created after a previous site was
+destroyed (`docs/CLI.md §10`). A mismatch stops the run, and so does a failure
+to read the id.
+
+An R2 bucket cannot be deleted while it holds objects or has a custom domain
+attached; both refusals are recognised from what Cloudflare actually says, and
+anything else stops rather than being read as "already gone".
 
 ```sh
 set -euo pipefail

@@ -23,13 +23,17 @@ npm run deploy       # wrangler deploy
 ## Upgrading Mallok
 
 ```sh
-npx mallok upgrade --to 0.1.0-rc.4
+npx mallok upgrade --to 0.1.0-rc.5
 ```
 
-It sets the exact version, installs, applies any project migrations that
-release needs, and re-runs lint, typecheck, tests and a deploy dry-run. Run it
+It sets the exact version, installs it, and re-runs this project's own
+typecheck, tests, build and deploy dry-run against what was installed. Run it
 twice and the second run changes nothing. Your content, settings, theme and
 plugins are untouched — they are yours, not Mallok's.
+
+If anything fails, `package.json` and the lockfile go back and the previous
+version is reinstalled. There is no project-file migration system in 0.1, and
+nothing rewrites the files in this directory.
 
 Database schema migrations are not this command's job: the Worker applies them
 itself on its first request after a deploy.

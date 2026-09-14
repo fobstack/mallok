@@ -312,28 +312,47 @@ be carried elsewhere as it stands; that is what no lock-in means in practice.
 **Deletion** runs in order, and every step is idempotent:
 
 1. Confirm in the admin that an export exists.
-2. Remove the Worker custom domain and the R2 custom domain, or the hostnames
-   stay claimed.
+2. Delete the **R2 bucket** — first, deliberately. It is the step Cloudflare
+   can refuse: a bucket that still holds objects, or still has a custom
+   domain attached, cannot be deleted. Running it while the Worker and the
+   database are still there means a refusal costs nothing and the site keeps
+   serving.
 3. Delete the Worker; the cron and rate-limit binding go with it.
 4. Delete D1.
-5. Empty the R2 bucket, then delete it — a non-empty bucket cannot be deleted.
+5. Remove the Worker custom domain, or the hostname stays claimed.
 6. Delete the Turnstile widget.
 7. Delete `CF_API_TOKEN` in the dashboard.
 8. Clean up the DNS records the wizard wrote (`media`, and the Resend ones).
 9. Remove the entry from `.mallok/sites.json`.
 
-`mallok destroy <slug>` runs **steps 3, 4 and 5** of that order — Worker,
-database, bucket — using the project's own Wrangler, prints the result of each
-step, and stops with an explanation on the first failure rather than skipping
-ahead. A resource that is already gone counts as done, so a repeated run is
-safe.
+`mallok destroy <slug>` runs **steps 2, 3 and 4** — bucket, Worker, database —
+using the project's own Wrangler, prints the result of each step, and stops
+with an explanation on the first failure rather than skipping ahead.
 
-It does **not** do the rest, and says so instead of pretending: `wrangler` has
-no command that empties an R2 bucket, and a non-empty bucket cannot be
-deleted, so step 5 fails on a site with media in it until the objects are
-removed. Steps 2, 6, 7 and 8 — custom domains, the Turnstile widget, the API
-token and the DNS records — need the dashboard. `mallok destroy` prints them
-as remaining work at the end of a successful run.
+Before any of them it compares the **database's UUID** against the one the
+ledger recorded when the database was created. A name is reusable, so
+`mallok-<slug>-db` today may be a database somebody else created after a
+previous site of that name was destroyed; a mismatch stops the run, and so
+does a failure to read the id. (`d1 delete` in the locked Wrangler takes a
+name or a binding and not a UUID, so the delete itself is by name — the check
+is what makes that name refer to the right thing at the moment it is used. R2
+and Workers have no comparable id, so for those two the evidence is the
+account plus the name.)
+
+A resource that is genuinely gone counts as done, so a repeated run is safe —
+but "genuinely gone" means Cloudflare said so about *that resource*. A bare
+404, an expired token or a network failure stops the run instead: read as
+absence, they would mark the bucket deleted and take the Worker and the
+database with them (`docs/CLI.md §10`).
+
+It does **not** do the rest, and says so instead of pretending. There is no
+Wrangler command that empties an R2 bucket — `r2 object list` does not exist
+in 4.124.0 — so a bucket with media in it has to be emptied from the
+dashboard. Detaching an R2 custom domain is
+`wrangler r2 bucket domain remove <bucket> --domain <domain>`, and `destroy`
+prints that exact command when Cloudflare refuses for that reason. Steps 5
+to 8 — the Worker custom domain, the Turnstile widget, the API token and the
+DNS records — need the dashboard, and are printed as remaining work.
 
 ## 11. Still to be verified
 

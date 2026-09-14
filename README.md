@@ -125,10 +125,11 @@ a deploy — not a merge against a repository you forked months ago:
 npx mallok upgrade --to <version>
 ```
 
-That installs the target release, lets **it** run its own project migrations
-in a copy it can discard, re-runs the site's typecheck, tests, build and
-deploy dry-run, and only then commits the change. A failure leaves the project
-byte-for-byte as it was.
+That installs the target release and re-runs the site's own typecheck, tests,
+build and deploy dry-run against it. A failure restores `package.json` and the
+lockfile and reinstalls the version that worked. Nothing rewrites the files in
+a site's own directory: 0.1 has no project-file migration system, and will get
+one designed around the first migration that actually needs it.
 
 Migrations apply themselves on the first request after a deploy, once, behind
 a lock — concurrent cold starts cannot race. `npx wrangler rollback` returns
