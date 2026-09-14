@@ -454,6 +454,29 @@ and stages a theme in `src/theme/` if the project has one. It runs before
 every build and every deploy, and rebuilds the directory each time so a stale
 asset from an older version cannot survive an upgrade.
 
+### 10.2.1 Why neither `create` nor `setup-key` takes `--json`
+
+Both print a one-time setup key, and there is no safe place for a credential
+in machine-readable output: `--json` is what gets piped into a file or a CI
+log, and a key that lands there outlives its single use by however long that
+log is kept. Printing it *beside* the JSON would be worse — it corrupts the
+document and leaks the key.
+
+So the combination is **refused**, and refused before anything remote happens.
+A refusal after `secret put` would have rotated a key nobody then received.
+These two commands need an interactive terminal.
+
+A machine-readable path for them is a real gap. It needs a design — a file at
+an explicit path with restrictive permissions, say — rather than a field in a
+document whose whole purpose is to be collected, and that design is not part
+of 0.1.
+
+Both commands hand the key over through the same awaited write (`src/cli/
+deliver.ts`) and record `setupKeyDeliveredAt` **only once the stream has
+accepted it**. An interrupted hand-over therefore leaves the site marked
+undelivered, and the next run rotates and shows a new key rather than leaving
+a site whose key exists on the Worker and is known to nobody.
+
 ## 10.3 `mallok setup-key`
 
 Issues a new `MALLOK_SETUP_KEY` for the site in this directory and prints it

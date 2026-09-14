@@ -24,6 +24,7 @@ import {
   lastLine,
   wranglerFor,
 } from './cloudflare.js';
+import { deliverSecret } from './deliver.js';
 import { assertSameAccount, readLedger, writeLedger } from './ledger.js';
 import { CliError, EXIT, type Reporter } from './output.js';
 import { readRegistry } from './registry.js';
@@ -35,12 +36,28 @@ export interface SetupKeyOptions {
   readonly run?: CommandRunner;
   /** Injected in tests; the default asks the site's public status endpoint. */
   readonly hasAdministrator?: (origin: string) => Promise<boolean | null>;
+  /**
+   * Hands the key to a person, and throws if it cannot.
+   *
+   * The same contract `mallok create` uses, from the same module: the ledger
+   * records `setupKeyDeliveredAt` only **after** this returns. This command
+   * used to return the key to its caller, which printed it afterwards and
+   * then wrote the ledger separately — so an interruption in between left a
+   * key on the Worker that nobody had, on a site the ledger believed was
+   * finished.
+   */
+  readonly deliver?: (key: string) => Promise<void> | void;
 }
 
 export interface SetupKeyResult {
   readonly slug: string;
   /** Printed once, to a terminal, and stored nowhere. */
   readonly setupKey: string;
+}
+
+/** The default hand-over: stdout, awaited (`deliver.ts`). */
+async function defaultDeliver(key: string): Promise<void> {
+  await deliverSecret(process.stdout, 'MALLOK_SETUP_KEY', key);
 }
 
 /** Asks the deployed site whether it already has an administrator. */
@@ -154,6 +171,12 @@ export async function rotateSetupKey(
       lastLine(put.stderr, put.stdout),
     );
   }
+
+  // Hand it over **before** recording that it was handed over. Everything
+  // between those two points is a window in which the ledger would claim a
+  // delivery that did not happen, and a resumed run would then decline to
+  // rotate the key nobody has.
+  await (options.deliver ?? defaultDeliver)(setupKey);
 
   if (ledger !== null) {
     await writeLedger(projectDir, {

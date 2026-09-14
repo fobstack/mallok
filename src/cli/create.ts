@@ -36,6 +36,7 @@ import {
   type Wrangler,
   wranglerFor,
 } from './cloudflare.js';
+import { deliverSecret } from './deliver.js';
 import {
   assertSameAccount,
   isComplete,
@@ -875,27 +876,9 @@ async function ensureRegistered(
   return existing === undefined;
 }
 
-/**
- * The default hand-over: stdout, and an error if it does not get there.
- *
- * `process.stdout.write` returns false when the buffer is full and reports a
- * failed write through its callback — a closed pipe (`mallok create | head`)
- * is the ordinary way to see one. Waiting for that callback is what makes
- * "delivered" a fact rather than an intention.
- */
+/** The default hand-over: stdout, awaited (`deliver.ts`). */
 async function printSetupKey(key: string): Promise<void> {
-  await new Promise<void>((resolve, reject) => {
-    process.stdout.write(
-      `\nSetup key (needed once, by the wizard, and shown only here):\n    ${key}\n`,
-      (error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve();
-      },
-    );
-  });
+  await deliverSecret(process.stdout, 'MALLOK_SETUP_KEY', key);
 }
 
 /**

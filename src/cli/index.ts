@@ -62,8 +62,14 @@ const USAGE = `mallok — publish and manage a Mallok site
   mallok build <dir>       Build a whole static site from local files (no D1)
   mallok media push <dir>  Upload media without touching content
   mallok create <dir>      Create a Mallok project, then deploy it
+  mallok upgrade --to <v>  Move a project onto another Mallok release
+  mallok prepare           Stage the admin and theme assets for a build
   mallok setup-key         Issue a new first-run key, if nobody owns the site yet
+  mallok repair <slug>     Record the Cloudflare account, or adopt a pending resource
   mallok destroy <slug>    Delete a site's Worker, database and bucket
+
+create and setup-key print a one-time setup key, so neither accepts --json:
+a credential has no safe place in output that gets collected.
 
 Options
   --site <slug>        Target site from .mallok/sites.json
@@ -418,10 +424,44 @@ async function runPreview(
   return EXIT.ok;
 }
 
+/**
+ * Refuses `--json` for a command that has to hand a credential to a person.
+ *
+ * `create` and `setup-key` print a one-time setup key. There is no safe place
+ * for it in machine-readable output: `--json` is what gets piped into a file
+ * or a CI log, and a credential that lands there outlives its single use by
+ * however long that log is kept. Printing it *beside* the JSON is worse
+ * again — it corrupts the document and leaks the key.
+ *
+ * So the combination is refused rather than resolved, and refused **first**,
+ * before anything remote happens. A refusal after `secret put` would have
+ * rotated a key that nobody then received.
+ *
+ * A machine-readable path for these two is a real gap, and it needs a design
+ * — a file with an explicit path and restrictive permissions, say — rather
+ * than a field in a document whose whole purpose is to be collected.
+ */
+function refuseJsonForSecretDelivery(
+  args: ReturnType<typeof parseArgs>,
+  command: string,
+): void {
+  if (!boolFlag(args, 'json')) {
+    return;
+  }
+  throw new CliError(
+    EXIT.user,
+    `mallok ${command} cannot be used with --json.`,
+    'It prints a one-time setup key, and a credential in machine-readable ' +
+      'output ends up in whatever collected that output. Run it in a ' +
+      'terminal. Nothing has been changed on Cloudflare.',
+  );
+}
+
 async function runCreate(
   args: ReturnType<typeof parseArgs>,
   report: Reporter,
 ): Promise<number> {
+  refuseJsonForSecretDelivery(args, 'create');
   const directory = args.positional[0];
   if (directory === undefined) {
     throw new CliError(
@@ -556,6 +596,12 @@ async function runSetupKey(
   args: ReturnType<typeof parseArgs>,
   report: Reporter,
 ): Promise<number> {
+  refuseJsonForSecretDelivery(args, 'setup-key');
+  // The key is handed over inside `rotateSetupKey`, by the same awaited
+  // function `create` uses, and the ledger records the delivery only once
+  // that write has been accepted. Nothing is printed here: doing it again
+  // would put a credential in the scrollback twice, and doing it *instead*
+  // is the bug this replaced.
   const result = await rotateSetupKey(
     {
       projectDir: process.cwd(),
@@ -567,11 +613,6 @@ async function runSetupKey(
     report,
   );
 
-  // Printed to the terminal and nowhere else — not in the JSON summary, which
-  // is what gets piped into a file or a CI log.
-  report.step('');
-  report.step('Setup key (shown only here):');
-  report.step(`    ${result.setupKey}`);
   report.done(
     { command: 'setup-key', slug: result.slug, rotated: true },
     table(['site', 'result'], [[result.slug, 'a new setup key was set']]),
