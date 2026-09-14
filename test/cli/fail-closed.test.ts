@@ -104,7 +104,10 @@ describe('read-only probes', () => {
     // ordinary case still works.
     const fake = fakeCloudflare({
       failWhen: (args) => args[0] === 'd1' && args[1] === 'info',
-      failureMessage: "✘ [ERROR] Couldn't find DB with name 'mallok-acme-db'",
+      // Wrangler 4.124.0's own wording, quoted. A paraphrase would test a
+      // path the real CLI never produces — `absence.test.ts` checks each of
+      // these patterns against the binary's bundle.
+      failureMessage: '✘ [ERROR] Couldn\'t find a D1 DB named "mallok-acme-db"',
     });
 
     await expect(

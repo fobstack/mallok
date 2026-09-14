@@ -157,43 +157,101 @@ export interface Existing {
 }
 
 /**
- * Whether a failure means "no such resource" or something else entirely.
+ * Whether a failure means "this resource is not there" or something else.
  *
  * This is the distinction the file turns on. A non-zero exit from `d1 info`
- * can mean the database is not there — or that the token expired, the network
- * is down, or the account lacks a permission. Reading the second kind as
- * absence is how a resumed run creates a second database beside the one it
- * could not see.
+ * can mean the database is absent — or that the token expired, the network is
+ * down, the account lacks a permission, or a proxy returned an error page.
+ * Reading any of those as absence makes a resumed `create` build a second
+ * database beside the one it could not see, and makes `destroy` record the
+ * bucket as "already gone" and go on to delete the Worker and the database.
  *
- * Wrangler has no machine-readable answer for this, so the message is matched
- * against the shapes it uses for "not found" and **everything else fails
- * closed**. A new wording on Cloudflare's side therefore makes this stricter,
- * not looser, which is the right direction for a mistake to lean.
+ * Two rules, and the second one is the one that was missing.
  *
- * Matching the absence wording alone was not enough, because the wording is
- * not exclusive to absence. All of these are real failures that said nothing
- * about whether the resource exists, and every one of them contains a phrase
- * the pattern below accepts:
+ * **Nothing that could be a failure to *ask* is absence.** Authentication,
+ * authorisation, transport and API-routing failures are recognised first and
+ * are never absence, whatever else their text contains — all of these are
+ * real messages that used to pass as "not found":
  *
  *     Authentication error [code: 10000]: token not found
  *     getaddrinfo ENOTFOUND api.cloudflare.com: no such host
  *     A request to the Cloudflare API failed. Route not found [code: 7003]
- *     Authentication error [code: 10001]: no such permission on this token
  *
- * Read as absence, the first two make a resumed `create` build a second
- * database beside the one it could not see. In `destroy` they were worse: the
- * bucket step was recorded as "already gone" and the run went on to delete
- * the Worker and the database, on evidence that concerned neither.
+ * **Absence must be claimed by the resource's own error.** Matching a bare
+ * `not found` anywhere in the output was far too generous: Wrangler 4.124.0's
+ * own bundle contains `Not Found`, `Not found.`, `Page not found.`,
+ * `Application not found` and `Deployment not found`, and an HTML error page
+ * from a corporate proxy contains one too. None of them says anything about
+ * whether *this* database, bucket or Worker exists.
  *
- * So authentication, authorisation, transport and API-routing failures are
- * recognised **first**, and they are never absence whatever else the message
- * happens to contain.
+ * So each resource kind has its own patterns, and each pattern is a
+ * **quotation** from the locked Wrangler — `test/cli/absence.test.ts` reads
+ * the binary's bundle and fails if any `quote` below is not in it. A guess
+ * here either strands an operator or deletes a live site, so a guess is not
+ * allowed to be indistinguishable from a fact.
+ *
+ * The list is deliberately incomplete rather than speculative. If Cloudflare
+ * words an absence some way not written here, this stops and asks a person —
+ * which is the direction a mistake in this file has to lean.
  */
 const CANNOT_TELL =
   /\bauthenticat\w*|\bunauthori[sz]ed\b|\bforbidden\b|\bpermission\b|\bcredential\w*|\btoken\b|\[code: (?:10000|10001|7003)\]|\bENOTFOUND\b|\bECONNREFUSED\b|\bECONNRESET\b|\bETIMEDOUT\b|\bEAI_AGAIN\b|\bEPROTO\b|\bsocket hang up\b|\bfetch failed\b|\bgetaddrinfo\b|\bno such host\b|\bnetwork\b|\btimed? ?out\b|\brate limit\w*\b|\btoo many requests\b|\b(?:429|5\d\d) \b/i;
 
-const ABSENT =
-  /couldn'?t find|not found|does not exist|no such|unknown (?:database|bucket|script)/i;
+/** The kinds of resource this file can be asked about. */
+export type ResourceKind = 'database' | 'bucket' | 'worker' | 'secrets';
+
+/**
+ * One way the locked Wrangler says a specific resource is absent.
+ *
+ * `quote` is the literal substring that must exist in `wrangler-dist/cli.js`;
+ * `pattern` is how it is recognised in output that has been formatted,
+ * interpolated and prefixed with `✘ [ERROR]`.
+ */
+export interface AbsenceQuote {
+  readonly quote: string;
+  readonly pattern: RegExp;
+}
+
+export const ABSENCE_PATTERNS: Readonly<
+  Record<ResourceKind, readonly AbsenceQuote[]>
+> = {
+  database: [
+    {
+      quote: "Couldn't find a D1 DB named ",
+      pattern: /couldn'?t find a D1 DB named/i,
+    },
+    {
+      quote: "Couldn't find a D1 DB with name or binding ",
+      pattern: /couldn'?t find a D1 DB with name or binding/i,
+    },
+    {
+      quote: "Couldn't find a D1 DB with the name or binding ",
+      pattern: /couldn'?t find a D1 DB with the name or binding/i,
+    },
+  ],
+  bucket: [
+    {
+      quote: 'The specified bucket does not exist.',
+      pattern: /the specified bucket does not exist/i,
+    },
+    { quote: 'NoSuchBucket', pattern: /\bNoSuchBucket\b/ },
+  ],
+  worker: [
+    // The Cloudflare API code for `workers.api.error.script_not_found`.
+    { quote: '10007', pattern: /\[code: 10007\]|script_not_found/i },
+    {
+      quote: 'This Worker does not exist yet, so secrets cannot be set',
+      pattern: /this Worker does not exist yet/i,
+    },
+  ],
+  secrets: [
+    {
+      quote: 'This Worker does not exist yet, so secrets cannot be set',
+      pattern: /this Worker does not exist yet/i,
+    },
+    { quote: '10007', pattern: /\[code: 10007\]|script_not_found/i },
+  ],
+};
 
 /**
  * Whether a failure is a *definite* "this resource is not there".
@@ -201,16 +259,17 @@ const ABSENT =
  * Exported because `destroy` has to make the same judgement about a delete
  * that failed, and two copies of this reasoning is one copy too many.
  */
-export function isDefiniteAbsence(text: string): boolean {
+export function isDefiniteAbsence(text: string, kind: ResourceKind): boolean {
   if (CANNOT_TELL.test(text)) {
     return false;
   }
-  return ABSENT.test(text);
+  return ABSENCE_PATTERNS[kind].some((entry) => entry.pattern.test(text));
 }
 
-function isAbsence(result: RunResult): boolean {
-  return isDefiniteAbsence(`${result.stderr}\n${result.stdout}`);
+function isAbsence(result: RunResult, kind: ResourceKind): boolean {
+  return isDefiniteAbsence(`${result.stderr}\n${result.stdout}`, kind);
 }
+
 
 /** Turns anything that is not a clean "absent" into a stop. */
 function probeFailed(what: string, result: RunResult): never {
@@ -230,7 +289,7 @@ export async function findDatabase(
 ): Promise<Existing> {
   const result = await wrangler.run(['d1', 'info', name, '--json']);
   if (result.code !== 0) {
-    if (!isAbsence(result)) {
+    if (!isAbsence(result, 'database')) {
       probeFailed(`the database ${name}`, result);
     }
     return { exists: false };
@@ -250,7 +309,7 @@ export async function findBucket(
 ): Promise<Existing> {
   const result = await wrangler.run(['r2', 'bucket', 'info', name, '--json']);
   if (result.code !== 0) {
-    if (!isAbsence(result)) {
+    if (!isAbsence(result, 'bucket')) {
       probeFailed(`the bucket ${name}`, result);
     }
     return { exists: false };
@@ -271,7 +330,7 @@ export async function findWorker(
     '--json',
   ]);
   if (result.code !== 0) {
-    if (!isAbsence(result)) {
+    if (!isAbsence(result, 'worker')) {
       probeFailed(`the Worker ${name}`, result);
     }
     return { exists: false };
@@ -307,7 +366,7 @@ export async function secretNames(
     'json',
   ]);
   if (result.code !== 0) {
-    if (isAbsence(result)) {
+    if (isAbsence(result, 'secrets')) {
       // The Worker is not deployed yet, so it genuinely holds no secrets.
       return [];
     }

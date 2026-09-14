@@ -27,6 +27,7 @@ import {
   type CommandRunner,
   currentAccountId,
   isDefiniteAbsence,
+  type ResourceKind,
   lastLine,
   type Wrangler,
   wranglerFor,
@@ -44,7 +45,8 @@ import { resourceNames } from './site-config.js';
 
 /** One step of a destroy run. */
 export interface DestroyStep {
-  readonly id: 'bucket' | 'worker' | 'database';
+  /** Also the {@link ResourceKind} used to judge what a refusal meant. */
+  readonly id: Extract<ResourceKind, 'bucket' | 'worker' | 'database'>;
   readonly label: string;
   readonly args: readonly string[];
 }
@@ -130,8 +132,11 @@ const DOMAIN_ATTACHED = /custom domain|domain attached|attached domain/i;
  * authentication, permission, transport and API-routing failures **before**
  * looking for "not found" — every one of those can contain the phrase.
  */
-export function classifyDeleteFailure(text: string): DeleteFailure {
-  if (isDefiniteAbsence(text)) {
+export function classifyDeleteFailure(
+  text: string,
+  kind: ResourceKind,
+): DeleteFailure {
+  if (isDefiniteAbsence(text, kind)) {
     return 'absent';
   }
   // Checked before "not empty": a bucket can be both, and the domain is the
@@ -278,7 +283,8 @@ export async function destroySite(
 
     const run = await wrangler.run(step.args);
     const output = `${run.stderr}${run.stdout}`;
-    const failure = run.code === 0 ? null : classifyDeleteFailure(output);
+    const failure =
+      run.code === 0 ? null : classifyDeleteFailure(output, step.id);
     const ok = failure === null || failure === 'absent';
 
     if (failure === 'not-empty') {

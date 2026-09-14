@@ -147,14 +147,18 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
     }
     if (first === 'd1' && second === 'info') {
       const id = account.databases[third ?? ''];
+      // The wording is Wrangler 4.124.0's own, quoted rather than paraphrased.
+      // `isDefiniteAbsence` now requires a resource-specific message — a bare
+      // "not found" is refused — so a fake that invents its own phrasing would
+      // exercise a path the real CLI never reaches.
       return id === undefined
-        ? fail("Couldn't find DB")
+        ? fail(`✘ [ERROR] Couldn't find a D1 DB named "${third ?? ''}"`)
         : ok(JSON.stringify({ uuid: id }));
     }
     if (first === 'r2' && second === 'bucket' && third === 'info') {
       return account.buckets.includes(args[3] ?? '')
         ? ok(JSON.stringify({ name: args[3] }))
-        : fail('The specified bucket does not exist');
+        : fail('✘ [ERROR] The specified bucket does not exist.');
     }
     if (first === 'deployments' && second === 'list') {
       const name = args[args.indexOf('--name') + 1] ?? '';
