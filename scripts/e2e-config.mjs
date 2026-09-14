@@ -54,6 +54,7 @@ export async function writeE2eConfig() {
   await mkdir(outDir, { recursive: true });
 
   const config = {
+    // biome-ignore lint/style/useNamingConvention: Wrangler's own key, and it has to be spelled this way
     $schema: 'node_modules/wrangler/config-schema.json',
     name: 'mallok-e2e',
     main: resolve(repo, 'src/worker/index.ts'),
