@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { E2E_ENV } from '../../scripts/e2e-config.mjs';
 import { ADMIN } from './credentials.js';
+
+/** The key this run's Worker was given (`scripts/e2e-config.mjs`). */
+const SETUP_KEY = E2E_ENV.MALLOK_SETUP_KEY;
 
 /**
  * The first-run wizard (`AC-DEPLOY-03`, docs/ADMIN.md §5).
@@ -22,6 +26,16 @@ test('creates the administrator, the site and the starter content', async ({
   ).toBeVisible();
   await page.locator('#setup-email').fill(ADMIN.email);
   await page.locator('#setup-password').fill(ADMIN.password);
+
+  // The key is typed in, exactly as a site owner types the one `mallok
+  // create` printed. A site with no setup key refuses to create an
+  // administrator at all — that is the production default
+  // (`docs/SECURITY.md §3.7`), and a suite that turned it off with
+  // `MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY` would be exercising a configuration
+  // nobody ships. The field is only rendered when the site asks for one, so
+  // its presence is itself part of the assertion.
+  await expect(page.locator('#setup-key')).toBeVisible();
+  await page.locator('#setup-key').fill(SETUP_KEY);
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // ---- Step 2: the site --------------------------------------------------

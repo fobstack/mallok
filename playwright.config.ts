@@ -46,7 +46,15 @@ export default defineConfig({
       // with the packaged CLI. Without it the spec used a `dist/` directory
       // left over from an earlier release and passed against an artifact this
       // run never produced.
-      'rm -rf .tmp/e2e-state && pnpm run build:package && npx wrangler dev --port 8788 --persist-to .tmp/e2e-state',
+      //
+      // `-c .tmp/e2e/wrangler.jsonc` is the important part. Run against the
+      // repository's own configuration, Wrangler also loads the `.dev.vars`
+      // beside it — a developer's local secrets, in a test run, which is the
+      // defect `vitest.config.ts` was fixed for and which survived here. The
+      // generated configuration lives in its own directory precisely so that
+      // the root `.dev.vars` is not adjacent to it, and carries absolute
+      // paths for `main` and the assets (`scripts/e2e-config.mjs`).
+      'rm -rf .tmp/e2e-state && pnpm run build:package && node scripts/e2e-config.mjs && npx wrangler dev -c .tmp/e2e/wrangler.jsonc --port 8788 --persist-to .tmp/e2e-state',
     url: 'http://127.0.0.1:8788/_mallok/api/setup/status',
     // Off by default so a run always tests the build it just made. Set
     // MALLOK_E2E_REUSE=1 to attach to a `wrangler dev` you started yourself,

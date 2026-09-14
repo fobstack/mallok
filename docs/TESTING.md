@@ -337,6 +337,21 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
   && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
 ```
 
+The browser suite runs against its **own** Wrangler configuration and its own
+environment file, generated into `.tmp/e2e/` by `scripts/e2e-config.mjs`.
+`wrangler dev` loads the `.dev.vars` sitting beside whatever configuration it
+is given, so running it against the repository's own handed the Worker a
+developer's local secrets — the same defect `vitest.config.ts` was fixed for,
+surviving in the one place that drives a real Worker.
+`test/e2e/00-isolation.spec.ts` checks that by observation: the generated
+environment and the root one carry different values, and the Worker is asked
+what it actually used.
+
+The wizard is completed with a **real setup key**, typed in. A site with no
+key refuses to create an administrator at all (`docs/SECURITY.md §3.7`), and
+a suite that switched that off with `MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY`
+would be exercising a configuration nobody ships.
+
 `pnpm test:e2e` needs a browser (`npx playwright install chromium`, once).
 Lighthouse still needs a custom domain, so it stays out of the chain; its
 thresholds are asserted by `pnpm lighthouse:gate` over the reports `lhci`
