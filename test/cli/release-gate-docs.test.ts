@@ -215,6 +215,8 @@ describe('the external release runbook', () => {
     expect(gate).toContain('MALLOK_CANDIDATE_TARBALL="$candidate"');
     expect(gate).toContain('node scripts/verify-candidate.mjs "$candidate"');
     expect(gate).toContain('MALLOK_EXPECTED_SHA256');
+    expect(gate).toContain('MALLOK_EXPECTED_SOURCE_COMMIT');
+    expect(gate).toContain('sourceCommit,');
     expect(gate).toContain('actual[key] !== value');
     expect(gate).toContain('release record has');
     expect(gate).toContain('npm publish "$candidate"');

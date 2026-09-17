@@ -6,27 +6,27 @@
   checks (§4–§6, §8–§12, §16, §17).
 - Scope: everything between "all local work is done" and "0.1.0 is released".
 
-Every step below needs something this repository cannot provide: a real
-Cloudflare account, a domain, a third-party API key, or a published npm
-package. That is the only reason they are not done. Each one names the exact
-command, what a pass looks like, and how to undo it.
+Every step below **except §4** needs something this repository cannot provide:
+a real Cloudflare account, a domain, a third-party API key, or a published npm
+package. §4 is the local prerequisite; the external dependency is the reason
+the later sections remain open. Each one names the exact command, what a pass
+looks like, and how to undo it.
 
-**Nothing here is currently evidence for this release.** §4 was run on
-2026-09-12 and is now `STALE`: it is pinned to a commit that several
-release-code changes have since replaced (`§4.1`). Everything else is
-`NOT_RUN` until an operator records otherwise, and a local `workerd` result
-never promotes one of those rows — `docs/ACCEPTANCE.md §14` explains why that
-distinction is load-bearing. §15.1 is the one row that is neither:
-`NOT_AVAILABLE`, withdrawn rather than pending.
+**Only the local prerequisite is evidence for this release.** §4 is
+`VERIFIED_LOCAL` for the 0.1.0-rc.5 candidate on 2026-09-17. Every external
+section remains `NOT_RUN` until an operator records otherwise, and a local
+`workerd` result never promotes one of those rows — `docs/ACCEPTANCE.md §14`
+explains why that distinction is load-bearing. §15.1 is the one row that is
+neither: `NOT_AVAILABLE`, withdrawn rather than pending. The 2026-09-12 rc.4
+local run is retained separately as `STALE` history in §4.1.
 
 ## 0. Vocabulary
 
 The statuses are `docs/TESTING.md §6`'s and no others — the same set
-`docs/ACCEPTANCE.md` uses. Every row in this file is `NOT_RUN` but two:
+`docs/ACCEPTANCE.md` uses. Every current gate section is `NOT_RUN` but two:
 
-- **§4** is `STALE` — it needs no account and has been run, but against a
-  commit since replaced, so its output is a record rather than evidence
-  (`§4.1`);
+- **§4** is `VERIFIED_LOCAL` — it needs no account, and the rc.5 local gate,
+  source-bound candidate checks and clean-checkout reproducibility check pass;
 - **§15.1**, the Deploy to Cloudflare button, is `NOT_AVAILABLE` — withdrawn
   from what this release claims rather than waiting for an operator.
 
@@ -35,7 +35,8 @@ A conclusion about platform behaviour can only reach `VERIFIED_STAGING` or
 a date.
 
 **Gate A's evidence does not carry over.** Five criteria were verified against
-a real account on 2026-09-03/04, and all five are `STALE` as of 0.1.0-rc.4:
+a real account on 2026-09-03/04; all five have been `STALE` since rc.4 and
+remain stale for rc.5:
 `mallok create` was rewritten, the Worker's theme and plugins became an
 argument instead of a compiled-in constant, and the package became a framework
 rather than a copy of this repository. Those measurements are history worth
@@ -150,15 +151,16 @@ the registry stopped, `node_modules` removed and an empty npm cache, `npm ci`
 
 ## 4. Build the release tarball
 
-**Status:** `STALE`. It was run on 2026-09-12 against commit `302ae77` and
-recorded below, and **that result is no longer evidence for this release**:
-every release-code commit since then changed what goes into the package.
-`docs/TESTING.md §6` defines `STALE` for exactly this — it was true, and it is
-not true of what is here now.
+**Status:** `VERIFIED_LOCAL` on 2026-09-17 for 0.1.0-rc.5. The complete local
+suite below, exact-candidate tests, source-commit verification and independent
+clean-checkout reproduction all exit 0. The seven candidate values live in
+the release issue outside this checkout, because committing them here after
+packing would change `HEAD` and invalidate `sourceCommit`. The 2026-09-12 rc.4
+run is retained as `STALE` history in §4.1; none of its old numbers is evidence
+for rc.5.
 
-No account is needed, so this is still the one step in this document that can
-be closed locally. It has to be run again, at the commit being released, and
-§4.1 replaced with what that run produces.
+No account is needed, so this is the one step in this document that can be
+closed locally. It must be re-run if `HEAD` changes before publication.
 
 ```bash
 set -euo pipefail
@@ -182,7 +184,7 @@ reuse that directory, so normal tooling cannot silently replace its tarball.
 That is not filesystem immutability: a person can still replace both files.
 The independent release record below is therefore the trust anchor at §5.
 
-Record all six values. They must match exactly at §5, or a different artefact
+Record all seven values. They must match exactly at §5, or a different artefact
 is being published from the one that was tested:
 
 ```bash
@@ -202,17 +204,49 @@ shasum -a 256 "$candidate"
 ```
 
 `pack.json` records npm's own `integrity` (the SRI hash it will publish under),
-`shasum`, sizes and the independently computed SHA-256. `verify-candidate`
-recomputes every hash from the file after the boundary tests; the separate
-`shasum -a 256` is also readable without trusting the script.
+`shasum`, sizes, the independently computed SHA-256 and the clean Git commit
+that owns `dist/pkg`. `verify-candidate` recomputes every hash from the file
+after the boundary tests and refuses a checkout whose `HEAD` differs from
+`sourceCommit`; the separate `shasum -a 256` is also readable without trusting
+the script.
 
-Copy the six displayed values into the release issue **outside this checkout**:
-filename, size, unpackedSize, integrity, shasum and sha256. Before §5, export
-the five non-derived values from that independent record as
+Copy the seven displayed values into the release issue **outside this
+checkout**: filename, size, unpackedSize, integrity, shasum, sha256 and
+sourceCommit. Before §5, export the six non-derived values from that
+independent record as
 `MALLOK_EXPECTED_SIZE`, `MALLOK_EXPECTED_UNPACKED_SIZE`,
 `MALLOK_EXPECTED_INTEGRITY`, `MALLOK_EXPECTED_SHASUM` and
-`MALLOK_EXPECTED_SHA256`. Do not populate them by rereading `pack.json`; doing
-so would let a replaced tarball and a replaced manifest validate each other.
+`MALLOK_EXPECTED_SHA256`, plus `MALLOK_EXPECTED_SOURCE_COMMIT`. Do not populate
+them by rereading `pack.json`; doing so would let a replaced tarball and a
+replaced manifest validate each other.
+
+**Do not commit after selecting the candidate.** `sourceCommit` deliberately
+binds the tarball to the exact `HEAD` from which it was built. A documentation
+commit, tag-preparation commit or other change after `release:pack` invalidates
+that candidate: remove the ignored `dist/release` directory, build and pack
+again from the new clean `HEAD`, then repeat every candidate check. A Git tag
+does not change `HEAD` and is safe after the checks.
+
+The final local gate also proves whole-package reproducibility from a second
+clean checkout of that same commit. The second checkout installs from its
+lockfile, builds and packs independently; `cmp` must report byte equality and
+both `pack.json` records must be identical:
+
+```bash
+set -euo pipefail
+repro_root=$(mktemp -d)
+git clone --local . "$repro_root/mallok"
+git -C "$repro_root/mallok" checkout --detach "$(git rev-parse HEAD)"
+(
+  cd "$repro_root/mallok"
+  pnpm install --frozen-lockfile
+  pnpm release:pack
+)
+version=$(node -p "require('./package.json').version")
+cmp "dist/release/mallok-$version.tgz" \
+  "$repro_root/mallok/dist/release/mallok-$version.tgz"
+cmp dist/release/pack.json "$repro_root/mallok/dist/release/pack.json"
+```
 
 `npm publish` from the repository root is **refused** by `prepublishOnly`
 (`scripts/refuse-publish.mjs`). `dist/pkg` is never published directly; the
@@ -274,9 +308,10 @@ worth recording even though the tarball above is stale.
 Rebuilding from a second clean clone at `c8536e8` — two commits later, both
 touching only documentation and one code comment — produced a **byte-identical
 tarball**: the same size, the same `entryCount`, the same npm `integrity`, the
-same SHA-256. That is the property §5 leans on when it insists on publishing
-the *file* rather than the directory, and it means this record stays valid for
-any commit that does not change what goes into the package.
+same SHA-256. That historical result demonstrates deterministic bytes; it does
+**not** make the old candidate eligible at a later commit. rc.5 records
+`sourceCommit`, and §5 accepts only a candidate whose recorded commit equals
+the publishing checkout's current `HEAD`.
 
 Then that exact file, installed into a directory that had nothing else:
 the strict consumer compiled with `skipLibCheck: false`;
@@ -315,13 +350,14 @@ candidate="$PWD/dist/release/mallok-$version.tgz"
 : "${MALLOK_EXPECTED_INTEGRITY:?copy it from the §4 release record}"
 : "${MALLOK_EXPECTED_SHASUM:?copy it from the §4 release record}"
 : "${MALLOK_EXPECTED_SHA256:?copy it from the §4 release record}"
+: "${MALLOK_EXPECTED_SOURCE_COMMIT:?copy it from the §4 release record}"
 node scripts/verify-candidate.mjs "$candidate"
 node - "$version" \
   "$MALLOK_EXPECTED_SIZE" "$MALLOK_EXPECTED_UNPACKED_SIZE" \
   "$MALLOK_EXPECTED_INTEGRITY" "$MALLOK_EXPECTED_SHASUM" \
-  "$MALLOK_EXPECTED_SHA256" <<'NODE'
+  "$MALLOK_EXPECTED_SHA256" "$MALLOK_EXPECTED_SOURCE_COMMIT" <<'NODE'
 const { readFileSync } = require('node:fs');
-const [version, size, unpackedSize, integrity, shasum, sha256] =
+const [version, size, unpackedSize, integrity, shasum, sha256, sourceCommit] =
   process.argv.slice(2);
 const actual = JSON.parse(readFileSync('dist/release/pack.json', 'utf8'));
 const expected = {
@@ -331,6 +367,7 @@ const expected = {
   integrity,
   shasum,
   sha256,
+  sourceCommit,
 };
 for (const [key, value] of Object.entries(expected)) {
   if (actual[key] !== value) {
@@ -2213,7 +2250,7 @@ output and a date. None of them may be restored by argument.
 | Raw numbers and surprises | `docs/tasks/TASK-01.md §5` |
 | Wording or scope decisions | `docs/ACCEPTANCE.md §14.2` |
 | Lighthouse JSON | `.tmp/lighthouse`, attached to the release issue |
-| Tarball name, size, unpackedSize, npm integrity, shasum and sha256 | The release issue, from §4, re-checked at §5 |
+| Tarball name, size, unpackedSize, npm integrity, shasum, sha256 and sourceCommit | The release issue, from §4, re-checked at §5 |
 | Lighthouse min/median per category | `pnpm lighthouse:gate` output, §14 |
 | CPU/latency distribution (path; cold and warm CPU n/p50/p95/max; cold and warm latency n/p50/p95/max) | `docs/tasks/TASK-01.md §5`, §11 |
 | The setup key `create` delivered to the interactive terminal | Nowhere. It is absent from the result, JSON and files, and is used once by the wizard |

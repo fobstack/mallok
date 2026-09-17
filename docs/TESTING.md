@@ -213,7 +213,7 @@ AC-XX-YY  one sentence saying what is being accepted
   Environment     Node 22.22.2 / workerd (vitest-pool-workers 0.22.0) / macOS 24.6.0
 ```
 
-Only seven statuses are permitted, and **wording such as "should pass" is
+Only eight statuses are permitted, and **wording such as "should pass" is
 not**:
 
 **This table is the project's only status vocabulary.** `docs/ACCEPTANCE.md`

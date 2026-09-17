@@ -4,6 +4,78 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.5] — unreleased
+
+**rc.4 never left the local release gate.** This candidate turns the failures
+found there into enforceable product boundaries: destructive commands identify
+the exact resources they may touch, upgrades recover after interruption,
+third-party plugins have a public contract, and the one tested tarball is the
+one an operator can publish.
+
+### Security
+
+- **Cloudflare mutations now fail closed on identity.** `create`, `repair`,
+  `setup-key` and `destroy` bind every Wrangler subprocess to one verified
+  account; compare the Worker, D1 UUID and R2 binding with the project records;
+  and reject missing, conflicting or reused identities before a mutation.
+  Resource absence is accepted only when Wrangler returns the locked,
+  resource-specific error contract — a generic 404, authentication failure or
+  unknown message stops the run.
+- **The setup key is required by default and has one delivery path.** A
+  deployed site without the key returns 503 instead of opening administrator
+  creation to the first visitor. The ledger records delivery only after the
+  caller has received the value, and commands that can emit credentials refuse
+  `--json` before touching Cloudflare.
+- **Browser tests cannot inherit a developer's secrets.** Each run creates a
+  private source, configuration, environment, artifact and storage snapshot
+  under ignored `.tmp` state, uses a fresh session/encryption secret, and
+  removes the snapshot after Wrangler exits.
+- **Exports fail closed across plugins and filesystems.** Core and plugin
+  paths share one portable validator; aliases, traversal, reserved names and
+  core/plugin overwrites are refused. The CLI builds in a private staging
+  directory and the browser withholds its ZIP when a plugin or media download
+  fails, so neither can report a partial backup as complete.
+
+### Fixed
+
+- **Upgrades are a recoverable transaction.** An exclusive lock and atomic
+  journal protect `package.json` and the effective npm lockfile; interrupted
+  runs restore on the next invocation, rollback uses `npm ci`, and the command
+  verifies the exact installed version rather than semver precedence alone.
+- **Browser runs no longer share mutable build output.** The Worker and theme
+  accessibility checks use the run's private package and assets, so another
+  `build:package` cannot delete a hashed chunk or CLI file while Playwright is
+  using it.
+- **Production admin chunks are reproducible and private.** Package builds
+  force production JSX even when invoked from a test process. Two different
+  checkout paths now produce byte-identical assets, with no build-machine path
+  or `jsxDEV` metadata in the published tarball.
+- **The external release runbook fails closed.** Executable examples are
+  syntax-checked Bash, derive and cross-check real resource identities, keep
+  cold CPU separate from cache-warm requests, and require machine assertions
+  for cache purge, scheduled publishing, media cleanup, migrations and final
+  destruction.
+- **Colliding translation bundles preserve their real slugs.** `mallok.json`
+  records each locale's slug, allowing export directories to receive a stable
+  collision suffix without changing a URL when the bundle is imported or
+  built statically.
+
+### Added
+
+- **A usable third-party plugin API.** `mallok/worker` exports the manifest,
+  settings, route, content, email and hook context types plus `definePlugin`.
+  Definitions are schema-normalised and rejected when declared hooks or routes
+  disagree with their implementations; an isolated strict consumer compiles
+  and executes a plugin using only the packed tarball.
+- **One selected release artifact.** `pnpm release:pack` writes a versioned
+  candidate and independent hash record outside mutable staging, refuses a
+  second pack, and the candidate suites install that exact file. Packaging
+  starts from a clean Git commit, removes the complete compiled-asset tree,
+  copies the project shell from a reviewed allow-list, and records the source
+  commit beside npm's hashes and sizes. The package's `THIRD_PARTY_NOTICES` is
+  generated from the Worker, CLI and admin build graphs rather than a declared
+  dependency list.
+
 ## [0.1.0-rc.4] — unreleased
 
 **rc.3's "local release loop is complete" conclusion is withdrawn.** rc.3 is

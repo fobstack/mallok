@@ -60,13 +60,13 @@ a static build has no inquiry form, no admin, and needs rebuilding after edits.
 
 ## Status
 
-**Feature complete locally; not released, and no real-account evidence stands
-for this version.** The rendering core, database schema, Worker request path,
-edge cache, management API, media pipeline, SEO endpoints, multilingual model,
-plugin runtime with the official inquiry plugin, five zero-JavaScript themes,
-the admin app, import/export, the CLI, the page runtime and the `trade-b2b`
-starter with its setup wizard all exist, and the local gate that covers them
-is one command line:
+**The rc.5 local release gate passed on 2026-09-17; Mallok is not released,
+and no real-account evidence stands for this version.** The rendering core,
+database schema, Worker request path, edge cache, management API, media
+pipeline, SEO endpoints, multilingual model, plugin runtime with the official
+inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the
+CLI, the page runtime and the `trade-b2b` starter with its setup wizard all
+exist, and the local gate that covers them is one command line:
 
 ```sh
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
@@ -75,8 +75,9 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
   && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
 ```
 
-`.github/workflows/release.yml` runs exactly this, in one sequential job, on
-any tag.
+`.github/workflows/release.yml` runs this suite in one sequential job on any
+tag, then packs one candidate, tests that exact tarball and verifies its
+independent hash record before exposing it as the workflow artifact.
 
 That runs unit and integration tests across Node, real `workerd`, a DOM and
 real Vite builds; browser tests that drive a real `wrangler dev` through the
@@ -97,7 +98,7 @@ real account has to do to change it. Nothing is published to npm and the
 repository is private. Treat this as a codebase to try, not a product to
 deploy.
 
-The version is `0.1.0-rc.4`: every criterion that can be closed without a
+The version is `0.1.0-rc.5`: every criterion that can be closed without a
 Cloudflare account, a domain or a third-party key is closed. What remains is
 listed with exact commands, pass conditions and rollbacks in
 [`docs/RELEASE_GATE.md`](docs/RELEASE_GATE.md). A local `workerd` result is

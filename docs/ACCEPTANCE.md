@@ -46,17 +46,17 @@ on which document a reader had open. The mapping applied on 2026-09-11:
 | `VERIFIED_HUMAN` (Gate A rows) | `STALE` | The evidence is real and predates the code now serving it — see below |
 | `NOT_RUN` | `NOT_RUN` | Unchanged |
 | `NOT_AVAILABLE` ("needs a real account") | `NOT_RUN` | It *can* be run; it needs an account nobody has run it on. `NOT_AVAILABLE` means "there is nothing to test yet" |
-| `NOT_RUN` | `NOT_RUN` | None remain; the last one was settled 2026-09-06 |
+| `PENDING_DECISION` | `NOT_RUN` | None remain; the last one was settled 2026-09-06 |
 
-**Every Gate A row is `STALE` as of 0.1.0-rc.4.** Those five were verified on a
-real account on 2026-09-03/04 — against the previous `mallok create`, which
-wrote a nested per-site config and provisioned before it built; against a
-Worker whose theme and plugins were compiled-in constants; and against a
-package that shipped a copy of this repository rather than a framework. All
-three were replaced. The measurements are still interesting and are kept in
-`docs/tasks/TASK-01.md §5`; they are not evidence for this release, and the
-rows return to `VERIFIED_STAGING` only when somebody re-runs them
-(`docs/RELEASE_GATE.md`).
+**Every Gate A row has been `STALE` since 0.1.0-rc.4 and remains stale for
+0.1.0-rc.5.** Those five were verified on a real account on 2026-09-03/04 —
+against the previous `mallok create`, which wrote a nested per-site config and
+provisioned before it built; against a Worker whose theme and plugins were
+compiled-in constants; and against a package that shipped a copy of this
+repository rather than a framework. All three were replaced. The measurements
+are still interesting and are kept in `docs/tasks/TASK-01.md §5`; they are not
+evidence for this release, and the rows return to `VERIFIED_STAGING` only when
+somebody re-runs them (`docs/RELEASE_GATE.md`).
 
 **Each criterion's status and evidence live in its group's table below, and
 the totals are counted from those tables rather than written above them.**
@@ -70,7 +70,7 @@ contradictory figures (§14.0).
 | ID | Criterion | Status | Evidence / reference |
 | --- | --- | --- | --- |
 | `AC-DEPLOY-01` | `npx mallok create` creates every resource on a clean Cloudflare account, deploys successfully, and prints a reachable `.workers.dev` address | `STALE` | Run for real 2026-09-03/04 (`TASK-01.md §5`): D1 and R2 created, config written, deployed, `.workers.dev` address returned `200`. **Found and fixed a real bug on this run**: `buildSiteConfig` did not adjust `main`/`assets.directory` for the nested config path, so the deploy step failed until `src/cli/provision.ts` was corrected — see `test/cli/provision.test.ts` for the regression test |
-| `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_AVAILABLE` | **Withdrawn from 0.1.0-rc.4's claimed capability**, not merely untested. The button deploys the repository it points at, and since rc.3 this repository is the framework — pointing it here would deploy Mallok's own source as somebody's website. It needs a separate public *starter site* repository that does not exist yet, and which is **not** Nundar. External follow-up after rc.4 (`docs/RELEASE_GATE.md §15.1`) |
+| `AC-DEPLOY-02` | The Deploy to Cloudflare button completes once, creating the resources, with `MALLOK_SECRET` handled by one of the approaches in `CLOUDFLARE_RESOURCES.md §7` | `NOT_AVAILABLE` | **Withdrawn from 0.1.0-rc.4's claimed capability**, not merely untested. The button deploys the repository it points at, and since rc.3 this repository is the framework — pointing it here would deploy Mallok's own source as somebody's website. It needs a separate public *starter site* repository that does not exist yet, and which is **not** Nundar. Follow-up after 0.1 (`docs/RELEASE_GATE.md §15.1`) |
 | `AC-DEPLOY-03` | Every step of the setup wizard completes, and `/_mallok/setup` returns 404 afterwards. **The wizard is four steps** (`ARCHITECTURE §15`, `ADMIN.md §5`); media domain and email are configured afterward in Settings, not folded into it — settled 2026-09-02, see §14.2 item 2 | `VERIFIED_LOCAL` | `test/worker/setup.test.ts:53`, `:81`, `:181` |
 | `AC-DEPLOY-04` | With a custom domain bound, the site serves normally and **the cache hits** (`x-mallok-cache: HIT`) | `STALE` | Real custom domain (`spike.mallok.dev`) bound 2026-09-03: first request `MISS`, second `HIT`, identical to the `.workers.dev` behaviour. `TASK-01.md §5`, `ARCHITECTURE §18` item 1 |
 | `AC-DEPLOY-05` | With no custom domain bound, the wizard says plainly that caching is not in effect, and `robots.txt` emits `Disallow: /` | `VERIFIED_LOCAL` | `test/worker/seo.test.ts:152`, `:161` |
@@ -175,7 +175,7 @@ this had briefly landed the same day and was removed with it; see §14.2 item
 | `AC-CLI-01` | `mallok publish <dir>` publishes local bundles, `images/` included, into a site | `VERIFIED_LOCAL` | `test/cli/scan.test.ts` (`reads a bundle with its translations and assets`), `test/worker/flow.test.ts:204` |
 | `AC-CLI-02` | Republishing an unmodified directory is a no-op: **no D1 write, no cache purge** | `VERIFIED_LOCAL` | `test/worker/flow.test.ts:204`, `test/worker/roundtrip.test.ts:249` |
 | `AC-CLI-03` | **The same Markdown produces the same body fragment** in `mallok preview` and in production — settled 2026-09-02, correcting the earlier "byte-identical" wording, which the preview's offline media handling could never literally satisfy (relative paths vs. R2 URLs); see §14.2 item 3 | `VERIFIED_LOCAL` | `test/cli/preview.test.ts:17` |
-| `AC-CLI-04` | The CLI has no capability the admin lacks, and the reverse | `VERIFIED_LOCAL` | Structural: both go through the same management API (`src/cli/client.ts`), with no CLI-only endpoint |
+| `AC-CLI-04` | For site-data workflows exposed by both clients, the CLI and admin use the same authenticated Worker contracts: content saves use `POST /content`, media deduplication and uploads use `POST /media/check` and `PUT /media/:sha[/variants/:width]`, and exports begin with `GET /export`; client-specific local, provisioning, account and plugin operations are outside this criterion | `VERIFIED_LOCAL` | CLI: `test/cli/dispatch.test.ts` (`a publish and export round trip`) and `test/cli/export-media.test.ts` (`uploads the original and one WebP variant per width above the source`); admin: `test/e2e/03-publish.spec.ts` (`saveWith`), `test/admin/media.test.ts` (`checks, uploads the original and uploads each rendered variant through the shared endpoints`) and `test/admin/export.test.ts` (`requests the shared export manifest endpoint first`) |
 | `AC-CLI-05` | Missing images are reported, and `--fail-on-missing` works in CI | `VERIFIED_LOCAL` | `test/cli/scan.test.ts:78`, and `treats a referenced file that is absent as missing, not an error` |
 
 ## 11. AC-INV: cross-stage invariants
@@ -186,8 +186,8 @@ Re-verified by every task (`IMPLEMENTATION_PLAN §5`, item 4).
 | --- | --- | --- |
 | `AC-INV-01` | `src/core/` imports no Cloudflare or Node API, and `tsc -p src/core/tsconfig.json` passes | `VERIFIED_LOCAL` |
 | `AC-INV-02` | The same input renders byte-identical HTML | `VERIFIED_LOCAL` |
-| `AC-INV-03` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size` is green | `VERIFIED_LOCAL` |
-| `AC-INV-04` | The Worker's bundle fits Cloudflare's 64 MiB uncompressed limit, and its gzipped size stays inside Mallok's own 3 MiB render-path budget | `VERIFIED_LOCAL` (2026-09-02: 285.5 KiB gzip, after `rehype-raw`; was 229.2 KiB on 2026-08-30). The percentages this row used to carry were percentages of a limit Cloudflare does not impose |
+| `AC-INV-03` | `pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size` is green | `VERIFIED_LOCAL` (2026-09-17 rc.5 local gate; `docs/RELEASE_GATE.md §4`) |
+| `AC-INV-04` | The Worker's bundle fits Cloudflare's 64 MiB uncompressed limit, and its gzipped size stays inside Mallok's own 3 MiB render-path budget | `VERIFIED_LOCAL` (2026-09-17 rc.5 preflight: 1070.8 KiB raw, 293.0 KiB gzip — 1.6% of Cloudflare's uncompressed limit and 9.5% of Mallok's own gzip budget). The percentages this row used to carry were percentages of a limit Cloudflare does not impose |
 | `AC-INV-05` | A cold render makes **at most 4 D1 round trips**, each with a constant number of queries and bounded row reads — settled 2026-09-02, correcting "one batch, ≤3 queries", which a related-content-plus-media page cannot meet by construction (§14.2 item 1) | `VERIFIED_LOCAL` (measured at 2, on every page tried so far, ceiling of 4 by the architecture) | `test/worker/budget.test.ts` |
 | `AC-INV-06` | A list page parses no body, queries no `render_cache`, and runs no `COUNT(*)` | `VERIFIED_LOCAL` (`listPublished` reads scalar columns only, with `LIMIT n+1`) |
 | `AC-INV-07` | Error responses leak no SQL, bucket name, id or stack trace | `VERIFIED_LOCAL` |
@@ -204,17 +204,22 @@ time a user switches themes, and costs more than saying it plainly would have.
 
 ## 12. Blockers
 
-None of these is a code problem, and 0.1 cannot be declared until they are
-resolved:
+0.1 cannot be declared until the open rows below are resolved. Historical
+runs remain useful context, but stale evidence does not clear a current
+candidate:
 
 | # | Item | Owner |
 | --- | --- | --- |
-| 1 | ~~The nine measurements in `ARCHITECTURE §18`~~ **Run 2026-09-03/04** (`TASK-01.md §4`–`§5`). Seven of nine measured against a real Cloudflare account, executed by Claude Code under the product owner's direct authorization, with the product owner completing the dashboard-only steps (an API token, an R2 custom domain) by hand. Items 7 (Deploy to Cloudflare button) and 9 (Turnstile/Resend) still need a public repository and those services' accounts respectively | Mostly cleared — 7/9 |
+| 1 | Re-run the five `STALE` rows and the nine `NOT_RUN` rows against the rc.5 candidate: real provisioning, cache and migration behaviour, purge latency, R2, cron, Resend, Turnstile and Lighthouse. The 2026-09-03/04 Gate A run is retained in `TASK-01.md §4`–`§5`, but tested replaced code | Open — `docs/RELEASE_GATE.md §6`–`§14`, `§16`–`§18` |
 | 2 | ~~The Markdown engine decision~~ **Settled 2026-08-29: stay with unified** (`TASK-01 §6`) | Cleared |
 | 3 | ~~Whether to keep inline HTML~~ **Settled 2026-09-02: keep it, sanitised** (`rehype-raw`, `SECURITY.md §4`) | Cleared |
 | 4 | Confirming the performance numbers in `SEO_PERFORMANCE.md §7` | The product owner |
 | 5 | ~~Settling the licence~~ **Settled 2026-09-01: Apache-2.0.** A separate trademark policy keeping the `Mallok` name is still outstanding | Cleared |
-| 6 | ~~Creating `FobStack/mallok` and verifying its ownership~~ **Done 2026-09-01**, currently private | Cleared |
+| 6 | Make the owned Mallok repository public only after the selected candidate passes the external gate | Open — `docs/RELEASE_GATE.md §15` |
+
+The Deploy to Cloudflare button is not an open 0.1 gate: it is
+`NOT_AVAILABLE` and withdrawn from 0.1. A separate public starter repository
+is follow-up work after the release (`docs/RELEASE_GATE.md §15.1`).
 
 ## 13. Not part of 0.1
 
@@ -278,20 +283,20 @@ for `AC-CONTENT-10`, and the 2026-09-06 purge-latency wording for
 `AC-CONTENT-02b`, there are **74 rows**: 66 active criteria, eight of which
 became two halves each.
 
-| Group | Rows | `VERIFIED_LOCAL` | `STALE` | `NOT_RUN` |
-| --- | --- | --- | --- | --- |
-| `AC-DEPLOY` | 9 | 4 | 3 | 2 |
-| `AC-CONTENT` | 13 | 11 | 1 | 1 |
-| `AC-MEDIA` | 7 | 5 | 1 | 1 |
-| `AC-THEME` | 8 | 8 | 0 | 0 |
-| `AC-PLUGIN` | 10 | 7 | 0 | 3 |
-| `AC-SEO` | 8 | 5 | 0 | 3 |
-| `AC-EXPORT` | 4 | 4 | 0 | 0 |
-| `AC-CLI` | 5 | 5 | 0 | 0 |
-| `AC-INV` | 10 | 10 | 0 | 0 |
-| **Total** | **74** | **59** | **5** | **10** |
+| Group | Rows | `VERIFIED_LOCAL` | `STALE` | `NOT_RUN` | `NOT_AVAILABLE` |
+| --- | --- | --- | --- | --- | --- |
+| `AC-DEPLOY` | 9 | 4 | 3 | 1 | 1 |
+| `AC-CONTENT` | 13 | 11 | 1 | 1 | 0 |
+| `AC-MEDIA` | 7 | 5 | 1 | 1 | 0 |
+| `AC-THEME` | 8 | 8 | 0 | 0 | 0 |
+| `AC-PLUGIN` | 10 | 7 | 0 | 3 | 0 |
+| `AC-SEO` | 8 | 5 | 0 | 3 | 0 |
+| `AC-EXPORT` | 4 | 4 | 0 | 0 | 0 |
+| `AC-CLI` | 5 | 5 | 0 | 0 | 0 |
+| `AC-INV` | 10 | 10 | 0 | 0 | 0 |
+| **Total** | **74** | **59** | **5** | **9** | **1** |
 
-**No row is `VERIFIED_STAGING` as of 0.1.0-rc.4.** The five that were
+**No row is `VERIFIED_STAGING` in 0.1.0-rc.5.** The five that were
 real-account verified are `STALE`: the code they tested has been replaced.
 
 **Gate A's history, kept because it is worth knowing.** Gate A
@@ -310,7 +315,7 @@ the budget, with no code path that caught an overrun and stored a draft).
 ahead of rendering (§14.2 item 7); `AC-CONTENT-02b` was settled 2026-09-06,
 reworded to "within a minute" on the same Gate A measurement (§14.2 item 6);
 that measurement is now `STALE`, like every other Gate A row. `AC-DEPLOY-02`
-is no longer one of the `NOT_RUN` ten: it is **`NOT_AVAILABLE`** for rc.4, a
+is not one of the `NOT_RUN` rows: it remains **`NOT_AVAILABLE`** for rc.5, a
 capability withdrawn rather than a test outstanding. The remaining
 nine `NOT_RUN` criteria still need a second real deployment (`AC-DEPLOY-08`),
 elapsed real time or cron (`AC-CONTENT-06b`, `AC-MEDIA-06b`), a Resend
@@ -416,7 +421,8 @@ against measurement variance across regions and load, and is still a
 meaningfully differentiated promise against the static-generator
 commit-build-redeploy cycle this product competes against. The existing Gate
 A measurement already satisfied the reworded criterion when it was taken. It
-is `STALE` as of 0.1.0-rc.4 and needs re-running (`docs/RELEASE_GATE.md §9`).
+has been `STALE` since 0.1.0-rc.4, remains stale for rc.5 and needs re-running
+(`docs/RELEASE_GATE.md §9`).
 
 **7. `AC-CONTENT-10`'s CPU-overrun handling — settled 2026-09-05: a
 pre-flight length check, option (a) below.** Real stage-one CPU measured at
@@ -644,13 +650,13 @@ measurement (the 20-second purge round trip) while `AC-CONTENT-10` is
 `test/worker/content-length-safety.test.ts`, and no real-account run has
 exercised it. That is why the group table above totals **5** `STALE`, not 6.
 
-The ten below have never had a real-account run at all; the five `STALE` ones
+The nine below have never had a real-account run at all; the five `STALE` ones
 had one, against code that has since been replaced. Both sets need the same
 thing now, which is `docs/RELEASE_GATE.md`:
 
 | Group | Criteria | What still blocks them |
 | --- | --- | --- |
-| `AC-DEPLOY` | `02`, `08` | The Deploy to Cloudflare button needs a public repository; a rolling upgrade needs two real deployments |
+| `AC-DEPLOY` | `08` | A rolling upgrade needs two real deployments |
 | `AC-CONTENT` | `06b` | Cron firing for real (needs elapsed real time, not just a mocked clock) |
 | `AC-MEDIA` | `06b` | Cron collection on a real seven-day window |
 | `AC-PLUGIN` | `02b`, `03b`, `05b` | Real Resend delivery, real Turnstile, and the inquiry path's CPU/subrequest budget |
@@ -658,6 +664,6 @@ thing now, which is `docs/RELEASE_GATE.md`:
 
 `AC-THEME`, `AC-EXPORT`, `AC-CLI` and `AC-INV` have **no** criteria needing a
 real account — every row in those four groups is closed locally.
-`AC-DEPLOY-02` is not in this list at all any more: it is `NOT_AVAILABLE` for
-rc.4, because the Deploy button has no repository it could correctly point at
-until a public starter site exists (`docs/RELEASE_GATE.md §15.1`).
+`AC-DEPLOY-02` is not in this list: it remains `NOT_AVAILABLE` for rc.5,
+because the Deploy button has no repository it could correctly point at until
+a public starter site exists (`docs/RELEASE_GATE.md §15.1`).
