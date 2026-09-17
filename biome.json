@@ -203,6 +203,7 @@
         "vite.config.ts",
         "vitest.config.ts",
         "playwright.config.ts",
+        "scripts/e2e-global-setup.mjs",
         "src/worker/index.ts"
       ],
       "linter": {

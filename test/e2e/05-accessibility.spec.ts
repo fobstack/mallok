@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { readE2eRunManifest } from '../../scripts/e2e-server.mjs';
 // @ts-expect-error -- a plain ESM script, deliberately dependency-free.
 import { serveStatic } from '../../scripts/serve-static.mjs';
 import { signIn } from './credentials.js';
@@ -141,6 +142,7 @@ test.describe('the official themes', () => {
     test(`${theme} has no serious or critical violations`, async ({ page }) => {
       test.setTimeout(180_000);
       const out = await mkdtemp(join(tmpdir(), `mallok-a11y-${theme}-`));
+      const { sourceRoot } = await readE2eRunManifest();
       let server: { origin: string; close: () => Promise<void> } | null = null;
       try {
         await run(
@@ -150,7 +152,7 @@ test.describe('the official themes', () => {
             // hold. This pointed at `dist/cli/index.js`, a path the build no
             // longer writes, and kept passing against an artifact from an
             // earlier release — the exact shape of a green that means nothing.
-            'dist/pkg/cli/index.js',
+            join(sourceRoot, 'dist/pkg/cli/index.js'),
             'build',
             '.',
             '--theme',
@@ -158,7 +160,7 @@ test.describe('the official themes', () => {
             '--out',
             out,
           ],
-          { cwd: process.cwd() },
+          { cwd: sourceRoot },
         );
         server = (await serveStatic(out)) as {
           origin: string;

@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const reuseExistingRun = process.env.MALLOK_E2E_REUSE === '1';
+
 /**
  * The end-to-end and accessibility run (docs/TESTING.md §2, §7).
  *
@@ -28,39 +30,50 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  globalSetup: './scripts/e2e-global-setup.mjs',
   webServer: {
     /*
-     * The state directory is removed **here**, inside the server command,
+     * The state directory is removed **here**, inside the server wrapper,
      * not in a `globalSetup`. Playwright starts the web server before it runs
      * global setup, so deleting the directory there pulled the SQLite file
      * out from under a wrangler process that had already opened and migrated
      * it: the wizard then appeared to work and the first public page request
-     * failed with an internal error. Removing it before wrangler starts is
-     * the only ordering that is actually guaranteed.
+     * failed with an internal error. The wrapper first takes an exclusive
+     * lock, then removes the state and builds the hashed assets, so a second
+     * run cannot replace chunks while this Worker is serving them.
      *
      * The build has to happen before wrangler starts too: the Worker imports
      * the compiled themes and serves the admin bundle from dist/assets.
      */
     command:
-      // `build:package` is here because `05-accessibility` builds each theme
+      // The wrapper runs `build:package` because `05-accessibility` builds each theme
       // with the packaged CLI. Without it the spec used a `dist/` directory
       // left over from an earlier release and passed against an artifact this
       // run never produced.
       //
-      // `-c .tmp/e2e/wrangler.jsonc` is the important part. Run against the
+      // The generated `-c` path is the important part. Run against the
       // repository's own configuration, Wrangler also loads the `.dev.vars`
       // beside it — a developer's local secrets, in a test run, which is the
       // defect `vitest.config.ts` was fixed for and which survived here. The
-      // generated configuration lives in its own directory precisely so that
-      // the root `.dev.vars` is not adjacent to it, and carries absolute
-      // paths for `main` and the assets (`scripts/e2e-config.mjs`).
-      'rm -rf .tmp/e2e-state && pnpm run build:package && node scripts/e2e-config.mjs && npx wrangler dev -c .tmp/e2e/wrangler.jsonc --port 8788 --persist-to .tmp/e2e-state',
+      // run-local configuration lives beside its own environment and points
+      // `main` and assets at the private source snapshot.
+      reuseExistingRun
+        ? 'node scripts/e2e-server.mjs --require-running'
+        : 'node scripts/e2e-server.mjs',
     url: 'http://127.0.0.1:8788/_mallok/api/setup/status',
-    // Off by default so a run always tests the build it just made. Set
-    // MALLOK_E2E_REUSE=1 to attach to a `wrangler dev` you started yourself,
-    // which is how you read the Worker's own logs while debugging one.
-    reuseExistingServer: process.env.MALLOK_E2E_REUSE === '1',
+    // Off by default so a run always tests the build it just made. Reuse is a
+    // two-terminal workflow: first run `node scripts/e2e-server.mjs` and wait
+    // for port 8788; only then set MALLOK_E2E_REUSE=1 for Playwright. If the
+    // wrapper or its matching manifest is absent, the run fails closed rather
+    // than attaching to an arbitrary process already using that port.
+    reuseExistingServer: reuseExistingRun,
     timeout: 180_000,
+    // Playwright otherwise SIGKILLs the whole process group. SIGTERM lets the
+    // wrapper wait for Wrangler to exit and remove its ownership-checked lock;
+    // the timeout remains a hard escape hatch for a stuck runtime. Playwright
+    // cannot send this graceful signal on Windows; the wrapper's atomic dead-
+    // owner recovery makes the next run safe after that forced termination.
+    gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     stdout: 'ignore',
     stderr: 'pipe',
   },

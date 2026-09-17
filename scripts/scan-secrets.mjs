@@ -179,14 +179,9 @@ const ACKNOWLEDGED = [
     rule: 'secret assigned a long literal',
     fingerprint: 'f52e2b6021d62d00',
     reason:
-      'The MALLOK_SECRET the browser suite gives its own `wrangler dev`. ' +
-      'That Worker is local, its D1 and R2 are files under .tmp/, and the ' +
-      'value cannot reach Cloudflare — it is written out in full, and named ' +
-      'so, because the suite asserts the Worker used *this* value rather ' +
-      "than one leaking from a developer's .dev.vars " +
-      '(test/e2e/00-isolation.spec.ts). Assembling it from fragments to ' +
-      'dodge this scan would teach the technique for getting a real key past ' +
-      'it.',
+      'A historical local-only browser fixture. The current suite generates ' +
+      'a fresh value into ignored .tmp/ state instead, but the scanner walks ' +
+      'Git history and this reviewed non-credential remains in an older blob.',
   },
   {
     path: 'test/worker/secret-check.test.ts',

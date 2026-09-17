@@ -297,7 +297,7 @@ The things no tool replaces (`TECH_STACK §10`):
 
 | Item | How |
 | --- | --- |
-| Worker CPU time, save requests included | Workers Logs, or `wrangler tail --format=json` |
+| Worker CPU time, save requests included | Workers Observability Query Builder, `$workers.cpuTimeMs`; do not substitute client latency |
 | Bundle size | `pnpm bundle:size` plus wrangler's Total Upload |
 | Cache hit rate and purge latency | Timed against a real account |
 | All three deployment paths | Walk each one |
@@ -324,8 +324,8 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm bundle:size
 ```
 
 `pnpm test:coverage` runs the enforced floors of §5. It is a separate command
-because it re-runs the Node projects on their own; `pnpm test` runs all six
-projects, workerd included.
+because it re-runs the Node projects on their own; `pnpm test` runs every
+configured non-release project, workerd included.
 
 The full local gate, in the order worth running it:
 
@@ -337,15 +337,21 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
   && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
 ```
 
-The browser suite runs against its **own** Wrangler configuration and its own
-environment file, generated into `.tmp/e2e/` by `scripts/e2e-config.mjs`.
-`wrangler dev` loads the `.dev.vars` sitting beside whatever configuration it
-is given, so running it against the repository's own handed the Worker a
-developer's local secrets — the same defect `vitest.config.ts` was fixed for,
-surviving in the one place that drives a real Worker.
-`test/e2e/00-isolation.spec.ts` checks that by observation: the generated
-environment and the root one carry different values, and the Worker is asked
-what it actually used.
+The browser suite runs from a private source and artifact snapshot under
+`.tmp/e2e-runs/<uuid>/`, with its own Wrangler configuration, environment,
+assets and persisted state. `scripts/e2e-server.mjs` takes an exclusive lock
+before creating it, copies an allow-listed source set (never the repository's
+`dist`, `.dev.vars` or `.env` files), builds there and removes the whole run
+after a normal Wrangler exit. Another local build can therefore replace the
+root `dist/` without deleting a chunk or CLI file the browser suite is using.
+
+Wrangler loads the `.dev.vars` beside the configuration it is given, so the
+run-local placement is the security boundary: the repository's developer
+secrets are not adjacent to it. `test/e2e/00-isolation.spec.ts` checks the
+observable contract: setup is fail-closed, a wrong key is rejected, the
+generated key completes the following wizard flow, and the Worker identifies
+the run-local site. The randomly generated session/encryption secret is never
+exposed through a test-only endpoint.
 
 The wizard is completed with a **real setup key**, typed in. A site with no
 key refuses to create an administrator at all (`docs/SECURITY.md §3.7`), and
@@ -357,6 +363,32 @@ Lighthouse still needs a custom domain, so it stays out of the chain; its
 thresholds are asserted by `pnpm lighthouse:gate` over the reports `lhci`
 writes, and that script's own behaviour is covered by
 `test/cli/lighthouse-gate.test.ts`.
+
+To keep the Worker logs visible while debugging, reuse is an explicit
+two-terminal workflow. Start Mallok's wrapper, not `wrangler dev` directly:
+
+```sh
+# terminal A — leave this running, and wait until port 8788 is ready
+node scripts/e2e-server.mjs
+
+# terminal B (POSIX)
+MALLOK_E2E_REUSE=1 pnpm test:e2e
+```
+
+In PowerShell, the second command is
+`$env:MALLOK_E2E_REUSE='1'; pnpm test:e2e`. Reuse checks the live wrapper's
+PID, ownership token, run manifest and private build before attaching. A
+random process on port 8788, a missing manifest or a manifest left by a dead
+process fails closed.
+
+Playwright cannot send its configured graceful shutdown signal on Windows and
+may force-kill the wrapper. The next run verifies that the recorded PID is
+dead, takes an OS-owned recovery claim, moves exactly that stale lock aside,
+and installs a new owner atomically. If a recoverer itself is force-killed,
+the operating system releases that claim. Each run has a UUID-named snapshot,
+so the next run does not delete files an orphaned Wrangler process might still
+be using. If port 8788 remains occupied, stop that orphaned process and rerun;
+only then may leftover `.tmp/e2e-runs/` directories be removed manually.
 
 `.github/workflows/release.yml` runs this same list in one sequential job on a
 tag. `ci.yml` may split it across jobs and leave the slow half to a separate

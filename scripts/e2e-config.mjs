@@ -8,11 +8,11 @@
  * place that drives a real Worker: green on one laptop, red on another, and
  * green *because* of a value the repository does not contain.
  *
- * So the suite gets its own configuration and its own environment file, both
- * generated here into `.tmp/e2e/`. The configuration lives in that directory
- * rather than at the repository root precisely so that the root `.dev.vars`
- * is not adjacent to it; `main` and the assets directory are written as
- * absolute paths for the same reason.
+ * So the suite gets its own configuration and its own environment file under
+ * its ignored `.tmp/` run directory. The configuration lives there rather
+ * than at the repository root precisely so that the root `.dev.vars` is not
+ * adjacent to it; `main` and the assets directory are written as absolute
+ * paths into the run's private source snapshot for the same reason.
  *
  * **The setup key is real.** These tests go through the wizard the way a site
  * owner does, with a key that has to be typed in, because refusing a keyless
@@ -20,36 +20,37 @@
  * turned it off with `MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY` would be testing a
  * configuration nobody ships.
  *
- * **The canary.** The root `.dev.vars` sets `MALLOK_SECRET` to a developer's
- * own value; the file written here sets a different one, and a different
- * `MALLOK_DEV_VARS_CANARY`. `test/e2e/00-isolation.spec.ts` reads what the
- * Worker actually used. If the root file ever reaches this process, the
- * values differ and that test fails — which is the only kind of isolation
- * check worth having, because it observes rather than asserts an intention.
+ * **The canary.** The generated config declares both secrets as required.
+ * Wrangler therefore loads them from the `.dev.vars` beside that config and
+ * warns visibly when either is absent. The browser suite observes the exact
+ * setup key through the real wizard. It does not expose `MALLOK_SECRET`
+ * through a test-only Worker endpoint.
  */
 
+import { randomBytes } from 'node:crypto';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const outDir = resolve(repo, '.tmp/e2e');
+const defaultOutDir = resolve(repo, '.tmp/e2e');
 
 /**
- * Values the suite knows, so it can prove the Worker used *these*.
+ * Non-secret values the suite knows, so it can exercise the setup flow.
  *
- * Not credentials: this Worker is local, its D1 and R2 are files under
- * `.tmp/`, and nothing here can reach Cloudflare. `MALLOK_SETUP_KEY` is typed
- * into the wizard by `01-wizard.spec.ts`.
+ * `MALLOK_SETUP_KEY` is typed into the wizard by `01-wizard.spec.ts`. The
+ * encryption/session secret is deliberately absent: each run creates a fresh
+ * value below and writes it only to the ignored `.tmp/` directory.
  */
 export const E2E_ENV = {
-  MALLOK_SECRET: 'e2e-secret-not-a-real-one-0123456789abcdef',
   MALLOK_SETUP_KEY: 'e2e-setup-key-typed-into-the-wizard',
-  MALLOK_DEV_VARS_CANARY: 'e2e-canary-value',
 };
 
 /** Writes the configuration and the environment file; returns their paths. */
-export async function writeE2eConfig() {
+export async function writeE2eConfig(
+  outDir = defaultOutDir,
+  projectRoot = repo,
+) {
   await rm(outDir, { recursive: true, force: true });
   await mkdir(outDir, { recursive: true });
 
@@ -57,11 +58,11 @@ export async function writeE2eConfig() {
     // biome-ignore lint/style/useNamingConvention: Wrangler's own key, and it has to be spelled this way
     $schema: 'node_modules/wrangler/config-schema.json',
     name: 'mallok-e2e',
-    main: resolve(repo, 'src/worker/index.ts'),
+    main: resolve(projectRoot, 'src/worker/index.ts'),
     compatibility_date: '2026-08-01',
     compatibility_flags: ['nodejs_compat'],
     assets: {
-      directory: resolve(repo, 'dist/assets'),
+      directory: resolve(projectRoot, 'dist/assets'),
       binding: 'ASSETS',
     },
     d1_databases: [
@@ -86,6 +87,9 @@ export async function writeE2eConfig() {
       // requires a key here exactly as it does in production, and the suite
       // supplies one.
     },
+    secrets: {
+      required: ['MALLOK_SECRET', 'MALLOK_SETUP_KEY'],
+    },
     rules: [
       {
         type: 'Text',
@@ -99,21 +103,25 @@ export async function writeE2eConfig() {
 
   const configPath = resolve(outDir, 'wrangler.jsonc');
   const envPath = resolve(outDir, '.dev.vars');
+  const runtimeEnv = {
+    ...E2E_ENV,
+    // A real deployment must never reuse a public fixture value for the key
+    // that signs sessions and encrypts plugin secrets. The browser suite has
+    // the same invariant even though its Worker and storage are local.
+    MALLOK_SECRET: randomBytes(32).toString('base64url'),
+  };
   await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
   await writeFile(
     envPath,
-    `${Object.entries(E2E_ENV)
+    `${Object.entries(runtimeEnv)
       .map(([key, value]) => `${key}=${value}`)
       .join('\n')}\n`,
-    'utf8',
+    { encoding: 'utf8', mode: 0o600 },
   );
   return { configPath, envPath, outDir };
 }
 
-if (
-  process.argv[1] !== undefined &&
-  process.argv[1].endsWith('e2e-config.mjs')
-) {
+if (process.argv[1]?.endsWith('e2e-config.mjs')) {
   const { configPath } = await writeE2eConfig();
   process.stdout.write(`${configPath}\n`);
 }

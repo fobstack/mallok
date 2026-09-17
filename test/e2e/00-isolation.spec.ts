@@ -1,5 +1,7 @@
+import { resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
 import { E2E_ENV } from '../../scripts/e2e-config.mjs';
+import { readE2eRunManifest } from '../../scripts/e2e-server.mjs';
 
 /**
  * The Worker under test must not be reading a developer's `.dev.vars`.
@@ -14,10 +16,14 @@ import { E2E_ENV } from '../../scripts/e2e-config.mjs';
  * it.
  *
  * This checks that by **observation**, not by assertion of intent. The root
- * `.dev.vars` carries a developer's `MALLOK_SECRET` and its own
- * `MALLOK_DEV_VARS_CANARY`; the generated one carries different values for
- * both. Every test below reads something the Worker actually did with those
- * values, so a leak changes the result rather than going unnoticed.
+ * `.dev.vars` can carry unrelated developer secrets. The generated config
+ * declares its own two secrets as required and has its own adjacent
+ * `.dev.vars`. The HTTP checks here prove that setup is fail-closed; the
+ * wizard spec that follows completes setup with the generated key, which
+ * proves the isolated value reached the Worker. The file check guards the
+ * other half of that contract: the generated environment contains the
+ * expected value. No test-only endpoint exposes the session/encryption
+ * secret.
  *
  * It runs first, before the wizard, because everything after it is worthless
  * if this is wrong.
@@ -47,12 +53,12 @@ test('answers as the site this configuration describes', async ({
   expect(body.ready).toBe(true);
 });
 
-test('uses the setup key this run generated, not one from elsewhere', async ({
+test('rejects every setup key except the isolated fixture value', async ({
   request,
 }) => {
-  // The strongest available observation. A wrong key is refused with 403, so
-  // this both proves the Worker holds *this* run's `MALLOK_SETUP_KEY` and
-  // that a key from any other source would not open the wizard.
+  // A wrong key must be refused with 403. The next spec supplies the fixture
+  // value successfully; together those observations prove the Worker did not
+  // silently enter keyless mode or read an unrelated root `.dev.vars` value.
   const wrong = await request.post('/_mallok/api/setup/admin', {
     data: {
       email: 'not-the-owner@example.com',
@@ -69,24 +75,15 @@ test('uses the setup key this run generated, not one from elsewhere', async ({
   expect(body.hasAdmin).toBe(false);
 });
 
-test('the generated environment is the one on disk', async () => {
-  // A cheap direct reading of the file the Worker was pointed at. If the
-  // suite is ever changed to reuse the repository's configuration, this
-  // fails alongside the observations above rather than leaving them to
-  // explain a confusing failure on their own.
+test('the generated environment contains the isolated setup key', async () => {
+  // A cheap direct reading of the generated environment. The web-server
+  // config is beside this exact file; the browser observations above and in
+  // the wizard spec prove what the Worker actually enforced.
   const { readFile } = await import('node:fs/promises');
-  const env = await readFile('.tmp/e2e/.dev.vars', 'utf8');
+  const { envPath, sourceRoot } = await readE2eRunManifest();
+  const env = await readFile(envPath, 'utf8');
 
   expect(env).toContain(`MALLOK_SETUP_KEY=${E2E_ENV.MALLOK_SETUP_KEY}`);
-  expect(env).toContain(
-    `MALLOK_DEV_VARS_CANARY=${E2E_ENV.MALLOK_DEV_VARS_CANARY}`,
-  );
-
-  // The root file, if it exists at all, must be a different one — otherwise
-  // the canary above could pass by coincidence.
-  const root = await readFile('.dev.vars', 'utf8').catch(() => '');
-  if (root !== '') {
-    expect(root).not.toContain(E2E_ENV.MALLOK_SECRET);
-    expect(root).not.toContain(E2E_ENV.MALLOK_DEV_VARS_CANARY);
-  }
+  expect(env).toMatch(/^MALLOK_SECRET=.+$/m);
+  expect(sourceRoot.startsWith(resolve('.tmp/e2e-runs'))).toBe(true);
 });

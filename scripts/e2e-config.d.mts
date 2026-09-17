@@ -4,12 +4,13 @@
  * compiled, so it cannot be TypeScript.
  */
 export declare const E2E_ENV: {
-  readonly MALLOK_SECRET: string;
   readonly MALLOK_SETUP_KEY: string;
-  readonly MALLOK_DEV_VARS_CANARY: string;
 };
 
-export declare function writeE2eConfig(): Promise<{
+export declare function writeE2eConfig(
+  outDir?: string,
+  projectRoot?: string,
+): Promise<{
   configPath: string;
   envPath: string;
   outDir: string;

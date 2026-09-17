@@ -3,8 +3,9 @@ import type { Page } from '@playwright/test';
 /**
  * The administrator the wizard creates, reused by every later spec.
  *
- * A fixed local-only value: the run starts from an empty database in
- * `.tmp/e2e-state`, which is deleted before every run and never deployed.
+ * A fixed local-only value: the run starts from an empty database inside its
+ * private `.tmp/e2e-runs/` directory, which is deleted after the run and
+ * never deployed.
  */
 export const ADMIN = {
   email: 'e2e@example.test',
