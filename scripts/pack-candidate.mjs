@@ -17,10 +17,26 @@ const run = promisify(execFile);
 const packageDir = resolve(process.argv[2] ?? 'dist/pkg');
 const outputDir = resolve(process.argv[3] ?? 'dist/release');
 
+// Bind the candidate to the repository that actually contains the package
+// directory. Using the caller's cwd here would let an unrelated clean checkout
+// hide dirty source used to build an absolute packageDir.
+const { stdout: sourceRootOutput } = await run('git', [
+  '-C',
+  packageDir,
+  'rev-parse',
+  '--show-toplevel',
+]);
+const sourceRoot = sourceRootOutput.trim();
 const [{ stdout: sourceCommitOutput }, { stdout: sourceStatus }] =
   await Promise.all([
-    run('git', ['rev-parse', 'HEAD']),
-    run('git', ['status', '--porcelain=v1', '--untracked-files=all']),
+    run('git', ['-C', sourceRoot, 'rev-parse', 'HEAD']),
+    run('git', [
+      '-C',
+      sourceRoot,
+      'status',
+      '--porcelain=v1',
+      '--untracked-files=all',
+    ]),
   ]);
 const sourceCommit = sourceCommitOutput.trim();
 if (!/^[a-f0-9]{40,64}$/.test(sourceCommit)) {

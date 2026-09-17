@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import {
   cp,
   mkdir,
@@ -9,6 +10,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
+import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   resetCompiledAssets,
@@ -16,6 +18,7 @@ import {
   TEMPLATE_FILES,
 } from '../../scripts/package-inputs.mjs';
 
+const execFileAsync = promisify(execFile);
 let root = '';
 
 beforeEach(async () => {
@@ -43,6 +46,18 @@ async function files(directory: string): Promise<string[]> {
 }
 
 describe('publishable package inputs', () => {
+  it('requires every tracked template file to be reviewed explicitly', async () => {
+    const { stdout } = await execFileAsync('git', ['ls-files', 'template']);
+    const tracked = stdout
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((path) => path.slice('template/'.length))
+      .sort();
+
+    expect(tracked).toEqual([...TEMPLATE_FILES].sort());
+  });
+
   it('copies the reviewed template allow-list and nothing ignored beside it', async () => {
     const source = join(root, 'template');
     const destination = join(root, 'staged');

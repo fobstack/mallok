@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import {
   appendFile,
+  cp,
   mkdir,
   mkdtemp,
   readFile,
@@ -13,19 +14,22 @@ import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
+const repositoryRoot = process.cwd();
 let output = '';
 let sandbox = '';
 let candidate = '';
+let source = '';
 
 async function run(
   script: string,
   args: readonly string[],
+  cwd = repositoryRoot,
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
     const { stdout, stderr } = await execFileAsync(
       process.execPath,
-      [script, ...args],
-      { cwd: process.cwd(), maxBuffer: 32 * 1024 * 1024 },
+      [join(repositoryRoot, script), ...args],
+      { cwd, maxBuffer: 32 * 1024 * 1024 },
     );
     return { code: 0, stdout, stderr };
   } catch (error) {
@@ -42,10 +46,36 @@ async function run(
   }
 }
 
+async function initialiseRepository(
+  directory: string,
+  message = 'fixture',
+): Promise<void> {
+  await execFileAsync('git', ['init', '--quiet'], { cwd: directory });
+  await execFileAsync('git', ['config', 'user.email', 'test@example.test'], {
+    cwd: directory,
+  });
+  await execFileAsync('git', ['config', 'user.name', 'Mallok test'], {
+    cwd: directory,
+  });
+  await execFileAsync('git', ['add', '.'], { cwd: directory });
+  await execFileAsync('git', ['commit', '--quiet', '-m', message], {
+    cwd: directory,
+  });
+}
+
 beforeAll(async () => {
   sandbox = await mkdtemp(join(tmpdir(), 'mallok-candidate-'));
+  source = join(sandbox, 'source');
+  const packageDir = join(source, 'package');
+  await mkdir(source, { recursive: true });
+  await cp(join(repositoryRoot, 'dist/pkg'), packageDir, { recursive: true });
+  await initialiseRepository(source, 'package fixture');
   output = join(sandbox, 'release');
-  const packed = await run('scripts/pack-candidate.mjs', ['dist/pkg', output]);
+  const packed = await run(
+    'scripts/pack-candidate.mjs',
+    [packageDir, output],
+    source,
+  );
   expect(packed.code, packed.stdout + packed.stderr).toBe(0);
   const record = JSON.parse(await readFile(join(output, 'pack.json'), 'utf8'));
   candidate = join(output, record.filename);
@@ -70,18 +100,25 @@ describe('the immutable release candidate', () => {
     expect(record.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(record.sourceCommit).toMatch(/^[a-f0-9]{40,64}$/);
 
-    const { stdout: head } = await execFileAsync('git', ['rev-parse', 'HEAD']);
+    const { stdout: head } = await execFileAsync('git', ['rev-parse', 'HEAD'], {
+      cwd: source,
+    });
     expect(record.sourceCommit).toBe(head.trim());
 
-    const verified = await run('scripts/verify-candidate.mjs', [candidate]);
+    const verified = await run(
+      'scripts/verify-candidate.mjs',
+      [candidate],
+      source,
+    );
     expect(verified.code, verified.stdout + verified.stderr).toBe(0);
   });
 
   it('refuses to pack over the selected candidate', async () => {
-    const second = await run('scripts/pack-candidate.mjs', [
-      'dist/pkg',
-      output,
-    ]);
+    const second = await run(
+      'scripts/pack-candidate.mjs',
+      [join(source, 'package'), output],
+      source,
+    );
     expect(second.code).not.toBe(0);
     expect(second.stderr).toContain('packed once');
   });
@@ -89,22 +126,16 @@ describe('the immutable release candidate', () => {
   it('refuses to select a candidate from a dirty source checkout', async () => {
     const source = join(sandbox, 'dirty-source');
     const packageDir = join(source, 'package');
+    const cleanCaller = join(sandbox, 'clean-caller');
     await mkdir(packageDir, { recursive: true });
+    await mkdir(cleanCaller, { recursive: true });
     await writeFile(
       join(packageDir, 'package.json'),
       `${JSON.stringify({ name: 'mallok', version: '0.0.0-test' })}\n`,
     );
-    await execFileAsync('git', ['init', '--quiet'], { cwd: source });
-    await execFileAsync('git', ['config', 'user.email', 'test@example.test'], {
-      cwd: source,
-    });
-    await execFileAsync('git', ['config', 'user.name', 'Mallok test'], {
-      cwd: source,
-    });
-    await execFileAsync('git', ['add', '.'], { cwd: source });
-    await execFileAsync('git', ['commit', '--quiet', '-m', 'fixture'], {
-      cwd: source,
-    });
+    await initialiseRepository(source, 'dirty package fixture');
+    await writeFile(join(cleanCaller, 'README.md'), 'clean caller\n');
+    await initialiseRepository(cleanCaller, 'clean caller fixture');
     await writeFile(join(source, 'untracked.txt'), 'not reviewed\n');
 
     let error: unknown;
@@ -112,11 +143,11 @@ describe('the immutable release candidate', () => {
       await execFileAsync(
         process.execPath,
         [
-          join(process.cwd(), 'scripts/pack-candidate.mjs'),
+          join(repositoryRoot, 'scripts/pack-candidate.mjs'),
           packageDir,
           join(source, 'release'),
         ],
-        { cwd: source },
+        { cwd: cleanCaller },
       );
     } catch (caught) {
       error = caught;
@@ -128,7 +159,11 @@ describe('the immutable release candidate', () => {
 
   it('detects a candidate changed after packing', async () => {
     await appendFile(candidate, 'changed');
-    const verified = await run('scripts/verify-candidate.mjs', [candidate]);
+    const verified = await run(
+      'scripts/verify-candidate.mjs',
+      [candidate],
+      source,
+    );
     expect(verified.code).not.toBe(0);
     expect(verified.stderr).toContain('changed');
   });
