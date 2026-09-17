@@ -37,6 +37,22 @@ const report = makeReporter(true, true);
 
 let workspace = '';
 
+function packageLock(version: string): string {
+  return `${JSON.stringify(
+    {
+      name: 'my-site',
+      lockfileVersion: 3,
+      requires: true,
+      packages: {
+        '': { name: 'my-site', dependencies: { mallok: version } },
+        'node_modules/mallok': { version },
+      },
+    },
+    null,
+    2,
+  )}\n`;
+}
+
 /** A project shell with just enough for `upgradeProject` to accept it. */
 async function project(version = '1.0.0'): Promise<string> {
   const dir = join(workspace, 'site');
@@ -50,11 +66,7 @@ async function project(version = '1.0.0'): Promise<string> {
     )}\n`,
     'utf8',
   );
-  await writeFile(
-    join(dir, 'package-lock.json'),
-    `{"mallok":"${version}"}\n`,
-    'utf8',
-  );
+  await writeFile(join(dir, 'package-lock.json'), packageLock(version), 'utf8');
   await writeFile(join(dir, 'wrangler.jsonc'), '{}\n', 'utf8');
   await writeFile(join(dir, 'src/worker/index.ts'), '// site\n', 'utf8');
   // The installed tree, because "already on that version" is now checked in
@@ -116,7 +128,7 @@ function runner(
         const pinned = manifest.dependencies?.mallok ?? '';
         await writeFile(
           join(opts?.cwd ?? '', 'package-lock.json'),
-          `{"mallok":"${pinned}"}\n`,
+          packageLock(pinned),
           'utf8',
         );
         await mkdir(join(opts?.cwd ?? '', 'node_modules/mallok'), {

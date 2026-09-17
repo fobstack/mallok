@@ -38,6 +38,26 @@ const report = makeReporter(true, true);
 
 let workspace = '';
 
+function packageLock(
+  version: string,
+  extra: Record<string, unknown> = {},
+): string {
+  return `${JSON.stringify(
+    {
+      name: 'my-site',
+      lockfileVersion: 3,
+      requires: true,
+      packages: {
+        '': { name: 'my-site', dependencies: { mallok: version } },
+        'node_modules/mallok': { version },
+      },
+      ...extra,
+    },
+    null,
+    2,
+  )}\n`;
+}
+
 interface ProjectOptions {
   readonly version?: string;
   readonly lock?: string | null;
@@ -67,7 +87,7 @@ async function project(options: ProjectOptions = {}): Promise<string> {
   if (options.lock !== null) {
     await writeFile(
       join(dir, 'package-lock.json'),
-      options.lock ?? `{"mallok":"${version}"}\n`,
+      options.lock ?? packageLock(version),
       'utf8',
     );
   }
@@ -113,7 +133,7 @@ function runner(options: { failCheck?: string; installFails?: boolean } = {}) {
         const pinned = manifest.dependencies?.mallok ?? '';
         await writeFile(
           join(cwd, 'package-lock.json'),
-          `{"mallok":"${pinned}"}\n`,
+          packageLock(pinned),
           'utf8',
         );
         await mkdir(join(cwd, 'node_modules/mallok'), { recursive: true });
@@ -209,40 +229,31 @@ describe('other package managers are refused, not worked around', () => {
 });
 
 describe('"already on that version" is checked, not assumed', () => {
-  it('finishes the install when node_modules is behind', async () => {
+  it('refuses when node_modules is behind', async () => {
     // The manifest says 2.0.0 and the tree holds 1.0.0: a previous run was
     // interrupted after the manifest was written. Reporting "nothing to do"
     // leaves a site building against a version it does not have.
     const dir = await project({ version: '2.0.0', installed: '1.0.0' });
     const fake = runner();
 
-    const result = await upgradeProject(
-      { to: '2.0.0', projectDir: dir, run: fake.run },
-      report,
-    );
-
-    expect(result.changed).toBe(true);
-    expect(fake.calls.some((call) => call.includes('install'))).toBe(true);
-    const installed = JSON.parse(
-      await readFile(join(dir, 'node_modules/mallok/package.json'), 'utf8'),
-    ) as { version: string };
-    expect(installed.version).toBe('2.0.0');
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: fake.run }, report),
+    ).rejects.toThrow(/not consistently/i);
+    expect(fake.calls).toEqual([]);
   });
 
-  it('finishes the install when the lockfile is behind', async () => {
+  it('refuses when the lockfile is behind even if another field mentions the target', async () => {
     const dir = await project({
       version: '2.0.0',
-      lock: '{"mallok":"1.0.0"}\n',
+      lock: packageLock('1.0.0', { note: 'upgrade to 2.0.0' }),
       installed: '2.0.0',
     });
     const fake = runner();
 
-    const result = await upgradeProject(
-      { to: '2.0.0', projectDir: dir, run: fake.run },
-      report,
-    );
-
-    expect(result.changed).toBe(true);
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: fake.run }, report),
+    ).rejects.toThrow(/not consistently/i);
+    expect(fake.calls).toEqual([]);
   });
 
   it('really does nothing when all three agree', async () => {
@@ -306,8 +317,77 @@ describe('two upgrades cannot run at once', () => {
       ),
     ).rejects.toThrow(/already (in progress|running)|another upgrade/i);
 
+    // The rejected process must not "recover" the first process's live
+    // journal. That was the original corruption: it put these files back to
+    // 1.0.0 while the first process still believed it owned a 2.0.0 run.
+    const during = JSON.parse(
+      await readFile(join(dir, 'package.json'), 'utf8'),
+    ) as { dependencies: Record<string, string> };
+    expect(during.dependencies.mallok).toBe('2.0.0');
+    expect(
+      await readFile(join(dir, '.mallok/upgrade-journal.json'), 'utf8'),
+    ).toContain('"to": "2.0.0"');
+
     release?.();
     await first;
+
+    const final = JSON.parse(
+      await readFile(join(dir, 'package.json'), 'utf8'),
+    ) as { dependencies: Record<string, string> };
+    const finalLock = JSON.parse(
+      await readFile(join(dir, 'package-lock.json'), 'utf8'),
+    ) as { packages: Record<string, { version?: string }> };
+    const finalInstalled = JSON.parse(
+      await readFile(join(dir, 'node_modules/mallok/package.json'), 'utf8'),
+    ) as { version: string };
+    expect(final.dependencies.mallok).toBe('2.0.0');
+    expect(finalLock.packages['node_modules/mallok']?.version).toBe('2.0.0');
+    expect(finalInstalled.version).toBe('2.0.0');
+  });
+
+  it('leaves a well-formed stale lock for explicit recovery', async () => {
+    const dir = await project();
+    await mkdir(join(dir, '.mallok'), { recursive: true });
+    await writeFile(
+      join(dir, '.mallok/upgrade.lock'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        pid: 2_147_483_647,
+        owner: 'abandoned-owner',
+        startedAt: '2026-09-14T00:00:00.000Z',
+      })}\n`,
+      'utf8',
+    );
+
+    const fake = runner();
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: fake.run }, report),
+    ).rejects.toThrow(/left its lock|previous upgrade|no longer running/i);
+
+    expect(fake.calls).toEqual([]);
+    expect(await readFile(join(dir, '.mallok/upgrade.lock'), 'utf8')).toContain(
+      'abandoned-owner',
+    );
+  });
+
+  it('fails closed if its owned lock disappears before release', async () => {
+    const dir = await project();
+    const base = runner();
+    const tampered = async (
+      command: string,
+      args: readonly string[],
+      options?: { cwd?: string },
+    ) => {
+      const result = await base.run(command, args, options);
+      if (args[0] === 'run' && args[1] === 'typecheck') {
+        await rm(join(dir, '.mallok/upgrade.lock'));
+      }
+      return result;
+    };
+
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: tampered }, report),
+    ).rejects.toThrow(/lock.*disappeared/i);
   });
 
   it('releases the lock when it finishes, so the next one can run', async () => {
@@ -376,7 +456,7 @@ describe('a crash mid-upgrade is recovered on the next run', () => {
           null,
           2,
         )}\n`,
-        lock: '{"mallok":"1.0.0"}\n',
+        lock: packageLock('1.0.0'),
       }),
       'utf8',
     );
@@ -398,6 +478,102 @@ describe('a crash mid-upgrade is recovered on the next run', () => {
       'utf8',
     ).catch(() => null);
     expect(journal).toBeNull();
+  });
+
+  it.each([
+    ['missing schema fields', { manifest: '{}', lock: '{}' }],
+    [
+      'a manifest whose dependency disagrees with from',
+      {
+        schemaVersion: 1,
+        from: '1.0.0',
+        to: '2.0.0',
+        startedAt: '2026-09-14T00:00:00.000Z',
+        manifest: JSON.stringify({ dependencies: { mallok: '9.0.0' } }),
+        lock: packageLock('1.0.0'),
+      },
+    ],
+    [
+      'an invalid embedded lockfile',
+      {
+        schemaVersion: 1,
+        from: '1.0.0',
+        to: '2.0.0',
+        startedAt: '2026-09-14T00:00:00.000Z',
+        manifest: JSON.stringify({ dependencies: { mallok: '1.0.0' } }),
+        lock: '{"not":"an npm lock"}',
+      },
+    ],
+  ])('refuses %s without changing the project', async (_label, journal) => {
+    const dir = await project();
+    await mkdir(join(dir, '.mallok'), { recursive: true });
+    await writeFile(
+      join(dir, '.mallok/upgrade-journal.json'),
+      JSON.stringify(journal),
+      'utf8',
+    );
+    const beforeManifest = await readFile(join(dir, 'package.json'), 'utf8');
+    const beforeLock = await readFile(join(dir, 'package-lock.json'), 'utf8');
+    const fake = runner();
+
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: fake.run }, report),
+    ).rejects.toThrow(/journal|lockfile/i);
+
+    expect(await readFile(join(dir, 'package.json'), 'utf8')).toBe(
+      beforeManifest,
+    );
+    expect(await readFile(join(dir, 'package-lock.json'), 'utf8')).toBe(
+      beforeLock,
+    );
+    expect(fake.calls).toEqual([]);
+  });
+
+  it('does not treat a journal read error as if no journal existed', async () => {
+    const dir = await project();
+    const journalPath = join(dir, '.mallok/upgrade-journal.json');
+    await mkdir(journalPath, { recursive: true });
+    const fake = runner();
+
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: fake.run }, report),
+    ).rejects.toThrow();
+    expect(fake.calls).toEqual([]);
+    expect(await readFile(join(dir, 'package.json'), 'utf8')).toContain(
+      '"mallok": "1.0.0"',
+    );
+  });
+
+  it('keeps the journal when interrupted recovery cannot reinstall', async () => {
+    const dir = await project();
+    const journalPath = join(dir, '.mallok/upgrade-journal.json');
+    const manifest = await readFile(join(dir, 'package.json'), 'utf8');
+    const lock = await readFile(join(dir, 'package-lock.json'), 'utf8');
+    await mkdir(join(dir, '.mallok'), { recursive: true });
+    await writeFile(
+      journalPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        from: '1.0.0',
+        to: '2.0.0',
+        startedAt: '2026-09-14T00:00:00.000Z',
+        manifest,
+        lock,
+      }),
+      'utf8',
+    );
+
+    await expect(
+      upgradeProject(
+        {
+          to: '2.0.0',
+          projectDir: dir,
+          run: async () => ({ code: 1, stdout: '', stderr: 'offline' }),
+        },
+        report,
+      ),
+    ).rejects.toThrow(/reinstalling failed/i);
+    expect(await readFile(journalPath, 'utf8')).toContain('"from":"1.0.0"');
   });
 
   it('writes no journal behind after a clean run', async () => {
@@ -437,5 +613,108 @@ describe('the rollback verifies what it restored', () => {
       await readFile(join(dir, 'node_modules/mallok/package.json'), 'utf8'),
     ) as { version: string };
     expect(installed.version).toBe('1.0.0');
+  });
+
+  it('keeps the journal if restoring the old lockfile itself fails', async () => {
+    const dir = await project();
+    const journalPath = join(dir, '.mallok/upgrade-journal.json');
+    const destructive = {
+      run: async (
+        _command: string,
+        args: readonly string[],
+        options?: { cwd?: string },
+      ) => {
+        const cwd = options?.cwd ?? '';
+        if (args[0] === 'install') {
+          const manifest = JSON.parse(
+            await readFile(join(cwd, 'package.json'), 'utf8'),
+          ) as { dependencies: Record<string, string> };
+          const version = manifest.dependencies.mallok ?? '';
+          await writeFile(join(cwd, 'package-lock.json'), packageLock(version));
+          await mkdir(join(cwd, 'node_modules/mallok'), { recursive: true });
+          await writeFile(
+            join(cwd, 'node_modules/mallok/package.json'),
+            JSON.stringify({ version }),
+          );
+          return { code: 0, stdout: '', stderr: '' };
+        }
+        if (args[0] === 'run' && args[1] === 'typecheck') {
+          await rm(join(cwd, 'package-lock.json'));
+          await mkdir(join(cwd, 'package-lock.json'));
+          return { code: 1, stdout: '', stderr: 'failed' };
+        }
+        return { code: 0, stdout: '', stderr: '' };
+      },
+    };
+
+    await expect(
+      upgradeProject(
+        { to: '2.0.0', projectDir: dir, run: destructive.run },
+        report,
+      ),
+    ).rejects.toThrow();
+    expect(await readFile(journalPath, 'utf8')).toContain('"from": "1.0.0"');
+  });
+
+  it('rejects an install that exits zero without landing the target', async () => {
+    const dir = await project();
+    const calls: string[] = [];
+    const noOp = async (_command: string, args: readonly string[]) => {
+      calls.push(args.join(' '));
+      return { code: 0, stdout: '', stderr: '' };
+    };
+
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: noOp }, report),
+    ).rejects.toThrow(/not consistently/i);
+    expect(calls).toEqual(['install', 'ci']);
+    await expect(
+      readFile(join(dir, '.mallok/upgrade-journal.json'), 'utf8'),
+    ).rejects.toThrow();
+  });
+
+  it('keeps the journal when npm ci exits zero but Mallok is missing', async () => {
+    const dir = await project();
+    let installs = 0;
+    const broken = async (
+      _command: string,
+      args: readonly string[],
+      options?: { cwd?: string },
+    ) => {
+      const cwd = options?.cwd ?? '';
+      if (args[0] === 'install') {
+        installs += 1;
+        const manifest = JSON.parse(
+          await readFile(join(cwd, 'package.json'), 'utf8'),
+        ) as { dependencies: Record<string, string> };
+        const version = manifest.dependencies.mallok ?? '';
+        await writeFile(join(cwd, 'package-lock.json'), packageLock(version));
+        await mkdir(join(cwd, 'node_modules/mallok'), { recursive: true });
+        await writeFile(
+          join(cwd, 'node_modules/mallok/package.json'),
+          JSON.stringify({ version }),
+        );
+        return { code: 0, stdout: '', stderr: '' };
+      }
+      if (args[0] === 'run' && args[1] === 'typecheck') {
+        return { code: 1, stdout: '', stderr: 'failed' };
+      }
+      if (args[0] === 'ci') {
+        await rm(join(cwd, 'node_modules/mallok'), {
+          recursive: true,
+          force: true,
+        });
+        return { code: 0, stdout: '', stderr: '' };
+      }
+      return { code: 0, stdout: '', stderr: '' };
+    };
+
+    await expect(
+      upgradeProject({ to: '2.0.0', projectDir: dir, run: broken }, report),
+    ).rejects.toThrow(/not consistently/i);
+    expect(installs).toBe(1);
+    expect(
+      await readFile(join(dir, '.mallok/upgrade-journal.json'), 'utf8'),
+    ).toContain('"from": "1.0.0"');
   });
 });

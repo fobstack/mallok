@@ -422,16 +422,18 @@ general way back.
 
 Running it again on the same version changes nothing and exits 0 — but that
 is **checked**, not read off `package.json`. A manifest saying 2.0.0 beside a
-lockfile and a `node_modules` holding 1.0.0 is a run that was interrupted
-after the manifest was written, and it needs the install it never finished.
+lockfile or `node_modules` holding 1.0.0 is refused before npm runs: there is
+no trustworthy baseline to roll back to. Restore the project or run
+`npm ci`, review the resulting exact version, and retry.
 The comparison there is exact rather than semver precedence: `1.0.0+build.1`
 and `1.0.0+build.2` compare equal under semver — build metadata is explicitly
 not precedence — and they are not the same artefact.
 
-### What protects the two files it edits
+### What protects the dependency state it edits
 
-`package.json` and the lockfile are the only state an upgrade touches, and a
-site cannot afford to lose either.
+`package.json`, the lockfile and the installed tree must name the same exact
+Mallok version before and after an upgrade. A site cannot afford to lose any
+part of that agreement.
 
 - **A readable `package-lock.json` is required up front.** The rollback
   restores it; a rollback that cannot restore what it never read leaves the
@@ -445,13 +447,20 @@ site cannot afford to lose either.
 - **An exclusive lock**, `.mallok/upgrade.lock`, taken with an
   `O_EXCL` create. Two upgrades in one directory would both read the same
   "before", and the loser would restore a manifest the winner had already
-  replaced.
+  replaced. The lock contains a process id and an unguessable owner token;
+  release checks that the same token is still present. A lock whose process
+  has died is left in place for explicit inspection. Automatically replacing
+  it by pathname can race with a newly started upgrade and remove the new
+  owner's lock, so Mallok fails closed instead.
 - **A journal**, `.mallok/upgrade-journal.json`, holding the bytes of both
   files, written *before* the manifest changes and removed only when the run
   has finished or been undone. Every write goes through a temporary file in
   the same directory and a rename, so a reader sees one version or the other
-  and never half of one. The next `mallok upgrade` in that project recovers
-  from it first.
+  and never half of one. The next `mallok upgrade` in that project validates
+  the journal and both embedded snapshots, reinstalls the recorded version,
+  verifies `package.json`, the structured lockfile and `node_modules`, and
+  only then removes it. A read error or malformed journal is never treated as
+  if no recovery record existed.
 - **The rollback verifies what it restored.** It reinstalls with `npm ci` —
   not `install`, which is free to rewrite the lockfile it just put back — and
   then checks the version that actually landed in `node_modules`.

@@ -39,6 +39,7 @@
  */
 
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -74,6 +75,18 @@ interface Journal {
   readonly lock: string;
 }
 
+interface UpgradeLock {
+  readonly schemaVersion: 1;
+  readonly pid: number;
+  readonly owner: string;
+  readonly startedAt: string;
+}
+
+interface PackageLockState {
+  readonly declared: string;
+  readonly installed: string;
+}
+
 /**
  * Writes a file by creating a temporary one beside it and renaming.
  *
@@ -82,9 +95,144 @@ interface Journal {
  * must not be ambiguous.
  */
 async function writeAtomic(path: string, body: string): Promise<void> {
-  const temporary = `${path}.${process.pid}.tmp`;
-  await writeFile(temporary, body, 'utf8');
-  await rename(temporary, path);
+  const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporary, body, 'utf8');
+    await rename(temporary, path);
+  } finally {
+    await rm(temporary, { force: true });
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parsePackageLock(raw: string, label: string): PackageLockState {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new CliError(
+      EXIT.user,
+      `${label} is not valid JSON.`,
+      'Restore package-lock.json from version control or run `npm install` ' +
+        'and review the result before upgrading.',
+    );
+  }
+  if (!isRecord(parsed) || !isRecord(parsed.packages)) {
+    throw new CliError(
+      EXIT.user,
+      `${label} does not contain npm's packages map.`,
+      'Mallok needs the root dependency and installed package recorded in ' +
+        'package-lock.json before it can upgrade safely.',
+    );
+  }
+  const root = parsed.packages[''];
+  const installed = parsed.packages['node_modules/mallok'];
+  if (!isRecord(root) || !isRecord(root.dependencies)) {
+    throw new CliError(
+      EXIT.user,
+      `${label} does not record the root project's dependencies.`,
+      'Run `npm install`, commit package-lock.json, and try again.',
+    );
+  }
+  const declared = root.dependencies.mallok;
+  const installedVersion = isRecord(installed) ? installed.version : undefined;
+  if (typeof declared !== 'string' || typeof installedVersion !== 'string') {
+    throw new CliError(
+      EXIT.user,
+      `${label} does not record both the declared and installed Mallok versions.`,
+      'Run `npm install`, commit package-lock.json, and try again.',
+    );
+  }
+  return { declared, installed: installedVersion };
+}
+
+function exactIsoDate(value: string): boolean {
+  try {
+    return new Date(value).toISOString() === value;
+  } catch {
+    return false;
+  }
+}
+
+function parseJournal(raw: string): Journal {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      !isRecord(parsed) ||
+      parsed.schemaVersion !== 1 ||
+      typeof parsed.from !== 'string' ||
+      semver.valid(parsed.from) === null ||
+      typeof parsed.to !== 'string' ||
+      semver.valid(parsed.to) === null ||
+      typeof parsed.startedAt !== 'string' ||
+      !exactIsoDate(parsed.startedAt) ||
+      typeof parsed.manifest !== 'string' ||
+      typeof parsed.lock !== 'string'
+    ) {
+      throw new Error('invalid journal schema');
+    }
+    const manifest = JSON.parse(parsed.manifest) as unknown;
+    if (
+      !isRecord(manifest) ||
+      !isRecord(manifest.dependencies) ||
+      manifest.dependencies.mallok !== parsed.from
+    ) {
+      throw new Error('invalid journal manifest');
+    }
+    const lock = parsePackageLock(
+      parsed.lock,
+      `The lockfile inside ${JOURNAL}`,
+    );
+    if (lock.declared !== parsed.from || lock.installed !== parsed.from) {
+      throw new Error('journal lockfile disagrees with from');
+    }
+    return parsed as unknown as Journal;
+  } catch (error) {
+    if (error instanceof CliError) {
+      throw error;
+    }
+    throw new CliError(
+      EXIT.user,
+      `${JOURNAL} records an unfinished upgrade and cannot be trusted.`,
+      'It must contain a complete versioned record and valid package.json ' +
+        'and package-lock.json snapshots. Restore those files from version ' +
+        `control, then delete ${JOURNAL}.`,
+    );
+  }
+}
+
+function parseUpgradeLock(raw: string): UpgradeLock | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      !isRecord(parsed) ||
+      parsed.schemaVersion !== 1 ||
+      typeof parsed.pid !== 'number' ||
+      !Number.isSafeInteger(parsed.pid) ||
+      parsed.pid <= 0 ||
+      typeof parsed.owner !== 'string' ||
+      parsed.owner.length === 0 ||
+      typeof parsed.startedAt !== 'string' ||
+      !exactIsoDate(parsed.startedAt)
+    ) {
+      return null;
+    }
+    return parsed as unknown as UpgradeLock;
+  } catch {
+    return null;
+  }
+}
+
+function processIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code !== 'ESRCH';
+  }
 }
 
 /**
@@ -97,25 +245,88 @@ async function writeAtomic(path: string, body: string): Promise<void> {
 async function takeLock(projectDir: string): Promise<() => Promise<void>> {
   const path = join(projectDir, LOCK);
   await mkdir(join(projectDir, '.mallok'), { recursive: true });
-  try {
-    const handle = await open(path, 'wx');
-    await handle.writeFile(
-      `${JSON.stringify({ pid: process.pid, at: new Date().toISOString() })}\n`,
-    );
-    await handle.close();
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+  const owner = randomUUID();
+  const ours: UpgradeLock = {
+    schemaVersion: 1,
+    pid: process.pid,
+    owner,
+    startedAt: new Date().toISOString(),
+  };
+
+  for (;;) {
+    try {
+      const handle = await open(path, 'wx');
+      try {
+        await handle.writeFile(`${JSON.stringify(ours)}\n`);
+      } catch (error) {
+        await handle.close().catch(() => undefined);
+        await rm(path, { force: true });
+        throw error;
+      }
+      await handle.close();
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+        throw error;
+      }
+
+      let raw: string;
+      try {
+        raw = await readFile(path, 'utf8');
+      } catch (readError) {
+        if ((readError as NodeJS.ErrnoException).code === 'ENOENT') {
+          continue;
+        }
+        throw readError;
+      }
+      const existing = parseUpgradeLock(raw);
+      if (existing === null) {
+        throw new CliError(
+          EXIT.user,
+          `${LOCK} exists but is not a valid Mallok upgrade lock.`,
+          'Do not delete it while another upgrade may be running. Inspect ' +
+            'the file and running processes first.',
+        );
+      }
+      const alive = processIsAlive(existing.pid);
       throw new CliError(
         EXIT.user,
-        'Another upgrade is already running in this project.',
-        `If none is, the previous one was killed: remove ${LOCK} and try ` +
-          'again. It is a lock, not state — nothing is lost by deleting it.',
+        alive
+          ? 'Another upgrade is already running in this project.'
+          : 'A previous upgrade left its lock behind.',
+        alive
+          ? `${LOCK} belongs to process ${existing.pid}. Wait for it to finish.`
+          : `${LOCK} names process ${existing.pid}, which is no longer running. ` +
+              'Inspect the journal and project state before removing the lock manually. ' +
+              'Mallok will not reclaim it automatically because replacing a lock by path ' +
+              'can race with a newly started upgrade.',
       );
     }
-    throw error;
   }
+
   return async () => {
-    await rm(path, { force: true });
+    let raw: string;
+    try {
+      raw = await readFile(path, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        throw new CliError(
+          EXIT.user,
+          `${LOCK} disappeared while this upgrade was running.`,
+          'Mallok cannot prove it held exclusive access. Inspect the project ' +
+            'before trying another upgrade.',
+        );
+      }
+      throw error;
+    }
+    if (parseUpgradeLock(raw)?.owner !== owner) {
+      throw new CliError(
+        EXIT.user,
+        `${LOCK} changed ownership while this upgrade was running.`,
+        'Mallok left the lock in place. Inspect the project before trying again.',
+      );
+    }
+    await rm(path);
   };
 }
 
@@ -126,23 +337,22 @@ async function recover(
   runner: CommandRunner | undefined,
 ): Promise<void> {
   const path = join(projectDir, JOURNAL);
-  const raw = await readFile(path, 'utf8').catch(() => null);
-  if (raw === null) {
-    return;
-  }
-  let journal: Journal;
+  let raw: string;
   try {
-    journal = JSON.parse(raw) as Journal;
-    if (typeof journal.manifest !== 'string') {
-      throw new Error('no manifest');
+    raw = await readFile(path, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      return;
     }
-  } catch {
+    throw error;
+  }
+  const journal = parseJournal(raw);
+  if (runner === undefined) {
     throw new CliError(
       EXIT.user,
-      `${JOURNAL} records an unfinished upgrade and cannot be read.`,
-      'It holds the package.json and lockfile an interrupted run was about ' +
-        'to change. Restore those two files from version control, then ' +
-        'delete it.',
+      `${JOURNAL} records an unfinished upgrade that needs recovery.`,
+      'Run this command through the Mallok CLI so it can reinstall the ' +
+        'recorded version before continuing.',
     );
   }
 
@@ -151,17 +361,16 @@ async function recover(
   );
   await writeAtomic(join(projectDir, 'package.json'), journal.manifest);
   await writeAtomic(join(projectDir, 'package-lock.json'), journal.lock);
-  if (runner !== undefined) {
-    const back = await runner('npm', frozenInstallArgs(), { cwd: projectDir });
-    if (back.code !== 0) {
-      throw new CliError(
-        EXIT.user,
-        `Restored package.json and the lockfile to ${journal.from}, but reinstalling failed.`,
-        `${lastLine(back.stderr, back.stdout)} — run \`npm ci\` to finish, ` +
-          `then delete ${JOURNAL}.`,
-      );
-    }
+  const back = await runner('npm', frozenInstallArgs(), { cwd: projectDir });
+  if (back.code !== 0) {
+    throw new CliError(
+      EXIT.user,
+      `Restored package.json and the lockfile to ${journal.from}, but reinstalling failed.`,
+      `${lastLine(back.stderr, back.stdout)} — fix the install and retry; ` +
+        `${JOURNAL} has been kept as the recovery record.`,
+    );
   }
+  await assertProjectVersion(projectDir, journal.from, 'Recovered project');
   await rm(path, { force: true });
 }
 
@@ -177,6 +386,39 @@ async function installedVersion(projectDir: string): Promise<string | null> {
     return typeof manifest.version === 'string' ? manifest.version : null;
   } catch {
     return null;
+  }
+}
+
+async function assertProjectVersion(
+  projectDir: string,
+  expected: string,
+  label: string,
+): Promise<void> {
+  let declared: string;
+  try {
+    declared = await currentVersion(projectDir);
+  } catch {
+    throw new CliError(
+      EXIT.user,
+      `${label} does not have a readable Mallok dependency.`,
+      `Expected package.json to pin mallok ${expected}.`,
+    );
+  }
+  const lockRaw = await readFile(join(projectDir, 'package-lock.json'), 'utf8');
+  const lock = parsePackageLock(lockRaw, `${label}'s package-lock.json`);
+  const installed = await installedVersion(projectDir);
+  if (
+    declared !== expected ||
+    lock.declared !== expected ||
+    lock.installed !== expected ||
+    installed !== expected
+  ) {
+    throw new CliError(
+      EXIT.user,
+      `${label} is not consistently on Mallok ${expected}.`,
+      `package.json=${declared}, lock declaration=${lock.declared}, ` +
+        `lock installation=${lock.installed}, node_modules=${installed ?? 'missing'}.`,
+    );
   }
 }
 
@@ -250,7 +492,7 @@ async function setVersion(projectDir: string, version: string): Promise<void> {
   const manifest = JSON.parse(await readFile(path, 'utf8')) as {
     dependencies?: Record<string, string>;
   };
-  await writeFile(
+  await writeAtomic(
     path,
     `${JSON.stringify(
       {
@@ -260,7 +502,6 @@ async function setVersion(projectDir: string, version: string): Promise<void> {
       null,
       2,
     )}\n`,
-    'utf8',
   );
 }
 
@@ -285,7 +526,6 @@ export async function upgradeProject(
 ): Promise<UpgradeResult> {
   const projectDir = options.projectDir ?? process.cwd();
   assertExactVersion(options.to);
-  await assertNpmProject(projectDir);
   if (!(await isMallokProject(projectDir))) {
     throw new CliError(
       EXIT.user,
@@ -294,204 +534,189 @@ export async function upgradeProject(
     );
   }
 
-  // An interrupted run is put back before anything else is considered.
-  await recover(projectDir, report, options.run);
+  // Only the shape check above happens without the lock. Every read of
+  // dependency state, including crash recovery, is serialized below.
+  const release = await takeLock(projectDir);
+  try {
+    await assertNpmProject(projectDir);
+    await recover(projectDir, report, options.run);
 
-  const from = await currentVersion(projectDir);
-  if (semver.valid(from) === null) {
-    throw new CliError(
-      EXIT.user,
-      `This project's mallok dependency is "${from}", which is not an exact version.`,
-      'Set it to the version the site is actually running before upgrading.',
-    );
-  }
+    const from = await currentVersion(projectDir);
+    if (semver.valid(from) === null) {
+      throw new CliError(
+        EXIT.user,
+        `This project's mallok dependency is "${from}", which is not an exact version.`,
+        'Set it to the version the site is actually running before upgrading.',
+      );
+    }
 
-  // The lockfile is not optional. The rollback restores it, and a rollback
-  // that cannot restore what it never read leaves the manifest on the old
-  // version beside a `node_modules` holding the new one — a project that
-  // fails in a way nobody can read.
-  const lockPath = join(projectDir, 'package-lock.json');
-  // Read as text, not bytes: this project's types resolve `Buffer` through
-  // `@cloudflare/workers-types`, whose `toString` takes no encoding. A
-  // lockfile is UTF-8 JSON, so the round trip is exact.
-  const lockBefore = await readFile(lockPath, 'utf8').catch(() => null);
-  if (lockBefore === null) {
-    throw new CliError(
-      EXIT.user,
-      'This project has no readable package-lock.json.',
-      'An upgrade restores it if anything fails, so it has to be there and ' +
-        'be readable first. Run `npm install` to produce one, commit it, and ' +
-        'try again.',
+    const lockPath = join(projectDir, 'package-lock.json');
+    let lockBefore: string;
+    try {
+      lockBefore = await readFile(lockPath, 'utf8');
+    } catch {
+      throw new CliError(
+        EXIT.user,
+        'This project has no readable package-lock.json.',
+        'An upgrade restores it if anything fails, so it has to be there and ' +
+          'be readable first. Run `npm install` to produce one, commit it, and ' +
+          'try again.',
+      );
+    }
+    const lockBeforeState = parsePackageLock(
+      lockBefore,
+      "This project's package-lock.json",
     );
-  }
 
-  const direction = compareVersions(options.to, from);
-  if (direction < 0) {
-    throw new CliError(
-      EXIT.user,
-      `${options.to} is older than the ${from} this project is on.`,
-      'Downgrading is refused: a release can migrate a database forward, and ' +
-        'there is no general way back. If you need an older version, restore ' +
-        'the project from version control.',
-    );
-  }
-  if (direction === 0) {
-    // "Already on that version" is checked in all three places, not read off
-    // the manifest. A manifest saying 2.0.0 beside a lockfile and a
-    // `node_modules` holding 1.0.0 is a run that was interrupted after the
-    // manifest was written — a project that needs the install it never
-    // finished, not one with nothing to do.
-    //
-    // And the comparison is **exact**, not `semver.compare`. Build metadata
-    // is explicitly not precedence, so `1.0.0+build.1` and `1.0.0+build.2`
-    // compare equal — and they are not the same artefact.
-    const installed = await installedVersion(projectDir);
-    const lockText = lockBefore;
-    const settled =
-      from === options.to &&
-      installed === options.to &&
-      lockText.includes(options.to);
-    if (settled) {
+    const direction = compareVersions(options.to, from);
+    if (direction < 0) {
+      throw new CliError(
+        EXIT.user,
+        `${options.to} is older than the ${from} this project is on.`,
+        'Downgrading is refused: a release can migrate a database forward, and ' +
+          'there is no general way back. If you need an older version, restore ' +
+          'the project from version control.',
+      );
+    }
+    const installedBefore = await installedVersion(projectDir);
+    const baselineIsConsistent =
+      lockBeforeState.declared === from &&
+      lockBeforeState.installed === from &&
+      installedBefore === from;
+    if (direction === 0 && from === options.to && baselineIsConsistent) {
       report.step(`Already on ${options.to}; nothing to do.`);
       return { from, to: options.to, changed: false, checks: [] };
     }
-    report.step(
-      `package.json says ${options.to}, but ${
-        installed === null
-          ? 'it is not installed'
-          : `node_modules holds ${installed}`
-      }; finishing the install…`,
-    );
-  }
-
-  if (options.dryRun === true) {
-    report.step(`Would set mallok to ${options.to} (currently ${from}).`);
-    return { from, to: options.to, changed: false, checks: [] };
-  }
-
-  const runner = options.run;
-  if (runner === undefined) {
-    throw new CliError(EXIT.user, 'No command runner was provided.');
-  }
-
-  // What has to go back if anything fails. The lockfile is kept as bytes and
-  // written back unchanged: an install rewrites it, and a project left with
-  // the old manifest beside a new lockfile is a project whose next `npm ci`
-  // installs something nobody asked for.
-  const manifestPath = join(projectDir, 'package.json');
-  const manifestBefore = await readFile(manifestPath, 'utf8');
-
-  const release = await takeLock(projectDir);
-
-  const restore = async (): Promise<void> => {
-    report.step(`Restoring ${from}…`);
-    await writeAtomic(manifestPath, manifestBefore);
-    await writeAtomic(lockPath, lockBefore);
-    // `ci`, not `install`: the restored lockfile is the record of what this
-    // project was working with, and `install` is free to rewrite it. And the
-    // tree is reinstalled rather than left alone — it holds the target at
-    // this point, and files saying one version beside a tree holding another
-    // fails in a way nobody can read.
-    const back = await runner('npm', frozenInstallArgs(), { cwd: projectDir });
-    if (back.code !== 0) {
+    if (!baselineIsConsistent) {
       throw new CliError(
         EXIT.user,
-        `Rolled back to ${from}, but reinstalling it failed.`,
-        `${lastLine(back.stderr, back.stdout)} — package.json and the ` +
-          'lockfile are back as they were; run `npm ci` to finish.',
-      );
-    }
-    // What landed is checked rather than assumed: a `ci` that exits 0 having
-    // installed something else is exactly the case a rollback must not sign
-    // off on.
-    const landed = await installedVersion(projectDir);
-    if (landed !== null && landed !== from) {
-      throw new CliError(
-        EXIT.user,
-        `Rolled back to ${from}, but node_modules now holds ${landed}.`,
-        'package.json and the lockfile are back as they were. Run `npm ci` ' +
-          'and check the result before deploying.',
-      );
-    }
-  };
-
-  const checks: string[] = [];
-  try {
-    // The journal goes down **before** the manifest changes, so a crash at
-    // any point after this leaves a record of what was in flight.
-    await writeAtomic(
-      join(projectDir, JOURNAL),
-      `${JSON.stringify(
-        {
-          schemaVersion: 1,
-          from,
-          to: options.to,
-          startedAt: new Date().toISOString(),
-          manifest: manifestBefore,
-          lock: lockBefore,
-        } satisfies Journal,
-        null,
-        2,
-      )}\n`,
-    );
-
-    report.step(`Setting mallok to ${options.to}…`);
-    await setVersion(projectDir, options.to);
-
-    report.step('Installing…');
-    const install = await runner('npm', installArgs(), { cwd: projectDir });
-    if (install.code !== 0) {
-      throw new CliError(
-        EXIT.user,
-        `Installing mallok ${options.to} failed.`,
-        lastLine(install.stderr, install.stdout),
+        `This project is not consistently on Mallok ${from}.`,
+        `package.json=${from}, lock declaration=${lockBeforeState.declared}, ` +
+          `lock installation=${lockBeforeState.installed}, ` +
+          `node_modules=${installedBefore ?? 'missing'}. Run \`npm ci\` or ` +
+          'restore the project before upgrading.',
       );
     }
 
-    if (options.skipChecks !== true) {
-      // These run against the package that was just installed, which is what
-      // makes them the *target version's* checks rather than the old one's.
-      for (const check of CHECKS) {
-        report.step(`Checking ${check}…`);
-        const result = await runner('npm', runArgs(check), {
-          cwd: projectDir,
-        });
-        if (result.code !== 0) {
-          throw new CliError(
-            EXIT.user,
-            `${check} failed on ${options.to}.`,
-            lastLine(result.stderr, result.stdout),
-          );
-        }
-        checks.push(check);
-      }
+    if (options.dryRun === true) {
+      report.step(`Would set mallok to ${options.to} (currently ${from}).`);
+      return { from, to: options.to, changed: false, checks: [] };
+    }
 
-      report.step('Checking the deploy would succeed…');
-      const dryRun = await runner(
-        projectWrangler(projectDir),
-        ['deploy', '--dry-run'],
-        { cwd: projectDir },
-      );
-      if (dryRun.code !== 0) {
+    const runner = options.run;
+    if (runner === undefined) {
+      throw new CliError(EXIT.user, 'No command runner was provided.');
+    }
+
+    const manifestPath = join(projectDir, 'package.json');
+    const manifestBefore = await readFile(manifestPath, 'utf8');
+    const journalPath = join(projectDir, JOURNAL);
+    let transactionStarted = false;
+
+    const restore = async (): Promise<void> => {
+      report.step(`Restoring ${from}…`);
+      await writeAtomic(manifestPath, manifestBefore);
+      await writeAtomic(lockPath, lockBefore);
+      const back = await runner('npm', frozenInstallArgs(), {
+        cwd: projectDir,
+      });
+      if (back.code !== 0) {
         throw new CliError(
           EXIT.user,
-          `The deploy dry-run failed on ${options.to}.`,
-          lastLine(dryRun.stderr, dryRun.stdout),
+          `Rolled back to ${from}, but reinstalling it failed.`,
+          `${lastLine(back.stderr, back.stdout)} — the recovery journal was ` +
+            'kept. Run `npm ci`, verify the old version, and retry the upgrade.',
         );
       }
-      checks.push('deploy --dry-run');
+      await assertProjectVersion(projectDir, from, 'Rolled-back project');
+    };
+
+    const checks: string[] = [];
+    try {
+      // Set before writing: if the atomic writer reports an unusual cleanup
+      // error after its rename, restoring an unchanged baseline is harmless;
+      // losing a journal that may exist is not.
+      transactionStarted = true;
+      await writeAtomic(
+        journalPath,
+        `${JSON.stringify(
+          {
+            schemaVersion: 1,
+            from,
+            to: options.to,
+            startedAt: new Date().toISOString(),
+            manifest: manifestBefore,
+            lock: lockBefore,
+          } satisfies Journal,
+          null,
+          2,
+        )}\n`,
+      );
+
+      report.step(`Setting mallok to ${options.to}…`);
+      await setVersion(projectDir, options.to);
+
+      report.step('Installing…');
+      const install = await runner('npm', installArgs(), { cwd: projectDir });
+      if (install.code !== 0) {
+        throw new CliError(
+          EXIT.user,
+          `Installing mallok ${options.to} failed.`,
+          lastLine(install.stderr, install.stdout),
+        );
+      }
+      await assertProjectVersion(projectDir, options.to, 'Installed project');
+
+      if (options.skipChecks !== true) {
+        for (const check of CHECKS) {
+          report.step(`Checking ${check}…`);
+          const result = await runner('npm', runArgs(check), {
+            cwd: projectDir,
+          });
+          if (result.code !== 0) {
+            throw new CliError(
+              EXIT.user,
+              `${check} failed on ${options.to}.`,
+              lastLine(result.stderr, result.stdout),
+            );
+          }
+          checks.push(check);
+        }
+
+        report.step('Checking the deploy would succeed…');
+        const dryRun = await runner(
+          projectWrangler(projectDir),
+          ['deploy', '--dry-run'],
+          { cwd: projectDir },
+        );
+        if (dryRun.code !== 0) {
+          throw new CliError(
+            EXIT.user,
+            `The deploy dry-run failed on ${options.to}.`,
+            lastLine(dryRun.stderr, dryRun.stdout),
+          );
+        }
+        checks.push('deploy --dry-run');
+      }
+
+      // Project scripts are allowed to do anything. Re-check the dependency
+      // state before committing the transaction.
+      await assertProjectVersion(projectDir, options.to, 'Upgraded project');
+      await rm(journalPath);
+      transactionStarted = false;
+    } catch (error) {
+      if (transactionStarted) {
+        await restore();
+        await rm(journalPath);
+        transactionStarted = false;
+      }
+      throw error;
     }
-  } catch (error) {
-    await restore();
-    throw error;
+
+    return { from, to: options.to, changed: true, checks };
   } finally {
-    // The journal is the record of an *unfinished* change, so it goes once
-    // the change has either finished or been undone. The lock goes with it.
-    await rm(join(projectDir, JOURNAL), { force: true });
     await release();
   }
-
-  return { from, to: options.to, changed: true, checks };
 }
 
 /** Runs a command, for callers that do not want to build a runner. */
