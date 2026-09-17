@@ -218,6 +218,35 @@ export function assertSameAccount(ledger: Ledger, accountId: string): void {
   );
 }
 
+/**
+ * Proves every resource name in a persisted create ledger still belongs to
+ * the slug the current command was asked to act on.
+ *
+ * A ledger is an ownership record, not a suggestion. Silently ignoring a
+ * mismatched name and re-deriving another one from the slug lets a corrupted
+ * or copied ledger authorise a mutation against a resource it never named.
+ */
+export function assertLedgerResourceNames(
+  ledger: Ledger,
+  expected: {
+    readonly database: string;
+    readonly bucket: string;
+    readonly worker: string;
+  },
+): void {
+  for (const kind of ['database', 'bucket', 'worker'] as const) {
+    const recorded = ledger[kind];
+    if (recorded !== undefined && recorded.name !== expected[kind]) {
+      throw new CliError(
+        EXIT.user,
+        `${LEDGER_FILE} identifies a different ${kind}.`,
+        `Expected ${expected[kind]} for slug ${ledger.slug}; the ledger ` +
+          `records ${recorded.name}. Nothing has been changed.`,
+      );
+    }
+  }
+}
+
 /** Enough of an account id to recognise, not enough to be a credential. */
 function short(accountId: string): string {
   return accountId.length <= 8 ? accountId : `${accountId.slice(0, 8)}…`;

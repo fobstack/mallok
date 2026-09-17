@@ -104,6 +104,7 @@ export async function writeWranglerIdentity(
     readonly slug?: string;
     readonly databaseId?: string;
     readonly accountId?: string;
+    readonly bucket?: string;
   } = {},
 ): Promise<void> {
   const slug = options.slug ?? 'acme';
@@ -120,6 +121,12 @@ export async function writeWranglerIdentity(
             binding: 'DB',
             database_name: `mallok-${slug}-db`,
             database_id: options.databaseId ?? 'db-1',
+          },
+        ],
+        r2_buckets: [
+          {
+            binding: 'MEDIA',
+            bucket_name: options.bucket ?? `mallok-${slug}-media`,
           },
         ],
       },

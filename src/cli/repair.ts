@@ -39,6 +39,7 @@ import {
   type Wrangler,
 } from './cloudflare.js';
 import {
+  assertLedgerResourceNames,
   type Ledger,
   type ResourceRecord,
   readLedger,
@@ -146,13 +147,26 @@ export async function repairSite(
   );
   if (
     identity.worker !== names.worker ||
-    identity.database.name !== names.database
+    identity.database.name !== names.database ||
+    identity.bucket.name !== names.bucket
   ) {
     throw new CliError(
       EXIT.user,
       'wrangler.jsonc targets different resources from this site record.',
-      `Expected Worker ${names.worker} and database ${names.database}; found ` +
-        `${identity.worker} and ${identity.database.name}. Nothing has been changed.`,
+      `Expected Worker ${names.worker}, database ${names.database} and bucket ` +
+        `${names.bucket}; found ${identity.worker}, ${identity.database.name} ` +
+        `and ${identity.bucket.name}. Nothing has been changed.`,
+    );
+  }
+  if (ledger !== null) {
+    assertLedgerResourceNames(ledger, names);
+  }
+  if (record !== undefined && record.bucket !== names.bucket) {
+    throw new CliError(
+      EXIT.user,
+      'The registry identifies a different R2 bucket.',
+      `Expected ${names.bucket}; the registry records ${record.bucket}. ` +
+        'Nothing has been changed.',
     );
   }
 

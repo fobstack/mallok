@@ -71,6 +71,7 @@ async function project(options: {
   record?: Record<string, unknown> | null;
   configDatabaseId?: string;
   configAccountId?: string;
+  configBucket?: string;
 }): Promise<string> {
   const dir = join(workspace, 'site');
   await mkdir(join(dir, '.mallok'), { recursive: true });
@@ -83,6 +84,9 @@ async function project(options: {
     ...(options.configAccountId === undefined
       ? {}
       : { accountId: options.configAccountId }),
+    ...(options.configBucket === undefined
+      ? {}
+      : { bucket: options.configBucket }),
   });
   if (options.ledger !== null) {
     await writeFile(
@@ -179,6 +183,24 @@ describe('repair --adopt cannot cross accounts', () => {
 });
 
 describe('repair verifies more than whoami before filling in an account', () => {
+  it('refuses a project bound to another R2 bucket', async () => {
+    const dir = await project({
+      record: { ...RECORD, accountId: null },
+      configBucket: 'somebody-elses-media',
+    });
+    const before = await records(dir);
+    const fake = fakeCloudflare({
+      account: { databases: { 'mallok-acme-db': 'db-uuid-1' } },
+    });
+
+    await expect(
+      repairSite({ slug: 'acme', projectDir: dir, run: fake.run }, report),
+    ).rejects.toThrow(/different resources|somebody-elses-media/i);
+
+    expect(fake.mutations()).toEqual([]);
+    expect(await records(dir)).toEqual(before);
+  });
+
   it('checks the recorded D1 UUID against the account it is about to write', async () => {
     // Filling in a missing account id from `whoami` alone records "whoever is
     // signed in" as the owner. The records already name a database UUID; if
@@ -433,6 +455,70 @@ describe('destroy checks the D1 it is about to delete', () => {
         report,
       ),
     ).rejects.toThrow(/wrangler\.jsonc|DB binding/i);
+    expect(fake.mutations()).toEqual([]);
+  });
+
+  it('refuses a config bound to a different R2 bucket', async () => {
+    const dir = await project({ configBucket: 'somebody-elses-media' });
+    const fake = fakeCloudflare({
+      account: {
+        buckets: ['somebody-elses-media', 'mallok-acme-media'],
+        workers: ['mallok-acme'],
+        databases: { 'mallok-acme-db': 'db-uuid-1' },
+      },
+    });
+
+    await expect(
+      destroySite(
+        { slug: 'acme', confirm: 'acme', projectDir: dir, run: fake.run },
+        report,
+      ),
+    ).rejects.toThrow(/R2 bucket|different resources|somebody-elses-media/i);
+    expect(fake.mutations()).toEqual([]);
+  });
+
+  it('refuses when the registry records another bucket', async () => {
+    const dir = await project({
+      record: { ...RECORD, bucket: 'somebody-elses-media' },
+    });
+    const fake = fakeCloudflare({
+      account: {
+        buckets: ['somebody-elses-media', 'mallok-acme-media'],
+        workers: ['mallok-acme'],
+        databases: { 'mallok-acme-db': 'db-uuid-1' },
+      },
+    });
+
+    await expect(
+      destroySite(
+        { slug: 'acme', confirm: 'acme', projectDir: dir, run: fake.run },
+        report,
+      ),
+    ).rejects.toThrow(/registry.*different R2 bucket/i);
+    expect(fake.mutations()).toEqual([]);
+  });
+
+  it('refuses when the ledger records another bucket', async () => {
+    const dir = await project({
+      ledger: {
+        ...LEDGER,
+        bucket: { status: 'created', name: 'somebody-elses-media' },
+      },
+    });
+    const fake = fakeCloudflare({
+      account: {
+        buckets: ['somebody-elses-media', 'mallok-acme-media'],
+        workers: ['mallok-acme'],
+        databases: { 'mallok-acme-db': 'db-uuid-1' },
+      },
+    });
+
+    await expect(
+      destroySite(
+        { slug: 'acme', confirm: 'acme', projectDir: dir, run: fake.run },
+        report,
+      ),
+    ).rejects.toThrow(/create-state\.json.*different bucket/i);
     expect(fake.mutations()).toEqual([]);
   });
 

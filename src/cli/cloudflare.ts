@@ -78,6 +78,10 @@ export interface ProjectWranglerIdentity {
     readonly name: string;
     readonly id: string;
   };
+  readonly bucket: {
+    readonly binding: string;
+    readonly name: string;
+  };
 }
 
 /**
@@ -130,6 +134,29 @@ export async function projectWranglerIdentity(
         'the deployed Worker is bound to.',
     );
   }
+  const buckets = config.r2_buckets;
+  const bucket = Array.isArray(buckets)
+    ? buckets.find(
+        (entry): entry is Record<string, unknown> =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          (entry as Record<string, unknown>).binding === 'MEDIA',
+      )
+    : undefined;
+  const bucketBinding = bucket?.binding;
+  const bucketName = bucket?.bucket_name;
+  if (
+    bucketBinding !== 'MEDIA' ||
+    typeof bucketName !== 'string' ||
+    bucketName.trim() === ''
+  ) {
+    throw new CliError(
+      EXIT.user,
+      `${path} does not contain a complete R2 binding named MEDIA.`,
+      'Refusing to address an R2 bucket by a derived name when the deployed ' +
+        'Worker is bound to something else.',
+    );
+  }
   const configuredAccount = config.account_id;
   if (
     configuredAccount !== undefined &&
@@ -147,6 +174,7 @@ export async function projectWranglerIdentity(
       : {}),
     worker,
     database: { binding, name, id },
+    bucket: { binding: bucketBinding, name: bucketName },
   };
 }
 

@@ -37,6 +37,7 @@ import {
 } from './cloudflare.js';
 import { assertInteractiveSecretDelivery, deliverSecret } from './deliver.js';
 import {
+  assertLedgerResourceNames,
   assertSameAccount,
   isComplete,
   LEDGER_FILE,
@@ -468,17 +469,20 @@ async function provision(
   );
   if (
     identity.worker !== names.worker ||
-    identity.database.name !== names.database
+    identity.database.name !== names.database ||
+    identity.bucket.name !== names.bucket
   ) {
     throw new CliError(
       EXIT.user,
       'wrangler.jsonc targets different resources from this create run.',
-      `Expected Worker ${names.worker} and database ${names.database}; found ` +
-        `${identity.worker} and ${identity.database.name}. Nothing has been changed.`,
+      `Expected Worker ${names.worker}, database ${names.database} and bucket ` +
+        `${names.bucket}; found ${identity.worker}, ${identity.database.name} ` +
+        `and ${identity.bucket.name}. Nothing has been changed.`,
     );
   }
   if (existing !== null) {
     assertSameAccount(existing, accountId);
+    assertLedgerResourceNames(existing, names);
   }
 
   if (existing !== null && isComplete(existing)) {
