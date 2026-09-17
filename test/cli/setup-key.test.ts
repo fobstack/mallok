@@ -4,7 +4,10 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { makeReporter } from '../../src/cli/output.js';
 import { rotateSetupKey } from '../../src/cli/setup-key.js';
-import { fakeCloudflare } from './helpers/fake-wrangler.js';
+import {
+  fakeCloudflare,
+  writeWranglerIdentity,
+} from './helpers/fake-wrangler.js';
 
 /**
  * `mallok setup-key`, the way back from a lost key.
@@ -38,6 +41,7 @@ async function project(
   await writeFile(join(dir, 'node_modules/.bin/wrangler'), '#!/bin/sh\n', {
     mode: 0o755,
   });
+  await writeWranglerIdentity(dir, { databaseId: 'db-1' });
   if (ledger !== null) {
     await writeFile(
       join(dir, '.mallok/create-state.json'),
@@ -91,18 +95,24 @@ describe('when the site has no administrator', () => {
   it('sets a new key and hands it over once', async () => {
     const dir = await project(LEDGER);
     const fake = fakeCloudflare();
+    const delivered: string[] = [];
 
     const result = await rotateSetupKey(
-      { projectDir: dir, run: fake.run, hasAdministrator: async () => false },
+      {
+        projectDir: dir,
+        run: fake.run,
+        hasAdministrator: async () => false,
+        deliver: (key) => {
+          delivered.push(key);
+        },
+      },
       report,
     );
 
     expect(result.slug).toBe('acme');
-    // 32 random bytes, base64. Long enough not to be guessed, and returned
-    // rather than printed so the caller decides where it goes.
-    expect(Buffer.from(result.setupKey, 'base64')).toHaveLength(32);
+    expect(Buffer.from(delivered[0] ?? '', 'base64')).toHaveLength(32);
     expect(fake.calls.map((call) => call.args.join(' '))).toContain(
-      'secret put MALLOK_SETUP_KEY',
+      'secret put MALLOK_SETUP_KEY --name mallok-acme',
     );
   });
 
@@ -112,9 +122,17 @@ describe('when the site has no administrator', () => {
     // by the next run.
     const dir = await project(LEDGER);
     const fake = fakeCloudflare();
+    const delivered: string[] = [];
 
-    const result = await rotateSetupKey(
-      { projectDir: dir, run: fake.run, hasAdministrator: async () => false },
+    await rotateSetupKey(
+      {
+        projectDir: dir,
+        run: fake.run,
+        hasAdministrator: async () => false,
+        deliver: (key) => {
+          delivered.push(key);
+        },
+      },
       report,
     );
 
@@ -129,7 +147,7 @@ describe('when the site has no administrator', () => {
       join(dir, '.mallok/create-state.json'),
       'utf8',
     );
-    expect(onDisk).not.toContain(result.setupKey);
+    expect(onDisk).not.toContain(delivered[0] ?? '');
   });
 
   it('works from the registry alone, when the ledger is gone', async () => {
@@ -137,7 +155,12 @@ describe('when the site has no administrator', () => {
     const fake = fakeCloudflare();
 
     const result = await rotateSetupKey(
-      { projectDir: dir, run: fake.run, hasAdministrator: async () => false },
+      {
+        projectDir: dir,
+        run: fake.run,
+        hasAdministrator: async () => false,
+        deliver: () => undefined,
+      },
       report,
     );
 
@@ -154,7 +177,12 @@ describe('when it must not issue a key', () => {
 
     await expect(
       rotateSetupKey(
-        { projectDir: dir, run: fake.run, hasAdministrator: async () => true },
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => true,
+          deliver: () => undefined,
+        },
         report,
       ),
     ).rejects.toThrow(/already has an administrator/);
@@ -173,7 +201,12 @@ describe('when it must not issue a key', () => {
 
     await expect(
       rotateSetupKey(
-        { projectDir: dir, run: fake.run, hasAdministrator: async () => null },
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => null,
+          deliver: () => undefined,
+        },
         report,
       ),
     ).rejects.toThrow(/Could not ask/);
@@ -190,7 +223,12 @@ describe('when it must not issue a key', () => {
 
     await expect(
       rotateSetupKey(
-        { projectDir: dir, run: fake.run, hasAdministrator: async () => false },
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => false,
+          deliver: () => undefined,
+        },
         report,
       ),
     ).rejects.toThrow(/no record of a deployed site/);
@@ -215,7 +253,12 @@ describe('when it must not issue a key', () => {
 
     await expect(
       rotateSetupKey(
-        { projectDir: dir, run: fake.run, hasAdministrator: async () => false },
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => false,
+          deliver: () => undefined,
+        },
         report,
       ),
     ).rejects.toThrow(/no Wrangler binary/);
@@ -229,7 +272,12 @@ describe('when it must not issue a key', () => {
 
     await expect(
       rotateSetupKey(
-        { projectDir: dir, run: fake.run, hasAdministrator: async () => false },
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => false,
+          deliver: () => undefined,
+        },
         report,
       ),
     ).rejects.toThrow();
@@ -249,7 +297,12 @@ describe('when it must not issue a key', () => {
 
     await expect(
       rotateSetupKey(
-        { projectDir: dir, run: fake.run, hasAdministrator: async () => false },
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => false,
+          deliver: () => undefined,
+        },
         report,
       ),
     ).rejects.toThrow(/Could not set MALLOK_SETUP_KEY/);

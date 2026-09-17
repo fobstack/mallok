@@ -80,6 +80,7 @@ async function create(
       // thinks. `false` is the state that matters: no administrator yet, so a
       // setup key that was set but never delivered may be rotated.
       hasAdministrator: async () => false,
+      deliverSetupKey: () => undefined,
       ...options,
     },
     report,
@@ -95,6 +96,7 @@ async function resume(run: Runner): Promise<unknown> {
       run,
       templateDir: template,
       hasAdministrator: async () => false,
+      deliverSetupKey: () => undefined,
     },
     report,
   ).catch((error: unknown) => error);

@@ -1,6 +1,7 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { CommandRunner, RunResult } from '../../../src/cli/cloudflare.js';
+import { parseJsonc } from '../../../src/cli/site-config.js';
 
 /**
  * A Cloudflare account that remembers what was done to it, and a Wrangler
@@ -95,6 +96,39 @@ export interface Fake {
 }
 
 const DATABASE_ID = '11111111-2222-4333-8444-555555555555';
+
+/** Writes the identity fields used by Wrangler for a generated site. */
+export async function writeWranglerIdentity(
+  projectDir: string,
+  options: {
+    readonly slug?: string;
+    readonly databaseId?: string;
+    readonly accountId?: string;
+  } = {},
+): Promise<void> {
+  const slug = options.slug ?? 'acme';
+  await writeFile(
+    join(projectDir, 'wrangler.jsonc'),
+    `${JSON.stringify(
+      {
+        name: `mallok-${slug}`,
+        ...(options.accountId === undefined
+          ? {}
+          : { account_id: options.accountId }),
+        d1_databases: [
+          {
+            binding: 'DB',
+            database_name: `mallok-${slug}-db`,
+            database_id: options.databaseId ?? 'db-1',
+          },
+        ],
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+}
 
 export function fakeCloudflare(options: FakeOptions = {}): Fake {
   const account: Required<FakeAccount> = {
@@ -219,7 +253,9 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
     }
     if (first === 'secret' && second === 'put') {
       const name = third ?? '';
-      const worker = 'mallok-my-site';
+      const worker = args.includes('--name')
+        ? (args[args.indexOf('--name') + 1] ?? '')
+        : 'mallok-my-site';
       sent[name] = input ?? '';
       account.secrets[worker] = [...(account.secrets[worker] ?? []), name];
       account.applied.push(name === 'MALLOK_SETUP_KEY' ? 'setupKey' : 'secret');
@@ -230,7 +266,24 @@ export function fakeCloudflare(options: FakeOptions = {}): Fake {
       return ok('Deleted');
     }
     if (first === 'd1' && second === 'delete') {
-      delete account.databases[third ?? ''];
+      let database = third ?? '';
+      if (database === 'DB') {
+        const path = join(cwd, 'wrangler.jsonc');
+        const config = parseJsonc(await readFile(path, 'utf8'), path);
+        const bindings = Array.isArray(config.d1_databases)
+          ? config.d1_databases
+          : [];
+        const bound = bindings.find(
+          (entry) =>
+            typeof entry === 'object' &&
+            entry !== null &&
+            (entry as Record<string, unknown>).binding === 'DB',
+        ) as Record<string, unknown> | undefined;
+        if (typeof bound?.database_name === 'string') {
+          database = bound.database_name;
+        }
+      }
+      delete account.databases[database];
       return ok('Deleted');
     }
     if (first === 'r2' && second === 'bucket' && third === 'delete') {

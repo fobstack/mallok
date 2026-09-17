@@ -8,7 +8,10 @@ import { makeReporter } from '../../src/cli/output.js';
 import { repairSite } from '../../src/cli/repair.js';
 import { rotateSetupKey } from '../../src/cli/setup-key.js';
 import { writeFakeTemplate } from './helpers/fake-template.js';
-import { fakeCloudflare } from './helpers/fake-wrangler.js';
+import {
+  fakeCloudflare,
+  writeWranglerIdentity,
+} from './helpers/fake-wrangler.js';
 
 /**
  * Nothing acts on a Cloudflare resource it cannot prove belongs to this
@@ -62,12 +65,16 @@ const RECORD = {
 async function project(options: {
   ledger?: Record<string, unknown> | null;
   record?: Record<string, unknown> | null;
+  configDatabaseId?: string;
 }): Promise<string> {
   const dir = join(workspace, 'site');
   await mkdir(join(dir, '.mallok'), { recursive: true });
   await mkdir(join(dir, 'node_modules/.bin'), { recursive: true });
   await writeFile(join(dir, 'node_modules/.bin/wrangler'), '#!/bin/sh\n', {
     mode: 0o755,
+  });
+  await writeWranglerIdentity(dir, {
+    databaseId: options.configDatabaseId ?? 'db-1',
   });
   if (options.ledger !== null && options.ledger !== undefined) {
     await writeFile(
@@ -186,7 +193,12 @@ describe('setup-key refuses when ownership cannot be proved', () => {
 
     await expect(
       rotateSetupKey(
-        { projectDir: dir, run: fake.run, hasAdministrator: async () => false },
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => false,
+          deliver: () => undefined,
+        },
         report,
       ),
     ).rejects.toThrow(/account/i);
@@ -214,6 +226,7 @@ describe('a pending resource is never adopted automatically', () => {
         run: first.run,
         templateDir: template,
         hasAdministrator: async () => false,
+        deliverSetupKey: () => undefined,
       },
       report,
     ).catch(() => undefined);
@@ -239,6 +252,7 @@ describe('a pending resource is never adopted automatically', () => {
         run: second.run,
         templateDir: template,
         hasAdministrator: async () => false,
+        deliverSetupKey: () => undefined,
       },
       report,
     ).then(
@@ -304,6 +318,8 @@ describe('mallok repair', () => {
         ...LEDGER,
         database: { status: 'pending', name: 'mallok-acme-db' },
       },
+      record: { ...RECORD, databaseId: null },
+      configDatabaseId: '00000000-0000-0000-0000-000000000000',
     });
     const fake = fakeCloudflare({
       account: { databases: { 'mallok-acme-db': 'db-remote-1' } },
@@ -367,6 +383,7 @@ describe('a setup key is never rotated on a guess', () => {
         run: first.run,
         templateDir: template,
         hasAdministrator: async () => false,
+        deliverSetupKey: () => undefined,
       },
       report,
     ).catch(() => undefined);
@@ -393,6 +410,7 @@ describe('a setup key is never rotated on a guess', () => {
         run: second.run,
         templateDir: template,
         hasAdministrator: async () => null,
+        deliverSetupKey: () => undefined,
       },
       report,
     ).then(

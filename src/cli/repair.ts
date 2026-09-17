@@ -32,12 +32,11 @@
 import { join } from 'node:path';
 import {
   type CommandRunner,
-  currentAccountId,
   findBucket,
   findDatabase,
   findWorker,
+  verifiedWrangler,
   type Wrangler,
-  wranglerFor,
 } from './cloudflare.js';
 import {
   type Ledger,
@@ -47,7 +46,7 @@ import {
 } from './ledger.js';
 import { CliError, EXIT, type Reporter } from './output.js';
 import { readRegistry, upsertSite, writeRegistry } from './registry.js';
-import { resourceNames } from './site-config.js';
+import { PLACEHOLDER_DATABASE_ID, resourceNames } from './site-config.js';
 
 /** The resources a pending record can name. */
 export const ADOPTABLE = ['database', 'bucket', 'worker'] as const;
@@ -139,11 +138,23 @@ export async function repairSite(
     );
   }
 
-  const wrangler = wranglerFor(projectDir, runner, options.accountId);
-  // `currentAccountId` already refuses when `--account-id` names an account
-  // this login cannot reach, which is what stops this command being a way to
-  // claim an account rather than record one.
-  const accountId = await currentAccountId(wrangler, options.accountId);
+  const names = resourceNames(options.slug);
+  const { wrangler, accountId, identity } = await verifiedWrangler(
+    projectDir,
+    runner,
+    options.accountId,
+  );
+  if (
+    identity.worker !== names.worker ||
+    identity.database.name !== names.database
+  ) {
+    throw new CliError(
+      EXIT.user,
+      'wrangler.jsonc targets different resources from this site record.',
+      `Expected Worker ${names.worker} and database ${names.database}; found ` +
+        `${identity.worker} and ${identity.database.name}. Nothing has been changed.`,
+    );
+  }
 
   // A record that already names a *different* account is never repaired, and
   // **`--adopt` does not change that**. The guard used to read "refuse a
@@ -169,25 +180,45 @@ export async function repairSite(
   const changed: string[] = [];
   const adopted: Adoptable[] = [];
   const unverifiable: Adoptable[] = [];
-  const names = resourceNames(options.slug);
 
   // Filling in a missing account id from `whoami` alone records "whoever is
   // signed in" as the owner. When the records already name a D1 UUID, that is
   // a second, stronger piece of evidence and it is checked: if the database
   // of that name on this account reports a different id, these records
   // describe some other site and must not be stamped with this account.
-  const knownDatabaseId =
-    (ledger?.database?.status === 'created' ||
+  const ledgerDatabaseId =
+    ledger?.database?.status === 'created' ||
     ledger?.database?.status === 'adopted'
       ? ledger.database.id
-      : undefined) ??
-    record?.databaseId ??
-    undefined;
+      : undefined;
+  const registryDatabaseId = record?.databaseId ?? undefined;
   if (
-    typeof knownDatabaseId === 'string' &&
-    knownDatabaseId !== '' &&
-    options.adopt === undefined
+    typeof ledgerDatabaseId === 'string' &&
+    ledgerDatabaseId !== '' &&
+    typeof registryDatabaseId === 'string' &&
+    registryDatabaseId !== '' &&
+    ledgerDatabaseId !== registryDatabaseId
   ) {
+    throw new CliError(
+      EXIT.user,
+      'The ledger and registry identify different D1 databases.',
+      `Ledger: ${ledgerDatabaseId}; registry: ${registryDatabaseId}. ` +
+        'Nothing has been changed.',
+    );
+  }
+  const knownDatabaseId = ledgerDatabaseId ?? registryDatabaseId;
+  if (typeof knownDatabaseId === 'string' && knownDatabaseId !== '') {
+    if (
+      identity.database.id !== knownDatabaseId &&
+      identity.database.id !== PLACEHOLDER_DATABASE_ID
+    ) {
+      throw new CliError(
+        EXIT.user,
+        'wrangler.jsonc is bound to a different D1 database.',
+        `The records name ${knownDatabaseId}; the DB binding names ` +
+          `${identity.database.id}. Nothing has been changed.`,
+      );
+    }
     const found = await findDatabase(wrangler, names.database);
     if (!found.exists) {
       throw new CliError(
@@ -199,7 +230,7 @@ export async function repairSite(
           'nobody has checked.',
       );
     }
-    if (found.id !== undefined && found.id !== knownDatabaseId) {
+    if (found.id !== knownDatabaseId) {
       throw new CliError(
         EXIT.user,
         `${names.database} on this account is a different database from the one recorded.`,
@@ -246,7 +277,28 @@ export async function repairSite(
     // back: between `create` printing what it saw and this command running,
     // the resource under that name can be replaced, and an adoption that
     // cannot tell the difference is an adoption of whatever is there now.
-    if (found.id !== undefined) {
+    if (kind === 'database') {
+      // `findDatabase` never reports an existing D1 without a UUID. Keeping
+      // this explicit prevents D1 from falling into the name-only path used
+      // for R2 and Workers if that contract is weakened later.
+      if (found.id === undefined || found.id === '') {
+        throw new CliError(
+          EXIT.remote,
+          `Cloudflare did not identify the database ${name}.`,
+          'A D1 database cannot be adopted by name alone.',
+        );
+      }
+      if (
+        identity.database.id !== PLACEHOLDER_DATABASE_ID &&
+        identity.database.id !== found.id
+      ) {
+        throw new CliError(
+          EXIT.user,
+          'wrangler.jsonc is bound to a different D1 database.',
+          `The DB binding names ${identity.database.id}; Cloudflare reports ` +
+            `${found.id}. Nothing has been changed.`,
+        );
+      }
       if (options.expectId === undefined || options.expectId === '') {
         throw new CliError(
           EXIT.user,

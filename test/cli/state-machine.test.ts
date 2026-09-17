@@ -54,6 +54,7 @@ async function createWith(
       cwd: workspace,
       run,
       templateDir: template,
+      deliverSetupKey: () => undefined,
       ...options,
     },
     report,
@@ -297,7 +298,6 @@ describe('a run that reaches the end', () => {
 
     const result = (await createWith(fake.run)) as {
       deployed: boolean;
-      setupKey: string | null;
       origin: string | null;
     };
 
@@ -305,8 +305,8 @@ describe('a run that reaches the end', () => {
       'd1 create mallok-my-site-db',
       'r2 bucket create mallok-my-site-media',
       'deploy',
-      'secret put MALLOK_SECRET',
-      'secret put MALLOK_SETUP_KEY',
+      'secret put MALLOK_SECRET --name mallok-my-site',
+      'secret put MALLOK_SETUP_KEY --name mallok-my-site',
     ]);
     expect(result.deployed).toBe(true);
 
@@ -326,11 +326,11 @@ describe('a run that reaches the end', () => {
   it('writes no secret value into any file it leaves behind', async () => {
     const fake = fakeCloudflare();
 
-    const result = (await createWith(fake.run)) as { setupKey: string | null };
+    const result = (await createWith(fake.run)) as Record<string, unknown>;
 
     const secrets = fake.secretsSent();
     expect(secrets.MALLOK_SECRET).toMatch(/^[A-Za-z0-9+/=]{40,}$/);
-    expect(result.setupKey).toBe(secrets.MALLOK_SETUP_KEY);
+    expect(result).not.toHaveProperty('setupKey');
 
     for (const file of [
       '.mallok/create-state.json',
@@ -347,16 +347,20 @@ describe('a run that reaches the end', () => {
 
   it('prints the setup key once, and never puts it in the ledger', async () => {
     const fake = fakeCloudflare();
+    const delivered: string[] = [];
 
-    const result = (await createWith(fake.run)) as { setupKey: string | null };
+    const result = (await createWith(fake.run, {
+      deliverSetupKey: (key: string) => delivered.push(key),
+    })) as Record<string, unknown>;
     const ledger = await readLedger(join(workspace, 'my-site'));
 
-    expect(result.setupKey).not.toBeNull();
+    expect(result).not.toHaveProperty('setupKey');
+    expect(delivered).toEqual([fake.secretsSent().MALLOK_SETUP_KEY]);
     // The name is recorded so a resumed run knows not to set a second one;
     // the value is not, because a value in a committed file is a value that
     // outlives its one use.
     expect(ledger?.secrets).toContain('MALLOK_SETUP_KEY');
-    expect(JSON.stringify(ledger)).not.toContain(result.setupKey ?? 'x');
+    expect(JSON.stringify(ledger)).not.toContain(delivered[0] ?? 'x');
   });
 });
 
@@ -373,6 +377,7 @@ describe('running create again on a finished project', () => {
         slug: 'my-site',
         run: second.run,
         templateDir: template,
+        deliverSetupKey: () => undefined,
       },
       report,
     )) as { alreadyComplete: boolean; deployed: boolean };
@@ -427,14 +432,15 @@ describe('an interrupted run resumes from the ledger', () => {
         slug: 'my-site',
         run: second.run,
         templateDir: template,
+        deliverSetupKey: () => undefined,
       },
       report,
     );
 
     expect(second.mutations()).toEqual([
       'deploy',
-      'secret put MALLOK_SECRET',
-      'secret put MALLOK_SETUP_KEY',
+      'secret put MALLOK_SECRET --name mallok-my-site',
+      'secret put MALLOK_SETUP_KEY --name mallok-my-site',
     ]);
   });
 
@@ -457,11 +463,14 @@ describe('an interrupted run resumes from the ledger', () => {
         slug: 'my-site',
         run: second.run,
         templateDir: template,
+        deliverSetupKey: () => undefined,
       },
       report,
     ).catch(() => undefined);
 
-    expect(second.mutations()).not.toContain('secret put MALLOK_SECRET');
+    expect(second.mutations()).not.toContain(
+      'secret put MALLOK_SECRET --name mallok-my-site',
+    );
   });
 
   it('refuses a ledger from another account', async () => {
@@ -478,6 +487,7 @@ describe('an interrupted run resumes from the ledger', () => {
         slug: 'my-site',
         run: second.run,
         templateDir: template,
+        deliverSetupKey: () => undefined,
       },
       report,
     ).catch((cause: unknown) => cause);
@@ -499,6 +509,7 @@ describe('an interrupted run resumes from the ledger', () => {
         domain: 'late-addition.example.com',
         run: second.run,
         templateDir: template,
+        deliverSetupKey: () => undefined,
       },
       report,
     ).catch((cause: unknown) => cause);
@@ -535,6 +546,7 @@ describe('a damaged ledger stops the run', () => {
           slug: 'my-site',
           run: second.run,
           templateDir: template,
+          deliverSetupKey: () => undefined,
         },
         report,
       ).catch((cause: unknown) => cause);
@@ -610,7 +622,7 @@ describe('destroy', () => {
     expect(destroyer.mutations()).toEqual([
       'r2 bucket delete mallok-my-site-media',
       'delete mallok-my-site',
-      'd1 delete mallok-my-site-db --skip-confirmation',
+      'd1 delete DB --skip-confirmation',
     ]);
     expect(result.stoppedAt).toBeNull();
     expect(await readLedger(join(workspace, 'my-site'))).toBeNull();
@@ -645,9 +657,7 @@ describe('destroy', () => {
       report,
     );
 
-    expect(destroyer.mutations()).toContain(
-      'd1 delete mallok-my-site-db --skip-confirmation',
-    );
+    expect(destroyer.mutations()).toContain('d1 delete DB --skip-confirmation');
     expect(destroyer.mutations()).toContain(
       'r2 bucket delete mallok-my-site-media',
     );
@@ -741,7 +751,7 @@ describe('destroy', () => {
     // The bucket is not asked about again: the ledger records it as gone.
     expect(second.mutations()).toEqual([
       'delete mallok-my-site',
-      'd1 delete mallok-my-site-db --skip-confirmation',
+      'd1 delete DB --skip-confirmation',
     ]);
     expect(finished.stoppedAt).toBeNull();
     expect(await readLedger(project)).toBeNull();
@@ -803,7 +813,7 @@ describe('destroy', () => {
     expect(destroyer.mutations()).toEqual([
       'r2 bucket delete mallok-my-site-media',
       'delete mallok-my-site',
-      'd1 delete mallok-my-site-db --skip-confirmation',
+      'd1 delete DB --skip-confirmation',
     ]);
     expect(result.stoppedAt).toBeNull();
   });

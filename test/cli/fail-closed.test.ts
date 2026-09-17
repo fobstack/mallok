@@ -11,7 +11,10 @@ import {
 } from '../../src/cli/cloudflare.js';
 import { destroySite } from '../../src/cli/destroy.js';
 import { makeReporter } from '../../src/cli/output.js';
-import { fakeCloudflare } from './helpers/fake-wrangler.js';
+import {
+  fakeCloudflare,
+  writeWranglerIdentity,
+} from './helpers/fake-wrangler.js';
 
 /**
  * "I could not find out" must never be recorded as "it is not there."
@@ -124,6 +127,7 @@ async function project(): Promise<string> {
   await writeFile(join(dir, 'node_modules/.bin/wrangler'), '#!/bin/sh\n', {
     mode: 0o755,
   });
+  await writeWranglerIdentity(dir, { databaseId: 'db-1' });
   await writeFile(
     join(dir, '.mallok/create-state.json'),
     JSON.stringify({
@@ -135,6 +139,7 @@ async function project(): Promise<string> {
       fingerprint: 'f',
       startedAt: '2026-09-13T00:00:00.000Z',
       origin: 'https://acme.example.workers.dev',
+      database: { status: 'created', name: 'mallok-acme-db', id: 'db-1' },
     }),
     'utf8',
   );

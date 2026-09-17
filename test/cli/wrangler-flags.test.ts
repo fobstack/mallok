@@ -114,6 +114,13 @@ function recorder() {
       if (args[0] === 'deployments') {
         return { code: 0, stdout: '[]', stderr: '' };
       }
+      if (args[0] === 'd1' && args[1] === 'info') {
+        return {
+          code: 0,
+          stdout: JSON.stringify({ uuid: 'db-1' }),
+          stderr: '',
+        };
+      }
       return { code: 0, stdout: '{}', stderr: '' };
     },
   };

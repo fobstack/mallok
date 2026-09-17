@@ -18,9 +18,27 @@
  *   rotates.
  */
 
+import { CliError, EXIT } from './output.js';
+
 /** The part of a writable stream this needs. Narrow, so tests can supply one. */
 export interface SecretStream {
+  readonly isTTY?: boolean;
   write(chunk: string, callback: (error?: Error | null) => void): boolean;
+}
+
+/** Refuses a default delivery channel that is likely a pipe or log. */
+export function assertInteractiveSecretDelivery(
+  stream: Pick<SecretStream, 'isTTY'>,
+): void {
+  if (stream.isTTY === true) {
+    return;
+  }
+  throw new CliError(
+    EXIT.user,
+    'A one-time setup key can only be shown in an interactive terminal.',
+    'stdout is redirected, so printing the key would put a credential in a ' +
+      'file or log. Run the command directly in a terminal. Nothing has been changed on Cloudflare.',
+  );
 }
 
 /**

@@ -12,7 +12,10 @@
  * the value never appears in an argument, a log line or a returned object.
  */
 
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { CliError, EXIT } from './output.js';
+import { parseJsonc } from './site-config.js';
 import { projectWrangler } from './template.js';
 
 /** Result of one command invocation. */
@@ -63,6 +66,129 @@ export function wranglerFor(
         ...(options.input === undefined ? {} : { input: options.input }),
         ...(env === undefined ? {} : { env }),
       }),
+  };
+}
+
+/** The identity-bearing fields in the project's actual Wrangler config. */
+export interface ProjectWranglerIdentity {
+  readonly accountId?: string;
+  readonly worker: string;
+  readonly database: {
+    readonly binding: string;
+    readonly name: string;
+    readonly id: string;
+  };
+}
+
+/**
+ * Reads the config Wrangler will use for mutations, and refuses an ambiguous
+ * target. Checking `whoami` alone is insufficient: Wrangler's `account_id`
+ * can select a different reachable account from `CLOUDFLARE_ACCOUNT_ID`.
+ */
+export async function projectWranglerIdentity(
+  projectDir: string,
+): Promise<ProjectWranglerIdentity> {
+  const path = join(projectDir, 'wrangler.jsonc');
+  let source: string;
+  try {
+    source = await readFile(path, 'utf8');
+  } catch (error) {
+    throw new CliError(
+      EXIT.user,
+      `Could not read ${path}.`,
+      error instanceof Error ? error.message : String(error),
+    );
+  }
+  const config = parseJsonc(source, path);
+  const worker = config.name;
+  if (typeof worker !== 'string' || worker.trim() === '') {
+    throw new CliError(EXIT.user, `${path} does not name a Worker.`);
+  }
+  const databases = config.d1_databases;
+  const database = Array.isArray(databases)
+    ? databases.find(
+        (entry): entry is Record<string, unknown> =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          (entry as Record<string, unknown>).binding === 'DB',
+      )
+    : undefined;
+  const binding = database?.binding;
+  const name = database?.database_name;
+  const id = database?.database_id;
+  if (
+    binding !== 'DB' ||
+    typeof name !== 'string' ||
+    name.trim() === '' ||
+    typeof id !== 'string' ||
+    id.trim() === ''
+  ) {
+    throw new CliError(
+      EXIT.user,
+      `${path} does not contain a complete D1 binding named DB.`,
+      'Refusing to address a database by a reusable name without the UUID ' +
+        'the deployed Worker is bound to.',
+    );
+  }
+  const configuredAccount = config.account_id;
+  if (
+    configuredAccount !== undefined &&
+    (typeof configuredAccount !== 'string' || configuredAccount.trim() === '')
+  ) {
+    throw new CliError(
+      EXIT.user,
+      `${path} contains an invalid account_id.`,
+      'Remove it or set it to the Cloudflare account that owns this site.',
+    );
+  }
+  return {
+    ...(typeof configuredAccount === 'string'
+      ? { accountId: configuredAccount }
+      : {}),
+    worker,
+    database: { binding, name, id },
+  };
+}
+
+/**
+ * Selects one account for every later Wrangler call and proves the project
+ * config cannot silently override that selection.
+ */
+export async function verifiedWrangler(
+  projectDir: string,
+  runner: CommandRunner,
+  expected?: string,
+): Promise<{
+  readonly accountId: string;
+  readonly wrangler: Wrangler;
+  readonly identity: ProjectWranglerIdentity;
+}> {
+  const identity = await projectWranglerIdentity(projectDir);
+  if (
+    expected !== undefined &&
+    identity.accountId !== undefined &&
+    identity.accountId !== expected
+  ) {
+    throw new CliError(
+      EXIT.user,
+      'wrangler.jsonc selects a different Cloudflare account.',
+      `The command selected ${expected}, but wrangler.jsonc selects ` +
+        `${identity.accountId}. Refusing before any resource is changed.`,
+    );
+  }
+  // A config account is an explicit selection, not an ambiguity. Feed it
+  // into `whoami` so a login that can reach several accounts proves this
+  // particular one is reachable instead of failing before reading the
+  // config that Wrangler itself will use.
+  const selected = expected ?? identity.accountId;
+  const initial = wranglerFor(projectDir, runner, selected);
+  const accountId = await currentAccountId(initial, selected);
+  return {
+    accountId,
+    // Bind even the single-account case explicitly. This prevents a later
+    // subprocess from selecting a different reachable account by accident.
+    wrangler: wranglerFor(projectDir, runner, accountId),
+    identity,
   };
 }
 
@@ -298,7 +424,14 @@ export async function findDatabase(
     'the database',
   );
   const id = info.uuid ?? info.database_id;
-  return id === undefined ? { exists: true } : { exists: true, id };
+  if (typeof id !== 'string' || id.trim() === '') {
+    throw new CliError(
+      EXIT.remote,
+      `Cloudflare reported that the database ${name} exists without its UUID.`,
+      'Refusing to identify a D1 database by name alone. No resource has been changed.',
+    );
+  }
+  return { exists: true, id };
 }
 
 /** Whether an R2 bucket of this name already exists. */

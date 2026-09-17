@@ -27,16 +27,15 @@ import { access, rm } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import {
   type CommandRunner,
-  currentAccountId,
   findBucket,
   findDatabase,
   findWorker,
   lastLine,
   secretNames,
+  verifiedWrangler,
   type Wrangler,
-  wranglerFor,
 } from './cloudflare.js';
-import { deliverSecret } from './deliver.js';
+import { assertInteractiveSecretDelivery, deliverSecret } from './deliver.js';
 import {
   assertSameAccount,
   isComplete,
@@ -176,8 +175,6 @@ export interface CreateResult {
   readonly slug: string;
   readonly origin: string | null;
   readonly deployed: boolean;
-  /** Printed once, never stored: the wizard needs it to create the admin. */
-  readonly setupKey: string | null;
   readonly ledger: Ledger | null;
   /** True when the project was already finished and nothing was done. */
   readonly alreadyComplete: boolean;
@@ -379,7 +376,6 @@ export async function createSite(
         slug,
         origin: null,
         deployed: false,
-        setupKey: null,
         ledger: null,
         alreadyComplete: false,
       };
@@ -396,13 +392,18 @@ export async function createSite(
         slug,
         origin: null,
         deployed: false,
-        setupKey: null,
         ledger: null,
         alreadyComplete: false,
       };
     }
 
     // ---- 5. Only now may anything on Cloudflare change ------------------
+    if (options.deliverSetupKey === undefined) {
+      // This is still before the first Cloudflare mutation. Checking inside
+      // the delivery function would be too late: the secret would already
+      // have been rotated and there would be no safe place to reveal it.
+      assertInteractiveSecretDelivery(process.stdout);
+    }
     return await provision(
       {
         projectDir,
@@ -458,11 +459,24 @@ async function provision(
       'Run the install inside the project and try again.',
     );
   }
-  const wrangler = wranglerFor(projectDir, runner, input.accountId);
-
   // ---- Read-only: who am I, and what is already there? ------------------
   report.step('Checking you are signed in to Cloudflare…');
-  const accountId = await currentAccountId(wrangler, input.accountId);
+  const { wrangler, accountId, identity } = await verifiedWrangler(
+    projectDir,
+    runner,
+    input.accountId,
+  );
+  if (
+    identity.worker !== names.worker ||
+    identity.database.name !== names.database
+  ) {
+    throw new CliError(
+      EXIT.user,
+      'wrangler.jsonc targets different resources from this create run.',
+      `Expected Worker ${names.worker} and database ${names.database}; found ` +
+        `${identity.worker} and ${identity.database.name}. Nothing has been changed.`,
+    );
+  }
   if (existing !== null) {
     assertSameAccount(existing, accountId);
   }
@@ -487,7 +501,6 @@ async function provision(
       slug,
       origin: existing.origin ?? null,
       deployed: true,
-      setupKey: null,
       ledger: existing,
       alreadyComplete: true,
     };
@@ -728,7 +741,7 @@ async function provision(
 
   if (!present.has('MALLOK_SECRET')) {
     report.step('Setting MALLOK_SECRET…');
-    await putSecret(wrangler, 'MALLOK_SECRET', randomSecret());
+    await putSecret(wrangler, names.worker, 'MALLOK_SECRET', randomSecret());
   } else if (!recorded.has('MALLOK_SECRET')) {
     report.step('MALLOK_SECRET is already set; leaving it alone.');
   }
@@ -752,7 +765,7 @@ async function provision(
   if (!present.has('MALLOK_SETUP_KEY')) {
     setupKey = randomSecret();
     report.step('Setting MALLOK_SETUP_KEY…');
-    await putSecret(wrangler, 'MALLOK_SETUP_KEY', setupKey);
+    await putSecret(wrangler, names.worker, 'MALLOK_SETUP_KEY', setupKey);
   } else if (ledger.setupKeyDeliveredAt === undefined) {
     const claimed = await input.hasAdministrator(origin);
     if (claimed === true) {
@@ -778,7 +791,7 @@ async function provision(
           'Rotating it…',
       );
       setupKey = randomSecret();
-      await putSecret(wrangler, 'MALLOK_SETUP_KEY', setupKey);
+      await putSecret(wrangler, names.worker, 'MALLOK_SETUP_KEY', setupKey);
     }
   }
   recorded.add('MALLOK_SETUP_KEY');
@@ -813,7 +826,6 @@ async function provision(
     slug,
     origin,
     deployed: true,
-    setupKey,
     ledger,
     alreadyComplete: false,
   };
@@ -822,10 +834,13 @@ async function provision(
 /** Pipes a secret to wrangler. The value never becomes an argument. */
 async function putSecret(
   wrangler: Wrangler,
+  worker: string,
   name: string,
   value: string,
 ): Promise<void> {
-  const put = await wrangler.run(['secret', 'put', name], { input: value });
+  const put = await wrangler.run(['secret', 'put', name, '--name', worker], {
+    input: value,
+  });
   if (put.code !== 0) {
     throw new CliError(
       EXIT.remote,
@@ -878,6 +893,7 @@ async function ensureRegistered(
 
 /** The default hand-over: stdout, awaited (`deliver.ts`). */
 async function printSetupKey(key: string): Promise<void> {
+  assertInteractiveSecretDelivery(process.stdout);
   await deliverSecret(process.stdout, 'MALLOK_SETUP_KEY', key);
 }
 

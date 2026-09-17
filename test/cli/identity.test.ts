@@ -2,10 +2,18 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  type CommandRunner,
+  findDatabase,
+  wranglerFor,
+} from '../../src/cli/cloudflare.js';
 import { destroySite } from '../../src/cli/destroy.js';
 import { makeReporter } from '../../src/cli/output.js';
 import { repairSite } from '../../src/cli/repair.js';
-import { fakeCloudflare } from './helpers/fake-wrangler.js';
+import {
+  fakeCloudflare,
+  writeWranglerIdentity,
+} from './helpers/fake-wrangler.js';
 
 /**
  * A name is not an identity.
@@ -61,12 +69,20 @@ const RECORD = {
 async function project(options: {
   ledger?: Record<string, unknown> | null;
   record?: Record<string, unknown> | null;
+  configDatabaseId?: string;
+  configAccountId?: string;
 }): Promise<string> {
   const dir = join(workspace, 'site');
   await mkdir(join(dir, '.mallok'), { recursive: true });
   await mkdir(join(dir, 'node_modules/.bin'), { recursive: true });
   await writeFile(join(dir, 'node_modules/.bin/wrangler'), '#!/bin/sh\n', {
     mode: 0o755,
+  });
+  await writeWranglerIdentity(dir, {
+    databaseId: options.configDatabaseId ?? 'db-uuid-1',
+    ...(options.configAccountId === undefined
+      ? {}
+      : { accountId: options.configAccountId }),
   });
   if (options.ledger !== null) {
     await writeFile(
@@ -206,6 +222,64 @@ describe('repair verifies more than whoami before filling in an account', () => 
   });
 });
 
+describe('D1 identity is never inferred from a successful exit alone', () => {
+  it('rejects d1 info success without a UUID', async () => {
+    const fake = fakeCloudflare();
+    const run: CommandRunner = async (command, args, options) => {
+      if (args[0] === 'd1' && args[1] === 'info') {
+        return { code: 0, stdout: '{}', stderr: '' };
+      }
+      return await fake.run(command, args, options);
+    };
+
+    await expect(
+      findDatabase(wranglerFor(workspace, run), 'mallok-acme-db'),
+    ).rejects.toThrow(/UUID|name alone/i);
+    expect(fake.mutations()).toEqual([]);
+  });
+
+  it('validates a known D1 even while adopting a bucket', async () => {
+    const dir = await project({
+      ledger: {
+        ...LEDGER,
+        bucket: { status: 'pending', name: 'mallok-acme-media' },
+      },
+    });
+    const before = await records(dir);
+    const fake = fakeCloudflare({
+      account: {
+        databases: { 'mallok-acme-db': 'db-uuid-other' },
+        buckets: ['mallok-acme-media'],
+      },
+    });
+
+    await expect(
+      repairSite(
+        { slug: 'acme', projectDir: dir, adopt: ['bucket'], run: fake.run },
+        report,
+      ),
+    ).rejects.toThrow(/different database|db-uuid/i);
+    expect(fake.mutations()).toEqual([]);
+    expect(await records(dir)).toEqual(before);
+  });
+
+  it('rejects conflicting ledger and registry UUIDs', async () => {
+    const dir = await project({
+      record: { ...RECORD, databaseId: 'db-uuid-registry' },
+    });
+    const before = await records(dir);
+    const fake = fakeCloudflare({
+      account: { databases: { 'mallok-acme-db': 'db-uuid-1' } },
+    });
+
+    await expect(
+      repairSite({ slug: 'acme', projectDir: dir, run: fake.run }, report),
+    ).rejects.toThrow(/ledger and registry|different D1/i);
+    expect(fake.mutations()).toEqual([]);
+    expect(await records(dir)).toEqual(before);
+  });
+});
+
 describe('adopting a pending D1 needs the id confirmed', () => {
   it('refuses without --expect-id', async () => {
     // Between `create` printing the remote id and somebody running this, the
@@ -218,6 +292,7 @@ describe('adopting a pending D1 needs the id confirmed', () => {
         database: { status: 'pending', name: 'mallok-acme-db' },
       },
       record: { ...RECORD, databaseId: null },
+      configDatabaseId: '00000000-0000-0000-0000-000000000000',
     });
     const fake = fakeCloudflare({
       account: { databases: { 'mallok-acme-db': 'db-uuid-1' } },
@@ -242,6 +317,7 @@ describe('adopting a pending D1 needs the id confirmed', () => {
         database: { status: 'pending', name: 'mallok-acme-db' },
       },
       record: { ...RECORD, databaseId: null },
+      configDatabaseId: '00000000-0000-0000-0000-000000000000',
     });
     const before = await records(dir);
     const fake = fakeCloudflare({
@@ -272,6 +348,7 @@ describe('adopting a pending D1 needs the id confirmed', () => {
         database: { status: 'pending', name: 'mallok-acme-db' },
       },
       record: { ...RECORD, databaseId: null },
+      configDatabaseId: '00000000-0000-0000-0000-000000000000',
     });
     const fake = fakeCloudflare({
       account: { databases: { 'mallok-acme-db': 'db-uuid-1' } },
@@ -302,7 +379,10 @@ describe('adopting a pending D1 needs the id confirmed', () => {
       },
     });
     const fake = fakeCloudflare({
-      account: { buckets: ['mallok-acme-media'] },
+      account: {
+        buckets: ['mallok-acme-media'],
+        databases: { 'mallok-acme-db': 'db-uuid-1' },
+      },
     });
 
     const result = await repairSite(
@@ -316,6 +396,89 @@ describe('adopting a pending D1 needs the id confirmed', () => {
 });
 
 describe('destroy checks the D1 it is about to delete', () => {
+  it('refuses an undeleted D1 with no recorded UUID', async () => {
+    const dir = await project({
+      ledger: {
+        ...LEDGER,
+        database: { status: 'pending', name: 'mallok-acme-db' },
+      },
+      record: { ...RECORD, databaseId: null },
+    });
+    const fake = fakeCloudflare({
+      account: {
+        buckets: ['mallok-acme-media'],
+        workers: ['mallok-acme'],
+        databases: { 'mallok-acme-db': 'db-uuid-1' },
+      },
+    });
+
+    await expect(
+      destroySite(
+        { slug: 'acme', confirm: 'acme', projectDir: dir, run: fake.run },
+        report,
+      ),
+    ).rejects.toThrow(/does not record the UUID|expect-id/i);
+    expect(fake.mutations()).toEqual([]);
+  });
+
+  it('refuses a config bound to a different UUID', async () => {
+    const dir = await project({ configDatabaseId: 'db-uuid-config-other' });
+    const fake = fakeCloudflare({
+      account: { databases: { 'mallok-acme-db': 'db-uuid-1' } },
+    });
+
+    await expect(
+      destroySite(
+        { slug: 'acme', confirm: 'acme', projectDir: dir, run: fake.run },
+        report,
+      ),
+    ).rejects.toThrow(/wrangler\.jsonc|DB binding/i);
+    expect(fake.mutations()).toEqual([]);
+  });
+
+  it('refuses when config account_id differs from the verified account', async () => {
+    const dir = await project({ configAccountId: 'acct-other' });
+    const fake = fakeCloudflare({
+      account: {
+        accounts: [{ id: 'acct-1' }, { id: 'acct-other' }],
+      },
+    });
+
+    await expect(
+      destroySite(
+        {
+          slug: 'acme',
+          confirm: 'acme',
+          projectDir: dir,
+          accountId: 'acct-1',
+          run: fake.run,
+        },
+        report,
+      ),
+    ).rejects.toThrow(/different Cloudflare account|selects/i);
+    expect(fake.mutations()).toEqual([]);
+  });
+
+  it('uses config account_id as the explicit choice for a multi-account login', async () => {
+    const dir = await project({ configAccountId: 'acct-1' });
+    const fake = fakeCloudflare({
+      account: {
+        accounts: [{ id: 'acct-other' }, { id: 'acct-1' }],
+        buckets: ['mallok-acme-media'],
+        workers: ['mallok-acme'],
+        databases: { 'mallok-acme-db': 'db-uuid-1' },
+      },
+    });
+
+    const result = await destroySite(
+      { slug: 'acme', confirm: 'acme', projectDir: dir, run: fake.run },
+      report,
+    );
+
+    expect(result.stoppedAt).toBeNull();
+    expect(fake.mutations()).toContain('d1 delete DB --skip-confirmation');
+  });
+
   it('stops when the database under that name is a different one', async () => {
     // The name was reused — a previous site destroyed, or somebody else's
     // `mallok create` on the same account. Deleting it destroys their data.
@@ -360,6 +523,7 @@ describe('destroy checks the D1 it is about to delete', () => {
 
     expect(result.stoppedAt).toBeNull();
     expect(Object.keys(fake.account.databases)).not.toContain('mallok-acme-db');
+    expect(fake.mutations()).toContain('d1 delete DB --skip-confirmation');
   });
 
   it('stops when it cannot read the id at all', async () => {

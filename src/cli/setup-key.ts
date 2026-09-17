@@ -20,14 +20,14 @@
 import { webcrypto } from 'node:crypto';
 import {
   type CommandRunner,
-  currentAccountId,
   lastLine,
-  wranglerFor,
+  verifiedWrangler,
 } from './cloudflare.js';
-import { deliverSecret } from './deliver.js';
+import { assertInteractiveSecretDelivery, deliverSecret } from './deliver.js';
 import { assertSameAccount, readLedger, writeLedger } from './ledger.js';
 import { CliError, EXIT, type Reporter } from './output.js';
 import { readRegistry } from './registry.js';
+import { resourceNames } from './site-config.js';
 import { hasProjectWrangler } from './template.js';
 
 export interface SetupKeyOptions {
@@ -51,8 +51,6 @@ export interface SetupKeyOptions {
 
 export interface SetupKeyResult {
   readonly slug: string;
-  /** Printed once, to a terminal, and stored nowhere. */
-  readonly setupKey: string;
 }
 
 /** The default hand-over: stdout, awaited (`deliver.ts`). */
@@ -92,6 +90,13 @@ export async function rotateSetupKey(
 
   const ledger = await readLedger(projectDir);
   const sites = await readRegistry(`${projectDir}/.mallok/sites.json`);
+  if (ledger === null && sites.length > 1) {
+    throw new CliError(
+      EXIT.user,
+      'This project records more than one deployed site.',
+      'Run setup-key from the generated site directory that contains its create ledger.',
+    );
+  }
   const slug = ledger?.slug ?? sites[0]?.slug;
   if (slug === undefined) {
     throw new CliError(
@@ -100,7 +105,8 @@ export async function rotateSetupKey(
       'Run `mallok setup-key` from the project directory that created it.',
     );
   }
-  const origin = ledger?.origin ?? sites[0]?.origin ?? '';
+  const siteRecord = sites.find((site) => site.slug === slug);
+  const origin = ledger?.origin ?? siteRecord?.origin ?? '';
 
   if (!(await hasProjectWrangler(projectDir))) {
     throw new CliError(
@@ -109,15 +115,33 @@ export async function rotateSetupKey(
       'Run the install inside the project and try again.',
     );
   }
-  const wrangler = wranglerFor(projectDir, runner, options.accountId);
-  const accountId = await currentAccountId(wrangler, options.accountId);
+  // A custom delivery sink is an explicit API choice (and is how tests avoid
+  // printing credentials). The CLI default must prove stdout is a terminal
+  // before it can rotate anything remotely.
+  if (options.deliver === undefined) {
+    assertInteractiveSecretDelivery(process.stdout);
+  }
+
+  const { wrangler, accountId, identity } = await verifiedWrangler(
+    projectDir,
+    runner,
+    options.accountId,
+  );
+  const names = resourceNames(slug);
+  if (identity.worker !== names.worker) {
+    throw new CliError(
+      EXIT.user,
+      'wrangler.jsonc names a different Worker from this site record.',
+      `Expected ${names.worker}; found ${identity.worker}. No secret has been changed.`,
+    );
+  }
   if (ledger !== null) {
     assertSameAccount(ledger, accountId);
   } else {
     // No ledger, so the registry is the only proof there is — and a record
     // without an account id proves nothing. Setting a setup key on a site
     // this project cannot show it owns is handing somebody a way in.
-    const known = sites.find((site) => site.slug === slug)?.accountId;
+    const known = siteRecord?.accountId;
     if (typeof known !== 'string' || known.trim() === '') {
       throw new CliError(
         EXIT.user,
@@ -161,9 +185,10 @@ export async function rotateSetupKey(
     webcrypto.getRandomValues(new Uint8Array(32)),
   ).toString('base64');
   report.step('Setting a new MALLOK_SETUP_KEY…');
-  const put = await wrangler.run(['secret', 'put', 'MALLOK_SETUP_KEY'], {
-    input: setupKey,
-  });
+  const put = await wrangler.run(
+    ['secret', 'put', 'MALLOK_SETUP_KEY', '--name', names.worker],
+    { input: setupKey },
+  );
   if (put.code !== 0) {
     throw new CliError(
       EXIT.remote,
@@ -186,5 +211,5 @@ export async function rotateSetupKey(
     });
   }
 
-  return { slug, setupKey };
+  return { slug };
 }

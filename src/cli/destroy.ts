@@ -25,13 +25,12 @@
 import { join } from 'node:path';
 import {
   type CommandRunner,
-  currentAccountId,
   findDatabase,
   isDefiniteAbsence,
   lastLine,
   type ResourceKind,
+  verifiedWrangler,
   type Wrangler,
-  wranglerFor,
 } from './cloudflare.js';
 import {
   assertSameAccount,
@@ -99,7 +98,10 @@ export function destroySteps(slug: string): DestroyStep[] {
     {
       id: 'database',
       label: `Delete the database ${names.database}`,
-      args: ['d1', 'delete', names.database, '--skip-confirmation'],
+      // The DB binding was verified against the recorded UUID before any
+      // mutation. Wrangler resolves a binding to that UUID; a reusable name
+      // cannot provide the same guarantee.
+      args: ['d1', 'delete', 'DB', '--skip-confirmation'],
     },
   ];
 }
@@ -214,15 +216,17 @@ export async function destroySite(
   if (runner === undefined) {
     throw new CliError(EXIT.user, 'No command runner was provided.');
   }
-  const wrangler = wranglerFor(projectDir, runner, options.accountId);
-
   // Every read-only check first, before anything is deleted.
   //
   // `wrangler` follows whichever login is current, so a same-named resource
   // on another account is somebody else's site. The account is checked
   // against **both** records: a completed create leaves a registry entry
   // carrying it, and an interrupted one leaves a ledger.
-  const accountId = await currentAccountId(wrangler, options.accountId);
+  const { wrangler, accountId, identity } = await verifiedWrangler(
+    projectDir,
+    runner,
+    options.accountId,
+  );
   if (ledger !== null) {
     assertSameAccount(ledger, accountId);
   }
@@ -256,6 +260,17 @@ export async function destroySite(
   }
 
   const names = resourceNames(slug);
+  if (
+    identity.worker !== names.worker ||
+    identity.database.name !== names.database
+  ) {
+    throw new CliError(
+      EXIT.user,
+      'wrangler.jsonc targets different resources from this site record.',
+      `Expected Worker ${names.worker} and database ${names.database}; found ` +
+        `${identity.worker} and ${identity.database.name}. Nothing has been deleted.`,
+    );
+  }
 
   // ---- The database is identified, not just named -------------------------
   //
@@ -266,34 +281,64 @@ export async function destroySite(
   // deleted — and "could not read it" stops as well, because that is not the
   // same as "it matches".
   //
-  // The locked Wrangler's `d1 delete` takes a name or a binding, not a UUID,
-  // so the delete itself is still by name. The check is what makes that name
-  // refer to the right thing at the moment it is used.
+  // The locked Wrangler's `d1 delete` takes a name or a binding, not a UUID.
+  // The project's DB binding contains the UUID, so it is checked against both
+  // records and then used for the delete. The reusable database name is never
+  // the destructive identifier.
   //
   // **R2 buckets and Workers have no comparable id.** `r2 bucket info` and
   // `deployments list` report nothing stable to compare against, so for those
   // two the evidence is the account plus the name — which is weaker, and
   // saying so is better than implying a proof that does not exist.
-  const recordedDatabaseId =
-    (ledger?.database?.status === 'created' ||
+  const databaseAlreadyDeleted = ledger?.deleted?.includes('database') === true;
+  const ledgerDatabaseId =
+    ledger?.database?.status === 'created' ||
     ledger?.database?.status === 'adopted'
       ? ledger.database.id
-      : undefined) ??
-    record?.databaseId ??
-    undefined;
+      : undefined;
+  const registryDatabaseId = record?.databaseId ?? undefined;
   if (
-    typeof recordedDatabaseId === 'string' &&
-    recordedDatabaseId !== '' &&
-    ledger?.deleted?.includes('database') !== true
+    typeof ledgerDatabaseId === 'string' &&
+    ledgerDatabaseId !== '' &&
+    typeof registryDatabaseId === 'string' &&
+    registryDatabaseId !== '' &&
+    ledgerDatabaseId !== registryDatabaseId
   ) {
+    throw new CliError(
+      EXIT.user,
+      'The ledger and registry identify different D1 databases.',
+      `Ledger: ${ledgerDatabaseId}; registry: ${registryDatabaseId}. ` +
+        'Nothing has been deleted.',
+    );
+  }
+  const recordedDatabaseId = ledgerDatabaseId ?? registryDatabaseId;
+  if (!databaseAlreadyDeleted) {
+    if (
+      typeof recordedDatabaseId !== 'string' ||
+      recordedDatabaseId.trim() === ''
+    ) {
+      throw new CliError(
+        EXIT.user,
+        'This project does not record the UUID of the D1 database it would delete.',
+        `Refusing to delete ${names.database} by name. Repair the interrupted ` +
+          `record first with mallok repair ${slug} --adopt database --expect-id <uuid>.`,
+      );
+    }
+    if (
+      identity.database.binding !== 'DB' ||
+      identity.database.id !== recordedDatabaseId
+    ) {
+      throw new CliError(
+        EXIT.user,
+        'wrangler.jsonc is bound to a different D1 database.',
+        `Recorded: ${recordedDatabaseId}; DB binding: ${identity.database.id}. ` +
+          'Nothing has been deleted.',
+      );
+    }
     // `findDatabase` fails closed: an authentication, network or unrecognised
     // failure throws rather than reporting absence.
     const found = await findDatabase(wrangler, names.database);
-    if (
-      found.exists &&
-      found.id !== undefined &&
-      found.id !== recordedDatabaseId
-    ) {
+    if (found.exists && found.id !== recordedDatabaseId) {
       report.warn(
         `${names.database} on this account is a different database from the ` +
           `one this project created. Recorded: ${recordedDatabaseId}; found: ` +

@@ -8,7 +8,10 @@ import { deliverSecret } from '../../src/cli/deliver.js';
 import { readLedger } from '../../src/cli/ledger.js';
 import { makeReporter } from '../../src/cli/output.js';
 import { rotateSetupKey } from '../../src/cli/setup-key.js';
-import { fakeCloudflare } from './helpers/fake-wrangler.js';
+import {
+  fakeCloudflare,
+  writeWranglerIdentity,
+} from './helpers/fake-wrangler.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -59,6 +62,7 @@ async function project(): Promise<string> {
   await writeFile(join(dir, 'node_modules/.bin/wrangler'), '#!/bin/sh\n', {
     mode: 0o755,
   });
+  await writeWranglerIdentity(dir, { databaseId: 'db-1' });
   await writeFile(
     join(dir, '.mallok/create-state.json'),
     JSON.stringify(LEDGER),
@@ -81,6 +85,45 @@ afterEach(async () => {
 });
 
 describe('mallok setup-key records delivery only after the hand-over', () => {
+  it('refuses redirected stdout before rotating the remote secret', async () => {
+    const dir = await project();
+    const fake = fakeCloudflare();
+
+    await expect(
+      rotateSetupKey(
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => false,
+        },
+        report,
+      ),
+    ).rejects.toThrow(/interactive terminal|redirected/i);
+
+    expect(fake.mutations()).toEqual([]);
+    expect((await readLedger(dir))?.setupKeyDeliveredAt).toBeUndefined();
+  });
+
+  it('refuses a config that names a different Worker', async () => {
+    const dir = await project();
+    await writeWranglerIdentity(dir, { slug: 'somebody-else' });
+    const fake = fakeCloudflare();
+
+    await expect(
+      rotateSetupKey(
+        {
+          projectDir: dir,
+          run: fake.run,
+          hasAdministrator: async () => false,
+          deliver: () => undefined,
+        },
+        report,
+      ),
+    ).rejects.toThrow(/different Worker|wrangler\.jsonc/i);
+
+    expect(fake.mutations()).toEqual([]);
+  });
+
   it('leaves the ledger undelivered when the write fails', async () => {
     // `mallok setup-key | head -1` is enough to produce this.
     const dir = await project();
@@ -121,7 +164,7 @@ describe('mallok setup-key records delivery only after the hand-over', () => {
 
     const delivered: string[] = [];
     const second = fakeCloudflare({ account: first.account });
-    const result = await rotateSetupKey(
+    await rotateSetupKey(
       {
         projectDir: dir,
         run: second.run,
@@ -133,7 +176,8 @@ describe('mallok setup-key records delivery only after the hand-over', () => {
       report,
     );
 
-    expect(delivered).toEqual([result.setupKey]);
+    expect(delivered).toHaveLength(1);
+    expect(Buffer.from(delivered[0] ?? '', 'base64')).toHaveLength(32);
     expect((await readLedger(dir))?.setupKeyDeliveredAt).toBeDefined();
   });
 
@@ -164,7 +208,7 @@ describe('mallok setup-key records delivery only after the hand-over', () => {
     const fake = fakeCloudflare();
     const delivered: string[] = [];
 
-    const result = await rotateSetupKey(
+    await rotateSetupKey(
       {
         projectDir: dir,
         run: fake.run,
@@ -180,8 +224,8 @@ describe('mallok setup-key records delivery only after the hand-over', () => {
       join(dir, '.mallok/create-state.json'),
       'utf8',
     );
-    expect(onDisk).not.toContain(result.setupKey);
-    expect(delivered).toEqual([result.setupKey]);
+    expect(onDisk).not.toContain(delivered[0] ?? '');
+    expect(delivered).toHaveLength(1);
   });
 });
 

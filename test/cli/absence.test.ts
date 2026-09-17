@@ -14,7 +14,10 @@ import {
 } from '../../src/cli/cloudflare.js';
 import { destroySite } from '../../src/cli/destroy.js';
 import { makeReporter } from '../../src/cli/output.js';
-import { fakeCloudflare } from './helpers/fake-wrangler.js';
+import {
+  fakeCloudflare,
+  writeWranglerIdentity,
+} from './helpers/fake-wrangler.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -187,6 +190,7 @@ async function project(): Promise<string> {
   await writeFile(join(dir, 'node_modules/.bin/wrangler'), '#!/bin/sh\n', {
     mode: 0o755,
   });
+  await writeWranglerIdentity(dir, { databaseId: 'db-1' });
   await writeFile(
     join(dir, '.mallok/create-state.json'),
     JSON.stringify({
