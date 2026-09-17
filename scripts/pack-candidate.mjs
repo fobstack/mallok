@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
+import { parsePackMetadata } from './pack-metadata.mjs';
 
 const run = promisify(execFile);
 const packageDir = resolve(process.argv[2] ?? 'dist/pkg');
@@ -82,48 +83,14 @@ const { stdout } = await run(
   ['pack', '--json', '--pack-destination', outputDir],
   { cwd: packageDir, maxBuffer: 32 * 1024 * 1024 },
 );
-const parsed = JSON.parse(stdout);
-const packed = Array.isArray(parsed) ? parsed[0] : undefined;
-if (
-  packed === null ||
-  typeof packed !== 'object' ||
-  packed.filename !== expectedFile
-) {
-  throw new Error(
-    `npm packed ${String(packed?.filename)}, expected ${expectedFile}.`,
-  );
-}
-
-const positiveInteger = (value, name) => {
-  if (!Number.isSafeInteger(value) || value <= 0) {
-    throw new Error(`npm pack returned an invalid ${name}.`);
-  }
-  return value;
-};
-const requiredString = (value, name, pattern) => {
-  if (typeof value !== 'string' || !pattern.test(value)) {
-    throw new Error(`npm pack returned an invalid ${name}.`);
-  }
-  return value;
-};
-
 const bytes = await readFile(candidate);
-const size = positiveInteger(packed.size, 'size');
-if (size !== bytes.byteLength) {
-  throw new Error(
-    `npm pack reported ${size} bytes, but the candidate has ${bytes.byteLength}.`,
-  );
-}
+const packed = parsePackMetadata(stdout, expectedFile, bytes.byteLength);
 const metadata = {
   filename: packed.filename,
-  size,
-  unpackedSize: positiveInteger(packed.unpackedSize, 'unpackedSize'),
-  integrity: requiredString(
-    packed.integrity,
-    'integrity',
-    /^sha512-[A-Za-z0-9+/]+={0,2}$/,
-  ),
-  shasum: requiredString(packed.shasum, 'shasum', /^[a-f0-9]{40}$/),
+  size: packed.size,
+  unpackedSize: packed.unpackedSize,
+  integrity: packed.integrity,
+  shasum: packed.shasum,
   sha256: createHash('sha256').update(bytes).digest('hex'),
   sourceCommit,
 };
