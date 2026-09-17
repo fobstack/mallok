@@ -60,7 +60,7 @@ export function mountIslands(
     if (mounted.has(element)) {
       continue;
     }
-    const name = element.dataset['island'];
+    const name = element.dataset.island;
     if (name === undefined) {
       continue;
     }
@@ -83,7 +83,7 @@ function strategyOf(
   element: HTMLElement,
   fallback: HydrationStrategy,
 ): HydrationStrategy {
-  const declared = element.dataset['islandStrategy'];
+  const declared = element.dataset.islandStrategy;
   return declared === 'eager' || declared === 'idle' || declared === 'visible'
     ? declared
     : fallback;

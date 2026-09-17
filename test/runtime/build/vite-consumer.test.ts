@@ -174,7 +174,7 @@ describe('a built consumer using the file router', () => {
     };
 
     expect(Object.keys(islands.islands)).toEqual(['quote']);
-    const src = islands.islands['quote']?.src ?? '';
+    const src = islands.islands.quote?.src ?? '';
     expect(src).toMatch(/^\/assets\/quote-[A-Za-z0-9_-]+\.js$/);
 
     // The name in the manifest is a file the build actually wrote.

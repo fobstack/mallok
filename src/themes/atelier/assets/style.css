@@ -687,6 +687,9 @@ h3,
   line-height: 1.06;
   margin-bottom: 2rem;
 }
+.prose {
+  max-width: 44rem;
+}
 .detail-narrow .prose {
   max-width: 44rem;
 }
@@ -729,9 +732,6 @@ h3,
   font-size: 1.02rem;
 }
 
-.prose {
-  max-width: 44rem;
-}
 .prose > :first-child {
   margin-top: 0;
 }

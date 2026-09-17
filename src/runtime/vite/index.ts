@@ -75,7 +75,7 @@ export interface EmitContext {
     type: 'asset';
     fileName: string;
     source: string;
-  }): string | void;
+  }): string | undefined;
 }
 
 /** The parts of a Rollup output chunk this plugin reads. */

@@ -352,6 +352,7 @@ main {
   padding: 0 0 0.6rem;
   border-bottom: 2px solid transparent;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: topbar and tabs are unrelated components */
 .tabs a[aria-current] {
   color: var(--ink);
   border-bottom-color: var(--blueprint);
@@ -480,6 +481,7 @@ main {
   display: grid;
   gap: 0.1rem;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: bullets and rows are unrelated components */
 .rows li {
   display: flex;
   align-items: center;
@@ -962,6 +964,7 @@ main {
   margin-bottom: 2rem;
   counter-reset: step;
 }
+/* biome-ignore lint/style/noDescendingSpecificity: bullets and setup steps are unrelated components */
 .steps li {
   counter-increment: step;
   flex: 1;

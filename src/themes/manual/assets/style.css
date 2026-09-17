@@ -389,6 +389,7 @@ img {
   color: var(--ink);
   border-left-color: var(--dim);
 }
+/* biome-ignore lint/style/noDescendingSpecificity: header and sidebar links are unrelated components */
 .side a[aria-current] {
   color: var(--ink);
   border-left-color: var(--orange);

@@ -10,7 +10,7 @@ import { mountIslands } from '../../../src/runtime/react/index.js';
  */
 
 function Cart(props: Record<string, unknown>) {
-  return <span className="cart">{String(props['sku'] ?? 'none')}</span>;
+  return <span className="cart">{String(props.sku ?? 'none')}</span>;
 }
 
 const registry = {

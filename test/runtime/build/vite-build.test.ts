@@ -89,11 +89,11 @@ describe('a real Vite build', () => {
       islands: Record<string, { src: string }>;
     };
     expect(Object.keys(islands.islands).sort()).toEqual(['cart', 'search']);
-    expect(islands.islands['cart']?.src).toMatch(
+    expect(islands.islands.cart?.src).toMatch(
       /^\/assets\/cart-[A-Za-z0-9_-]+\.js$/,
     );
     expect(assets).toContain(
-      (islands.islands['cart'] as { src: string }).src.replace('/assets/', ''),
+      (islands.islands.cart as { src: string }).src.replace('/assets/', ''),
     );
   });
 

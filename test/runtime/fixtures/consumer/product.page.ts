@@ -31,7 +31,7 @@ interface Locals {
 
 export default definePage<Locals>()({
   load: async ({ params, locals }) => {
-    const slug = params['slug'] ?? '';
+    const slug = params.slug ?? '';
     const product = await locals.db.product(slug);
     if (product === null) {
       // Stopping the lifecycle from `load` is how a page 404s.

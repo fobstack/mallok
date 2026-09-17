@@ -24,8 +24,8 @@ const manifest: RouteManifest = {
     {
       pattern: '/blog/[slug]',
       load: page({
-        load: (context) => ({ slug: context.params['slug'] ?? '' }),
-        render: (data) => `post:${String(data['slug'])}`,
+        load: (context) => ({ slug: context.params.slug ?? '' }),
+        render: (data) => `post:${String(data.slug)}`,
       }),
     },
     { pattern: '/blog/feed', load: page({ render: () => 'feed' }) },
