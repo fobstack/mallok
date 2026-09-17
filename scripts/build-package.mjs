@@ -211,6 +211,9 @@ await writeFile(
         typescript: '5.9.3',
         wrangler: '4.124.0',
       },
+      // Miniflare's older sharp pin contains a patched libheif advisory.
+      // Keep the tested Wrangler version and take the compatible sharp patch.
+      overrides: { sharp: '0.35.4' },
     },
     null,
     2,

@@ -122,5 +122,10 @@
         "description": "Optional, and only useful together with `CF_API_TOKEN`. The Zone ID shown on your domain’s overview page in the Cloudflare dashboard."
       }
     }
+  },
+  "pnpm": {
+    "overrides": {
+      "sharp": "0.35.4"
+    }
   }
 }

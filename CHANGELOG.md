@@ -12,7 +12,17 @@ the exact resources they may touch, upgrades recover after interruption,
 third-party plugins have a public contract, and the one tested tarball is the
 one an operator can publish.
 
+### Theme performance
+
+- Atelier 2.3.1 serves its original typefaces from local static assets instead
+  of a render-blocking Google Fonts stylesheet. Font licenses and provenance
+  ship with the assets. A theme favicon removes the automatic favicon 404.
+
 ### Security
+
+- Pin transitive development-tool image processing to patched `sharp@0.35.4`
+  in this checkout and generated npm sites (GHSA-rgj7-g3m4-5g8c), while keeping
+  the tested Wrangler version. The published CLI already used that patch.
 
 - **Cache hits retain the declared browser lifetime.** The real edge returned
   a four-hour browser TTL from Cache API storage despite a zero-TTL policy.
