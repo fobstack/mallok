@@ -20,6 +20,23 @@ explains why that distinction is load-bearing. §15.1 is the one row that is
 neither: `NOT_AVAILABLE`, withdrawn rather than pending. The 2026-09-12 rc.4
 local run is retained separately as `STALE` history in §4.1.
 
+## Active gate run — 2026-09-17
+
+The status snapshot above and the original §4 evidence describe the first rc.5
+artifact, not every subsequent build with that unpublished version. The real
+isolated deployment exposed two regressions: D1 name probes resolved a local
+placeholder UUID, and cached HTML returned a four-hour browser lifetime instead
+of the declared zero. The D1 fix was deployed successfully; the cache-policy
+fix must be verified against a new source-bound tarball before release.
+
+The gate site is `rc5-gate.mallok.dev`, Worker `mallok-gate-20260917-rc5`, with
+its own D1 and R2 resources. No production resource is part of this run.
+Creation, the browser setup wizard, publishing, and credential cache bypass
+were exercised on the intermediate artifact. These are diagnostic results,
+not a blanket approval of the replacement artifact. The full external gate
+remains incomplete. Cloudflare also injects an analytics beacon in browser
+responses; the zero-client-JavaScript check has not passed on this hostname.
+
 ## 0. Vocabulary
 
 The statuses are `docs/TESTING.md §6`'s and no others — the same set

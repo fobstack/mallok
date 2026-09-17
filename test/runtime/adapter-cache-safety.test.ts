@@ -556,3 +556,42 @@ describe('ignoredCookies', () => {
     expect(cache.puts).toHaveLength(0);
   });
 });
+
+describe('browser policy survives cache storage', () => {
+  it.each([0, 30])(
+    'restores browser max-age %i after the cache rewrites headers',
+    async (browserSeconds) => {
+      const backing = countingCache();
+      const cache: PageCache = {
+        put: (request, response) => backing.put(request, response),
+        async match(request) {
+          const hit = await backing.match(request);
+          if (hit !== undefined) {
+            hit.headers.set(
+              'cache-control',
+              'public, max-age=14400, s-maxage=60',
+            );
+          }
+          return hit;
+        },
+      };
+      const handle = handlerFor(
+        {
+          ...PUBLIC_PAGE,
+          cache: () => ({ mode: 'public', edgeSeconds: 60, browserSeconds }),
+        },
+        cache,
+      );
+      const request = new Request('https://x.test/browser-policy');
+      const miss = await handle(request, {}, context());
+      const hit = await handle(request, {}, context());
+      expect(hit.headers.get('x-runtime-cache')).toBe('HIT');
+      expect(hit.headers.get('cache-control')).toBe(
+        miss.headers.get('cache-control'),
+      );
+      expect([...miss.headers.keys(), ...hit.headers.keys()]).not.toContain(
+        'x-mallok-stored-cache-control',
+      );
+    },
+  );
+});

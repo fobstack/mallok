@@ -14,6 +14,11 @@ one an operator can publish.
 
 ### Security
 
+- **Cache hits retain the declared browser lifetime.** The real edge returned
+  a four-hour browser TTL from Cache API storage despite a zero-TTL policy.
+  The stored entry now retains the original policy separately; outgoing hits
+  restore it and remove the internal metadata.
+
 - **D1 identity probes resolve the remote name.** The real deployment gate
   exposed Wrangler trusting the local placeholder UUID before querying the API.
   Probes now use an isolated name-only binding, preserving account selection

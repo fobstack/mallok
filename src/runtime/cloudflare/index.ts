@@ -160,6 +160,8 @@ export function workersPageCache(name = 'fobstack-pages'): PageCache {
  * Create it once at module scope and call it per request; `env` is passed in
  * rather than captured.
  */
+const STORED_CACHE_CONTROL = 'x-mallok-stored-cache-control';
+
 export function createPageHandler<Env, Locals>(
   options: AdapterOptions<Env, Locals>,
 ): (request: Request, env: Env, ctx: ExecutionContext) => Promise<Response> {
@@ -184,7 +186,22 @@ export function createPageHandler<Env, Locals>(
     if (cache !== undefined && key !== undefined) {
       const hit = await cache.match(key);
       if (hit !== undefined) {
-        return withoutBodyIfHead(tagged(hit, 'HIT', statusHeader), isHead);
+        const headers = new Headers(hit.headers);
+        const policy = headers.get(STORED_CACHE_CONTROL);
+        // Cache storage can raise max-age to the zone's browser TTL. Keep
+        // the policy separately and restore it only on the outgoing copy.
+        // Old entries have no metadata: revalidate them in the browser.
+        headers.set(
+          'cache-control',
+          policy ?? 'public, max-age=0, must-revalidate',
+        );
+        headers.delete(STORED_CACHE_CONTROL);
+        const restored = new Response(hit.body, {
+          status: hit.status,
+          statusText: hit.statusText,
+          headers,
+        });
+        return withoutBodyIfHead(tagged(restored, 'HIT', statusHeader), isHead);
       }
     }
 
@@ -228,7 +245,12 @@ export function createPageHandler<Env, Locals>(
     // Only a GET writes: a HEAD's response has no body, and storing it would
     // poison the entry that later GETs are served from.
     if (cache !== undefined && key !== undefined && storable && !isHead) {
-      ctx.waitUntil(cache.put(key, response.clone()));
+      const stored = response.clone();
+      stored.headers.set(
+        STORED_CACHE_CONTROL,
+        response.headers.get('cache-control') ?? 'no-store',
+      );
+      ctx.waitUntil(cache.put(key, stored));
       return tagged(response, 'MISS', statusHeader);
     }
     // A cold HEAD is a MISS, not a BYPASS: the page was rendered rather than
@@ -261,6 +283,7 @@ function applyPolicy(
 ): Response {
   const policy: CachePolicy = result.cache;
   const headers = new Headers(result.response.headers);
+  headers.delete(STORED_CACHE_CONTROL);
   const { tags, rejected } = validateTags(policy.tags ?? []);
   for (const reject of rejected) {
     onRejected?.(reject.tag, reject.reason);
