@@ -3,3 +3,8 @@ Copyright 2026 Mallok contributors
 
 This product includes software developed by the Mallok project
 (https://github.com/fobstack/mallok).
+
+The Atelier theme includes unmodified Bricolage Grotesque and Instrument Sans
+font subsets from Google Fonts, licensed under the SIL Open Font License 1.1.
+Their copyright notices, full licenses, source URLs and checksums are shipped
+with the theme's assets/fonts directory.

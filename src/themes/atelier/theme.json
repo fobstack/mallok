@@ -2,7 +2,7 @@
   "id": "atelier",
   "name": "Atelier",
   "description": "A premium B2B catalogue for mills and manufacturers: split hero, certification strip, product families, case studies and an FAQ, with a CSS-only mobile nav and gallery.",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "themeApi": 1,
   "home": "layouts/home.liquid",
   "kinds": {

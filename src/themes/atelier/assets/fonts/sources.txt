@@ -1,0 +1,37 @@
+[
+  {
+    "file": "bricolage-grotesque-normal-vietnamese.woff2",
+    "source": "https://fonts.gstatic.com/s/bricolagegrotesque/v9/3y9K6as8bTXq_nANBjzKo3IeZx8z6up5BeSl9D4dj_x9PpZBMlGHInHEVA.woff2",
+    "sha256": "b50a9d90a5264f20d1e45be0b948fe947ddb3644557f1e85ef5d3bd06427c944"
+  },
+  {
+    "file": "bricolage-grotesque-normal-latin-ext.woff2",
+    "source": "https://fonts.gstatic.com/s/bricolagegrotesque/v9/3y9K6as8bTXq_nANBjzKo3IeZx8z6up5BeSl9D4dj_x9PpZBMlGGInHEVA.woff2",
+    "sha256": "776f6dcaf03636cd69a5802c94808cc8896c0a66c8e9ce0fe147231b6ee01957"
+  },
+  {
+    "file": "bricolage-grotesque-normal-latin.woff2",
+    "source": "https://fonts.gstatic.com/s/bricolagegrotesque/v9/3y9K6as8bTXq_nANBjzKo3IeZx8z6up5BeSl9D4dj_x9PpZBMlGIInE.woff2",
+    "sha256": "a79fdb52d4a5c76552452f69202add96e287401fff03d3e8c0e38b4dcb5a99cd"
+  },
+  {
+    "file": "instrument-sans-italic-latin-ext.woff2",
+    "source": "https://fonts.gstatic.com/s/instrumentsans/v4/pxigypc9vsFDm051Uf6KVwgkfoSbSnNPooZAN0lInHGpCWNE27lgU-XJojENuu-2oyAH297Y.woff2",
+    "sha256": "9b577c78c477d62451ac5544cddf54f3a90d09f7321aa88613dcea992a909e18"
+  },
+  {
+    "file": "instrument-sans-italic-latin.woff2",
+    "source": "https://fonts.gstatic.com/s/instrumentsans/v4/pxigypc9vsFDm051Uf6KVwgkfoSbSnNPooZAN0lInHGpCWNE27lgU-XJojENuu-2oy4H2w.woff2",
+    "sha256": "b089ac6fca39eb8d49d166db9e33574fb891223cfa5d63b3b3be1668f1cfe28b"
+  },
+  {
+    "file": "instrument-sans-normal-latin-ext.woff2",
+    "source": "https://fonts.gstatic.com/s/instrumentsans/v4/pxiTypc9vsFDm051Uf6KVwgkfoSxQ0GsQv8ToedPibnr0She1YmV.woff2",
+    "sha256": "c4fcfea41f2c1cfeea9211fa43679845454a1d0e0d7e95e069c7e73c4ae302d2"
+  },
+  {
+    "file": "instrument-sans-normal-latin.woff2",
+    "source": "https://fonts.gstatic.com/s/instrumentsans/v4/pxiTypc9vsFDm051Uf6KVwgkfoSxQ0GsQv8ToedPibnr0SZe1Q.woff2",
+    "sha256": "2ee17598a98d8a59e4df8152d015bec9ab8e4d5672cc0ab42bef806b568e3971"
+  }
+]
