@@ -250,7 +250,11 @@ describe('the read-only checks that come before the first mutation', () => {
       .slice(0, fake.firstMutationIndex())
       .map((call) => call.args.join(' '));
     expect(before).toContain('whoami --json');
-    expect(before).toContain('d1 info mallok-my-site-db --json');
+    expect(
+      before.some((call) =>
+        call.startsWith('d1 info mallok-my-site-db --json --config '),
+      ),
+    ).toBe(true);
     expect(before).toContain('r2 bucket info mallok-my-site-media --json');
     expect(before).toContain('deployments list --name mallok-my-site --json');
   });

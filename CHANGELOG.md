@@ -14,6 +14,12 @@ one an operator can publish.
 
 ### Security
 
+- **D1 identity probes resolve the remote name.** The real deployment gate
+  exposed Wrangler trusting the local placeholder UUID before querying the API.
+  Probes now use an isolated name-only binding, preserving account selection
+  and the original site config. This also prevents stale local UUIDs from
+  hiding a database name that has been reused.
+
 - **Cloudflare mutations now fail closed on identity.** `create`, `repair`,
   `setup-key` and `destroy` bind every Wrangler subprocess to one verified
   account; compare the Worker, D1 UUID and R2 binding with the project records;

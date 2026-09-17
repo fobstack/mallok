@@ -12,7 +12,8 @@
  * the value never appears in an argument, a log line or a returned object.
  */
 
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CliError, EXIT } from './output.js';
 import { parseJsonc } from './site-config.js';
@@ -60,12 +61,49 @@ export function wranglerFor(
       ? undefined
       : { ...process.env, CLOUDFLARE_ACCOUNT_ID: accountId };
   return {
-    run: (args, options = {}) =>
-      runner(binary, args, {
-        cwd: projectDir,
-        ...(options.input === undefined ? {} : { input: options.input }),
-        ...(env === undefined ? {} : { env }),
-      }),
+    run: async (args, options = {}) => {
+      const run = (argv: readonly string[]) =>
+        runner(binary, argv, {
+          cwd: projectDir,
+          ...(options.input === undefined ? {} : { input: options.input }),
+          ...(env === undefined ? {} : { env }),
+        });
+      if (args[0] !== 'd1' || args[1] !== 'info') {
+        return run(args);
+      }
+      // Wrangler resolves a matching local binding before consulting the API.
+      // Its UUID may be a create placeholder or a stale identity. A probe
+      // must resolve the current remote name, then compare that UUID to the
+      // ledger; trusting the local UUID defeats both create and destroy.
+      let configuredAccount: unknown;
+      const path = join(projectDir, 'wrangler.jsonc');
+      try {
+        configuredAccount = parseJsonc(
+          await readFile(path, 'utf8'),
+          path,
+        ).account_id;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          throw error;
+        }
+      }
+      const directory = await mkdtemp(join(tmpdir(), 'mallok-d1-probe-'));
+      try {
+        const config = join(directory, 'wrangler.jsonc');
+        await writeFile(
+          config,
+          JSON.stringify({
+            ...(configuredAccount === undefined
+              ? {}
+              : { account_id: configuredAccount }),
+            d1_databases: [{ binding: 'DB', database_name: args[2] }],
+          }),
+        );
+        return await run([...args, '--config', config]);
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
+    },
   };
 }
 
