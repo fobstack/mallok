@@ -231,9 +231,12 @@ plugin's, and the product states that rather than concealing it.
 
 ### 5.9 Local and production are the same thing
 
-The admin runs on localhost or deployed to Cloudflare: the same code, the same
-API. The CLI is a third entry point calling that same API. There is no
-capability gap between the three.
+The admin runs on localhost or deployed to Cloudflare: the same code and the
+same API. The CLI shares the Worker's content, media and export contracts with
+the admin. Local preview/build and project or Cloudflare resource lifecycle are
+CLI workflows; account and plugin administration are admin workflows. The
+invariant is one server-side data path for shared site-data operations, not
+identical client surfaces (`AC-CLI-04`).
 
 ### 5.10 Open source, with a community that can genuinely take part
 

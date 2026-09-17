@@ -4,9 +4,10 @@
  * The published bundle gets its `#!/usr/bin/env node` line from the build
  * script, so this file does not carry one.
  *
- * Every command here goes through the same management API the admin uses, so
- * there is nothing the interface can do that a script cannot
- * (docs/PRODUCT_VISION.md §5.9).
+ * Remote content, media and export commands use the same Worker contracts as
+ * the admin. Local rendering, project setup and Cloudflare resource lifecycle
+ * commands deliberately remain CLI concerns (docs/PRODUCT_VISION.md §5.9,
+ * AC-CLI-04).
  */
 
 import { realpathSync } from 'node:fs';

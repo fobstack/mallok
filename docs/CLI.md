@@ -8,20 +8,21 @@
 
 ## 1. In one sentence
 
-**`mallok` is a Node command-line tool published to npm. It calls exactly the
-same management API over HTTPS that the admin does, and reuses `src/core/` for
-bundle parsing and local preview, so the same Markdown produces the same body
-fragment as production — the preview's media URLs differ, since it runs
-offline with no media table (`AC-CLI-03`, `docs/ACCEPTANCE.md §14.2` item
-3).**
+**`mallok` is a Node command-line tool published to npm. Its remote content,
+media and export commands use the same authenticated Worker contracts as the
+admin; its local rendering and project-lifecycle commands are CLI-specific. It
+reuses `src/core/` for bundle parsing and local preview, so the same Markdown
+produces the same body fragment as production — the preview's media URLs
+differ, since it runs offline with no media table (`AC-CLI-03`,
+`docs/ACCEPTANCE.md §14.2` item 3).**
 
 ## 2. Hard constraints
 
 | Constraint | Source |
 | --- | --- |
 | `node >= 22`, ESM only, usable directly through `npx mallok` | `TECH_STACK §2`, `§8` |
-| **The CLI is not a Worker subprocess, and may not have a capability the admin lacks** | `TECH_STACK §8` |
-| Same API and same Bearer tokens as the admin | `PRODUCT_VISION §5.9` |
+| **The CLI is not a Worker subprocess; shared site-data workflows use the same Worker contracts, while local and resource-lifecycle commands remain CLI-specific** | `TECH_STACK §8`, `AC-CLI-04` |
+| Remote API calls use scoped Bearer tokens; admin sessions use a cookie and CSRF | `SECURITY §3.3`, `§3.4` |
 | Reuses `src/core/`, guaranteeing it matches production rendering | `ARCHITECTURE §3` |
 | Image processing uses `sharp` (**a CLI-only dependency; never in the Worker**) | `TECH_STACK §4`, `§8` |
 | Argument parsing stays lightweight; **no heavy CLI framework** | `TECH_STACK §8` |
@@ -653,7 +654,8 @@ explanation rather than passing a SQL error through.
 
 - No local dev server — `wrangler dev` already is one (`TECH_STACK §9`).
 - No interactive content editor; that is the admin's job.
-- No capability that exists only in the CLI (`TECH_STACK §8`).
+- No separate CLI-only content, media or export service; those remote workflows
+  use the Worker's management API (`AC-CLI-04`).
 - No heavy CLI framework.
 - No caching a token to disk.
 - No WordPress import (0.2, `ARCHITECTURE §16`).

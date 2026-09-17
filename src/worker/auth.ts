@@ -2,10 +2,10 @@
  * Authentication and authorization for the management API.
  *
  * Two credentials reach this module: a session cookie issued to a browser,
- * and a bearer token used by the CLI. They authorize the same operations —
- * "the CLI cannot have abilities the admin lacks" (docs/TECH_STACK.md §8) —
- * but only the cookie is subject to CSRF, because only the cookie is sent by
- * the browser automatically. See docs/SECURITY.md §3.
+ * and a scoped bearer token used by the CLI or other automation. Both can
+ * authenticate calls to the management API; that does not make their client
+ * surfaces identical. Only the cookie is subject to CSRF, because only the
+ * cookie is sent by the browser automatically. See docs/SECURITY.md §3.
  */
 
 import { sha256Hex } from '../core/index.js';

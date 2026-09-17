@@ -10,8 +10,9 @@
 ## 1. In one sentence
 
 **The admin is a React single-page application running in the browser, served
-through Workers Static Assets, calling exactly the same management API the CLI
-does.**
+through Workers Static Assets and calling the Worker's management API. Its
+content-save, media-upload and export workflows share their server contracts
+with the CLI.**
 
 It exposes only what an operator can change: **content, settings and plugin
 panels**. Installing a theme or a plugin is a deployment and is not in the
@@ -27,7 +28,7 @@ options those things expose.
 | Everything lives under `_mallok/app/` | `CLOUDFLARE_RESOURCES.md §5` | No public-site path can ever collide with it |
 | A user need not understand Workers, D1, R2, caching or migrations | `PRODUCT_VISION §4` | Those words do not appear in the main interface, only under Advanced and Diagnostics |
 | The admin installs neither themes nor plugins | `PRODUCT_VISION §4` | There is no upload screen; anything needing a deployment gets instructions instead |
-| The admin and the CLI have identical capability | `PRODUCT_VISION §5.9` | Every admin action has a corresponding API endpoint |
+| Site-data workflows exposed by both the admin and CLI use the same Worker contracts | `PRODUCT_VISION §5.9`, `AC-CLI-04` | Content saves, media uploads and exports have no parallel server-side path |
 | Image processing happens in the browser | `ARCHITECTURE §8` | Canvas converts to WebP; the Worker never touches an image |
 
 ## 3. Technology

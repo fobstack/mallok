@@ -16,6 +16,20 @@ function manifest(body: Record<string, unknown>): Response {
 }
 
 describe('the browser export', () => {
+  it('requests the shared export manifest endpoint first', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => manifest({}));
+    vi.stubGlobal('fetch', fetch);
+
+    await buildExportZip();
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0]?.[0]).toBe('/_mallok/api/export');
+    expect(fetch.mock.calls[0]?.[1]).toMatchObject({
+      method: 'GET',
+      credentials: 'same-origin',
+    });
+  });
+
   it('does not create a backup when a plugin export failed', async () => {
     const fetch = vi.fn(async () =>
       manifest({

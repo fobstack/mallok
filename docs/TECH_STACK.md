@@ -135,9 +135,10 @@ pipeline's script budget.
 - Published to npm, `node >= 22`, usable through `npx mallok`.
 - Commands: `create` (the deployment flow), `publish <dir>`, `import <dir>`,
   `export <dir>`, `build <dir>`, `preview <dir>` and `media push`.
-- Calls the management API over HTTPS, using the same interface and the same
-  Bearer tokens as the admin. **The CLI is not a Worker subprocess, and may
-  not have a capability the admin lacks.**
+- Remote content, media and export commands call the same management endpoints
+  the admin uses, authenticated with scoped Bearer tokens. Local preview/build
+  and project or Cloudflare resource lifecycle commands remain CLI-specific;
+  the CLI is not a Worker subprocess (`AC-CLI-04`).
 - Reuses `src/core/` for bundle parsing, local preview and import/export, so
   it matches production rendering.
 - Uses `sharp` for images — a CLI-only dependency, never in the Worker —

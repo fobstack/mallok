@@ -27,10 +27,13 @@ reported `unchanged`.
 
 ## 2. What the CLI is, and is not
 
-It calls the same management API the admin calls, with a scoped, revocable
-token read from `MALLOK_TOKEN` and never written to a file (`CLI.md §4`).
-There is no private CLI endpoint — which is the concrete form of "the admin
-and the CLI have no capability gap" (`PRODUCT_VISION §5.9`).
+Its remote content, media and export workflows use the same management API
+contracts as the admin, with a scoped, revocable token read from
+`MALLOK_TOKEN` and never written to a file (`CLI.md §4`). There is no private
+CLI-only site-data endpoint. That does not imply capability parity: local
+preview/build and project or Cloudflare lifecycle are CLI concerns, while
+account and plugin management are admin concerns (`PRODUCT_VISION §5.9`,
+`AC-CLI-04`).
 
 `sharp` lives only in `src/cli/media.ts` and is external to the published
 bundle: it is a native module, so the consumer installs it for their platform.
