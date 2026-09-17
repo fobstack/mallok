@@ -1,6 +1,20 @@
+import { createExecutionContext, env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
-import { definePlugin } from '../../src/plugins/define.js';
+import {
+  definePlugin,
+  isOfficialPlugin,
+  normalizePlugins,
+} from '../../src/plugins/define.js';
 import type { MallokPlugin } from '../../src/plugins/types.js';
+import {
+  activeTheme,
+  compiledPlugins,
+  configure,
+} from '../../src/worker/composition.js';
+import {
+  enforcePluginRouteNoStore,
+  handlePluginRoute,
+} from '../../src/worker/plugin-runtime.js';
 
 /**
  * What happens to a plugin that is not shaped the way the runtime assumes.
@@ -146,6 +160,54 @@ describe('definePlugin refuses what it cannot fix', () => {
     ).toThrow(/submit/);
   });
 
+  it('a declared route whose handler is not a function', () => {
+    expect(() =>
+      definePlugin({
+        manifest: {
+          ...MINIMAL,
+          routes: [{ path: 'submit', method: 'POST' }],
+        },
+        routes: { submit: 'not a function' },
+      } as unknown as Parameters<typeof definePlugin>[0]),
+    ).toThrow(/submit.*not a function/i);
+  });
+
+  it('malformed, foreign and duplicate migrations', () => {
+    expect(() =>
+      definePlugin({
+        manifest: MINIMAL,
+        migrations: ['SELECT 1'],
+      } as unknown as Parameters<typeof definePlugin>[0]),
+    ).toThrow(/migration.*object/i);
+    expect(() =>
+      definePlugin({
+        manifest: MINIMAL,
+        migrations: [{ id: 'plugin:other:0001', sql: 'SELECT 1' }],
+      }),
+    ).toThrow(/prefix/i);
+    expect(() =>
+      definePlugin({
+        manifest: MINIMAL,
+        migrations: [
+          { id: 'plugin:acme:0001', sql: 'SELECT 1' },
+          { id: 'plugin:acme:0001', sql: 'SELECT 2' },
+        ],
+      }),
+    ).toThrow(/more than once/i);
+  });
+
+  it('the same plugin id twice in one composition', () => {
+    const plugin = definePlugin({ manifest: MINIMAL });
+    expect(() => normalizePlugins([plugin, plugin])).toThrow(/more than once/i);
+  });
+
+  it('a third party cannot award itself official provenance', () => {
+    expect(
+      said(() => definePlugin({ manifest: { ...MINIMAL, official: true } })),
+    ).toMatch(/official|unrecognized/i);
+    expect(isOfficialPlugin(definePlugin({ manifest: MINIMAL }))).toBe(false);
+  });
+
   it('a settings field of a type the admin cannot render', () => {
     expect(
       said(() =>
@@ -193,5 +255,98 @@ describe('definePlugin refuses what it cannot fix', () => {
     })();
 
     expect(error?.message).toContain('acme');
+  });
+});
+
+describe('plugin route cache policy', () => {
+  it('overrides every shared-cache instruction a handler supplied', async () => {
+    const response = enforcePluginRouteNoStore(
+      new Response('ok', {
+        headers: {
+          'cache-control': 'public, s-maxage=3600',
+          'cloudflare-cdn-cache-control': 'public, s-maxage=7200',
+          'cdn-cache-control': 'public, max-age=7200',
+          'surrogate-control': 'max-age=7200',
+          'cache-tag': 'private-data',
+        },
+      }),
+    );
+
+    expect(await response.text()).toBe('ok');
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(response.headers.get('cloudflare-cdn-cache-control')).toBe(
+      'no-store',
+    );
+    expect(response.headers.get('cdn-cache-control')).toBe('no-store');
+    expect(response.headers.get('surrogate-control')).toBe('no-store');
+    expect(response.headers.get('cache-tag')).toBeNull();
+  });
+
+  it('overrides those headers on a real plugin-route response', async () => {
+    const previous = { theme: activeTheme(), plugins: compiledPlugins() };
+    const plugin = definePlugin({
+      manifest: {
+        ...MINIMAL,
+        routes: [{ path: 'leak', method: 'POST' }],
+      },
+      routes: {
+        leak: async () =>
+          new Response('sensitive', {
+            headers: {
+              'cache-control': 'public, s-maxage=3600',
+              'cloudflare-cdn-cache-control': 'public, s-maxage=7200',
+              'cdn-cache-control': 'public, max-age=7200',
+              'surrogate-control': 'max-age=7200',
+              'cache-tag': 'private-data',
+            },
+          }),
+      },
+    });
+    configure({ theme: previous.theme, plugins: [plugin] });
+    try {
+      const response = await handlePluginRoute(
+        new Request('https://example.com/_mallok/p/acme/leak', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: '{}',
+        }),
+        env,
+        createExecutionContext(),
+        '/_mallok/p/acme/leak',
+        [
+          {
+            plugin_id: 'acme',
+            enabled: 1,
+            version: '1.0.0',
+            settings: '{}',
+            secrets: '{}',
+            updated_at: '2026-09-17T00:00:00.000Z',
+          },
+        ],
+        {
+          name: 'Example',
+          tagline: '',
+          defaultLocale: 'en',
+          locales: ['en'],
+          kinds: {},
+          nav: {},
+          themeOptions: {},
+          domain: null,
+          mediaBaseUrl: '',
+          cacheTtl: 60,
+        },
+      );
+
+      expect(await response.text()).toBe('sensitive');
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+      expect(response.headers.get('cloudflare-cdn-cache-control')).toBe(
+        'no-store',
+      );
+      expect(response.headers.get('cdn-cache-control')).toBe('no-store');
+      expect(response.headers.get('surrogate-control')).toBe('no-store');
+      expect(response.headers.get('cache-tag')).toBeNull();
+    } finally {
+      configure(previous);
+    }
   });
 });

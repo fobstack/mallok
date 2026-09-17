@@ -75,8 +75,11 @@ It then checks the two halves against each other, and refuses:
 | A hook name that is not one of the five | Named in the message, because zod's own error lists the allowed options and not the offending value |
 | Anything the manifest schema rejects | An id that cannot form a table prefix, a settings field of an unknown type, a panel table without the plugin's `p_<id>_` prefix |
 
-Every refusal names the plugin, because a build log that says only which
-*field* was wrong is not much use when several plugins are compiled in.
+Every refusal names the plugin. `definePlugin` runs when the Worker module is
+initialised; a bad plugin therefore prevents that Worker from initialising,
+rather than turning into a later plugin-route failure. A bundler that only
+transforms modules does not execute it, so Mallok's package gate also imports
+and executes the built artifact.
 
 Refusals are `PluginDefinitionError`, which carries a `hint` alongside its
 message.
@@ -85,7 +88,7 @@ message.
 
 ```text
 src/plugins/inquiry/
-├── plugin.json           # declares hooks, routes, settings, secrets, migrations, panels, injected client JS
+├── plugin.json           # declares hooks, routes, settings, secrets, panels, injected client JS
 ├── migrations/
 │   └── 0001_inquiry.sql  # table names must start with p_inquiry_
 ├── emails/               # optional: email templates (Liquid, through the same restricted engine)
@@ -102,7 +105,6 @@ src/plugins/inquiry/
   "name": "Inquiry form",
   "version": "1.0.0",
   "description": "Product inquiry form with spam protection and email delivery.",
-  "official": true,                  // shown in the interface to indicate origin; does not change how it is bundled
   "pluginApi": 1,                    // the version of this contract
 
   "hooks": ["afterRender", "onContentSave", "scheduled"],
@@ -111,9 +113,8 @@ src/plugins/inquiry/
     {
       "path": "submit",              // actually /_mallok/p/inquiry/submit
       "method": "POST",
-      "cache": false,                // defaults to false; `ttl` is required when true
       "turnstile": true,             // the core performs the server-side siteverify
-      "rateLimit": { "key": "ip", "limit": 5, "period": 60 }
+      "rateLimit": true              // site's binding; key is plugin id + IP
     }
   ],
 
@@ -128,8 +129,6 @@ src/plugins/inquiry/
     "resend_api_key": { "label": "Resend API key", "required": true }
   },
 
-  "migrations": ["migrations/0001_inquiry.sql"],
-
   "panels": [ /* §7.5 */ ],
 
   "affectsFragmentCache": false,     // see §9
@@ -140,13 +139,23 @@ src/plugins/inquiry/
 }
 ```
 
+Unknown fields are rejected at every manifest level; they are never silently
+discarded. Migrations and executable handlers live beside the manifest in the
+object passed to `definePlugin`, because JSON cannot contain code.
+
+`official` is deliberately not a manifest field. Mallok marks the plugin it
+ships through an internal registry that is not exported from `mallok/worker`.
+A third-party manifest containing `"official": true` is rejected instead of
+receiving an origin badge it can award itself.
+
 The field types in `settings` match the table in `THEME_FORMAT.md §5.2`,
 excluding `image`, `file` and `reference`. Validation uses zod, with the
 schema generated from `plugin.json`.
 
 ## 5. Hooks
 
-0.1 exposes five (`ARCHITECTURE §12`). Each is a named export from `index.ts`.
+0.1 exposes five (`ARCHITECTURE §12`). Implementations are properties of the
+`hooks` object passed to `definePlugin`.
 
 | Hook | When | Whose CPU it costs | Typical use |
 | --- | --- | --- | --- |
@@ -219,10 +228,11 @@ job, but the documentation has to say so plainly.
 export async function onContentSave(
   content: ContentDraft,
   ctx: PluginContext,
-): Promise<ContentDraft | void>;
+): Promise<{ readonly markdown?: string } | void>;
 ```
 
-Returning a modified draft adopts it; returning `void` changes nothing.
+Returning a replacement `markdown` adopts that value; all other draft fields
+remain owned by Mallok. Returning `void` changes nothing.
 Throwing fails the save and returns the error to the caller — **that is the
 legitimate way for a plugin to refuse a save**, and it is better than
 rewriting silently.
@@ -259,17 +269,17 @@ interface PluginContext {
   readonly secrets: Readonly<Record<string, string>>;
   readonly site: SiteSettings;
   /** Provided by the core, see §7.6. */
-  readonly sendEmail: (message: EmailMessage) => Promise<void>;
-  /** Enqueue a job (§7.4). */
-  readonly enqueue: (type: string, payload: unknown, runAt?: Date) => Promise<string>;
+  readonly sendEmail: (message: EmailMessage) => Promise<string>;
   /** Purge by tag, coalesced automatically. */
-  readonly purgeTags: (tags: readonly string[]) => Promise<void>;
+  readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }
 ```
 
-`PluginRequestContext` adds `request`, `url` and `locale`;
-`PluginRenderContext` adds `content`, `page` and `locale`.
+`PluginRequestContext` adds `request`, `url`, `locale`, `country` and the
+one-way `ipHash`. `PluginRenderContext` contains `settings`, `site`, `locale`,
+`path` and the optional `{ id, kind }` content identity. It deliberately has
+neither secrets nor database access.
 
 **`ctx.db` is the full D1 binding** — a plugin can read and write any table.
 The core enforces no table-level isolation, because that would offer a false
@@ -287,13 +297,18 @@ A plugin brings its own SQL migrations. **Table names must start with
 migrations, records them in the same `migration` table, and shares the same
 `migration_lock`.
 
+The `migrations` array is executable plugin input, not manifest JSON.
+`definePlugin` rejects malformed entries, ids outside that prefix and
+duplicate ids before the composition is installed.
+
 The migration rules are the core's (`DATA_MODEL §2.10`): **additive changes
 only** — new tables, new columns with defaults, new indexes. Dropping a column
 or changing its meaning within one version is not allowed, because the old
 Worker version is still serving during the migration.
 
-Disabling a plugin **does not drop its tables**. Uninstalling one makes the
-admin ask explicitly whether to delete the data, defaulting to no.
+Disabling or removing a plugin from the build **does not drop its tables**.
+0.1 has no automated plugin-data deletion flow; removal leaves that data in
+D1 unless an operator performs a separate, deliberate migration.
 
 ### 7.2 Routes
 
@@ -301,7 +316,6 @@ admin ask explicitly whether to delete the data, defaulting to no.
 core handles:
 
 - body parsing (`application/json` and `application/x-www-form-urlencoded`);
-- zod validation against the schema;
 - the server-side Turnstile `siteverify`, when `turnstile: true`;
 - rate limiting, through the `RATE_LIMITER` Workers binding.
 
@@ -311,13 +325,16 @@ export const routes = {
 };
 ```
 
-The rate-limit binding **counts per data centre and is eventually consistent**
-(`TECH_STACK §5`). Use it to deter abuse only; it **must not** back billing,
-quotas, or anything requiring an exact count.
+The route handler validates its own parsed fields. When `rateLimit: true`, the
+core calls the site's single binding with the fixed key
+`<plugin-id>:<connecting-ip>`; the limit and period belong to that binding's
+`wrangler.jsonc`, not to a manifest value the runtime cannot enforce. It is
+best-effort abuse control and must not back billing or exact quotas.
 
-Routes default to `Cache-Control: private, no-store`. A route declaring
-`cache: true` must also give a `ttl`, and the core refuses to enable caching
-on a route that declares `turnstile` or `rateLimit`.
+Every plugin-route response is rewritten to `Cache-Control: private,
+no-store`; `Cloudflare-CDN-Cache-Control`, `CDN-Cache-Control` and
+`Surrogate-Control` are all forced to `no-store`, and any `Cache-Tag` supplied
+by a handler is removed. Route caching is not part of the 0.1 contract.
 
 ### 7.3 Settings and secrets
 
@@ -338,11 +355,10 @@ secret value.** Rotation is supported: writing a new value overwrites.
 
 ### 7.4 Scheduled work
 
-The `scheduled` hook plus the core's `job` table.
-`ctx.enqueue(type, payload, runAt)` writes a `job` row, with `type`
-automatically prefixed `plugin:<id>:`. Failures retry with exponential
-backoff; past `max_attempts` (5 by default) the job becomes `failed` and is
-visible in the admin.
+The `scheduled` hook runs from Mallok's single once-a-minute trigger. 0.1 does
+not expose a generic `enqueue` capability: there is no public consumer and
+retry protocol for arbitrary plugin jobs. A plugin needing durable state owns
+its own `p_<id>_` table and advances a bounded batch from `scheduled`.
 
 ### 7.5 Declarative admin panels
 
@@ -357,15 +373,15 @@ renders it.
     "type": "table",
     "table": "p_inquiry_inquiry",
     "columns": [
-      { "field": "created_at", "label": "Received", "type": "datetime", "sortable": true },
+      { "field": "created_at", "label": "Received", "type": "datetime" },
       { "field": "name",       "label": "Name" },
       { "field": "email",      "label": "Email",   "type": "email" },
       { "field": "country",    "label": "Country" },
       { "field": "status",     "label": "Status",  "type": "badge" }
     ],
     "filters": [
-      { "field": "status", "type": "select", "choices": ["new", "replied", "spam"] },
-      { "field": "created_at", "type": "daterange" }
+      "status",
+      "created_at"
     ],
     "detail": ["message", "company", "phone", "source_path", "user_agent"],
     "actions": [
@@ -377,14 +393,18 @@ renders it.
 ]
 ```
 
-Ids declared in `actions` correspond to exports from `index.ts`:
+Ids declared in `actions` correspond to keys in the implementation passed to
+`definePlugin`:
 
 ```ts
 export const actions = {
-  async mark_replied(ids: readonly string[], ctx: PluginContext): Promise<void> { … },
-  async export_csv(query: PanelQuery, ctx: PluginContext): Promise<Response> { … },
+  async mark_replied(ids: readonly string[], ctx: PluginContext): Promise<Response | undefined> { … },
+  async export_csv(ids: readonly string[], ctx: PluginContext): Promise<Response> { … },
 };
 ```
+
+Action ids are unique across the whole plugin, because the implementation map
+is plugin-wide even when the declarations appear in different panels.
 
 The inquiry list, and any future order list, is a panel of this kind. **This
 mechanism exists so that a plugin never needs to write React or Preact code**
@@ -419,11 +439,11 @@ default in the email too**.
 
 | Stage | How |
 | --- | --- |
-| Discovery | Static imports at compile time; the registry is `src/plugins/index.ts` |
+| Discovery | Static imports at compile time; the site passes plugins to `createMallok` |
 | Migration | Runs with the core migrations on a Worker cold start |
 | Enable | `plugin_state.enabled = 1`, immediate |
 | Disable | `enabled = 0`; hooks and routes stop at once, **tables and data are kept** |
-| Removal | Delete from the repository and redeploy. The admin asks whether to delete the data, defaulting to no |
+| Removal | Delete the static import and redeploy; 0.1 leaves the plugin's tables intact |
 
 **Dynamic `import` and remote loading are forbidden** (`TECH_STACK §12`). The
 plugin registry is a compile-time constant.

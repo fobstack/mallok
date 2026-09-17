@@ -17,10 +17,10 @@ console.error(
     '',
     'The published package is the framework, built from this repository:',
     '',
-    '  pnpm release:pack          # builds dist/pkg and packs it',
-    '  cd dist/pkg && npm publish',
+    '  pnpm release:pack',
+    '  npm publish dist/release/mallok-<version>.tgz --access public --tag next',
     '',
-    'See docs/RELEASE_GATE.md §3.',
+    'See docs/RELEASE_GATE.md §4–§5.',
     '',
   ].join('\n'),
 );

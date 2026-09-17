@@ -107,21 +107,28 @@ jobs:
       - name: Secret scan, whole history
         run: pnpm scan:secrets
 
-      # The artefact a release is measured from, packed exactly once. Nothing
-      # after this step may write to dist/pkg.
-      - name: Pack, and record what was packed
+      # Build and pack the production artifact once, outside dist/pkg. The
+      # next step installs this exact file; neither step is allowed to repack.
+      - name: Pack the immutable candidate
         run: |
           set -euo pipefail
-          cd dist/pkg
-          npm pack --json > ../../pack.json
-          name=$(node -p "require('../../pack.json')[0].filename")
-          node -e "const p=require('../../pack.json')[0];console.log(JSON.stringify({filename:p.filename,size:p.size,unpackedSize:p.unpackedSize,integrity:p.integrity,shasum:p.shasum},null,2))"
-          shasum -a 256 "$name"
+          pnpm release:pack
+
+      - name: Verify the exact candidate
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./package.json').version")
+          candidate="$PWD/dist/release/mallok-$version.tgz"
+          # Make any accidental read/repack/rebuild of the staging directory
+          # fail. The two boundary suites must work from the tarball alone.
+          mv dist/pkg dist/package-staging-not-used
+          MALLOK_CANDIDATE_TARBALL="$candidate" pnpm test:candidate
+          node scripts/verify-candidate.mjs "$candidate"
 
       - uses: actions/upload-artifact@v4
         with:
           name: mallok-candidate
           path: |
-            dist/pkg/*.tgz
-            pack.json
+            dist/release/*.tgz
+            dist/release/pack.json
           if-no-files-found: error

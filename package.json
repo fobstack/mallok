@@ -47,7 +47,7 @@
     "dev:admin": "vite",
     "admin:size": "node scripts/admin-size.mjs",
     "build:site": "pnpm run build:package && node dist/pkg/cli/index.js build . --theme ./src/themes/atelier --out dist/site",
-    "release:pack": "pnpm run build:package && cd dist/pkg && npm pack",
+    "release:pack": "pnpm run build:package && node scripts/pack-candidate.mjs",
     "prepublishOnly": "node scripts/refuse-publish.mjs",
     "test:coverage": "vitest run --project core --project runtime --project runtime-dom --project runtime-build --coverage",
     "test:e2e": "playwright test",
@@ -55,7 +55,8 @@
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "lighthouse:gate": "node scripts/lighthouse-gate.mjs",
     "build:package": "node scripts/build-package.mjs",
-    "test:release": "vitest run --project release"
+    "test:release": "vitest run --project release",
+    "test:candidate": "vitest run --project core test/cli/package-release.test.ts test/cli/strict-consumer.test.ts"
   },
   "dependencies": {
     "hast-util-to-string": "3.0.1",

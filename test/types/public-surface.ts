@@ -9,11 +9,24 @@
  * simply be a second description of the API, free to be wrong.
  */
 
+import type {
+  MallokPlugin as InternalMallokPlugin,
+  PluginContext as InternalPluginContext,
+  PluginHooks as InternalPluginHooks,
+  PluginInput as InternalPluginInput,
+  PluginRenderContext as InternalPluginRenderContext,
+  PluginRequestContext as InternalPluginRequestContext,
+} from '../../src/plugins/types.js';
 import type { Env as ActualEnv } from '../../src/worker/framework.js';
 import type {
   BundledTheme,
   Env,
   MallokPlugin,
+  PluginContext,
+  PluginHooks,
+  PluginInput,
+  PluginRenderContext,
+  PluginRequestContext,
 } from '../../src/worker/public.js';
 
 type Declared = typeof import('../../src/worker/public.js');
@@ -33,6 +46,10 @@ type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 // declare every binding named here — so it is checked for equality rather
 // than for assignability in one direction.
 export const envMatches: Exact<ActualEnv, Env> = true;
+export const definePluginMatches: Exact<
+  Actual['definePlugin'],
+  Declared['definePlugin']
+> = true;
 
 /**
  * The published shapes are deliberately narrower than the real ones.
@@ -53,6 +70,34 @@ export const themes: readonly BundledTheme[] = [] as unknown as readonly [
   Actual['manual'],
 ];
 export const plugin: MallokPlugin = undefined as unknown as Actual['inquiry'];
+
+// The plugin API is checked in both directions. A one-way assignment let the
+// old opaque `Record<string, unknown>` declarations compile while providing
+// no contextual types to an author writing an inline handler.
+export const internalPluginIsPublic: MallokPlugin =
+  undefined as unknown as InternalMallokPlugin;
+export const publicPluginIsInternal: InternalMallokPlugin =
+  undefined as unknown as MallokPlugin;
+export const internalInputIsPublic: PluginInput =
+  undefined as unknown as InternalPluginInput;
+export const publicInputIsInternal: InternalPluginInput =
+  undefined as unknown as PluginInput;
+export const internalHooksArePublic: PluginHooks =
+  undefined as unknown as InternalPluginHooks;
+export const publicHooksAreInternal: InternalPluginHooks =
+  undefined as unknown as PluginHooks;
+export const internalContextIsPublic: PluginContext =
+  undefined as unknown as InternalPluginContext;
+export const publicContextIsInternal: InternalPluginContext =
+  undefined as unknown as PluginContext;
+export const internalRequestContextIsPublic: PluginRequestContext =
+  undefined as unknown as InternalPluginRequestContext;
+export const publicRequestContextIsInternal: InternalPluginRequestContext =
+  undefined as unknown as PluginRequestContext;
+export const internalRenderContextIsPublic: PluginRenderContext =
+  undefined as unknown as InternalPluginRenderContext;
+export const publicRenderContextIsInternal: InternalPluginRenderContext =
+  undefined as unknown as PluginRenderContext;
 
 export const built: BundledTheme = undefined as unknown as ReturnType<
   Actual['defineTheme']

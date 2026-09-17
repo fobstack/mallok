@@ -14,11 +14,46 @@ const BASE = {
 describe('plugin manifest schema', () => {
   it('parses a minimal manifest with defaults applied', () => {
     const manifest = parsePluginManifest(BASE);
-    expect(manifest.official).toBe(false);
     expect(manifest.pluginApi).toBe(PLUGIN_API_VERSION);
     expect(manifest.hooks).toEqual([]);
     expect(manifest.routes).toEqual([]);
     expect(manifest.affectsFragmentCache).toBe(false);
+  });
+
+  it('rejects unknown fields instead of silently stripping them', () => {
+    expect(() => parsePluginManifest({ ...BASE, official: true })).toThrow(
+      /unrecognized|official/i,
+    );
+    expect(() =>
+      parsePluginManifest({
+        ...BASE,
+        routes: [{ path: 'submit', method: 'POST', cache: true }],
+      }),
+    ).toThrow(/unrecognized|cache/i);
+    expect(() =>
+      parsePluginManifest({
+        ...BASE,
+        settings: { title: { type: 'string', typo: true } },
+      }),
+    ).toThrow(/unrecognized|typo/i);
+  });
+
+  it('uses the real rate-limit contract and rejects duplicate routes', () => {
+    expect(
+      parsePluginManifest({
+        ...BASE,
+        routes: [{ path: 'submit', method: 'POST', rateLimit: true }],
+      }).routes[0]?.rateLimit,
+    ).toBe(true);
+    expect(() =>
+      parsePluginManifest({
+        ...BASE,
+        routes: [
+          { path: 'submit', method: 'POST' },
+          { path: 'submit', method: 'GET' },
+        ],
+      }),
+    ).toThrow(/more than once/i);
   });
 
   it('rejects a beforeRender hook that does not admit changing fragments', () => {
@@ -51,6 +86,42 @@ describe('plugin manifest schema', () => {
         panels: [{ ...panel, table: 'p_sample_rows' }],
       }),
     ).not.toThrow();
+  });
+
+  it('rejects action ids duplicated across panels', () => {
+    const panel = (id: string, table: string) => ({
+      id,
+      label: id,
+      type: 'table' as const,
+      table,
+      columns: [{ field: 'id', label: 'Id' }],
+      actions: [{ id: 'archive', label: 'Archive' }],
+    });
+    expect(() =>
+      parsePluginManifest({
+        ...BASE,
+        panels: [
+          panel('first', 'p_sample_first'),
+          panel('second', 'p_sample_second'),
+        ],
+      }),
+    ).toThrow(/action.*more than once/i);
+  });
+
+  it('rejects panel ids duplicated across the plugin', () => {
+    const panel = (table: string) => ({
+      id: 'rows',
+      label: 'Rows',
+      type: 'table' as const,
+      table,
+      columns: [{ field: 'id', label: 'Id' }],
+    });
+    expect(() =>
+      parsePluginManifest({
+        ...BASE,
+        panels: [panel('p_sample_first'), panel('p_sample_second')],
+      }),
+    ).toThrow(/panel.*more than once/i);
   });
 
   it('rejects a plugin built for a newer plugin API', () => {

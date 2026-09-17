@@ -5,9 +5,30 @@
  */
 
 import type { Root as MdastRoot } from 'mdast';
-import type { PluginManifest } from '../core/index.js';
+import type { PluginManifest as CorePluginManifest } from '../core/index.js';
 import type { Migration } from '../db/migrate.js';
 import type { SiteSettings } from '../worker/site.js';
+
+export type { PluginHookName } from '../core/index.js';
+export type PluginMigration = Migration;
+export type PluginSiteSettings = SiteSettings;
+
+type DeepReadonly<T> = T extends (...args: never[]) => unknown
+  ? T
+  : T extends readonly (infer Item)[]
+    ? readonly DeepReadonly<Item>[]
+    : T extends object
+      ? { readonly [Key in keyof T]: DeepReadonly<T[Key]> }
+      : T;
+
+/** The manifest after validation; plugin code may read it, never mutate it. */
+export type PluginManifest = DeepReadonly<CorePluginManifest>;
+export type PluginSettingDeclaration = PluginManifest['settings'][string];
+export type PluginRouteDeclaration = PluginManifest['routes'][number];
+export type PluginPanelDeclaration = PluginManifest['panels'][number];
+
+/** The real mdast root exposed to a pure `beforeRender` hook. */
+export type PluginMarkdownRoot = MdastRoot;
 
 /** An email handed to `ctx.sendEmail` (docs/PLUGIN_API.md §7.6). */
 export interface EmailMessage {
@@ -71,66 +92,59 @@ export interface RouteInput {
   readonly fields: Readonly<Record<string, string>>;
 }
 
-/** A compiled-in plugin: manifest plus implementation. */
-export interface MallokPlugin {
-  readonly manifest: PluginManifest;
+/** Hook implementations accepted by {@link definePlugin}. */
+export interface PluginHooks {
+  readonly onRequest?: (
+    request: Request,
+    ctx: PluginRequestContext,
+  ) => Promise<Response | undefined>;
+  readonly beforeRender?: (
+    tree: PluginMarkdownRoot,
+    ctx: {
+      readonly frontmatter: Readonly<Record<string, unknown>>;
+      readonly settings?: Readonly<Record<string, unknown>>;
+    },
+  ) => void | Promise<void>;
+  readonly afterRender?: (
+    html: string,
+    ctx: PluginRenderContext,
+  ) => string | Promise<string>;
+  readonly onContentSave?: (
+    draft: ContentDraft,
+    ctx: PluginContext,
+  ) =>
+    | undefined
+    | Partial<Pick<ContentDraft, 'markdown'>>
+    | Promise<undefined | Partial<Pick<ContentDraft, 'markdown'>>>;
+  readonly scheduled?: (ctx: PluginContext) => Promise<void>;
+}
+
+export type PluginRouteHandler = (
+  input: RouteInput,
+  ctx: PluginRequestContext,
+) => Promise<Response>;
+
+export interface PluginExportFile {
+  readonly path: string;
+  readonly text: string;
+}
+
+export interface PluginSecretVerdict {
+  readonly ok: boolean;
+  readonly message: string;
+}
+
+export interface PluginImplementation {
   readonly migrations?: readonly Migration[];
-  readonly hooks?: {
-    readonly onRequest?: (
-      request: Request,
-      ctx: PluginContext,
-    ) => Promise<Response | undefined>;
-    readonly beforeRender?: (
-      tree: MdastRoot,
-      ctx: {
-        readonly frontmatter: Readonly<Record<string, unknown>>;
-        readonly settings?: Readonly<Record<string, unknown>>;
-      },
-    ) => void | Promise<void>;
-    readonly afterRender?: (
-      html: string,
-      ctx: PluginRenderContext,
-    ) => string | Promise<string>;
-    readonly onContentSave?: (
-      draft: ContentDraft,
-      ctx: PluginContext,
-    ) =>
-      | undefined
-      | Partial<Pick<ContentDraft, 'markdown'>>
-      | Promise<undefined | Partial<Pick<ContentDraft, 'markdown'>>>;
-    readonly scheduled?: (ctx: PluginContext) => Promise<void>;
-  };
+  readonly hooks?: PluginHooks;
   /** Handlers keyed by the route `path` declared in the manifest. */
-  readonly routes?: Readonly<
-    Record<
-      string,
-      (input: RouteInput, ctx: PluginRequestContext) => Promise<Response>
-    >
-  >;
-  /**
-   * Files this plugin adds to a site export (docs/CONTENT_FORMAT.md §5).
-   *
-   * The core does not know that inquiries exist; a plugin that owns business
-   * data says so here, and the export includes it. Secrets and settings are
-   * never exported, so this returns content only.
-   */
+  readonly routes?: Readonly<Record<string, PluginRouteHandler>>;
   readonly exportFiles?: (
     ctx: PluginContext,
-  ) => Promise<readonly { readonly path: string; readonly text: string }[]>;
-  /**
-   * Checks a configured secret, so a wrong key is found now rather than when
-   * the first real message fails.
-   *
-   * Keyed by secret name. The check must be read-only or otherwise harmless
-   * to repeat: it runs whenever someone presses the button.
-   */
+  ) => Promise<readonly PluginExportFile[]>;
   readonly checkSecrets?: Readonly<
-    Record<
-      string,
-      (ctx: PluginContext) => Promise<{ ok: boolean; message: string }>
-    >
+    Record<string, (ctx: PluginContext) => Promise<PluginSecretVerdict>>
   >;
-  /** Panel action handlers (docs/PLUGIN_API.md §7.5). */
   readonly actions?: Readonly<
     Record<
       string,
@@ -140,4 +154,14 @@ export interface MallokPlugin {
       ) => Promise<Response | undefined>
     >
   >;
+}
+
+/** What `definePlugin` accepts before the manifest has been parsed. */
+export interface PluginInput extends PluginImplementation {
+  readonly manifest: unknown;
+}
+
+/** A compiled-in plugin: manifest plus implementation. */
+export interface MallokPlugin extends PluginImplementation {
+  readonly manifest: PluginManifest;
 }

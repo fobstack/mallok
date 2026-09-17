@@ -88,6 +88,15 @@ export default defineConfig({
     target: 'es2022',
     // Hashed asset names, so Static Assets can serve them immutably.
     assetsDir: 'assets',
+    // A package build asks Vite for the exact dependency graph of the admin
+    // chunks. `scripts/build-package.mjs` merges that machine-readable file
+    // into the package's single THIRD_PARTY_NOTICES and removes it before the
+    // admin assets are copied. Normal site/admin builds do not emit it, so an
+    // internal licence inventory can never become a public Static Asset.
+    license:
+      process.env.MALLOK_ADMIN_LICENSES === '1'
+        ? { fileName: '.mallok-admin-licenses.json' }
+        : false,
     rollupOptions: {
       output: {
         // CodeMirror is loaded only when the editor opens

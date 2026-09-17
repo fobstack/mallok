@@ -596,8 +596,8 @@ confirmation.
 ## 12. Plugins
 
 A plugin is real JavaScript or TypeScript, and **official and third-party
-plugins take the same path**: source into `src/plugins/`, bundled into the
-Worker at build time.
+plugins take the same path**: a static import passed to `createMallok`, bundled
+into the Worker at build time and normalised by `definePlugin`.
 
 | Action | How it takes effect |
 | --- | --- |
@@ -611,7 +611,7 @@ from installing. The interface must state both facts separately.
 
 ```text
 src/plugins/inquiry/
-├── plugin.json     # name, version, hooks, routes, settings and secrets, table migrations, admin panels, declared client JS
+├── plugin.json     # name, version, hooks, routes, settings and secrets, admin panels, declared client JS
 ├── migrations/
 │   └── 0001_inquiry.sql
 └── index.ts
@@ -632,12 +632,12 @@ the core:
 
 1. **Tables**: a plugin brings SQL migrations, with table names prefixed
    `p_<plugin>_`, run and recorded by the core's migrator.
-2. **Routes**: `/_mallok/p/<plugin>/<path>`, declaring method, cacheability,
-   whether Turnstile verification is required, and the rate-limit key. The
-   core provides body parsing, zod validation, server-side Turnstile
-   verification and rate limiting through the Workers binding — which counts
-   per data centre and is eventually consistent, so it deters abuse and must
-   not back billing.
+2. **Routes**: `/_mallok/p/<plugin>/<path>`, declaring method, whether
+   Turnstile verification is required, and whether to use the site's rate
+   limit binding. The core provides body parsing, server-side Turnstile
+   verification and best-effort rate limiting under a fixed
+   `<plugin-id>:<ip>` key. Handlers validate their own fields. Every response
+   is forced to `private, no-store`; plugin-route caching is not in 0.1.
 3. **Settings and secrets**: ordinary settings in cleartext in
    `plugin_state.settings`; anything declared a `secret` is AES-GCM encrypted
    with the deployment's `MALLOK_SECRET` into `plugin_state.secrets`, editable

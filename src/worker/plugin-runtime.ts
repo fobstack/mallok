@@ -227,7 +227,13 @@ export async function runOnRequest(
     if (hook === undefined) {
       continue;
     }
-    const ctx = await buildPluginContext(env, executionCtx, site, active);
+    const ctx = await buildRequestContext(
+      env,
+      executionCtx,
+      site,
+      active,
+      request,
+    );
     const response = await hook(request, ctx);
     if (response !== undefined) {
       return response;
@@ -260,41 +266,45 @@ export async function handlePluginRoute(
     pathname,
   );
   if (match === null) {
-    return problem(404, 'Not found.');
+    return enforcePluginRouteNoStore(problem(404, 'Not found.'));
   }
   const [, pluginId = '', routePath = ''] = match;
   const active = activePlugins(rows).find(
     (candidate) => candidate.state.plugin_id === pluginId,
   );
   if (active === undefined) {
-    return problem(404, 'Not found.');
+    return enforcePluginRouteNoStore(problem(404, 'Not found.'));
   }
   const declaration = active.plugin.manifest.routes.find(
     (route) => route.path === routePath,
   );
   const handler = active.plugin.routes?.[routePath];
   if (declaration === undefined || handler === undefined) {
-    return problem(404, 'Not found.');
+    return enforcePluginRouteNoStore(problem(404, 'Not found.'));
   }
   if (request.method !== declaration.method) {
-    return problem(405, 'Method not allowed.');
+    return enforcePluginRouteNoStore(problem(405, 'Method not allowed.'));
   }
 
   // Rate limiting is best-effort by design (docs/SECURITY.md §12.5): with no
   // binding configured the request proceeds.
-  if (declaration.rateLimit !== undefined && env.RATE_LIMITER !== undefined) {
+  if (declaration.rateLimit && env.RATE_LIMITER !== undefined) {
     const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
     const { success } = await env.RATE_LIMITER.limit({
       key: `${pluginId}:${ip}`,
     });
     if (!success) {
-      return problem(429, 'Too many requests. Try again in a minute.');
+      return enforcePluginRouteNoStore(
+        problem(429, 'Too many requests. Try again in a minute.'),
+      );
     }
   }
 
   const fields = await parseBody(request);
   if (fields === null) {
-    return problem(400, 'The request body could not be read.');
+    return enforcePluginRouteNoStore(
+      problem(400, 'The request body could not be read.'),
+    );
   }
 
   const ctx = await buildRequestContext(
@@ -308,16 +318,30 @@ export async function handlePluginRoute(
   if (declaration.turnstile) {
     const verdict = await verifyTurnstile(ctx, fields['cf-turnstile-response']);
     if (verdict === 'rejected') {
-      return problem(
-        403,
-        'The anti-spam check did not pass. Reload and try again.',
+      return enforcePluginRouteNoStore(
+        problem(403, 'The anti-spam check did not pass. Reload and try again.'),
       );
     }
     // 'unconfigured' proceeds: an operator who has not set Turnstile up gets
     // the honeypot-only degraded mode, not a broken form.
   }
 
-  return handler({ fields }, ctx);
+  return enforcePluginRouteNoStore(await handler({ fields }, ctx));
+}
+
+/** Plugin endpoints never participate in browser or shared caching in 0.1. */
+export function enforcePluginRouteNoStore(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set('cache-control', 'private, no-store');
+  headers.set('cloudflare-cdn-cache-control', 'no-store');
+  headers.set('cdn-cache-control', 'no-store');
+  headers.set('surrogate-control', 'no-store');
+  headers.delete('cache-tag');
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 async function verifyTurnstile(

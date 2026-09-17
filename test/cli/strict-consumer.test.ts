@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -72,16 +72,23 @@ async function run(
 beforeAll(async () => {
   sandbox = await mkdtemp(join(tmpdir(), 'mallok-strict-'));
 
-  // Packed into the sandbox rather than into `dist/pkg`, so that nothing here
-  // can overwrite the tarball a release is measured from.
-  const packed = await run(
-    'npm',
-    ['pack', '--json', '--pack-destination', sandbox],
-    join(process.cwd(), 'dist/pkg'),
-  );
-  expect(packed.code, packed.stderr).toBe(0);
-  const [entry] = JSON.parse(packed.stdout) as { filename: string }[];
-  tarball = join(sandbox, entry?.filename ?? '');
+  const candidate = process.env.MALLOK_CANDIDATE_TARBALL;
+  if (candidate !== undefined) {
+    // The release gate supplies the already packed file selected for
+    // publication. Repacking dist/pkg here would verify a different artifact.
+    tarball = resolve(candidate);
+    await expect(readFile(tarball)).resolves.toBeDefined();
+  } else {
+    // Normal development tests make an isolated throwaway tarball.
+    const packed = await run(
+      'npm',
+      ['pack', '--json', '--pack-destination', sandbox],
+      join(process.cwd(), 'dist/pkg'),
+    );
+    expect(packed.code, packed.stderr).toBe(0);
+    const [entry] = JSON.parse(packed.stdout) as { filename: string }[];
+    tarball = join(sandbox, entry?.filename ?? '');
+  }
 
   await writeFile(
     join(sandbox, 'package.json'),
@@ -213,7 +220,8 @@ describe('a project that installed only the tarball', () => {
   it('compiles a real third-party plugin, written against the package alone', async () => {
     // The surface `docs/PLUGIN_API.md` promises, exercised the way an author
     // would meet it: a manifest, a declared hook and a declared route, with
-    // the handlers annotated using the context types the package exports.
+    // inline handlers receiving their types from `definePlugin`. Explicit
+    // annotations would hide the exact regression this consumer catches.
     //
     // Before this, `mallok/worker` exported `MallokPlugin` with an opaque
     // four-field manifest and nothing else — enough for a site to *name* a
@@ -223,14 +231,6 @@ describe('a project that installed only the tarball', () => {
     await writeFile(
       join(sandbox, 'src/plugin.ts'),
       [
-        'import type {',
-        '  ContentDraft,',
-        '  MallokPlugin,',
-        '  PluginContext,',
-        '  PluginRenderContext,',
-        '  PluginRequestContext,',
-        '  RouteInput,',
-        "} from 'mallok/worker';",
         "import { definePlugin } from 'mallok/worker';",
         '',
         'const manifest = {',
@@ -243,38 +243,54 @@ describe('a project that installed only the tarball', () => {
         '  settings: {',
         "    heading: { type: 'string', label: 'Heading' },",
         '  },',
+        "  secrets: { token: { label: 'Token' } },",
+        '  panels: [{',
+        "    id: 'entries', label: 'Entries', type: 'table',",
+        "    table: 'p_guestbook_entries',",
+        "    columns: [{ field: 'name', label: 'Name' }],",
+        "    actions: [{ id: 'clear', label: 'Clear' }],",
+        '  }],',
         '};',
         '',
-        '// A route handler, with the context type the package exports.',
-        'async function sign(',
-        '  input: RouteInput,',
-        '  ctx: PluginRequestContext,',
-        '): Promise<Response> {',
-        "  const name = input.fields.name ?? 'anonymous';",
-        '  await ctx.db',
-        "    .prepare('INSERT INTO p_guestbook_entries (name) VALUES (?)')",
-        '    .bind(name)',
-        '    .run();',
-        '  ctx.waitUntil(ctx.purgeTags([`kind:page`]));',
-        "  return new Response('ok', { status: 201 });",
-        '}',
-        '',
-        'const plugin: MallokPlugin = definePlugin({',
+        'const plugin = definePlugin({',
         '  manifest,',
+        "  migrations: [{ id: 'plugin:guestbook:0001', sql: 'SELECT 1' }],",
         '  hooks: {',
-        '    afterRender: (html: string, ctx: PluginRenderContext) =>',
-        '      `${html}<!-- ${ctx.site.name} ${ctx.locale} -->`,',
-        '    onContentSave: async (draft: ContentDraft, ctx: PluginContext) => {',
+        '    afterRender: (html, ctx) =>',
+        '      `#{html}<!-- #{ctx.site.name} #{ctx.locale} -->`,'.replaceAll(
+          '#',
+          '$',
+        ),
+        '    onContentSave: async (draft, ctx) => {',
         '      await ctx.sendEmail({',
         "        to: 'editor@example.com',",
-        '        subject: `Saved ${draft.title}`,',
-        '        html: `<p>${draft.slug}</p>`,',
+        '        subject: `Saved #{draft.title}`,'.replace('#', '$'),
+        '        html: `<p>#{draft.slug}</p>`,'.replace('#', '$'),
         '        text: draft.slug,',
         '      });',
         '      return undefined;',
         '    },',
         '  },',
-        '  routes: { sign },',
+        '  routes: {',
+        '    async sign(input, ctx) {',
+        "      return new Response(`#{input.fields.name ?? 'anonymous'}:#{ctx.locale}`, { status: 201 });".replaceAll(
+          '#',
+          '$',
+        ),
+        '    },',
+        '  },',
+        '  exportFiles: async (ctx) => [',
+        "    { path: 'guestbook.txt', text: ctx.site.name },",
+        '  ],',
+        '  checkSecrets: {',
+        "    token: async (ctx) => ({ ok: Boolean(ctx.secrets.token), message: 'checked' }),",
+        '  },',
+        '  actions: {',
+        '    clear: async (ids, ctx) => new Response(`#{ids.length}:#{ctx.site.name}`),'.replaceAll(
+          '#',
+          '$',
+        ),
+        '  },',
         '});',
         '',
         'export default plugin;',
@@ -291,41 +307,45 @@ describe('a project that installed only the tarball', () => {
     expect(result.code, result.stdout + result.stderr).toBe(0);
   }, 300_000);
 
-  it('runs that plugin’s definition, and refuses a broken one', async () => {
-    // Compiling is not enough: `definePlugin` does its work at run time, so
-    // the package has to be *executed* from the installed tarball.
+  it('runs that same compiled plugin, and refuses a broken one', async () => {
+    const compiled = await run(
+      join(sandbox, 'node_modules/.bin/tsc'),
+      ['-p', 'tsconfig.json', '--noEmit', 'false', '--outDir', 'compiled'],
+      sandbox,
+    );
+    expect(compiled.code, compiled.stdout + compiled.stderr).toBe(0);
+
+    // Compiling is not enough: `definePlugin` does its work at module
+    // initialisation, so execute the exact third-party source above.
     const script = join(sandbox, 'plugin-check.mjs');
     await writeFile(
       script,
       [
+        "import plugin from './compiled/plugin.js';",
         "import { definePlugin } from 'mallok/worker';",
         '',
-        'const manifest = {',
-        "  id: 'guestbook',",
-        "  name: 'Guestbook',",
-        "  version: '1.0.0',",
-        '  pluginApi: 1,',
-        '};',
-        '',
-        '// A manifest with no hooks and no settings: the shape that made the',
-        '// runtime throw "Cannot read properties of undefined" on a request.',
-        'const ok = definePlugin({ manifest });',
-        'if (!Array.isArray(ok.manifest.hooks) || ok.manifest.hooks.length) {',
-        '  throw new Error("hooks were not defaulted");',
+        'if (plugin.manifest.routes[0].rateLimit !== false) {',
+        '  throw new Error("route defaults were not applied");',
         '}',
-        'if (typeof ok.manifest.settings !== "object") {',
-        '  throw new Error("settings were not defaulted");',
-        '}',
+        'const routed = await plugin.routes.sign(',
+        "  { fields: { name: 'Ada' } },",
+        "  { locale: 'en' },",
+        ');',
+        "if ((await routed.text()) !== 'Ada:en') throw new Error('route did not run');",
+        "const rendered = await plugin.hooks.afterRender('page', {",
+        "  site: { name: 'Acme' }, locale: 'en',",
+        '});',
+        "if (!rendered.includes('Acme en')) throw new Error('hook did not run');",
         '',
         '// And a declared hook with no implementation must refuse, naming it.',
         'let refused = null;',
         'try {',
-        '  definePlugin({ manifest: { ...manifest, hooks: ["scheduled"] } });',
+        '  definePlugin({ manifest: { id: "bad", name: "Bad", version: "1.0.0", hooks: ["scheduled"] } });',
         '} catch (error) {',
         '  refused = error;',
         '}',
         'if (refused === null) throw new Error("a broken plugin was accepted");',
-        'if (!String(refused.message).includes("guestbook")) {',
+        'if (!String(refused.message).includes("bad")) {',
         '  throw new Error("the refusal did not name the plugin");',
         '}',
         'process.stdout.write("plugin: ok\\n");',
@@ -365,8 +385,12 @@ describe('a project that installed only the tarball', () => {
     )) {
       const specifier = match[1] ?? '';
       const bare = !specifier.startsWith('.') && !specifier.startsWith('node:');
+      const providedByTypesPackage =
+        specifier === 'mdast' && declared.has('@types/mdast');
       expect(
-        bare && !declared.has(specifier.split('/')[0] ?? ''),
+        bare &&
+          !providedByTypesPackage &&
+          !declared.has(specifier.split('/')[0] ?? ''),
         specifier,
       ).toBe(false);
     }
@@ -380,9 +404,22 @@ describe('the notices for what the bundles inlined', () => {
       'utf8',
     );
 
-    // Read from esbuild's metafiles, so these are packages whose code is
-    // genuinely inside `worker/index.js` — not a copy of `dependencies`.
-    for (const bundled of ['liquidjs', 'unified', 'micromark', 'zod']) {
+    // Read from esbuild's metafiles and Vite's generated licence graph, so
+    // these are packages genuinely inside a shipped bundle — not a copy of
+    // `dependencies`.
+    for (const bundled of [
+      // Worker and CLI (esbuild metafiles).
+      'liquidjs',
+      'unified',
+      'micromark',
+      'zod',
+      // Admin (Vite 8's generated build graph).
+      'react',
+      'react-dom',
+      '@preact/signals-react',
+      '@codemirror/state',
+      '@codemirror/view',
+    ]) {
       expect(notices, bundled).toContain(`  - ${bundled}@`);
     }
 
@@ -390,10 +427,14 @@ describe('the notices for what the bundles inlined', () => {
     // for the consumer's platform, never inlined, so it is not redistributed
     // here and has no place in this file.
     expect(notices).not.toContain('  - sharp@');
+    expect(notices).not.toMatch(/@(unknown|0\.0\.0)\b/);
 
     // Licence texts, not just a list of names: the list alone satisfies no
     // licence.
     expect(notices).toContain('Permission is hereby granted, free of charge');
+    expect(notices).not.toContain(
+      'No licence file is shipped with this package',
+    );
     expect(notices.length).toBeGreaterThan(20_000);
   });
 

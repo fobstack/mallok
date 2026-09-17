@@ -16,6 +16,7 @@ import {
   setPluginSecrets,
   setPluginSettings,
 } from '../db/queries.js';
+import { isOfficialPlugin } from '../plugins/define.js';
 import type { MallokPlugin } from '../plugins/types.js';
 import { hasScope, type Principal, type Scope } from './auth.js';
 import { purgeTags } from './cache.js';
@@ -127,7 +128,7 @@ async function listPlugins(env: Env): Promise<Response> {
       name: manifest.name,
       version: manifest.version,
       description: manifest.description ?? '',
-      official: manifest.official,
+      official: isOfficialPlugin(plugin),
       enabled: state?.enabled === 1,
       hooks: manifest.hooks,
       routes: manifest.routes.map((route) => route.path),

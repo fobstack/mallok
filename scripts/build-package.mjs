@@ -39,6 +39,7 @@ const run = promisify(execFile);
 const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 
 const OUT = 'dist/pkg';
+const ADMIN_LICENSES = 'dist/assets/_mallok/app/.mallok-admin-licenses.json';
 
 /**
  * The two builds this one packages.
@@ -48,13 +49,31 @@ const OUT = 'dist/pkg';
  * and a package built from a stale `dist/` is the kind of green that means
  * nothing.
  */
-for (const [label, command, args] of [
-  ['themes', 'node', ['scripts/build-themes.mjs']],
-  ['admin', 'npx', ['vite', 'build']],
+for (const [label, command, args, environment] of [
+  ['themes', 'node', ['scripts/build-themes.mjs'], process.env],
+  [
+    'admin',
+    process.execPath,
+    ['node_modules/vite/bin/vite.js', 'build'],
+    { ...process.env, MALLOK_ADMIN_LICENSES: '1' },
+  ],
 ]) {
   process.stdout.write(`building ${label}…\n`);
-  await run(command, args, { maxBuffer: 32 * 1024 * 1024 });
+  await run(command, args, {
+    env: environment,
+    maxBuffer: 32 * 1024 * 1024,
+  });
 }
+
+// Vite 8 derives this from the modules that actually reached an admin chunk.
+// It is an input to the package-level notices, not a site asset. Read and
+// delete it before copying `dist/assets`, and fail closed if Vite ever stops
+// producing the promised graph.
+const adminLicenses = JSON.parse(await readFile(ADMIN_LICENSES, 'utf8'));
+if (!Array.isArray(adminLicenses) || adminLicenses.length === 0) {
+  throw new Error('Vite produced no admin licence inventory.');
+}
+await rm(ADMIN_LICENSES);
 
 /** Text the Worker bundle inlines, matching wrangler.jsonc's Text rule. */
 const TEXT_LOADERS = {
@@ -185,10 +204,11 @@ await writeFile(
 await copyFile('LICENSE', `${OUT}/LICENSE`);
 await copyFile('NOTICE', `${OUT}/NOTICE`);
 
-// Attribution for what the two bundles above actually inlined, read from
-// their own metafiles. Redistributing a bundle without the notices of what is
-// inside it is a licence breach, not a documentation gap.
-const notices = await thirdPartyNotices([worker, cli]);
+// Attribution for all three redistributed build graphs: Worker and CLI from
+// esbuild's metafiles, and the separately built admin from Vite 8's licence
+// inventory. Redistributing a bundle without the notices of what is inside it
+// is a licence breach, not a documentation gap.
+const notices = await thirdPartyNotices([worker, cli], adminLicenses);
 await writeFile(`${OUT}/THIRD_PARTY_NOTICES`, notices.text, 'utf8');
 await writeFile(`${OUT}/README.md`, packageReadme(version));
 
@@ -225,7 +245,10 @@ await writeFile(
         'README.md',
       ],
       engines: { node: '>=22' },
-      dependencies: { sharp: '0.35.4' },
+      dependencies: {
+        '@types/mdast': '4.0.4',
+        sharp: '0.35.4',
+      },
       license: 'Apache-2.0',
       repository: {
         type: 'git',

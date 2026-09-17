@@ -10,12 +10,9 @@
  */
 
 import { z } from 'zod';
-import { parsePluginManifest, renderTextTemplate } from '../../core/index.js';
-import type {
-  MallokPlugin,
-  PluginRequestContext,
-  RouteInput,
-} from '../types.js';
+import { renderTextTemplate } from '../../core/index.js';
+import { defineOfficialPlugin } from '../define.js';
+import type { PluginRequestContext, RouteInput } from '../types.js';
 import {
   buildAutoreply,
   buildNotification,
@@ -24,8 +21,6 @@ import {
 import { buildInquiryForm, INQUIRY_MARKER } from './form.js';
 import inquirySql from './migrations/0001_inquiry.sql';
 import manifestJson from './plugin.json';
-
-const manifest = parsePluginManifest(manifestJson);
 
 const submitSchema = z.object({
   name: z.string().trim().min(1).max(200),
@@ -274,8 +269,8 @@ async function inquiriesCsv(db: D1Database): Promise<string> {
 }
 
 /** The official inquiry plugin. */
-export const inquiryPlugin: MallokPlugin = {
-  manifest,
+export const inquiryPlugin = defineOfficialPlugin({
+  manifest: manifestJson,
   migrations: [{ id: 'plugin:inquiry:0001_inquiry', sql: inquirySql }],
   hooks: {
     afterRender: (html, ctx) => {
@@ -392,4 +387,4 @@ export const inquiryPlugin: MallokPlugin = {
         },
       }),
   },
-};
+});

@@ -138,7 +138,7 @@ export default defineConfig({
           // rather than seconds. `pnpm test` stays usable; `pnpm test:release`
           // runs it, and the release gate runs that.
           exclude: ['test/cli/upgrade.test.ts'],
-          // Builds `dist/pkg` once. Two CLI test files need it, they run
+          // Builds `dist/pkg` once. Several CLI tests need it, they run
           // concurrently, and the build starts by removing the directory.
           globalSetup: ['test/cli/helpers/build-package.ts'],
         },

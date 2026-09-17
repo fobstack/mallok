@@ -3,7 +3,6 @@
   "name": "Inquiry",
   "version": "0.1.0",
   "description": "A zero-JavaScript inquiry form with spam protection, email notification and an admin panel.",
-  "official": true,
   "pluginApi": 1,
   "hooks": ["afterRender"],
   "routes": [
@@ -11,10 +10,7 @@
       "path": "submit",
       "method": "POST",
       "turnstile": true,
-      "rateLimit": {
-        "limit": 5,
-        "period": 60
-      }
+      "rateLimit": true
     }
   ],
   "settings": {

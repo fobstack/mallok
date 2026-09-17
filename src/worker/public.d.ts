@@ -3,15 +3,15 @@
  *
  * Shipped instead of the emitted declaration tree, which could not be
  * consumed. `tsc` follows every `.d.ts` it loads, and the emitted one reached
- * `zod`, `mdast` and `hast` through the core barrel — three packages the
- * published `mallok` does not depend on. Any site that turns `skipLibCheck`
- * off, which is what a careful project does, got three unresolved-module
- * errors before compiling a line of its own code.
+ * `zod`, `mdast` and `hast` through the core barrel. Any site that turned
+ * `skipLibCheck` off got unresolved-module errors before compiling a line of
+ * its own code.
  *
  * The alternative was to add those three to the package's dependencies. That
- * would make every site install a schema library, a Markdown AST and an HTML
- * AST in order to name a theme — for types that describe how a manifest is
- * *validated*, which is Mallok's business and not the site's.
+ * would make every site install a schema library and an HTML AST in order to
+ * name a theme. The one deliberate type dependency is `@types/mdast`, because
+ * `beforeRender` really does expose mdast and authors must be able to inspect
+ * and modify its full tree without casts.
  *
  * Hand-written declarations normally rot away from the code they describe.
  * These cannot: `test/types/public-surface.ts` type-checks the real
@@ -19,6 +19,8 @@
  * a value export appears on one side and not the other, or if `Env` stops
  * matching exactly.
  */
+
+import type { Root as MdastRoot } from 'mdast';
 
 /** Bindings and secrets the Worker reads (see `wrangler.jsonc`). */
 export interface Env {
@@ -83,21 +85,7 @@ export interface BundledTheme {
   readonly files: Readonly<Record<string, string>>;
 }
 
-/**
- * The plugin author's surface (docs/PLUGIN_API.md §5–§7).
- *
- * This used to be `MallokPlugin` alone, with an opaque four-field manifest —
- * enough for a site to *name* a plugin and not nearly enough to write one. A
- * third-party author had to reach into the package's internals or re-declare
- * the context objects by hand, which is the private interface §1 says does
- * not exist.
- *
- * The manifest itself stays described by the fields a *site* reads. Its full
- * schema is `plugin.json`'s (§4), validated by `definePlugin` at build time,
- * and it is data rather than something an author should have to satisfy in a
- * type — a field list here would drift from the schema and be wrong in a way
- * nobody notices.
- */
+/** The plugin author's surface (docs/PLUGIN_API.md §4–§7). */
 
 /** An email handed to `ctx.sendEmail` (§7.6). */
 export interface EmailMessage {
@@ -129,6 +117,83 @@ export interface PluginSiteSettings {
   readonly domain: string | null;
   readonly mediaBaseUrl: string;
   readonly cacheTtl: number;
+}
+
+export type PluginHookName =
+  | 'onRequest'
+  | 'beforeRender'
+  | 'afterRender'
+  | 'onContentSave'
+  | 'scheduled';
+
+export interface PluginSettingDeclaration {
+  readonly type:
+    | 'string'
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'date'
+    | 'select'
+    | 'string[]'
+    | 'color'
+    | 'keyvalue';
+  readonly label?: string | undefined;
+  readonly required: boolean;
+  readonly help?: string | undefined;
+  readonly group?: string | undefined;
+  readonly default?: unknown;
+  readonly choices?: readonly string[] | undefined;
+  readonly max?: number | undefined;
+  readonly min?: number | undefined;
+}
+
+export interface PluginRouteDeclaration {
+  readonly path: string;
+  readonly method: 'GET' | 'POST';
+  readonly turnstile: boolean;
+  readonly rateLimit: boolean;
+}
+
+export interface PluginPanelDeclaration {
+  readonly id: string;
+  readonly label: string;
+  readonly type: 'table';
+  readonly table: string;
+  readonly columns: readonly {
+    readonly field: string;
+    readonly label: string;
+    readonly type: 'text' | 'email' | 'datetime' | 'badge';
+  }[];
+  readonly filters: readonly string[];
+  readonly detail: readonly string[];
+  readonly orderBy: string;
+  readonly actions: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly type: 'update' | 'download';
+  }[];
+}
+
+/** A manifest after {@link definePlugin} has validated and defaulted it. */
+export interface PluginManifest {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly description?: string | undefined;
+  readonly pluginApi: number;
+  readonly hooks: readonly PluginHookName[];
+  readonly routes: readonly PluginRouteDeclaration[];
+  readonly settings: Readonly<Record<string, PluginSettingDeclaration>>;
+  readonly secrets: Readonly<
+    Record<string, { readonly label: string; readonly required: boolean }>
+  >;
+  readonly panels: readonly PluginPanelDeclaration[];
+  readonly affectsFragmentCache: boolean;
+  readonly clientScripts: readonly {
+    readonly src: string;
+    readonly purpose: string;
+    readonly bytes?: number | undefined;
+  }[];
 }
 
 /** Capabilities every plugin call receives (§7). */
@@ -188,35 +253,83 @@ export interface RouteInput {
   readonly fields: Readonly<Record<string, string>>;
 }
 
-/** A plugin compiled into this build. */
-export interface MallokPlugin {
-  readonly manifest: {
-    readonly id: string;
-    readonly name: string;
-    readonly version: string;
-    readonly pluginApi: number;
-    readonly hooks: readonly string[];
-    readonly routes: readonly { readonly path: string }[];
-    readonly settings: Readonly<Record<string, unknown>>;
-  };
-  /**
-   * The implementations, as the runtime holds them.
-   *
-   * Opaque here on purpose. An author writes their handlers against the
-   * context types above and passes them to {@link definePlugin}, which is
-   * what checks that the manifest and the implementations agree; restating
-   * the handler signatures in this shape would make a plugin's own correctly
-   * typed functions fail to assign for reasons that are about variance
-   * rather than about the plugin.
-   */
-  readonly hooks?: Readonly<Record<string, unknown>>;
-  readonly routes?: Readonly<Record<string, unknown>>;
-  readonly migrations?: readonly unknown[];
+export type PluginMarkdownRoot = MdastRoot;
+
+export interface PluginHooks {
+  readonly onRequest?: (
+    request: Request,
+    ctx: PluginRequestContext,
+  ) => Promise<Response | undefined>;
+  readonly beforeRender?: (
+    tree: PluginMarkdownRoot,
+    ctx: {
+      readonly frontmatter: Readonly<Record<string, unknown>>;
+      readonly settings?: Readonly<Record<string, unknown>>;
+    },
+  ) => void | Promise<void>;
+  readonly afterRender?: (
+    html: string,
+    ctx: PluginRenderContext,
+  ) => string | Promise<string>;
+  readonly onContentSave?: (
+    draft: ContentDraft,
+    ctx: PluginContext,
+  ) =>
+    | undefined
+    | Partial<Pick<ContentDraft, 'markdown'>>
+    | Promise<undefined | Partial<Pick<ContentDraft, 'markdown'>>>;
+  readonly scheduled?: (ctx: PluginContext) => Promise<void>;
+}
+
+export type PluginRouteHandler = (
+  input: RouteInput,
+  ctx: PluginRequestContext,
+) => Promise<Response>;
+
+export interface PluginMigration {
+  readonly id: string;
+  readonly sql: string;
+}
+
+export interface PluginExportFile {
+  readonly path: string;
+  readonly text: string;
+}
+
+export interface PluginSecretVerdict {
+  readonly ok: boolean;
+  readonly message: string;
+}
+
+export interface PluginImplementation {
+  readonly migrations?: readonly PluginMigration[];
+  readonly hooks?: PluginHooks;
+  readonly routes?: Readonly<Record<string, PluginRouteHandler>>;
+  readonly exportFiles?: (
+    ctx: PluginContext,
+  ) => Promise<readonly PluginExportFile[]>;
+  readonly checkSecrets?: Readonly<
+    Record<string, (ctx: PluginContext) => Promise<PluginSecretVerdict>>
+  >;
+  readonly actions?: Readonly<
+    Record<
+      string,
+      (
+        ids: readonly string[],
+        ctx: PluginContext,
+      ) => Promise<Response | undefined>
+    >
+  >;
 }
 
 /** What {@link definePlugin} accepts: a plugin whose manifest is unparsed. */
-export interface PluginInput extends Omit<MallokPlugin, 'manifest'> {
+export interface PluginInput extends PluginImplementation {
   readonly manifest: unknown;
+}
+
+/** A plugin compiled into this build. */
+export interface MallokPlugin extends PluginImplementation {
+  readonly manifest: PluginManifest;
 }
 
 /** A refusal from {@link definePlugin}, carrying what to do about it. */
@@ -280,7 +393,7 @@ export interface MallokOptions {
   /** The theme this deployment renders with. */
   readonly theme: BundledTheme;
   /** Plugins compiled into this deployment. Defaults to none. */
-  readonly plugins?: readonly MallokPlugin[];
+  readonly plugins?: readonly PluginInput[];
 }
 
 /**

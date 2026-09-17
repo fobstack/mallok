@@ -29,12 +29,13 @@
  */
 
 import { PLUGIN_HOOKS, parsePluginManifest } from '../core/index.js';
-import type { MallokPlugin } from './types.js';
+import type { MallokPlugin, PluginInput } from './types.js';
 
-/** What `definePlugin` accepts: a plugin whose manifest may be unparsed. */
-export interface PluginInput extends Omit<MallokPlugin, 'manifest'> {
-  readonly manifest: unknown;
-}
+export type { PluginInput } from './types.js';
+
+/** Runtime provenance. Neither marker is a field a third party can forge. */
+const definedPlugins = new WeakSet<object>();
+const officialPlugins = new WeakSet<object>();
 
 /**
  * A refusal from `definePlugin`, with somewhere to put the detail.
@@ -72,6 +73,13 @@ function refuse(id: string, what: string, hint: string): never {
  * ```
  */
 export function definePlugin(input: PluginInput): MallokPlugin {
+  if (
+    input !== null &&
+    typeof input === 'object' &&
+    definedPlugins.has(input)
+  ) {
+    return input as MallokPlugin;
+  }
   if (input?.manifest === undefined || input.manifest === null) {
     throw new PluginDefinitionError(
       'A plugin needs a manifest.',
@@ -118,9 +126,17 @@ export function definePlugin(input: PluginInput): MallokPlugin {
   const { id } = manifest;
 
   // ---- hooks: declared and implemented have to be the same set ------------
-  const implemented = Object.entries(input.hooks ?? {})
-    .filter(([, handler]) => typeof handler === 'function')
-    .map(([name]) => name);
+  const hookEntries = Object.entries(input.hooks ?? {});
+  for (const [name, handler] of hookEntries) {
+    if (typeof handler !== 'function') {
+      refuse(
+        id,
+        `the hook "${name}" is not a function.`,
+        'Every hook implementation must be a function.',
+      );
+    }
+  }
+  const implemented = hookEntries.map(([name]) => name);
 
   for (const name of manifest.hooks) {
     if (!implemented.includes(name)) {
@@ -152,7 +168,17 @@ export function definePlugin(input: PluginInput): MallokPlugin {
   }
 
   // ---- routes: the same, keyed by path ------------------------------------
-  const handlers = Object.keys(input.routes ?? {});
+  const routeEntries = Object.entries(input.routes ?? {});
+  for (const [path, handler] of routeEntries) {
+    if (typeof handler !== 'function') {
+      refuse(
+        id,
+        `the route handler "${path}" is not a function.`,
+        'Every declared route needs a function that returns a Response.',
+      );
+    }
+  }
+  const handlers = routeEntries.map(([path]) => path);
   for (const route of manifest.routes) {
     if (!handlers.includes(route.path)) {
       refuse(
@@ -174,5 +200,150 @@ export function definePlugin(input: PluginInput): MallokPlugin {
     }
   }
 
-  return { ...input, manifest };
+  const declaredActions = new Set(
+    manifest.panels.flatMap((panel) =>
+      panel.actions.map((action) => action.id),
+    ),
+  );
+  validateFunctionMap(id, 'panel action', input.actions, declaredActions, true);
+  validateFunctionMap(
+    id,
+    'secret check',
+    input.checkSecrets,
+    new Set(Object.keys(manifest.secrets)),
+    false,
+  );
+
+  validateMigrations(id, input.migrations);
+
+  if (
+    input.exportFiles !== undefined &&
+    typeof input.exportFiles !== 'function'
+  ) {
+    refuse(
+      id,
+      'exportFiles is not a function.',
+      'Remove it or provide a function that returns the exported files.',
+    );
+  }
+
+  const plugin: MallokPlugin = { ...input, manifest };
+  definedPlugins.add(plugin);
+  return plugin;
+}
+
+function validateMigrations(
+  pluginId: string,
+  value: readonly unknown[] | undefined,
+): void {
+  if (value === undefined) {
+    return;
+  }
+  if (!Array.isArray(value)) {
+    refuse(
+      pluginId,
+      'migrations is not an array.',
+      'Provide an array of { id, sql } objects.',
+    );
+  }
+  const ids = new Set<string>();
+  for (const migration of value) {
+    if (
+      migration === null ||
+      typeof migration !== 'object' ||
+      typeof (migration as { id?: unknown }).id !== 'string' ||
+      typeof (migration as { sql?: unknown }).sql !== 'string'
+    ) {
+      refuse(
+        pluginId,
+        'a migration is not a { id: string, sql: string } object.',
+        'Every migration needs a stable id and its SQL text.',
+      );
+    }
+    const migrationId = (migration as { id: string }).id;
+    if (!migrationId.startsWith(`plugin:${pluginId}:`)) {
+      refuse(
+        pluginId,
+        `migration "${migrationId}" does not use this plugin's prefix.`,
+        `Migration ids must start with "plugin:${pluginId}:".`,
+      );
+    }
+    if (ids.has(migrationId)) {
+      refuse(
+        pluginId,
+        `migration "${migrationId}" is included more than once.`,
+        'Every migration id must be unique inside the plugin.',
+      );
+    }
+    ids.add(migrationId);
+  }
+}
+
+/** Defines a plugin Mallok itself ships. Deliberately not re-exported publicly. */
+export function defineOfficialPlugin(input: PluginInput): MallokPlugin {
+  const plugin = definePlugin(input);
+  officialPlugins.add(plugin);
+  return plugin;
+}
+
+/** Origin is runtime provenance, never untrusted manifest data. */
+export function isOfficialPlugin(plugin: MallokPlugin): boolean {
+  return officialPlugins.has(plugin);
+}
+
+/** Validates a whole composition and refuses ambiguous registry ids. */
+export function normalizePlugins(
+  inputs: readonly PluginInput[],
+): readonly MallokPlugin[] {
+  const plugins = inputs.map((input) => definePlugin(input));
+  const ids = new Set<string>();
+  for (const plugin of plugins) {
+    if (ids.has(plugin.manifest.id)) {
+      throw new PluginDefinitionError(
+        `Plugin "${plugin.manifest.id}" is included more than once.`,
+        'Every plugin id in createMallok({ plugins }) must be unique.',
+      );
+    }
+    ids.add(plugin.manifest.id);
+  }
+  return plugins;
+}
+
+function validateFunctionMap(
+  pluginId: string,
+  label: string,
+  values: Readonly<Record<string, unknown>> | undefined,
+  declared: ReadonlySet<string>,
+  requireEveryDeclaration: boolean,
+): void {
+  const implemented = new Set<string>();
+  for (const [name, handler] of Object.entries(values ?? {})) {
+    if (typeof handler !== 'function') {
+      refuse(
+        pluginId,
+        `the ${label} "${name}" is not a function.`,
+        `Every ${label} implementation must be a function.`,
+      );
+    }
+    if (!declared.has(name)) {
+      refuse(
+        pluginId,
+        `it implements the ${label} "${name}", which its manifest does not declare.`,
+        `Declare "${name}" in plugin.json or remove the implementation.`,
+      );
+    }
+    implemented.add(name);
+  }
+  if (!requireEveryDeclaration) {
+    return;
+  }
+  for (const name of declared) {
+    if (!implemented.has(name)) {
+      refuse(
+        pluginId,
+        `its manifest declares the ${label} "${name}", but the plugin has no implementation for it.`,
+        `Implement "${name}" or remove it from plugin.json.`,
+      );
+    }
+  }
 }

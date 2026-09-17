@@ -15,8 +15,9 @@
  */
 
 import { parseThemeManifest, type ThemeFiles } from '../core/index.js';
+import { normalizePlugins } from '../plugins/define.js';
 import { inquiryPlugin } from '../plugins/inquiry/index.js';
-import type { MallokPlugin } from '../plugins/types.js';
+import type { MallokPlugin, PluginInput } from '../plugins/types.js';
 import type { BundledTheme } from '../themes/index.js';
 import { THEMES } from '../themes/index.js';
 import { configure } from './composition.js';
@@ -39,8 +40,21 @@ export type {
   EmailMessage,
   MallokPlugin,
   PluginContext,
+  PluginExportFile,
+  PluginHookName,
+  PluginHooks,
+  PluginImplementation,
+  PluginManifest,
+  PluginMarkdownRoot,
+  PluginMigration,
+  PluginPanelDeclaration,
   PluginRenderContext,
   PluginRequestContext,
+  PluginRouteDeclaration,
+  PluginRouteHandler,
+  PluginSecretVerdict,
+  PluginSettingDeclaration,
+  PluginSiteSettings,
   RouteInput,
 } from '../plugins/types.js';
 export type { BundledTheme } from '../themes/index.js';
@@ -83,7 +97,7 @@ export interface MallokOptions {
   /** The theme this deployment renders with. */
   readonly theme: BundledTheme;
   /** Plugins compiled into this deployment. Defaults to none. */
-  readonly plugins?: readonly MallokPlugin[];
+  readonly plugins?: readonly PluginInput[];
 }
 
 /**
@@ -94,6 +108,7 @@ export interface MallokOptions {
  * compiled per isolate and plugin migrations run at boot.
  */
 export function createMallok(options: MallokOptions): ExportedHandler<Env> {
-  configure({ theme: options.theme, plugins: options.plugins ?? [] });
+  const plugins = normalizePlugins(options.plugins ?? []);
+  configure({ theme: options.theme, plugins });
   return mallokHandler;
 }

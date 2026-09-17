@@ -10,7 +10,7 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 // @ts-expect-error -- a plain ESM script, deliberately dependency-free.
@@ -37,11 +37,10 @@ const execFileAsync = promisify(execFile);
  * `npm install` actually produces.
  */
 
-const MANIFEST = 'dist/pkg/package.json';
-
 let sandbox = '';
 let mallok = '';
 let tarball = '';
+let installedPackage = '';
 let registry: { origin: string; close: () => Promise<void> } | null = null;
 let version = '';
 
@@ -113,18 +112,26 @@ beforeAll(async () => {
   // `dist/pkg` is built once for the whole project by the `globalSetup` in
   // vitest.config.ts; building it here as well would race the other file
   // that needs it.
-  const packed = await run('npm', ['pack', '--json'], 'dist/pkg');
-  expect(packed.code, packed.stderr).toBe(0);
-  const [entry] = JSON.parse(packed.stdout) as { filename: string }[];
-  tarball = join(process.cwd(), 'dist/pkg', entry?.filename ?? '');
-  version = (
-    JSON.parse(await readFile(MANIFEST, 'utf8')) as { version: string }
-  ).version;
-
+  const candidate = process.env.MALLOK_CANDIDATE_TARBALL;
+  if (candidate !== undefined) {
+    tarball = resolve(candidate);
+    await expect(stat(tarball)).resolves.toBeDefined();
+  } else {
+    const packed = await run('npm', ['pack', '--json'], 'dist/pkg');
+    expect(packed.code, packed.stderr).toBe(0);
+    const [entry] = JSON.parse(packed.stdout) as { filename: string }[];
+    tarball = join(process.cwd(), 'dist/pkg', entry?.filename ?? '');
+  }
   sandbox = await mkdtemp(join(tmpdir(), 'mallok-install-'));
   const installed = await run('npm', ['install', tarball], sandbox);
   expect(installed.code, installed.stderr).toBe(0);
+  installedPackage = join(sandbox, 'node_modules/mallok');
   mallok = join(sandbox, 'node_modules/.bin/mallok');
+  version = (
+    JSON.parse(
+      await readFile(join(installedPackage, 'package.json'), 'utf8'),
+    ) as { version: string }
+  ).version;
 
   registry = await startLocalRegistry([
     { name: 'mallok', version, path: tarball },
@@ -138,7 +145,9 @@ afterAll(async () => {
 
 describe('the published manifest', () => {
   it('carries the repository’s licence, not another one', async () => {
-    const parsed = JSON.parse(await readFile(MANIFEST, 'utf8')) as {
+    const parsed = JSON.parse(
+      await readFile(join(installedPackage, 'package.json'), 'utf8'),
+    ) as {
       license: string;
       version: string;
     };
@@ -151,7 +160,9 @@ describe('the published manifest', () => {
   });
 
   it('exports the framework entry a site imports', async () => {
-    const parsed = JSON.parse(await readFile(MANIFEST, 'utf8')) as {
+    const parsed = JSON.parse(
+      await readFile(join(installedPackage, 'package.json'), 'utf8'),
+    ) as {
       exports: Record<string, { types?: string; default?: string }>;
       bin: Record<string, string>;
     };
@@ -162,14 +173,19 @@ describe('the published manifest', () => {
   });
 
   it('declares sharp, which must never be bundled', async () => {
-    const parsed = JSON.parse(await readFile(MANIFEST, 'utf8')) as {
+    const parsed = JSON.parse(
+      await readFile(join(installedPackage, 'package.json'), 'utf8'),
+    ) as {
       dependencies: Record<string, string>;
     };
 
     // A native module cannot be inlined: it has to be installed for the
     // consumer's platform (docs/TECH_STACK.md §5).
     expect(parsed.dependencies.sharp).toBeDefined();
-    const bundle = await readFile('dist/pkg/cli/index.js', 'utf8');
+    const bundle = await readFile(
+      join(installedPackage, 'cli/index.js'),
+      'utf8',
+    );
     expect(bundle).not.toContain('sharp-darwin');
   });
 });
@@ -189,7 +205,9 @@ describe('the packed tarball', () => {
     expect(files).toContain('cli/index.js');
     expect(files).toContain('worker/index.js');
     expect(files).toContain('types/worker.d.ts');
-    expect(files).toContain('THIRD_PARTY_NOTICES');
+    expect(
+      files.filter((file) => file.endsWith('THIRD_PARTY_NOTICES')),
+    ).toEqual(['THIRD_PARTY_NOTICES']);
     expect(files.some((file) => file.startsWith('assets/_mallok/app/'))).toBe(
       true,
     );
@@ -197,6 +215,17 @@ describe('the packed tarball', () => {
     expect(files).toContain('template/src/worker/index.ts');
     // Undotted on purpose: npm strips a file called `.gitignore`.
     expect(files).toContain('template/gitignore');
+
+    // Vite's machine-readable graph is consumed while the package is built.
+    // It is neither a second notice authority nor a public Static Asset.
+    expect(
+      files.filter(
+        (file) =>
+          /license/i.test(file) &&
+          file !== 'LICENSE' &&
+          file !== 'THIRD_PARTY_NOTICES',
+      ),
+    ).toEqual([]);
   });
 
   it('carries none of Mallok’s own source', async () => {
@@ -245,7 +274,7 @@ describe('the packed tarball', () => {
 
   it('pins nothing to this machine or this checkout', async () => {
     const shell = JSON.parse(
-      await readFile('dist/pkg/template/package.json', 'utf8'),
+      await readFile(join(installedPackage, 'template/package.json'), 'utf8'),
     ) as { dependencies: Record<string, string> };
 
     // The one dependency that matters, and the four ways of writing it that
