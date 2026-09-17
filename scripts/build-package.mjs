@@ -55,7 +55,14 @@ for (const [label, command, args, environment] of [
     'admin',
     process.execPath,
     ['node_modules/vite/bin/vite.js', 'build'],
-    { ...process.env, MALLOK_ADMIN_LICENSES: '1' },
+    {
+      ...process.env,
+      // A package build is always a production build. Vitest's global setup
+      // may carry NODE_ENV=test; allowing that into Vite selects jsxDEV and
+      // embeds the checkout's absolute source paths in the published assets.
+      NODE_ENV: 'production',
+      MALLOK_ADMIN_LICENSES: '1',
+    },
   ],
 ]) {
   process.stdout.write(`building ${label}…\n`);

@@ -5,6 +5,7 @@ import {
   mkdtemp,
   readdir,
   readFile,
+  realpath,
   rm,
   stat,
   writeFile,
@@ -249,6 +250,33 @@ describe('the packed tarball', () => {
         forbidden,
       ).toEqual([]);
     }
+  });
+
+  it('carries no absolute build path in its compiled admin assets', async () => {
+    // Scan the installed tarball's assets directly. The generated-project
+    // scan below deliberately excludes `node_modules` and `dist`, so it can
+    // never see this package's prebuilt admin chunks and did not catch Vite's
+    // `jsxDEV(..., { fileName: "/absolute/checkout/..." })` output.
+    const assets = await projectText(join(installedPackage, 'assets'));
+    const checkout = await realpath(process.cwd());
+    const offenders: string[] = [];
+
+    for (const [path, text] of assets) {
+      if (text.includes(checkout)) {
+        offenders.push(`${path}: ${checkout}`);
+      }
+      for (const match of text.matchAll(
+        /(?:\/Users|\/home|\/private\/var\/folders)\/[A-Za-z0-9._/-]+\/src\/admin\//g,
+      )) {
+        offenders.push(`${path}: ${match[0]}`);
+      }
+      if (path.endsWith('.js') && text.includes('jsxDEV')) {
+        offenders.push(`${path}: jsxDEV`);
+      }
+    }
+
+    expect(assets.some(([path]) => path.endsWith('.js'))).toBe(true);
+    expect(offenders).toEqual([]);
   });
 
   it('carries no credential and no build output', async () => {
