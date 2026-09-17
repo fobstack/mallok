@@ -1,7 +1,9 @@
 # The 0.1 release gate
 
 - Status: runbook. Written 2026-09-09, rewritten 2026-09-11, corrected for
-  0.1.0-rc.4 on 2026-09-12 (§3, §5.1, §8, §9, §11, §12, §14, §15.1, §17).
+  0.1.0-rc.4 on 2026-09-12 (§3, §5.1, §8, §9, §11, §12, §14, §15.1, §17),
+  and updated for the 0.1.0-rc.5 candidate on 2026-09-17 with fail-closed
+  checks (§4–§6, §8–§12, §16, §17).
 - Scope: everything between "all local work is done" and "0.1.0 is released".
 
 Every step below needs something this repository cannot provide: a real
@@ -40,14 +42,15 @@ rather than a copy of this repository. Those measurements are history worth
 keeping (`docs/tasks/TASK-01.md §5`) and they are not evidence for this
 release. Everything below is run from scratch.
 
-**Every shell block in this document starts with `set -euo pipefail`, and it
-is not decoration.** Without `pipefail`, `wrangler r2 object get ... | tail -1`
-exits with `tail`'s status: Wrangler can fail outright — wrong account, no
-permission, network down — and the pipeline still reports success, printing
-whatever Wrangler wrote to stderr as though it were an answer. That is how a
-step "passes" having proved nothing. Without `-u`, an unset `$PAGE` turns a
+**Every executable block in this document requires Bash and starts with
+`set -euo pipefail`; copy the whole block.** It is not decoration. A later
+block can still depend on the directory or variables established earlier in
+the same numbered section, as the surrounding prose says.
+Without `pipefail`, a failing command on the left of a pipeline can be hidden
+by a successful command on the right. Without `-u`, an unset `$PAGE` turns a
 URL into a bare `curl`, and without `-e` a failed command is followed by the
-next one regardless.
+next one regardless. Commands that are intentionally expected to fail capture
+their status inside `if`; they never disable these checks for the whole block.
 
 ## 1. The rule that overrides everything else
 
@@ -92,6 +95,10 @@ None of this is in the repository, and none of it can be:
 **Never commit any of these.** `MALLOK_SECRET`, `CF_API_TOKEN` and
 `CF_ZONE_ID` are Worker secrets; third-party keys are entered in the admin and
 stored AES-GCM-encrypted in D1 (`docs/CLOUDFLARE_RESOURCES.md §5`).
+The operator also has to supply `CF_API_TOKEN` and `CF_ZONE_ID` to the local
+shell running §9 and §11, from a secret manager or hidden prompt. Putting them
+on the Worker does not make them readable again, and the runbook never prints
+them or places their values on a command line.
 
 ## 3. Order
 
@@ -153,13 +160,13 @@ No account is needed, so this is still the one step in this document that can
 be closed locally. It has to be run again, at the commit being released, and
 §4.1 replaced with what that run produces.
 
-```sh
+```bash
 set -euo pipefail
 pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
   && pnpm build && pnpm bundle:size && pnpm admin:size \
   && pnpm build:site \
   && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
-pnpm release:pack          # writes dist/pkg/mallok-<version>.tgz
+pnpm release:pack          # writes the versioned tgz and pack.json under dist/release
 ```
 
 `pnpm test:release` is its own step because it is minutes rather than
@@ -169,32 +176,47 @@ release.yml` runs this same list on a tag, in one job, with no step allowed to
 be skipped.
 
 **Pass:** every command exits 0 and the tarball exists. **Build once, pack
-once.** Nothing after this step may write to `dist/pkg`; a test that repacks
-it produces a second tarball, and then "the artefact that was tested" has no
-referent.
+once.** `dist/pkg` is staging input and tests are allowed to rebuild it;
+`dist/release` is the selected-candidate boundary. The pack script refuses to
+reuse that directory, so normal tooling cannot silently replace its tarball.
+That is not filesystem immutability: a person can still replace both files.
+The independent release record below is therefore the trust anchor at §5.
 
 Record all six values. They must match exactly at §5, or a different artefact
 is being published from the one that was tested:
 
-```sh
+```bash
 set -euo pipefail
-cd dist/pkg
-npm pack --json | tee ../../pack.json | node -e '
-  const [p] = JSON.parse(require("fs").readFileSync(0, "utf8"));
-  console.log({ filename: p.filename, size: p.size,
-                unpackedSize: p.unpackedSize, integrity: p.integrity,
-                shasum: p.shasum });
-'
-shasum -a 256 mallok-*.tgz
+version=$(node -p "require('./package.json').version")
+candidate="$PWD/dist/release/mallok-$version.tgz"
+test -f "$candidate"
+test -f dist/release/pack.json
+
+# Prove the package-boundary tests consume the selected tarball. Removing the
+# staging directory from its expected path makes an accidental fallback fail.
+mv dist/pkg dist/package-staging-not-used
+MALLOK_CANDIDATE_TARBALL="$candidate" pnpm test:candidate
+node scripts/verify-candidate.mjs "$candidate"
+node -e 'console.log(JSON.parse(require("fs").readFileSync("dist/release/pack.json","utf8")))'
+shasum -a 256 "$candidate"
 ```
 
-`npm pack --json` gives npm's own `integrity` (the SRI hash it will publish
-under) and `shasum`; the separate `shasum -a 256` is the one a person can
-recompute with a tool that is not npm.
+`pack.json` records npm's own `integrity` (the SRI hash it will publish under),
+`shasum`, sizes and the independently computed SHA-256. `verify-candidate`
+recomputes every hash from the file after the boundary tests; the separate
+`shasum -a 256` is also readable without trusting the script.
+
+Copy the six displayed values into the release issue **outside this checkout**:
+filename, size, unpackedSize, integrity, shasum and sha256. Before §5, export
+the five non-derived values from that independent record as
+`MALLOK_EXPECTED_SIZE`, `MALLOK_EXPECTED_UNPACKED_SIZE`,
+`MALLOK_EXPECTED_INTEGRITY`, `MALLOK_EXPECTED_SHASUM` and
+`MALLOK_EXPECTED_SHA256`. Do not populate them by rereading `pack.json`; doing
+so would let a replaced tarball and a replaced manifest validate each other.
 
 `npm publish` from the repository root is **refused** by `prepublishOnly`
-(`scripts/refuse-publish.mjs`); the publishable package is `dist/pkg` and
-nothing else.
+(`scripts/refuse-publish.mjs`). `dist/pkg` is never published directly; the
+only publish input is the already tested file under `dist/release`.
 
 ### 4.1 What the 2026-09-12 run produced — `STALE`
 
@@ -284,11 +306,39 @@ The page runtime is **not** published separately — it is an internal module at
 (`docs/ARCHITECTURE.md §3`). A clone builds and tests with no sibling checkout
 and no registry dependency.
 
-```sh
+```bash
 set -euo pipefail
-cd dist/pkg
-shasum -a 256 mallok-*.tgz        # must equal the value recorded in §4
-npm publish mallok-<version>.tgz --access public --tag next
+version=$(node -p "require('./package.json').version")
+candidate="$PWD/dist/release/mallok-$version.tgz"
+: "${MALLOK_EXPECTED_SIZE:?copy it from the §4 release record}"
+: "${MALLOK_EXPECTED_UNPACKED_SIZE:?copy it from the §4 release record}"
+: "${MALLOK_EXPECTED_INTEGRITY:?copy it from the §4 release record}"
+: "${MALLOK_EXPECTED_SHASUM:?copy it from the §4 release record}"
+: "${MALLOK_EXPECTED_SHA256:?copy it from the §4 release record}"
+node scripts/verify-candidate.mjs "$candidate"
+node - "$version" \
+  "$MALLOK_EXPECTED_SIZE" "$MALLOK_EXPECTED_UNPACKED_SIZE" \
+  "$MALLOK_EXPECTED_INTEGRITY" "$MALLOK_EXPECTED_SHASUM" \
+  "$MALLOK_EXPECTED_SHA256" <<'NODE'
+const { readFileSync } = require('node:fs');
+const [version, size, unpackedSize, integrity, shasum, sha256] =
+  process.argv.slice(2);
+const actual = JSON.parse(readFileSync('dist/release/pack.json', 'utf8'));
+const expected = {
+  filename: `mallok-${version}.tgz`,
+  size: Number(size),
+  unpackedSize: Number(unpackedSize),
+  integrity,
+  shasum,
+  sha256,
+};
+for (const [key, value] of Object.entries(expected)) {
+  if (actual[key] !== value) {
+    throw new Error(`${key}: candidate has ${actual[key]}, release record has ${value}`);
+  }
+}
+NODE
+npm publish "$candidate" --access public --tag next
 ```
 
 Publishing the **file**, not the directory, is what makes "the same artifact"
@@ -298,8 +348,26 @@ artefact whose only evidence is that it came from the same directory.
 **Pass:** the sha256 above equals §4's, and npm's published `integrity`
 matches the one §4 recorded:
 
-```sh
-npm view mallok@<version> dist.integrity dist.shasum dist.unpackedSize
+```bash
+set -euo pipefail
+version=$(node -p "require('./package.json').version")
+: "${MALLOK_EXPECTED_INTEGRITY:?copy it from the §4 release record}"
+: "${MALLOK_EXPECTED_SHASUM:?copy it from the §4 release record}"
+: "${MALLOK_EXPECTED_UNPACKED_SIZE:?copy it from the §4 release record}"
+registry_dist=$(mktemp)
+npm view "mallok@$version" dist --json > "$registry_dist"
+node - \
+  "$MALLOK_EXPECTED_INTEGRITY" "$MALLOK_EXPECTED_SHASUM" \
+  "$MALLOK_EXPECTED_UNPACKED_SIZE" "$registry_dist" <<'NODE'
+const { readFileSync } = require('node:fs');
+const [integrity, shasum, unpackedSize, file] = process.argv.slice(2);
+const actual = JSON.parse(readFileSync(file, 'utf8'));
+if (actual.integrity !== integrity || actual.shasum !== shasum ||
+    Number(actual.unpackedSize) !== Number(unpackedSize)) {
+  throw new Error(`registry metadata differs: ${JSON.stringify(actual)}`);
+}
+NODE
+rm -f "$registry_dist"
 ```
 
 **Rollback:** `npm unpublish mallok@<version>` within 72 hours, or
@@ -314,25 +382,31 @@ the first and only step that proves the published package installs from
 npmjs.com, and it is also where the project's **portable** lockfile comes
 from.
 
-```sh
+```bash
 set -euo pipefail
 # A new directory and an empty cache: a warm cache can satisfy an install
 # from a tarball that was never fetched, and that result would mean nothing.
-rm -rf ~/gate-public && mkdir ~/gate-public && cd ~/gate-public
-npm cache clear --force 2>/dev/null || true
-npm install mallok@<version> --cache "$(mktemp -d)"
-./node_modules/.bin/mallok --version
+PUBLIC_INSTALL_DIR=$(mktemp -d "${TMPDIR:-/tmp}/mallok-gate-public.XXXXXX")
+cd "$PUBLIC_INSTALL_DIR"
+: "${MALLOK_GATE_VERSION:?export the version published in §5}"
+npm install "mallok@$MALLOK_GATE_VERSION" --cache "$(mktemp -d)"
+installed_version=$(./node_modules/.bin/mallok --version)
+[ "$installed_version" = "$MALLOK_GATE_VERSION" ] \
+  || { echo "installed $installed_version, expected $MALLOK_GATE_VERSION" >&2; exit 1; }
 ```
 
 Then regenerate the gate project's lockfile against the public registry and
 prove it still runs:
 
-```sh
+```bash
 set -euo pipefail
 cd ~/gate/gate-site
 rm -rf node_modules package-lock.json
 npm install --cache "$(mktemp -d)"          # resolves from npmjs.com
-grep -c '127.0.0.1' package-lock.json || true   # must print 0
+if grep -n '127\.0\.0\.1\|localhost' package-lock.json; then
+  echo 'the public-registry lockfile still names a loopback registry' >&2
+  exit 1
+fi
 npm run build
 npm run smoke
 ```
@@ -352,22 +426,64 @@ project it generates can resolve `mallok@<version>` by name — see §3 for why
 that is not a shortcut, and for what the resulting lockfile is and is not
 worth.
 
-```sh
+```bash
 set -euo pipefail
+: "${MALLOK_CANDIDATE_TARBALL:?export the absolute candidate path from §4}"
 mkdir ~/gate && cd ~/gate
-npm install /path/to/mallok-<version>.tgz
+npm install "$MALLOK_CANDIDATE_TARBALL"
 ./node_modules/.bin/mallok --version          # exits 0, prints the version
+```
 
-# One terminal: the candidate, under its real name and version.
-node /path/to/mallok/scripts/local-registry.mjs \
-  /path/to/mallok-<version>.tgz
-# → serving mallok@<version> on http://127.0.0.1:53017
+In one terminal, serve the candidate under its real name and version. This
+process stays in the foreground:
 
-# Everything below is free and reversible: generate, install, build and
-# prove the deploy would work, without touching the account at all.
+```bash
+set -euo pipefail
+: "${MALLOK_SOURCE_DIR:?export the absolute Mallok source checkout path}"
+: "${MALLOK_CANDIDATE_TARBALL:?export the absolute candidate path from §4}"
+node "$MALLOK_SOURCE_DIR/scripts/local-registry.mjs" \
+  "$MALLOK_CANDIDATE_TARBALL"
+# → serving the candidate on http://127.0.0.1:53017
+```
+
+In a second terminal, choose the gate identity once, then generate, install,
+build and prove the deploy would work without touching the account. Keep this
+terminal open. The machine record written here is the only input the real
+create and its idempotency rerun use; neither asks the operator to retype a
+slug or hostname:
+
+```bash
+set -euo pipefail
+cd ~/gate
+: "${GATE_SLUG:?export a new 3-32 character lowercase gate slug}"
+: "${SITE_DOMAIN:?export the test hostname owned by this account}"
+printf '%s' "$GATE_SLUG" | grep -Eq '^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$' \
+  || { echo 'GATE_SLUG is not a valid Mallok slug' >&2; exit 1; }
+case "$GATE_SLUG" in
+  mallok-*) echo 'leave the mallok- prefix off GATE_SLUG' >&2; exit 1 ;;
+esac
+[ "${#SITE_DOMAIN}" -le 253 ] &&
+  printf '%s' "$SITE_DOMAIN" | grep -Eq \
+    '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$' \
+  || { echo 'SITE_DOMAIN is not a lowercase DNS hostname' >&2; exit 1; }
 npm_config_registry=http://127.0.0.1:53017 \
   ./node_modules/.bin/mallok create gate-site \
-  --slug gate-20260911 --no-deploy
+  --slug "$GATE_SLUG" --no-deploy
+mkdir -p gate-site/.tmp
+node - "$GATE_SLUG" "$SITE_DOMAIN" <<'NODE'
+const { existsSync, readFileSync, writeFileSync } = require('node:fs');
+const [slug, domain] = process.argv.slice(2);
+const target = { slug, domain };
+const file = 'gate-site/.tmp/gate-target.json';
+if (existsSync(file)) {
+  const recorded = JSON.parse(readFileSync(file, 'utf8'));
+  if (JSON.stringify(recorded) !== JSON.stringify(target)) {
+    throw new Error('the recorded gate identity differs from this run');
+  }
+} else {
+  writeFileSync(file, `${JSON.stringify(target)}\n`, { flag: 'wx' });
+}
+NODE
 ```
 
 Stop the registry once `create` has finished. Nothing after §6 needs it, and
@@ -386,17 +502,33 @@ succeeding; and **nothing exists on the account yet**.
 It must **not** contain `src/runtime`, `src/core`, `src/admin`, `src/db` or
 `src/themes`. Those are the framework, and they arrive as a dependency:
 
-```sh
+```bash
 set -euo pipefail
-grep -c 'mallok' gate-site/package.json          # the exact version, once
-ls gate-site/src                                 # plugins  worker
-wc -l gate-site/src/worker/index.ts              # a couple of dozen lines
+node -e '
+  const p=require("./gate-site/package.json");
+  const versions=[p.dependencies?.mallok,p.devDependencies?.mallok]
+    .filter(Boolean);
+  if(versions.length!==1 || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(versions[0]))
+    throw new Error(`expected one exact mallok dependency, got ${JSON.stringify(versions)}`)
+'
+src_entries=$(find gate-site/src -mindepth 1 -maxdepth 1 -type d \
+  -exec basename {} \; | sort | paste -sd ' ' -)
+[ "$src_entries" = 'plugins worker' ] \
+  || { echo "unexpected src directories: $src_entries" >&2; exit 1; }
+test -s gate-site/src/worker/index.ts
 
 # Nothing but the lockfile may point at this machine. The same scan runs in
 # `test/cli/package-release.test.ts`; this is the manual form of it.
-grep -rIl --exclude=package-lock.json \
-  -e '127\.0\.0\.1' -e 'localhost' -e 'file:' -e 'link:' -e 'workspace:' \
-  gate-site --exclude-dir=node_modules --exclude-dir=dist || echo 'clean'
+if matches=$(grep -rIl --exclude=package-lock.json \
+    -e '127\.0\.0\.1' -e 'localhost' -e 'file:' -e 'link:' -e 'workspace:' \
+    gate-site --exclude-dir=node_modules --exclude-dir=dist)
+then
+  printf 'machine-local reference found:\n%s\n' "$matches" >&2
+  exit 1
+else
+  status=$?
+  [ "$status" -eq 1 ] || exit "$status"
+fi
 ```
 
 `scripts/smoke.mjs` is the one expected hit if the exclusions are dropped: it
@@ -405,10 +537,18 @@ and not a registry.
 
 Then, from inside the generated project, the real thing:
 
-```sh
+```bash
+set -euo pipefail
 cd gate-site
-../node_modules/.bin/mallok create . --slug gate-20260911 \
-  --domain gate.example.com
+test -f .tmp/gate-target.json
+GATE_SLUG=$(node -p "require('./.tmp/gate-target.json').slug")
+SITE_DOMAIN=$(node -p "require('./.tmp/gate-target.json').domain")
+../node_modules/.bin/mallok create . --slug "$GATE_SLUG" \
+  --domain "$SITE_DOMAIN"
+ledger_slug=$(node -p "require('./.mallok/create-state.json').slug")
+ledger_domain=$(node -p "require('./.mallok/create-state.json').domain")
+[ "$ledger_slug" = "$GATE_SLUG" ] && [ "$ledger_domain" = "$SITE_DOMAIN" ] \
+  || { echo 'create ledger identity differs from the recorded gate target' >&2; exit 1; }
 ```
 
 The order this runs in is fixed and is a safety property, not an
@@ -420,30 +560,47 @@ read-only existence checks, `d1 create`, `r2 bucket create`, `deploy`,
 `secret put` (`docs/CLOUDFLARE_RESOURCES.md §6`). Each created resource is
 recorded in `.mallok/create-state.json` before the call that creates it.
 
-**It prints a setup key, once.** Copy it: the wizard in §8 will not create the
-administrator without it, and it is deliberately not written to any file. If
-it is lost, `wrangler secret put MALLOK_SETUP_KEY` sets a new one.
+Run that command **directly in an interactive terminal**. It hands the setup
+key to that terminal once, through an awaited write, and records delivery only
+after the write succeeds. The returned command result and every JSON/file
+record omit the value. Redirected stdout is refused before the first
+Cloudflare mutation, because a CI log is not a safe delivery channel. Copy the
+key into the wizard; it is deliberately not written to disk. If it is lost,
+run `mallok setup-key` from this project in an interactive terminal — a manual
+`wrangler secret put` would leave the create ledger out of sync.
 
 **Pass:** `.mallok/create-state.json` names the database and bucket that were
 created, records the account id, and carries **no secret value**;
 `.mallok/sites.json` has the site; the Worker answers on its `.workers.dev`
 address.
 
-**Then run it again.** A finished project must be a no-op:
+**Then run it again, directly in the terminal.** A finished project must be a
+no-op. `create` deliberately rejects `--json` even on this path because the
+command's contract includes one-time credential delivery; that refusal occurs
+before it inspects or changes Cloudflare:
 
-```sh
-./node_modules/.bin/mallok create . --slug gate-20260911 \
-  --domain gate.example.com --json
+```bash
+set -euo pipefail
+test -f .tmp/gate-target.json
+GATE_SLUG=$(node -p "require('./.tmp/gate-target.json').slug")
+SITE_DOMAIN=$(node -p "require('./.tmp/gate-target.json').domain")
+ledger_slug=$(node -p "require('./.mallok/create-state.json').slug")
+ledger_domain=$(node -p "require('./.mallok/create-state.json').domain")
+[ "$ledger_slug" = "$GATE_SLUG" ] && [ "$ledger_domain" = "$SITE_DOMAIN" ] \
+  || { echo 'ledger changed after the gate target was recorded' >&2; exit 1; }
+./node_modules/.bin/mallok create . --slug "$GATE_SLUG" \
+  --domain "$SITE_DOMAIN"
 ```
 
-**Pass:** exit 0, `"alreadyComplete": true`, and `wrangler deployments list`
-shows no new deployment. A second run must not redeploy and must not rotate
-`MALLOK_SECRET` — rotating it signs every user out and makes stored plugin
-keys unreadable.
+**Pass:** exit 0, the human report says the site is already complete, and
+`wrangler deployments list` shows no new deployment. A second run must not
+redeploy, rotate `MALLOK_SECRET`, or issue another setup key — rotating the
+first signs every user out and makes stored plugin keys unreadable.
 
 **Every wrangler command from here on is the project's own:**
 
-```sh
+```bash
+set -euo pipefail
 cd gate-site
 ./node_modules/.bin/wrangler deployments list
 ```
@@ -463,18 +620,48 @@ project's own `wrangler.jsonc` is the one `wrangler deploy` reads.
 `--domain` above already wrote the `custom_domain` route, so the deploy
 created the DNS record and the certificate. Confirm:
 
-```sh
+```bash
 set -euo pipefail
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+SITE="https://$SITE_DOMAIN/"
+assert_response_headers() {
+  expected_cache=$1
+  expected_control=$2
+  shift 2
+  headers=$(mktemp)
+  curl -fsS -o /dev/null -D "$headers" "$@" "$SITE"
+  cache_status=$(awk '
+    tolower($1)=="x-mallok-cache:" { gsub("\\r", "", $2); value=$2 }
+    END { print value }
+  ' "$headers")
+  cache_control=$(awk '
+    tolower($1)=="cache-control:" {
+      sub(/^[^:]*:[[:space:]]*/, ""); gsub("\\r", ""); value=$0
+    }
+    END { print value }
+  ' "$headers")
+  rm -f "$headers"
+  if [ "$expected_cache" = MISS_OR_HIT ]; then
+    case "$cache_status" in MISS|HIT) ;; *)
+      echo "expected MISS or HIT, got ${cache_status:-missing}" >&2; return 1;;
+    esac
+  else
+    [ "$cache_status" = "$expected_cache" ] \
+      || { echo "expected $expected_cache, got ${cache_status:-missing}" >&2; return 1; }
+  fi
+  [ "$cache_control" = "$expected_control" ] \
+    || { echo "unexpected cache-control: ${cache_control:-missing}" >&2; return 1; }
+}
 # GET, not HEAD. A HEAD does not populate the edge cache, so a HEAD/HEAD pair
 # reports MISS twice and a HEAD/GET pair reports MISS twice as well — which
-# reads exactly like a broken cache. `-o /dev/null -D -` keeps the headers and
-# throws the body away.
-curl -s -o /dev/null -D - https://gate.example.com/ | grep -i 'x-mallok-cache\|cache-control'
-curl -s -o /dev/null -D - https://gate.example.com/ | grep -i 'x-mallok-cache'
+# reads exactly like a broken cache.
+assert_response_headers MISS_OR_HIT 'public, max-age=0, s-maxage=3600'
+assert_response_headers HIT 'public, max-age=0, s-maxage=3600'
 ```
 
-**Pass:** first `MISS`, second `HIT`, `cache-control: public, max-age=0,
-s-maxage=3600`.
+**Pass:** the first response is `MISS` or an existing `HIT`, the second is
+`HIT`, and both carry `cache-control: public, max-age=0, s-maxage=3600`.
+Section 10 starts from an explicit tag purge and proves the `MISS` path.
 
 **Note the changed expectation.** Before the runtime migration this header was
 `public, max-age=3600`. The browser lifetime is 0 on purpose
@@ -486,15 +673,18 @@ the edge gets a long life.
 **Blocker:** §6's deployment. **Status:** `NOT_RUN`.
 **Rows:** `AC-DEPLOY-03`, `AC-CONTENT-01/02b`, `AC-MEDIA-01/04`.
 
-1. Open `https://gate.example.com/_mallok/setup` and complete all four steps.
-   The first asks for the setup key §6 printed; a wrong one is refused, and
-   the right one stops working the moment setup succeeds.
-2. Confirm the wizard 404s afterwards:
-   `curl -so /dev/null -w '%{http_code}\n' https://gate.example.com/_mallok/setup`
-   → **404**.
+1. Open the setup URL under the exact hostname recorded as
+   `.mallok/create-state.json.domain` and complete all four steps. Do not
+   transcribe the example hostname in §1. The first step asks for the setup key
+   §6 delivered to the interactive terminal; a wrong one is refused, and the
+   right one stops working the moment setup succeeds.
+2. Confirm the wizard 404s afterwards with the checked command below.
 3. Publish a real trade article with at least one image, in two languages.
-4. Connect the R2 custom domain (`media.gate.example.com`) and re-check an
-   image.
+   Keep the content id; §9 reads its exact locale-aware `content.path` from D1
+   and records it instead of reconstructing a URL from a slug.
+4. Connect an R2 custom domain owned by the same gate account and re-check an
+   image. Export that actual hostname as `MEDIA_DOMAIN`; §17 reuses the machine
+   record written here instead of asking the operator to type it again.
 
 The same four steps run locally in a browser on every `pnpm test:e2e`
 (`test/e2e/01-wizard.spec.ts`), so what this adds is the platform: real DNS, a
@@ -511,39 +701,124 @@ document told the operator to look for. A check written against the wrong key
 reports "not found" for an object that is present, and would have been read as
 a broken upload; in §12 the same mistake would read as a successful reclaim.
 
-```sh
+```bash
 set -euo pipefail
 cd gate-site
-# Every key the upload wrote, original and variants. `list` is a real
-# Wrangler 4.124 subcommand for buckets; there is no `r2 object list`.
+: "${MEDIA_DOMAIN:?export the R2 custom-domain hostname connected above}"
+[ "${#MEDIA_DOMAIN}" -le 253 ] &&
+  printf '%s' "$MEDIA_DOMAIN" | grep -Eq \
+    '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$' \
+  || { echo 'MEDIA_DOMAIN is not a hostname' >&2; exit 1; }
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+setup_status=$(curl -sS -o /dev/null -w '%{http_code}' \
+  "https://$SITE_DOMAIN/_mallok/setup")
+[ "$setup_status" = 404 ] \
+  || { echo "setup still answers with HTTP $setup_status" >&2; exit 1; }
+: "${MEDIA_SHA:?export the uploaded object sha256}"
+printf '%s' "$MEDIA_SHA" | grep -Eq '^[0-9a-f]{64}$' \
+  || { echo 'MEDIA_SHA is not a lowercase sha256' >&2; exit 1; }
+mkdir -p .tmp
+DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+./node_modules/.bin/wrangler d1 execute "$DATABASE" --remote \
+  --json --command "SELECT sha256, ext, variants FROM media WHERE sha256 = '$MEDIA_SHA'" \
+  > .tmp/media-upload-row.json
+node - "$MEDIA_SHA" .tmp/media-upload-row.json \
+  .tmp/media-upload-target.json <<'NODE'
+const { readFileSync, writeFileSync } = require('node:fs');
+const [expectedSha, input, output] = process.argv.slice(2);
+const batches = JSON.parse(readFileSync(input, 'utf8'));
+const rows = Array.isArray(batches)
+  ? batches.flatMap(batch => Array.isArray(batch.results) ? batch.results : [])
+  : [];
+if (rows.length !== 1) throw new Error(`expected one media row, got ${rows.length}`);
+const row = rows[0];
+const widths = typeof row.variants === 'string' ? JSON.parse(row.variants) : row.variants;
+if (row.sha256 !== expectedSha || typeof row.ext !== 'string' ||
+    !/^[a-z0-9]+$/.test(row.ext) || !Array.isArray(widths) ||
+    widths.some(n => !Number.isInteger(n) || n <= 0)) {
+  throw new Error(`invalid media identity: ${JSON.stringify(row)}`);
+}
+writeFileSync(output, `${JSON.stringify({ sha: row.sha256, ext: row.ext, widths })}\n`, {
+  flag: 'wx',
+});
+NODE
+SHA=$(node -p "require('./.tmp/media-upload-target.json').sha")
+EXT=$(node -p "require('./.tmp/media-upload-target.json').ext")
+WIDTHS=$(node -p "require('./.tmp/media-upload-target.json').widths.join(' ')")
+BUCKET=$(node -p "require('./.mallok/create-state.json').bucket.name")
+
+# Every key the upload wrote, original and exactly the recorded variants.
+# There is no `r2 object list` in Wrangler 4.124.
 ./node_modules/.bin/wrangler r2 object get \
-  mallok-gate-20260911-media/media/<sha>.<ext> --file /dev/null
-# DEFAULT_VARIANT_WIDTHS, minus any at or above the original's width:
-# upscaling never helps, so a narrow image has fewer variants than this.
-for width in 480 960 1440 1920; do
+  "$BUCKET/media/$SHA.$EXT" --file /dev/null
+for width in $WIDTHS; do
   ./node_modules/.bin/wrangler r2 object get \
-    "mallok-gate-20260911-media/media/<sha>_${width}.webp" --file /dev/null
+    "$BUCKET/media/${SHA}_${width}.webp" --file /dev/null
 done
+
+# Prove the custom hostname serves this exact original before preserving it as
+# the destroy target. A hand-typed but unrelated absent hostname cannot then
+# make §17's DNS-absence postcondition pass.
+served_media=$(mktemp)
+curl -fsS -o "$served_media" "https://$MEDIA_DOMAIN/media/$SHA.$EXT"
+served_sha=$(shasum -a 256 "$served_media" | awk '{print $1}')
+rm -f "$served_media"
+[ "$served_sha" = "$SHA" ] \
+  || { echo "media domain returned sha256 $served_sha, expected $SHA" >&2; exit 1; }
+node - "$MEDIA_DOMAIN" "$BUCKET" <<'NODE'
+const { existsSync, readFileSync, writeFileSync } = require('node:fs');
+const [domain, bucket] = process.argv.slice(2);
+const target = { domain, bucket };
+const file = '.tmp/media-domain.json';
+if (existsSync(file)) {
+  const existing = JSON.parse(readFileSync(file, 'utf8'));
+  if (JSON.stringify(existing) !== JSON.stringify(target)) {
+    throw new Error('the recorded media-domain identity changed');
+  }
+} else {
+  writeFileSync(file, `${JSON.stringify(target)}\n`, { flag: 'wx' });
+}
+NODE
 ```
 
-Take the widths from the media library's own record for that image rather than
-from this list; a theme can ask for a different set.
+Take the widths from the media library's own record; a theme can ask for a
+different set, and narrow images deliberately omit widths that would upscale.
 
 **Also check what provisioning wrote**, because these are new since 0.1.0-rc.2 and
 have never run against a real account:
 
-```sh
+```bash
 set -euo pipefail
 cd gate-site
-./node_modules/.bin/wrangler d1 execute mallok-gate-20260911-db --remote \
-  --command "SELECT domain, media_base_url, setup_key_used_at FROM site"
+DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+MEDIA_DOMAIN=$(node -p "require('./.tmp/media-domain.json').domain")
+site_file=$(mktemp)
+./node_modules/.bin/wrangler d1 execute "$DATABASE" --remote \
+  --json --command "SELECT domain, media_base_url, setup_key_used_at FROM site" \
+  > "$site_file"
+node - "$SITE_DOMAIN" "$MEDIA_DOMAIN" "$site_file" <<'NODE'
+const { readFileSync } = require('node:fs');
+const [expectedDomain, expectedMedia, file] = process.argv.slice(2);
+const batches = JSON.parse(readFileSync(file, 'utf8'));
+const rows = Array.isArray(batches)
+  ? batches.flatMap(batch => Array.isArray(batch.results) ? batch.results : [])
+  : [];
+if (rows.length !== 1) throw new Error(`expected one site row, got ${rows.length}`);
+const row = rows[0];
+if (row.domain !== expectedDomain ||
+    row.media_base_url !== `https://${expectedMedia}` ||
+    typeof row.setup_key_used_at !== 'string' || row.setup_key_used_at === '') {
+  throw new Error(`provisioned site fields differ: ${JSON.stringify(row)}`);
+}
+NODE
+rm -f "$site_file"
 ```
 
-`domain` must be `gate.example.com` — copied from the Worker's own
+`domain` must equal the create ledger — copied from the Worker's own
 `MALLOK_DOMAIN` var when setup finished, not typed in. `setup_key_used_at`
-must be set. `media_base_url` is `https://media.gate.example.com` **only if**
-that host was already answering when setup finished; if the R2 custom domain
-was attached afterwards, set it in Settings → Site and say so in the report.
+must be set. If the R2 custom domain was attached after setup, set it in
+Settings → Site before running this assertion.
 
 ## 9. Cache invalidation after a publish
 
@@ -568,30 +843,103 @@ act; and test the automatic purge on its own afterwards.
 
 ### 9.1 The edge is holding a copy, and nothing has purged it
 
-```sh
+```bash
 set -euo pipefail
 cd gate-site
-PAGE=https://gate.example.com/news/<slug>
+: "${CONTENT_ID:?export the content id for that article}"
+printf '%s' "$CONTENT_ID" | grep -Eq \
+  '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' \
+  || { echo 'CONTENT_ID is not a UUID' >&2; exit 1; }
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+mkdir -p .tmp
+article_row=$(mktemp)
+./node_modules/.bin/wrangler d1 execute "$DATABASE" --remote --json \
+  --command "SELECT id, path, status FROM content WHERE id = '$CONTENT_ID'" \
+  > "$article_row"
+node - "$CONTENT_ID" "$article_row" .tmp/article-target.json <<'NODE'
+const { existsSync, readFileSync, writeFileSync } = require('node:fs');
+const [expectedId, input, output] = process.argv.slice(2);
+const batches = JSON.parse(readFileSync(input, 'utf8'));
+const rows = Array.isArray(batches)
+  ? batches.flatMap(batch => Array.isArray(batch.results) ? batch.results : [])
+  : [];
+if (rows.length !== 1) throw new Error(`expected one article, got ${rows.length}`);
+const row = rows[0];
+const path = row.path;
+if (row.id !== expectedId || row.status !== 'published' ||
+    typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//') ||
+    /[?#]/.test(path) || path.split('/').includes('..') ||
+    new URL(path, 'https://gate.invalid').pathname !== path) {
+  throw new Error(`invalid published article identity: ${JSON.stringify(row)}`);
+}
+const target = { id: row.id, path };
+if (existsSync(output)) {
+  const recorded = JSON.parse(readFileSync(output, 'utf8'));
+  if (JSON.stringify(recorded) !== JSON.stringify(target)) {
+    throw new Error('the recorded article identity changed');
+  }
+} else {
+  writeFileSync(output, `${JSON.stringify(target)}\n`, { flag: 'wx' });
+}
+NODE
+rm -f "$article_row"
+ARTICLE_PATH=$(node -p "require('./.tmp/article-target.json').path")
+PAGE="https://$SITE_DOMAIN$ARTICLE_PATH"
+
+assert_cache_status() {
+  expected=$1
+  url=$2
+  headers=$(mktemp)
+  curl -fsS -o /dev/null -D "$headers" "$url"
+  actual=$(awk '
+    tolower($1)=="x-mallok-cache:" { gsub("\\r", "", $2); value=$2 }
+    END { print value }
+  ' "$headers")
+  rm -f "$headers"
+  if [ "$expected" = MISS_OR_HIT ]; then
+    case "$actual" in MISS|HIT) ;; *)
+      echo "expected MISS or HIT, got: ${actual:-missing}" >&2; return 1;;
+    esac
+  else
+    [ "$actual" = "$expected" ] \
+      || { echo "expected $expected, got: ${actual:-missing}" >&2; return 1; }
+  fi
+}
 
 # 1. Cache the current version, and prove it is cached rather than assuming
 #    it. GET twice: a HEAD does not populate the edge cache.
-curl -fsS -o /dev/null -D - "$PAGE" | grep -i x-mallok-cache    # MISS
-curl -fsS "$PAGE" | grep -c 'OLD MARKER'                        # 1
-curl -fsS -o /dev/null -D - "$PAGE" | grep -i x-mallok-cache    # HIT
+assert_cache_status MISS_OR_HIT "$PAGE"
+curl -fsS "$PAGE" | grep -q 'OLD MARKER'
+assert_cache_status HIT "$PAGE"
 
 # 2. Change what the site *would* render, without any code path that purges.
 #    `render_cache.html` is the derived fragment a page is assembled from
 #    (src/db/migrations/0001_init.sql); writing it here is a deliberate reach
 #    behind the application, and it is the only way to separate "the edge is
 #    stale" from "the edge was purged".
-./node_modules/.bin/wrangler d1 execute mallok-gate-20260911-db --remote \
-  --command "UPDATE render_cache SET html = REPLACE(html, 'OLD MARKER', 'NEW MARKER') WHERE content_id = '<content-id>'"
+update_json=$(./node_modules/.bin/wrangler d1 execute "$DATABASE" --remote \
+  --json \
+  --command "UPDATE render_cache SET html = REPLACE(html, 'OLD MARKER', 'NEW MARKER') WHERE content_id = '$CONTENT_ID' AND instr(html, 'OLD MARKER') > 0")
+printf '%s' "$update_json" | node -e '
+let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>{
+  const batches=JSON.parse(s);
+  const changed=Array.isArray(batches)
+    ? batches.reduce((n,b)=>n+Number(b?.meta?.changes ?? 0),0)
+    : 0;
+  if(changed<1) throw new Error(`expected at least one changed fragment, got ${changed}`);
+})'
 
 # 3. The edge must still serve the old copy — repeatedly, over more than a
 #    moment, so that this is not a single lucky request.
 for _ in 1 2 3; do
-  curl -fsS -o /dev/null -D - "$PAGE" | grep -i x-mallok-cache  # HIT
-  curl -fsS "$PAGE" | grep -c 'OLD MARKER'                      # 1
+  assert_cache_status HIT "$PAGE"
+  body=$(curl -fsS "$PAGE")
+  printf '%s' "$body" | grep -q 'OLD MARKER'
+  if printf '%s' "$body" | grep -q 'NEW MARKER'; then
+    echo 'uncached marker reached the edge before the purge' >&2
+    exit 1
+  fi
   sleep 5
 done
 ```
@@ -604,21 +952,37 @@ Stop and find out why before continuing.
 
 ### 9.2 A tag purge removes it
 
-```sh
+```bash
 set -euo pipefail
+test -f .tmp/article-target.json
+CONTENT_ID=$(node -p "require('./.tmp/article-target.json').id")
+ARTICLE_PATH=$(node -p "require('./.tmp/article-target.json').path")
+PAGE_TAG="c:$CONTENT_ID"
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+PAGE="https://$SITE_DOMAIN$ARTICLE_PATH"
 # The tag the Worker set for this page. Cloudflare strips `Cache-Tag` before
-# the response leaves the edge, so it cannot be read with curl; take it from
-# the Worker's own logs (`wrangler tail`) or from the tagging rules in
-# docs/ARCHITECTURE.md §9.
-curl -fsS -X POST \
-  "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/purge_cache" \
-  -H "Authorization: Bearer $CF_API_TOKEN" \
+# the response leaves the edge, so it cannot be read with curl. The `c:` tag is
+# derived from the D1-asserted article identity above, following the tagging
+# rule in docs/ARCHITECTURE.md §9; it is never hand-transcribed.
+curl_config=$(mktemp)
+chmod 600 "$curl_config"
+printf 'header = "Authorization: Bearer %s"\nurl = "https://api.cloudflare.com/client/v4/zones/%s/purge_cache"\n' \
+  "$CF_API_TOKEN" "$CF_ZONE_ID" > "$curl_config"
+trap 'rm -f "$curl_config"' EXIT
+purge_response=$(curl -fsS -X POST \
+  --config "$curl_config" \
   -H 'Content-Type: application/json' \
-  --data '{"tags":["<the page tag>"]}'
+  --data "{\"tags\":[\"$PAGE_TAG\"]}")
+printf '%s' "$purge_response" | node -e '
+  let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>{
+    const r=JSON.parse(s); if(r.success!==true) process.exit(1)
+  })'
+rm -f "$curl_config"
+trap - EXIT
 
 started=$(date +%s)
 until curl -fsS "$PAGE" | grep -q 'NEW MARKER'; do
-  [ $(($(date +%s) - started)) -lt 120 ] || { echo 'never purged' >&2; exit 1; }
+  [ $(($(date +%s) - started)) -lt 60 ] || { echo 'never purged within 60 seconds' >&2; exit 1; }
   sleep 2
 done
 echo "purged after $(($(date +%s) - started))s"
@@ -636,18 +1000,39 @@ printing them.
 A separate claim, and the one a site owner actually depends on: nobody calls
 the purge API by hand.
 
-```sh
+```bash
 set -euo pipefail
+test -f .tmp/article-target.json
+ARTICLE_PATH=$(node -p "require('./.tmp/article-target.json').path")
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+PAGE="https://$SITE_DOMAIN$ARTICLE_PATH"
+assert_cache_status() {
+  expected=$1
+  url=$2
+  headers=$(mktemp)
+  curl -fsS -o /dev/null -D "$headers" "$url"
+  actual=$(awk '
+    tolower($1)=="x-mallok-cache:" { gsub("\\r", "", $2); value=$2 }
+    END { print value }
+  ' "$headers")
+  rm -f "$headers"
+  [ "$actual" = "$expected" ] \
+    || { echo "expected $expected, got: ${actual:-missing}" >&2; return 1; }
+}
 # 1. Warm the page again and confirm the HIT.
-curl -fsS -o /dev/null -D - "$PAGE" >/dev/null
-curl -fsS -o /dev/null -D - "$PAGE" | grep -i x-mallok-cache    # HIT
+curl -fsS -o /dev/null "$PAGE"
+assert_cache_status HIT "$PAGE"
 
 # 2. Edit the article in the admin — a real save, through the UI — replacing
-#    NEW MARKER with SAVED MARKER. Purge nothing by hand.
+#    OLD MARKER in the source with SAVED MARKER. The NEW MARKER exists only in
+#    the derived fragment changed behind the application's back in §9.1.
+#    Purge nothing by hand.
+printf '%s\n' 'Save that edit in the admin, then press Enter here.' >&2
+read -r _
 
 started=$(date +%s)
 until curl -fsS "$PAGE" | grep -q 'SAVED MARKER'; do
-  [ $(($(date +%s) - started)) -lt 120 ] || { echo 'save did not purge' >&2; exit 1; }
+  [ $(($(date +%s) - started)) -lt 60 ] || { echo 'save did not purge within 60 seconds' >&2; exit 1; }
   sleep 2
 done
 echo "admin save purged after $(($(date +%s) - started))s"
@@ -662,19 +1047,103 @@ and §9.2 are what make its result mean something.
 **Blocker:** a real domain. **Status:** `NOT_RUN`. **Rows:** the `AC-INV`
 cache rows, re-confirmed on the edge.
 
-```sh
-SITE=https://gate.example.com/
+```bash
+set -euo pipefail
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+SITE="https://$SITE_DOMAIN/"
+: "${CACHE_TEST_TAG:?export the exact cache tag for the root page}"
+printf '%s' "$CACHE_TEST_TAG" | grep -Eq '^[A-Za-z0-9:_-]+$' \
+  || { echo 'CACHE_TEST_TAG contains unsafe characters' >&2; exit 1; }
 
-# Anonymous: GET twice, because a HEAD does not populate the edge cache.
-curl -s -o /dev/null -D - "$SITE" | grep -i 'x-mallok-cache\|cache-control'
-curl -s -o /dev/null -D - "$SITE" | grep -i 'x-mallok-cache'
+assert_response_headers() {
+  expected_cache=$1
+  expected_control=$2
+  shift 2
+  headers=$(mktemp)
+  curl -fsS -o /dev/null -D "$headers" "$@" "$SITE"
+  cache_status=$(awk '
+    tolower($1)=="x-mallok-cache:" { gsub("\\r", "", $2); value=$2 }
+    END { print value }
+  ' "$headers")
+  cache_control=$(awk '
+    tolower($1)=="cache-control:" {
+      sub(/^[^:]*:[[:space:]]*/, ""); gsub("\\r", ""); value=$0
+    }
+    END { print value }
+  ' "$headers")
+  rm -f "$headers"
+  [ "$cache_control" = "$expected_control" ] \
+    || { echo "unexpected cache-control: ${cache_control:-missing}" >&2; return 1; }
+  [ "$cache_status" = "$expected_cache" ] \
+    || { echo "expected $expected_cache, got ${cache_status:-missing}" >&2; return 1; }
+}
+
+# Establish the mutation precondition first. Without this confirmed HIT, a
+# cold or evicted entry would produce a natural MISS and make a wrong tag look
+# like a successful purge.
+started=$(date +%s)
+until assert_response_headers HIT 'public, max-age=0, s-maxage=3600'; do
+  [ "$cache_status" = MISS ] \
+    || { echo "unexpected cache status while warming: ${cache_status:-missing}" >&2; exit 1; }
+  [ $(($(date +%s) - started)) -lt 30 ] \
+    || { echo 'root page did not become a HIT within 30 seconds' >&2; exit 1; }
+  sleep 1
+done
+
+# Purge only after the HIT is observed. The API's JSON success flag is checked;
+# HTTP 200 alone does not prove the purge was accepted.
+curl_config=$(mktemp)
+chmod 600 "$curl_config"
+printf 'header = "Authorization: Bearer %s"\nurl = "https://api.cloudflare.com/client/v4/zones/%s/purge_cache"\n' \
+  "$CF_API_TOKEN" "$CF_ZONE_ID" > "$curl_config"
+trap 'rm -f "$curl_config"' EXIT
+purge_response=$(curl -fsS -X POST --config "$curl_config" \
+  -H 'Content-Type: application/json' \
+  --data "{\"tags\":[\"$CACHE_TEST_TAG\"]}")
+printf '%s' "$purge_response" | node -e '
+  let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>{
+    const r=JSON.parse(s); if(r.success!==true) process.exit(1)
+  })'
+rm -f "$curl_config"
+trap - EXIT
+
+# Wait for that known HIT to become a MISS, accepting only the pre-purge HIT
+# while invalidation propagates. The first MISS also fills the cache.
+started=$(date +%s)
+until assert_response_headers MISS 'public, max-age=0, s-maxage=3600'; do
+  [ "$cache_status" = HIT ] \
+    || { echo "unexpected cache status while waiting: ${cache_status:-missing}" >&2; exit 1; }
+  [ $(($(date +%s) - started)) -lt 60 ] \
+    || { echo 'tag purge did not produce a MISS within 60 seconds' >&2; exit 1; }
+  sleep 2
+done
+assert_response_headers HIT 'public, max-age=0, s-maxage=3600'
 
 # Credentialed: each must bypass the cache entirely.
-curl -s -o /dev/null -D - -H 'Authorization: Bearer x' "$SITE" | grep -i 'x-mallok-cache\|cache-control'
-curl -s -o /dev/null -D - -H 'Cookie: a=1' "$SITE"             | grep -i 'x-mallok-cache\|cache-control'
+assert_response_headers BYPASS 'private, no-store' \
+  -H 'Authorization: Bearer x'
+assert_response_headers BYPASS 'private, no-store' -H 'Cookie: a=1'
 
-# HEAD: the GET headers, no body.
-curl -sI "$SITE" | grep -i 'x-mallok-cache'
+# HEAD: use Fetch so response headers and body bytes are separate. `curl -I`
+# writes the headers to its output file, so testing that file for zero bytes
+# falsely reports a body even when the server obeyed HEAD.
+node --input-type=module - "$SITE" <<'NODE'
+const response = await fetch(process.argv[2], {
+  method: 'HEAD',
+  redirect: 'manual',
+});
+const bytes = await response.arrayBuffer();
+if (response.status !== 200 || bytes.byteLength !== 0 ||
+    response.headers.get('x-mallok-cache') !== 'HIT' ||
+    response.headers.get('cache-control') !== 'public, max-age=0, s-maxage=3600') {
+  throw new Error(`bad HEAD response: ${JSON.stringify({
+    status: response.status,
+    bytes: bytes.byteLength,
+    cache: response.headers.get('x-mallok-cache'),
+    control: response.headers.get('cache-control'),
+  })}`);
+}
+NODE
 ```
 
 **Pass:** anonymous `MISS` then `HIT`; both credentialed requests `BYPASS`
@@ -698,53 +1167,167 @@ headers, not that Cloudflare honoured them.
 **Blocker:** a real deployment. **Status:** `NOT_RUN`. **Rows:** `AC-INV-05`,
 `ARCHITECTURE §18` items 2 and 5.
 
-**What `wrangler tail` can and cannot tell you.** It streams logs, exceptions,
-the outcome and `cpuTime`/`wallTime` per invocation. It does **not** report how
-many D1 round trips a request made — an earlier version of this document said
-it did, and a number read that way would have been invented. Use it for CPU:
+There are three different meanings of “cold” here. They must not be collapsed:
 
-**What is measured, on what, and how many times.** "CPU is within budget" is
-not a result; it is a sentence. The gate records a distribution, on a named
-path, from a named source.
+- a **cache-cold `MISS`** invokes Mallok and renders the page;
+- a **cache-warm `HIT`** still invokes Mallok, because `caches.default.match`
+  is called inside the Worker; it skips `locals`, D1 and rendering and should
+  therefore use very little Worker CPU;
+- an **isolate cold start** is runtime startup. The current Observability
+  telemetry model has an optional `$metadata.coldStart` field. Group by it
+  when this deployment emits it; if the field is absent, report that startup
+  classification as unavailable rather than guessing from the first or
+  slowest sample.
 
-| | |
-| --- | --- |
-| **Path** | `GET /<locale>/news/<slug>` — one published article with an image, rendered from `render_cache`. The single most common visitor request, and the one `AC-INV-05` is written about |
-| **Samples** | 30 requests, issued one at a time, at least one second apart. Ten is too few to read a p95 from; a burst measures the edge's concurrency, not the render |
-| **Two populations, reported separately** | **Cold** (`x-mallok-cache: MISS`, the Worker assembled the page) and **warm** (`HIT`, the edge answered). Averaging them together produces a number describing neither, and the cold path is the one with a budget |
-| **Statistics** | p50, p95 and max of `cpuTime`, in milliseconds, for each population |
-| **Source** | `wrangler tail --format=json`, field `cpuTime`, one record per invocation. **Not** `wallTime`, which includes waiting on D1 and is not what the platform bills or kills |
-| **Threshold** | Cold p95 ≤ 10 ms and max ≤ 50 ms — Mallok's own budget, from `docs/ARCHITECTURE.md §2`, not a number this account happens to allow. Gate A found this test account tolerating 700 ms–2 s before a kill (`docs/tasks/TASK-01.md §5`, item 4); a site installed on somebody else's account cannot assume that, so the budget stands |
+The locked Wrangler's real-time `tail` JSON is useful for seeing invocations,
+but it is **not the CPU source for this gate**: its current documented JSON
+shape does not promise a CPU field. CPU and wall time are indexed on the
+persisted Workers invocation log as `$workers.cpuTimeMs` and
+`$workers.wallTimeMs`. Read them with Workers Observability Query Builder.
+`wallTimeMs` includes D1 waits and is recorded as latency, not substituted for
+CPU.
 
-```sh
+Before collecting samples, make the disposable gate deployment's telemetry
+complete and redeploy it. The default trace rate is currently 1, but this gate
+states both rates explicitly so a copied project setting cannot silently make
+the sample incomplete:
+
+```jsonc
+"observability": {
+  "enabled": true,
+  "logs": {
+    "enabled": true,
+    "invocation_logs": true,
+    "head_sampling_rate": 1
+  },
+  "traces": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
+```
+
+Run `./node_modules/.bin/wrangler deploy`, then select only telemetry produced
+by that deployment. Restore the project's normal observability settings after
+the gate if full tracing is not wanted in ordinary use.
+
+Use one published article with an image at
+`GET /<locale>/news/<slug>`. Collect two named populations, one request at a
+time:
+
+| Population | n | What is recorded | Statistics |
+| --- | ---: | --- | --- |
+| cache-cold | 30 confirmed `MISS` responses, purged by the page's exact tag before each sample | Workers Logs `$workers.cpuTimeMs`; client `time_total` as a separate latency measure | CPU and latency p50, p95, max |
+| cache-warm | 30 confirmed `HIT` responses after one warm-up request | Workers Logs `$workers.cpuTimeMs`; client `time_total` separately | CPU and latency p50, p95, max |
+
+Use the page tag established in §9.2. The query parameter is only a sample id:
+Mallok's cache key deliberately removes the query string, so it neither makes
+a new cache entry nor turns a `HIT` into a `MISS`.
+
+```bash
 set -euo pipefail
 cd gate-site
-./node_modules/.bin/wrangler tail --format=json > tail.json    # one terminal
+test -f .tmp/article-target.json
+CONTENT_ID=$(node -p "require('./.tmp/article-target.json').id")
+ARTICLE_PATH=$(node -p "require('./.tmp/article-target.json').path")
+PAGE_TAG="c:$CONTENT_ID"
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+PAGE="https://$SITE_DOMAIN$ARTICLE_PATH"
+mkdir -p .tmp/cpu-gate
+: > .tmp/cpu-gate/cold-http.tsv
+: > .tmp/cpu-gate/warm-http.tsv
+curl_config=$(mktemp)
+chmod 600 "$curl_config"
+printf 'header = "Authorization: Bearer %s"\nurl = "https://api.cloudflare.com/client/v4/zones/%s/purge_cache"\n' \
+  "$CF_API_TOKEN" "$CF_ZONE_ID" > "$curl_config"
+trap 'rm -f "$curl_config"' EXIT
 
-# Another terminal. A warm run and a cold run, told apart by the header.
+# Each accepted sample must say MISS. A successful purge API response is
+# checked as JSON; HTTP 200 with {"success":false} is a failure, not a purge.
 for i in $(seq 1 30); do
-  curl -fsS -o /dev/null -D - "https://gate.example.com/news/<slug>" \
-    | grep -i x-mallok-cache
+  purge_response=$(curl -fsS -X POST \
+    --config "$curl_config" \
+    -H 'Content-Type: application/json' \
+    --data "{\"tags\":[\"$PAGE_TAG\"]}")
+  printf '%s' "$purge_response" | node -e '
+    let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>{
+      const r=JSON.parse(s); if(r.success!==true) process.exit(1)
+    })'
+
+  # Do not probe with HEAD: a MISS on HEAD still runs locals, D1 and render,
+  # which would warm the very code path this sample is meant to measure.
+  # Give tag invalidation time to propagate, then accept exactly one request.
+  # If it is still HIT, abort and repeat the whole run in a fresh log window;
+  # do not add an uncounted retry to this population.
+  sleep 5
+
+  headers=$(mktemp)
+  elapsed=$(curl -fsS -o /dev/null -D "$headers" -w '%{time_total}' \
+    "$PAGE?mallok_cpu_sample=cold-$i")
+  cache_status=$(awk '
+    tolower($1)=="x-mallok-cache:" { gsub("\\r", "", $2); value=$2 }
+    END { print value }
+  ' "$headers")
+  rm -f "$headers"
+  [ "$cache_status" = MISS ] \
+    || { echo "expected tagged MISS, got: $cache_status" >&2; exit 1; }
+  printf '%s\t%s\n' "$i" "$elapsed" >> .tmp/cpu-gate/cold-http.tsv
   sleep 1
 done
 
-# Then, over tail.json:
+# The first request fills the cache. Every measured request must then be HIT.
+curl -fsS -o /dev/null "$PAGE"
+for i in $(seq 1 30); do
+  headers=$(mktemp)
+  elapsed=$(curl -fsS -o /dev/null -D "$headers" -w '%{time_total}' \
+    "$PAGE?mallok_cpu_sample=warm-$i")
+  cache_status=$(awk '
+    tolower($1)=="x-mallok-cache:" { gsub("\\r", "", $2); value=$2 }
+    END { print value }
+  ' "$headers")
+  rm -f "$headers"
+  [ "$cache_status" = HIT ] || { echo "expected HIT, got: $cache_status" >&2; exit 1; }
+  printf '%s\t%s\n' "$i" "$elapsed" >> .tmp/cpu-gate/warm-http.tsv
+  sleep 1
+done
+
 node -e '
-  const lines = require("fs").readFileSync("tail.json", "utf8")
-    .split("\n").filter(Boolean).map((l) => JSON.parse(l));
-  const cpu = lines.map((l) => l.cpuTime).filter((n) => typeof n === "number")
-    .sort((a, b) => a - b);
-  const at = (q) => cpu[Math.min(cpu.length - 1, Math.floor(q * cpu.length))];
-  console.log({ n: cpu.length, p50: at(0.5), p95: at(0.95), max: cpu.at(-1) });
+  const fs=require("fs");
+  for(const name of ["cold-http","warm-http"]){
+    const a=fs.readFileSync(`.tmp/cpu-gate/${name}.tsv`,"utf8").trim()
+      .split("\n").map(x=>Number(x.split("\t")[1])*1000).sort((a,b)=>a-b);
+    const at=q=>a[Math.ceil(q*a.length)-1];
+    console.log(name,{n:a.length,p50_ms:at(.5),p95_ms:at(.95),max_ms:a.at(-1)});
+  }
 '
+rm -f "$curl_config"
+trap - EXIT
 ```
 
-**Pass (CPU):** the table above is filled in with real numbers — path, sample
-count, cold p50/p95/max, warm p50/p95/max, the threshold each is compared
-against, and `wrangler tail --format=json` as the source — and recorded in
-`docs/tasks/TASK-01.md §5` next to the Gate A figures it is being compared to.
-A report that says "within budget" without those numbers has not run this
-step.
+After Workers Logs has ingested the run, open the gate Worker's Observability
+Query Builder and select the exact run window. For the cold population filter
+`$metadata.type = cf-worker-event`, require `$workers.cpuTimeMs` to exist,
+filter `$metadata.url` for `mallok_cpu_sample=cold-`, and require the invocation
+outcome `$workers.outcome` to be `ok`; calculate `Count`, `Median`, `P95`, and `Max` over
+`$workers.cpuTimeMs`. Repeat with `$metadata.url` filtered for
+`mallok_cpu_sample=warm-`. Filtering to the invocation event is essential:
+console rows from the same request are separate log events and would make
+`Count` exceed the number of requests. Each count must be exactly 30: both
+paths invoke the Worker, while only the `MISS` builds locals and renders. If
+Workers Logs sampling or retention makes either count inconclusive, this gate
+remains `NOT_RUN`; do not fill the gap with `wrangler tail` or client latency.
+When `$metadata.coldStart` exists on these invocations, also group each CPU
+distribution by that field; when it does not, record it as unavailable.
+
+**Pass (CPU):** record the path and time window; cache-cold and cache-warm
+n=30 CPU p50/p95/max; both populations' client-latency p50/p95/max; and cold
+max ≤ 10 ms. The architecture applies its 10 ms budget to **every**
+invocation, so a 50 ms outlier is a failure even when p95 is below 10 ms.
+Compare warm CPU with the architecture's under-1 ms target and record the
+result; do not rewrite a measured value as 0 or N/A.
+Record the `$metadata.coldStart` grouping when present, or “field unavailable”
+when absent; never assign a slow sample to startup by guesswork. A report that
+says only “within budget” has not run this step.
 
 **The D1 round-trip count** (`AC-INV-05`: at most four on a cold render, two
 expected) is measured two ways, neither of them tail:
@@ -770,13 +1353,93 @@ dashboard figure as the round-trip number.
 `AC-CONTENT-06b`, `AC-MEDIA-06b`.
 
 **Scheduled publishing** is quick: schedule an article two minutes ahead, then
+immediately record the target while it is still `scheduled`. This precondition
+is mandatory: the `scheduled_publish` log carries a count, not content ids, so
+an already-published target plus an unrelated publish event would otherwise
+look green.
 
-```sh
+```bash
+set -euo pipefail
 cd gate-site
-./node_modules/.bin/wrangler tail --format=pretty | grep -i scheduled
+: "${SCHEDULED_CONTENT_ID:?export the scheduled article content id}"
+printf '%s' "$SCHEDULED_CONTENT_ID" | grep -Eq \
+  '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$' \
+  || { echo 'SCHEDULED_CONTENT_ID is not a UUID' >&2; exit 1; }
+mkdir -p .tmp
+DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+scheduled_file=$(mktemp)
+./node_modules/.bin/wrangler d1 execute "$DATABASE" --remote --json \
+  --command "SELECT id, status, published_at, updated_at FROM content WHERE id = '$SCHEDULED_CONTENT_ID'" \
+  > "$scheduled_file"
+node - "$SCHEDULED_CONTENT_ID" "$scheduled_file" \
+  .tmp/scheduled-publish-target.json <<'NODE'
+const { existsSync, readFileSync, writeFileSync } = require('node:fs');
+const [expectedId, input, output] = process.argv.slice(2);
+const batches = JSON.parse(readFileSync(input, 'utf8'));
+const rows = Array.isArray(batches)
+  ? batches.flatMap(batch => Array.isArray(batch.results) ? batch.results : [])
+  : [];
+if (rows.length !== 1 || rows[0].id !== expectedId ||
+    rows[0].status !== 'scheduled' ||
+    !Number.isFinite(Date.parse(rows[0].published_at)) ||
+    !Number.isFinite(Date.parse(rows[0].updated_at))) {
+  throw new Error(`target is not one scheduled article: ${JSON.stringify(rows)}`);
+}
+const target = {
+  id: rows[0].id,
+  publishedAt: rows[0].published_at,
+  beforeUpdatedAt: rows[0].updated_at,
+};
+if (existsSync(output)) {
+  const recorded = JSON.parse(readFileSync(output, 'utf8'));
+  if (JSON.stringify(recorded) !== JSON.stringify(target)) {
+    throw new Error('the recorded scheduled target changed');
+  }
+} else {
+  writeFileSync(output, `${JSON.stringify(target)}\n`, { flag: 'wx' });
+}
+NODE
+rm -f "$scheduled_file"
 ```
 
-**Pass:** the item publishes with no request arriving.
+In another terminal run `./node_modules/.bin/wrangler tail --format=json`,
+wait for the exact `scheduled_publish` event and record its timestamp, then
+stop tail. Before making any public request, prove the same machine-recorded
+row crossed from `scheduled` to `published` at or after its scheduled time:
+
+```bash
+set -euo pipefail
+test -f .tmp/scheduled-publish-target.json
+SCHEDULED_CONTENT_ID=$(node -p "require('./.tmp/scheduled-publish-target.json').id")
+DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+scheduled_file=$(mktemp)
+./node_modules/.bin/wrangler d1 execute "$DATABASE" --remote --json \
+  --command "SELECT id, status, published_at, updated_at FROM content WHERE id = '$SCHEDULED_CONTENT_ID'" \
+  > "$scheduled_file"
+node - .tmp/scheduled-publish-target.json "$scheduled_file" <<'NODE'
+const { readFileSync } = require('node:fs');
+const [targetFile, resultFile] = process.argv.slice(2);
+const target = JSON.parse(readFileSync(targetFile, 'utf8'));
+const batches = JSON.parse(readFileSync(resultFile, 'utf8'));
+const rows = Array.isArray(batches)
+  ? batches.flatMap(batch => Array.isArray(batch.results) ? batch.results : [])
+  : [];
+const row = rows[0];
+if (rows.length !== 1 || row.id !== target.id || row.status !== 'published' ||
+    row.published_at !== target.publishedAt ||
+    row.updated_at === target.beforeUpdatedAt ||
+    !Number.isFinite(Date.parse(row.updated_at)) ||
+    Date.parse(row.updated_at) < Date.parse(target.publishedAt)) {
+  throw new Error(`scheduled article was not published: ${JSON.stringify(rows)}`);
+}
+NODE
+rm -f "$scheduled_file"
+```
+
+**Pass:** the before-record says `scheduled`; the after-row for the same id and
+unchanged `published_at` says `published` with a later `updated_at`; the tail
+contains the tick between those observations; and no visitor request arrived
+before the D1 assertion.
 
 **The seven-day media reclaim** is the awkward one, because waiting seven days
 is not a test anybody runs. Do it on isolated data, with a real cron tick.
@@ -793,29 +1456,75 @@ later added for something else.
 2. Delete the content that referenced it, so the object becomes unreferenced.
    Confirm the site set the field rather than assuming it:
 
-   ```sh
+   ```bash
+   set -euo pipefail
    cd gate-site
-   ./node_modules/.bin/wrangler d1 execute mallok-gate-20260911-db --remote \
-     --command "SELECT sha256, ref_count, unreferenced_since FROM media WHERE sha256 = '<sha>'"
+   : "${MEDIA_SHA:?export the uploaded object sha256}"
+   printf '%s' "$MEDIA_SHA" | grep -Eq '^[0-9a-f]{64}$' \
+     || { echo 'MEDIA_SHA is not a lowercase sha256' >&2; exit 1; }
+   mkdir -p .tmp
+   DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+   ./node_modules/.bin/wrangler d1 execute "$DATABASE" --remote \
+     --json \
+     --command "SELECT sha256, ext, variants, ref_count, unreferenced_since FROM media WHERE sha256 = '$MEDIA_SHA'" \
+     > .tmp/media-reclaim-row.json
+   node - "$MEDIA_SHA" .tmp/media-reclaim-row.json \
+     .tmp/media-reclaim-target.json <<'NODE'
+const { readFileSync, writeFileSync } = require('node:fs');
+const [expectedSha, input, output] = process.argv.slice(2);
+const batches = JSON.parse(readFileSync(input, 'utf8'));
+const rows = Array.isArray(batches)
+  ? batches.flatMap(batch => Array.isArray(batch.results) ? batch.results : [])
+  : [];
+if (rows.length !== 1) throw new Error(`expected one media row, got ${rows.length}`);
+const row = rows[0];
+const widths = typeof row.variants === 'string'
+  ? JSON.parse(row.variants)
+  : row.variants;
+if (row.sha256 !== expectedSha || Number(row.ref_count) !== 0 ||
+    typeof row.unreferenced_since !== 'string' || row.unreferenced_since === '' ||
+    typeof row.ext !== 'string' || !/^[a-z0-9]+$/.test(row.ext) ||
+    !Array.isArray(widths) || widths.some(n => !Number.isInteger(n) || n <= 0)) {
+  throw new Error(`media row is not a reclaimable target: ${JSON.stringify(row)}`);
+}
+writeFileSync(output, `${JSON.stringify({ sha: row.sha256, ext: row.ext, widths })}\n`, {
+  flag: 'wx',
+});
+NODE
    ```
 
-   `ref_count` must be 0 and `unreferenced_since` must be set. If it is not,
-   the reclaim has nothing to act on and the rest of this step proves nothing.
+   The script refuses anything except one matching 64-character SHA, a zero
+   `ref_count`, a set `unreferenced_since`, a safe extension and an integer
+   `variants` array. It writes that normalized identity once to
+   `.tmp/media-reclaim-target.json`: after reclaim the row is gone, so later
+   checks must use this pre-reclaim evidence rather than hand-transcribed keys.
 3. Age that one row past the grace period — this gate's own database, this
    object only, never a blanket update:
 
-   ```sh
-   ./node_modules/.bin/wrangler d1 execute mallok-gate-20260911-db --remote \
-     --command "UPDATE media SET unreferenced_since = datetime('now','-8 days') WHERE sha256 = '<sha>'"
+   ```bash
+   set -euo pipefail
+   test -f .tmp/media-reclaim-target.json
+   MEDIA_SHA=$(node -p "require('./.tmp/media-reclaim-target.json').sha")
+   DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+   update_json=$(./node_modules/.bin/wrangler d1 execute \
+     "$DATABASE" --remote --json \
+     --command "UPDATE media SET unreferenced_since = datetime('now','-8 days') WHERE sha256 = '$MEDIA_SHA'")
+   printf '%s' "$update_json" | node -e '
+let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>{
+  const batches=JSON.parse(s);
+  if(!Array.isArray(batches) || batches.length!==1 ||
+      Number(batches[0]?.meta?.changes)!==1){
+    throw new Error(`expected exactly one aged row, got ${JSON.stringify(batches)}`)
+  }
+})'
    ```
 
    The `WHERE` clause is not optional. Without it every object in the bucket
    is collected on the next tick.
-4. Wait for a **real** cron tick and watch it arrive:
-
-   ```sh
-   ./node_modules/.bin/wrangler tail --format=pretty | grep -i 'scheduled\|media_collected'
-   ```
+4. Wait for a **real** cron tick. Keep
+   `./node_modules/.bin/wrangler tail --format=json` open in a separate
+   terminal until the exact `media_collected` event appears, record it, and
+   then stop tail.
 
    A Mallok site's trigger is `* * * * *`, so a tick is a minute away — but
    **a newly deployed or newly changed cron schedule can take up to about 15
@@ -830,44 +1539,103 @@ later added for something else.
    through `wrangler dev --test-scheduled`, and it proves the code, not the
    platform:
 
-   ```sh
+   ```bash
    set -euo pipefail
    # Local only. Never against a deployed site — there is no such route there.
-   npx wrangler dev --test-scheduled --port 8787 &
+   mkdir -p .tmp
+   ./node_modules/.bin/wrangler dev --test-scheduled --port 8787 \
+     > .tmp/local-scheduled.log 2>&1 &
+   dev_pid=$!
+   trap 'kill "$dev_pid" 2>/dev/null || true' EXIT
+   ready=0
+   for _ in $(seq 1 60); do
+     if curl -fsS -o /dev/null \
+          'http://127.0.0.1:8787/_mallok/api/setup/status'; then
+       ready=1
+       break
+     fi
+     sleep 1
+   done
+   [ "$ready" = 1 ] || { cat .tmp/local-scheduled.log >&2; exit 1; }
    curl -fsS 'http://127.0.0.1:8787/cdn-cgi/local/scheduled?cron=*+*+*+*+*'
+   kill "$dev_pid"
+   wait_status=0
+   wait "$dev_pid" || wait_status=$?
+   case "$wait_status" in 0|130|143) ;; *) exit "$wait_status";; esac
+   trap - EXIT
    ```
 5. Confirm both halves are gone — the row and the object:
 
-   ```sh
+   ```bash
    set -euo pipefail
-   ./node_modules/.bin/wrangler d1 execute mallok-gate-20260911-db --remote \
-     --command "SELECT COUNT(*) AS n FROM media WHERE sha256 = '<sha>'"
+   test -f .tmp/media-reclaim-target.json
+   MEDIA_SHA=$(node -p "require('./.tmp/media-reclaim-target.json').sha")
+   MEDIA_EXT=$(node -p "require('./.tmp/media-reclaim-target.json').ext")
+   MEDIA_WIDTHS=$(node -p "require('./.tmp/media-reclaim-target.json').widths.join(' ')")
+   DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+   count_json=$(./node_modules/.bin/wrangler d1 execute \
+     "$DATABASE" --remote --json \
+     --command "SELECT COUNT(*) AS n FROM media WHERE sha256 = '$MEDIA_SHA'")
+   printf '%s' "$count_json" | node -e '
+let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>{
+  const batches=JSON.parse(s);
+  const rows=Array.isArray(batches)
+    ? batches.flatMap(batch=>Array.isArray(batch.results) ? batch.results : [])
+    : [];
+  if(rows.length!==1 || Number(rows[0].n)!==0){
+    process.stderr.write(`expected reclaimed media count 0, got ${JSON.stringify(rows)}\n`);
+    process.exit(1);
+  }
+})'
 
-   # `media/<sha>.<ext>`, the key the code writes (src/core/media.ts), not
-   # `<sha>.<ext>` at the bucket root — which this document used to give, and
-   # which is "not found" whether the object was reclaimed or not.
-   #
-   # `pipefail` is what makes this check mean anything: without it the
-   # pipeline exits with `tail`'s status, so a Wrangler that failed on
-   # authentication reports the same success as a Wrangler that found nothing.
-   if ./node_modules/.bin/wrangler r2 object get \
-        "mallok-gate-20260911-media/media/<sha>.<ext>" --file /dev/null 2>err.txt
-   then
-     echo 'still present — the reclaim did not run' >&2; exit 1
-   fi
-   grep -qi 'not found\|does not exist\|NoSuchKey' err.txt \
-     || { echo "Wrangler failed for another reason:"; cat err.txt; exit 1; }
+   # These come from the asserted row recorded before the cron tick. Do not
+   # assume all four default widths exist: narrow images have fewer.
+   SHA=$MEDIA_SHA
+   EXT=$MEDIA_EXT
+   WIDTHS=$MEDIA_WIDTHS
+   BUCKET=$(node -p "require('./.mallok/create-state.json').bucket.name")
 
-   # And every width variant, which the reclaim removes with the original.
-   for width in 480 960 1440 1920; do
-     ./node_modules/.bin/wrangler r2 object get \
-       "mallok-gate-20260911-media/media/<sha>_${width}.webp" --file /dev/null \
-       && { echo "variant ${width} survived" >&2; exit 1; }
+   # Wrangler 4.124.0 turns an absent R2 object into exactly this UserError:
+   # "The specified key does not exist." Anything else — an expired token,
+   # denied permission, network error, missing bucket or ordinary 404 — is a
+   # gate failure, never evidence that reclaim succeeded.
+   assert_r2_object_absent() {
+     object_path=$1
+     error_file=$(mktemp)
+     if ./node_modules/.bin/wrangler r2 object get \
+          "$object_path" --file /dev/null 2>"$error_file"
+     then
+       echo "$object_path is still present" >&2
+       return 1
+     fi
+     node - "$error_file" <<'NODE'
+const { readFileSync } = require('node:fs');
+const plain = readFileSync(process.argv[2], 'utf8')
+  .replace(/\x1b\[[0-9;]*m/g, '');
+const errors = plain.split('\n')
+  .filter((line) => line.includes('[ERROR]'))
+  .map((line) => line.slice(line.indexOf('[ERROR]')).trim());
+if (errors.length !== 1 ||
+    errors[0] !== '[ERROR] The specified key does not exist.') {
+  process.stderr.write(`Wrangler failed for another reason:\n${plain}`);
+  process.exit(1);
+}
+NODE
+   }
+
+   # The original key uses the recorded SHA and extension; variants add width.
+   assert_r2_object_absent "$BUCKET/media/$SHA.$EXT"
+   for width in $WIDTHS; do
+     assert_r2_object_absent "$BUCKET/media/${SHA}_${width}.webp"
    done
    ```
 
-**Pass:** the count is 0, the object is reported as not existing, and
-`media_collected` appeared in the tail. Record the tick's timestamp.
+**Pass:** the count is 0; the original and every variant recorded in the row
+produce Wrangler 4.124.0's exact key-absence error; and `media_collected`
+appeared in the tail. Record the tick's timestamp. A generic `404`,
+`Not Found`, `NoSuchKey`, or “does not exist” grep is not accepted: each can
+describe a different resource or a failed gateway and used to make this gate
+fail open.
 
 **Free plan ceiling:** five cron triggers per account, one per Mallok site. A
 gate site occupies one of them for as long as it exists, which is another
@@ -878,16 +1646,31 @@ reason for §17.
 **Blocker:** Turnstile and Resend accounts. **Status:** `NOT_RUN`.
 **Rows:** `AC-PLUGIN-02b`, `AC-PLUGIN-03b`, `AC-PLUGIN-05b`.
 
-Enter both key pairs in Admin → Plugins → Inquiry. Then, from a browser (not
-curl — the widget must render):
+Enter both key pairs in Admin → Plugins → Inquiry. Keep the full-rate logs and
+traces configured in §11; the trace is what makes the exact fetch and binding
+operations of one submission countable. Then, from a browser (not curl — the
+widget must render):
 
 1. Submit the inquiry form on a product page.
-2. Confirm the email arrives at the configured address.
+2. With autoreply enabled, confirm both the owner notification and buyer
+   acknowledgement arrive at addresses the operator controls.
 3. Confirm the inquiry appears in the admin and in an export.
-4. `wrangler tail` during the submission, for CPU and subrequest counts.
+4. Keep `wrangler tail` open for immediate exceptions and the invocation
+   outcome. It is diagnostic evidence, not the CPU counter.
+5. In Workers Observability, find that exact invocation. Record
+   `$workers.cpuTimeMs`, then open its trace and count the outbound `fetch`
+   spans and every binding span. With autoreply enabled, the code path has
+   exactly three outbound fetches: one Turnstile verification and two Resend
+   sends. Record the D1 spans separately, then count all fetch and binding
+   spans for the platform subrequest ceiling. Do not use an account-wide graph
+   as though it described this one submission.
 
-**Pass:** a real email received; the widget rejects a submission with no token;
-CPU and subrequests within budget.
+**Pass:** both real emails received; the widget rejects a submission with no token;
+the successful submission has `$workers.cpuTimeMs ≤ 10`; it has exactly three
+outbound fetch spans; and all fetch plus binding spans total at most 50, the
+free-plan per-invocation ceiling in `docs/ARCHITECTURE.md §2`. Any missing
+trace or sampled-out invocation leaves this row `NOT_RUN`; “within budget”
+without the numbers is not a result.
 
 **Do not use a real customer address.** Send to an address the operator owns.
 
@@ -931,18 +1714,21 @@ fails the gate rather than being scored.
 month apart would not be comparing like with like. `@lhci/cli` is a pinned
 devDependency at `0.15.1`.
 
-```sh
+```bash
 set -euo pipefail
+test -f .tmp/article-target.json
+ARTICLE_PATH=$(node -p "require('./.tmp/article-target.json').path")
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
 # Warm the edge first: a cold cache fails this for reasons that say nothing
 # about the code.
-curl -fsS -o /dev/null https://gate.example.com/
-curl -fsS -o /dev/null https://gate.example.com/news/<slug>
+curl -fsS -o /dev/null "https://$SITE_DOMAIN/"
+curl -fsS -o /dev/null "https://$SITE_DOMAIN$ARTICLE_PATH"
 
 rm -rf .tmp/lighthouse
 ./node_modules/.bin/lhci autorun \
   --config=./lighthouserc.json \
-  --collect.url=https://gate.example.com/ \
-  --collect.url=https://gate.example.com/news/<slug>
+  --collect.url="https://$SITE_DOMAIN/" \
+  --collect.url="https://$SITE_DOMAIN$ARTICLE_PATH"
 
 # Both thresholds, from the three reports lhci just wrote.
 pnpm lighthouse:gate
@@ -967,7 +1753,7 @@ This comes **after** the gate above has passed, and after §5.
 
 Before making anything public:
 
-```sh
+```bash
 set -euo pipefail
 pnpm scan:secrets        # every blob on every ref, values never printed
 ```
@@ -984,7 +1770,8 @@ public cannot be undone for anything already cloned.
 
 ### 15.1 The Deploy to Cloudflare button — `NOT_AVAILABLE`
 
-**Row:** `AC-DEPLOY-02`, **withdrawn from 0.1.0-rc.4's claimed capability.**
+**Row:** `AC-DEPLOY-02`, **withdrawn from 0.1.0-rc.4's claimed capability and
+still unavailable in the 0.1.0-rc.5 candidate.**
 
 Not "untested". **Not available**, and the reason is structural rather than a
 matter of finding an afternoon to click it.
@@ -1000,7 +1787,7 @@ What the button needs is a separate, public **starter site** repository: the
 same thin shell `mallok create` writes — a `wrangler.jsonc`, a `site.json`,
 some content, four lines of composition — with an exact dependency on
 `mallok`. Creating, publishing and testing that repository is **external
-follow-up work after 0.1.0-rc.4**, on a clean account, and it is tracked
+follow-up work after 0.1.0-rc.5**, on a clean account, and it is tracked
 separately.
 
 **It is not Nundar.** Nundar is the commerce engine in the same organisation;
@@ -1022,34 +1809,87 @@ wrong thing.
 Do this before §17 deletes the site, and name both versions. "Deploy the next
 build over it" was the previous wording and it describes nothing: there is no
 "next build", there are two published versions and the move between them.
+The later version chosen for this row must introduce a known migration; a
+pair with no schema change can test package replacement but cannot close
+`AC-DEPLOY-08`'s migration claim.
 
-```sh
+```bash
 set -euo pipefail
 cd gate-site
+: "${MALLOK_NEXT_VERSION:?export the next published Mallok version}"
+: "${EXPECTED_MIGRATION_ID:?export the migration introduced by that version}"
+printf '%s' "$EXPECTED_MIGRATION_ID" | grep -Eq '^[A-Za-z0-9:_-]+$' \
+  || { echo 'EXPECTED_MIGRATION_ID contains unsafe characters' >&2; exit 1; }
+test -f .tmp/article-target.json
+ARTICLE_PATH=$(node -p "require('./.tmp/article-target.json').path")
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+DATABASE=$(node -p "require('./.mallok/create-state.json').database.name")
+PAGE="https://$SITE_DOMAIN$ARTICLE_PATH"
 
-# 1. Publish content on the version this gate deployed, and note
-#    a page that must survive.
-curl -fsS https://gate.example.com/news/<slug> | grep -c 'MARKER'   # 1
+assert_migration_count() {
+  expected=$1
+  migration_json=$(./node_modules/.bin/wrangler d1 execute \
+    "$DATABASE" --remote --json \
+    --command "SELECT COUNT(*) AS n FROM migration WHERE id = '$EXPECTED_MIGRATION_ID'")
+  printf '%s' "$migration_json" | node -e '
+let s=""; process.stdin.on("data",c=>s+=c).on("end",()=>{
+  const expected=Number(process.argv[1]);
+  const batches=JSON.parse(s);
+  const rows=Array.isArray(batches)
+    ? batches.flatMap(batch=>Array.isArray(batch.results) ? batch.results : [])
+    : [];
+  if(rows.length!==1 || Number(rows[0].n)!==expected){
+    throw new Error(`expected migration count ${expected}, got ${JSON.stringify(rows)}`)
+  }
+})' "$expected"
+}
+
+# 1. Prove this really is a new migration, then preserve a page body from the
+#    version this gate deployed. An existing migration id cannot close the row.
+assert_migration_count 0
+before_body=$(mktemp)
+curl -fsS -o "$before_body" "$PAGE"
+grep -q 'MARKER' "$before_body"
+rm -f "$before_body"
 
 # 2. Move the site to the next release. This is `mallok upgrade`, the same
 #    command a user runs — not a merge, and not an edit of the manifest.
-./node_modules/.bin/mallok upgrade --to <the next published version>
+./node_modules/.bin/mallok upgrade --to "$MALLOK_NEXT_VERSION"
 
 # 3. Deploy it.
 ./node_modules/.bin/wrangler deploy
 
-# 4. The content is still there, and the migration ran once.
-curl -fsS https://gate.example.com/news/<slug> | grep -c 'MARKER'   # 1
-./node_modules/.bin/wrangler d1 execute mallok-gate-20260911-db --remote \
-  --command "SELECT id FROM migration ORDER BY id"
+# 4. Force the new Worker to boot, migrate and render without consulting the
+#    anonymous edge entry warmed in step 1. A cached pre-upgrade body is not
+#    evidence that the new release can read the old content.
+after_headers=$(mktemp)
+after_body=$(mktemp)
+curl -fsS -H 'Authorization: Bearer x' \
+  -D "$after_headers" -o "$after_body" "$PAGE"
+grep -q 'MARKER' "$after_body"
+cache_status=$(awk '
+  tolower($1)=="x-mallok-cache:" { gsub("\\r", "", $2); value=$2 }
+  END { print value }
+' "$after_headers")
+cache_control=$(awk '
+  tolower($1)=="cache-control:" {
+    sub(/^[^:]*:[[:space:]]*/, ""); gsub("\\r", ""); value=$0
+  }
+  END { print value }
+' "$after_headers")
+rm -f "$after_headers" "$after_body"
+[ "$cache_status" = BYPASS ] && [ "$cache_control" = 'private, no-store' ] \
+  || { echo 'post-upgrade page did not bypass the old edge entry' >&2; exit 1; }
+assert_migration_count 1
 ```
 
 There is no `mallok.json` to read: 0.1 has no project-file migration system,
 so an upgrade leaves nothing in the site's own directory to inspect
 (`docs/CLI.md §10.1`).
 
-**Pass:** step 4 finds the content intact, every migration id appears exactly
-once, and `wrangler tail` during step 3 shows no window of failed requests.
+**Pass:** the named migration moves from count 0 to count 1; step 4 renders the
+recorded locale-aware page through a confirmed `BYPASS` with its content
+intact; and `wrangler tail` during step 3 shows no window of failed requests.
 
 Until a second version exists, this step is `NOT_RUN` for a reason nobody can
 fix on the day: **it needs two published releases.** The local half is
@@ -1076,12 +1916,162 @@ to read the id.
 
 An R2 bucket cannot be deleted while it holds objects or has a custom domain
 attached; both refusals are recognised from what Cloudflare actually says, and
-anything else stops rather than being read as "already gone".
+anything else stops rather than being read as "already gone". Before those
+calls, `destroy` also reads this project's `wrangler.jsonc`, checks its Worker
+name and `DB` binding against the slug and recorded D1 UUID, and checks the
+active account against both ledger and registry. The runbook preflight below
+also parses `wrangler.jsonc` and requires its Worker, `DB`, `MEDIA`, site var and
+custom-domain route to match both the ledger and the names derived from the
+slug. That extra R2 binding comparison matters because `destroy` itself does
+not currently expose it in its project-identity parser. The final D1 delete
+addresses the verified `DB` binding, not a reusable database name. R2 and
+Worker expose no comparable stable id through this Wrangler, so their proof is
+explicitly weaker: checked account plus checked name.
 
-```sh
+```bash
 set -euo pipefail
 cd gate-site
-../node_modules/.bin/mallok destroy gate-20260911 --confirm gate-20260911
+mkdir -p .tmp
+test -f .tmp/media-domain.json
+node - <<'NODE'
+const { existsSync, readFileSync, writeFileSync } = require('node:fs');
+
+function parseJsonc(source) {
+  let uncommented = '';
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < source.length; index++) {
+    const char = source[index];
+    const next = source[index + 1];
+    if (inString) {
+      uncommented += char;
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      uncommented += char;
+      continue;
+    }
+    if (char === '/' && next === '/') {
+      while (index < source.length && source[index] !== '\n') index++;
+      if (index < source.length) uncommented += '\n';
+      continue;
+    }
+    if (char === '/' && next === '*') {
+      index += 2;
+      while (index < source.length &&
+             !(source[index] === '*' && source[index + 1] === '/')) {
+        if (source[index] === '\n') uncommented += '\n';
+        index++;
+      }
+      if (index >= source.length) throw new Error('unclosed JSONC comment');
+      index++;
+      continue;
+    }
+    uncommented += char;
+  }
+
+  let json = '';
+  inString = false;
+  escaped = false;
+  for (let index = 0; index < uncommented.length; index++) {
+    const char = uncommented[index];
+    if (inString) {
+      json += char;
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') inString = false;
+      continue;
+    }
+    if (char === '"') {
+      inString = true;
+      json += char;
+      continue;
+    }
+    if (char === ',') {
+      let next = index + 1;
+      while (/\s/.test(uncommented[next] ?? '')) next++;
+      if (uncommented[next] === '}' || uncommented[next] === ']') continue;
+    }
+    json += char;
+  }
+  return JSON.parse(json);
+}
+
+function validHostname(value) {
+  return typeof value === 'string' && value.length <= 253 &&
+    /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/.test(value);
+}
+
+const ledger = JSON.parse(readFileSync('.mallok/create-state.json', 'utf8'));
+const media = JSON.parse(readFileSync('.tmp/media-domain.json', 'utf8'));
+const config = parseJsonc(readFileSync('wrangler.jsonc', 'utf8'));
+const resources = [ledger.worker, ledger.database, ledger.bucket];
+if (typeof ledger.slug !== 'string' ||
+    !/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(ledger.slug) ||
+    ledger.slug.startsWith('mallok-') || !validHostname(ledger.domain) ||
+    typeof ledger.accountId !== 'string' || ledger.accountId === '' ||
+    resources.some(r => r === null || typeof r !== 'object' ||
+      typeof r.name !== 'string' || r.name === '') ||
+    typeof ledger.database.id !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ledger.database.id) ||
+    media === null || typeof media !== 'object' ||
+    media.bucket !== ledger.bucket.name || !validHostname(media.domain)) {
+  throw new Error('the create ledger lacks the resource identities destroy must verify');
+}
+const expectedNames = {
+  worker: `mallok-${ledger.slug}`,
+  database: `mallok-${ledger.slug}-db`,
+  bucket: `mallok-${ledger.slug}-media`,
+};
+const database = Array.isArray(config.d1_databases)
+  ? config.d1_databases.find(item => item?.binding === 'DB')
+  : undefined;
+const bucket = Array.isArray(config.r2_buckets)
+  ? config.r2_buckets.find(item => item?.binding === 'MEDIA')
+  : undefined;
+const routeMatches = Array.isArray(config.routes) && config.routes.some(route =>
+  route !== null && typeof route === 'object' &&
+  route.pattern === ledger.domain && route.custom_domain === true);
+if (ledger.worker.name !== expectedNames.worker ||
+    ledger.database.name !== expectedNames.database ||
+    ledger.bucket.name !== expectedNames.bucket ||
+    config.name !== expectedNames.worker ||
+    (config.account_id !== undefined && config.account_id !== ledger.accountId) ||
+    database?.database_name !== expectedNames.database ||
+    database?.database_id !== ledger.database.id ||
+    bucket?.bucket_name !== expectedNames.bucket ||
+    config.vars?.MALLOK_SITE !== ledger.slug ||
+    config.vars?.MALLOK_DOMAIN !== ledger.domain || !routeMatches) {
+  throw new Error('ledger, slug and wrangler.jsonc identify different resources');
+}
+const target = {
+  accountId: ledger.accountId,
+  slug: ledger.slug,
+  worker: expectedNames.worker,
+  database: expectedNames.database,
+  databaseId: ledger.database.id,
+  bucket: expectedNames.bucket,
+  domain: ledger.domain,
+  mediaDomain: media.domain,
+};
+const file = '.tmp/destroy-target.json';
+if (existsSync(file)) {
+  const recorded = JSON.parse(readFileSync(file, 'utf8'));
+  if (JSON.stringify(recorded) !== JSON.stringify(target)) {
+    throw new Error('the ledger identity changed after the destroy target was recorded');
+  }
+} else {
+  writeFileSync(file, `${JSON.stringify(target)}\n`, { flag: 'wx' });
+}
+NODE
+TARGET_SLUG=$(node -p "require('./.tmp/destroy-target.json').slug")
+CLOUDFLARE_ACCOUNT_ID=$(node -p "require('./.tmp/destroy-target.json').accountId")
+export CLOUDFLARE_ACCOUNT_ID
+./node_modules/.bin/mallok destroy "$TARGET_SLUG" --confirm "$TARGET_SLUG"
 ```
 
 **There is no `--empty-bucket`, and there was never a way to implement it.**
@@ -1101,17 +2091,23 @@ the pages. It uses the project's own Wrangler, records each deletion in the
 ledger so a repeated run is idempotent, and checks the account id in both the
 ledger and the registry before it deletes anything.
 
-Emptying the bucket is therefore manual, and the gate should say so plainly:
-remove the objects from the R2 dashboard (Buckets → the bucket → Objects →
-select all → delete), then run `destroy` again. It resumes at the bucket.
+Bucket cleanup is therefore manual, and happens before a successful destroy:
+
+- if the refusal says a custom domain is attached, inspect it with the exact
+  `wrangler r2 bucket domain list ...` command printed by `destroy`, detach it
+  with the printed `domain remove` command, and rerun;
+- if the refusal says the bucket is not empty, remove the objects from the R2
+  dashboard (Buckets → the bucket → Objects → select all → delete), then
+  rerun.
+
+The ledger keeps the completed steps, so every rerun resumes safely.
 
 Then, by hand, because no Wrangler command does them:
 
 | Resource | Where |
 | --- | --- |
-| Worker custom domain (`gate.example.com`) | Workers → the Worker → Settings → Domains & Routes |
+| Worker custom domain (the ledger's `domain`) | Workers → the Worker → Settings → Domains & Routes |
 | DNS records the wizard wrote | DNS → the zone |
-| R2 custom domain (`media.gate.example.com`) | R2 → the bucket → Settings |
 | Turnstile widget | Turnstile → the widget |
 | `CF_API_TOKEN` created for purging | My Profile → API Tokens |
 
@@ -1120,16 +2116,71 @@ path is `NOT_AVAILABLE` in 0.1, so it provisions nothing to clean up.
 
 **Pass, checked rather than assumed:**
 
-```sh
-./node_modules/.bin/wrangler deployments list --name mallok-gate-20260911 --json
-./node_modules/.bin/wrangler d1 info mallok-gate-20260911-db --json
-./node_modules/.bin/wrangler r2 bucket info mallok-gate-20260911-media --json
-dig +short gate.example.com
-dig +short media.gate.example.com
+```bash
+set -euo pipefail
+test -f .tmp/destroy-target.json
+CLOUDFLARE_ACCOUNT_ID=$(node -p "require('./.tmp/destroy-target.json').accountId")
+export CLOUDFLARE_ACCOUNT_ID
+WORKER_NAME=$(node -p "require('./.tmp/destroy-target.json').worker")
+DATABASE_NAME=$(node -p "require('./.tmp/destroy-target.json').database")
+BUCKET_NAME=$(node -p "require('./.tmp/destroy-target.json').bucket")
+SITE_DOMAIN=$(node -p "require('./.tmp/destroy-target.json').domain")
+MEDIA_DOMAIN=$(node -p "require('./.tmp/destroy-target.json').mediaDomain")
+
+# A failed probe proves absence only when the locked Wrangler reports the
+# resource-specific absence contract. Authentication, permission, network and
+# generic 404 errors must fail this postcondition.
+assert_resource_absent() {
+  expected=$1
+  shift
+  error_file=$(mktemp)
+  if "$@" >"$error_file" 2>&1; then
+    echo "resource still exists: $*" >&2
+    return 1
+  fi
+  node - "$expected" "$error_file" <<'NODE'
+const { readFileSync } = require('node:fs');
+const [expected, file] = process.argv.slice(2);
+const plain = readFileSync(file, 'utf8').replace(/\x1b\[[0-9;]*m/g, '');
+const errors = plain.split('\n').filter((line) => line.includes('[ERROR]'));
+if (errors.length !== 1 || !errors[0].includes(expected)) {
+  process.stderr.write(`Unexpected Wrangler failure:\n${plain}`);
+  process.exit(1);
+}
+NODE
+}
+
+assert_resource_absent '[code: 10007]' \
+  ./node_modules/.bin/wrangler deployments list \
+  --name "$WORKER_NAME" --json
+assert_resource_absent "Couldn't find a D1 DB named" \
+  ./node_modules/.bin/wrangler d1 info "$DATABASE_NAME" --json
+assert_resource_absent 'The specified bucket does not exist.' \
+  ./node_modules/.bin/wrangler r2 bucket info \
+  "$BUCKET_NAME" --json
+
+assert_dns_absent() {
+  host=$1
+  for record_type in A AAAA CNAME; do
+    dns_result=$(dig +noall +comments +answer "$host" "$record_type")
+    dns_status=$(printf '%s\n' "$dns_result" \
+      | awk -F'status: |,' '/status:/ { print $2; exit }')
+    case "$dns_status" in
+      NOERROR|NXDOMAIN) ;;
+      *) echo "DNS $record_type lookup failed for $host: $dns_status" >&2; return 1 ;;
+    esac
+    dns_answers=$(printf '%s\n' "$dns_result" | awk '!/^;/ && NF')
+    [ -z "$dns_answers" ] \
+      || { echo "$host still has $record_type records: $dns_answers" >&2; return 1; }
+  done
+}
+assert_dns_absent "$SITE_DOMAIN"
+assert_dns_absent "$MEDIA_DOMAIN"
 ```
 
-Every one of the first three must fail or report nothing; the two `dig`
-lookups must return nothing.
+Every probe must match its resource-specific absence contract; a merely
+non-zero exit is insufficient. The A, AAAA and CNAME queries for both hostnames
+must all return no answers.
 
 **Check once more that nothing belonging to `mallok-titaniumseller` changed.**
 
@@ -1164,8 +2215,8 @@ output and a date. None of them may be restored by argument.
 | Lighthouse JSON | `.tmp/lighthouse`, attached to the release issue |
 | Tarball name, size, unpackedSize, npm integrity, shasum and sha256 | The release issue, from §4, re-checked at §5 |
 | Lighthouse min/median per category | `pnpm lighthouse:gate` output, §14 |
-| CPU distribution (path, n, cold and warm p50/p95/max) | `docs/tasks/TASK-01.md §5`, §11 |
-| The setup key `create` printed | Nowhere. It is used once, by the wizard, and is not written down |
+| CPU/latency distribution (path; cold and warm CPU n/p50/p95/max; cold and warm latency n/p50/p95/max) | `docs/tasks/TASK-01.md §5`, §11 |
+| The setup key `create` delivered to the interactive terminal | Nowhere. It is absent from the result, JSON and files, and is used once by the wizard |
 
 A criterion moves to `VERIFIED_STAGING` only with a command, its output, and a
 date. "Looked fine" is not evidence, and a local `workerd` run is not an edge
