@@ -1,5 +1,12 @@
 import { execFile } from 'node:child_process';
-import { appendFile, mkdtemp, readFile, rm } from 'node:fs/promises';
+import {
+  appendFile,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -54,9 +61,17 @@ describe('the immutable release candidate', () => {
       await readFile(join(output, 'pack.json'), 'utf8'),
     ) as Record<string, unknown>;
     expect(record.filename).toMatch(/^mallok-.+\.tgz$/);
+    expect(record.size).toEqual(expect.any(Number));
+    expect(record.size).toBeGreaterThan(0);
+    expect(record.unpackedSize).toEqual(expect.any(Number));
+    expect(record.unpackedSize).toBeGreaterThan(0);
     expect(record.integrity).toMatch(/^sha512-/);
     expect(record.shasum).toMatch(/^[a-f0-9]{40}$/);
     expect(record.sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(record.sourceCommit).toMatch(/^[a-f0-9]{40,64}$/);
+
+    const { stdout: head } = await execFileAsync('git', ['rev-parse', 'HEAD']);
+    expect(record.sourceCommit).toBe(head.trim());
 
     const verified = await run('scripts/verify-candidate.mjs', [candidate]);
     expect(verified.code, verified.stdout + verified.stderr).toBe(0);
@@ -69,6 +84,46 @@ describe('the immutable release candidate', () => {
     ]);
     expect(second.code).not.toBe(0);
     expect(second.stderr).toContain('packed once');
+  });
+
+  it('refuses to select a candidate from a dirty source checkout', async () => {
+    const source = join(sandbox, 'dirty-source');
+    const packageDir = join(source, 'package');
+    await mkdir(packageDir, { recursive: true });
+    await writeFile(
+      join(packageDir, 'package.json'),
+      `${JSON.stringify({ name: 'mallok', version: '0.0.0-test' })}\n`,
+    );
+    await execFileAsync('git', ['init', '--quiet'], { cwd: source });
+    await execFileAsync('git', ['config', 'user.email', 'test@example.test'], {
+      cwd: source,
+    });
+    await execFileAsync('git', ['config', 'user.name', 'Mallok test'], {
+      cwd: source,
+    });
+    await execFileAsync('git', ['add', '.'], { cwd: source });
+    await execFileAsync('git', ['commit', '--quiet', '-m', 'fixture'], {
+      cwd: source,
+    });
+    await writeFile(join(source, 'untracked.txt'), 'not reviewed\n');
+
+    let error: unknown;
+    try {
+      await execFileAsync(
+        process.execPath,
+        [
+          join(process.cwd(), 'scripts/pack-candidate.mjs'),
+          packageDir,
+          join(source, 'release'),
+        ],
+        { cwd: source },
+      );
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toMatchObject({
+      stderr: expect.stringMatching(/dirty Git worktree/i),
+    });
   });
 
   it('detects a candidate changed after packing', async () => {

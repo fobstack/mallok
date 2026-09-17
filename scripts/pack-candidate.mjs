@@ -16,6 +16,22 @@ import { promisify } from 'node:util';
 const run = promisify(execFile);
 const packageDir = resolve(process.argv[2] ?? 'dist/pkg');
 const outputDir = resolve(process.argv[3] ?? 'dist/release');
+
+const [{ stdout: sourceCommitOutput }, { stdout: sourceStatus }] =
+  await Promise.all([
+    run('git', ['rev-parse', 'HEAD']),
+    run('git', ['status', '--porcelain=v1', '--untracked-files=all']),
+  ]);
+const sourceCommit = sourceCommitOutput.trim();
+if (!/^[a-f0-9]{40,64}$/.test(sourceCommit)) {
+  throw new Error('Could not identify the source Git commit.');
+}
+if (sourceStatus !== '') {
+  throw new Error(
+    'Refusing to pack a release candidate from a dirty Git worktree. Commit or remove every tracked and untracked change first.',
+  );
+}
+
 const manifest = JSON.parse(
   await readFile(resolve(packageDir, 'package.json'), 'utf8'),
 );
@@ -50,21 +66,50 @@ const { stdout } = await run(
   ['pack', '--json', '--pack-destination', outputDir],
   { cwd: packageDir, maxBuffer: 32 * 1024 * 1024 },
 );
-const [packed] = JSON.parse(stdout);
-if (packed?.filename !== expectedFile) {
+const parsed = JSON.parse(stdout);
+const packed = Array.isArray(parsed) ? parsed[0] : undefined;
+if (
+  packed === null ||
+  typeof packed !== 'object' ||
+  packed.filename !== expectedFile
+) {
   throw new Error(
     `npm packed ${String(packed?.filename)}, expected ${expectedFile}.`,
   );
 }
 
+const positiveInteger = (value, name) => {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error(`npm pack returned an invalid ${name}.`);
+  }
+  return value;
+};
+const requiredString = (value, name, pattern) => {
+  if (typeof value !== 'string' || !pattern.test(value)) {
+    throw new Error(`npm pack returned an invalid ${name}.`);
+  }
+  return value;
+};
+
 const bytes = await readFile(candidate);
+const size = positiveInteger(packed.size, 'size');
+if (size !== bytes.byteLength) {
+  throw new Error(
+    `npm pack reported ${size} bytes, but the candidate has ${bytes.byteLength}.`,
+  );
+}
 const metadata = {
   filename: packed.filename,
-  size: packed.size,
-  unpackedSize: packed.unpackedSize,
-  integrity: packed.integrity,
-  shasum: packed.shasum,
+  size,
+  unpackedSize: positiveInteger(packed.unpackedSize, 'unpackedSize'),
+  integrity: requiredString(
+    packed.integrity,
+    'integrity',
+    /^sha512-[A-Za-z0-9+/]+={0,2}$/,
+  ),
+  shasum: requiredString(packed.shasum, 'shasum', /^[a-f0-9]{40}$/),
   sha256: createHash('sha256').update(bytes).digest('hex'),
+  sourceCommit,
 };
 await writeFile(record, `${JSON.stringify(metadata, null, 2)}\n`, {
   flag: 'wx',

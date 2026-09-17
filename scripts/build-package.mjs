@@ -32,6 +32,7 @@ import {
 } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { build } from 'esbuild';
+import { resetCompiledAssets, stageTemplate } from './package-inputs.mjs';
 import { thirdPartyNotices } from './third-party-notices.mjs';
 
 const run = promisify(execFile);
@@ -40,6 +41,11 @@ const { version } = JSON.parse(await readFile('package.json', 'utf8'));
 
 const OUT = 'dist/pkg';
 const ADMIN_LICENSES = 'dist/assets/_mallok/app/.mallok-admin-licenses.json';
+
+// Both asset builders clean only their own subdirectory. Clear the parent
+// first so an ignored file from an earlier local command cannot enter a
+// release simply because neither builder owns its name.
+await resetCompiledAssets();
 
 /**
  * The two builds this one packages.
@@ -161,7 +167,11 @@ await copyFile('src/worker/public.d.ts', `${OUT}/types/worker.d.ts`);
 await cp('dist/assets', `${OUT}/assets`, { recursive: true });
 
 // ---- The project shell ---------------------------------------------------
-await cp('template', `${OUT}/template`, { recursive: true });
+//
+// `template/.env`, `.dev.vars` and logs are ignored anywhere in the
+// repository. Copying this directory wholesale would make those invisible
+// local files publishable, outside both Git review and the history scanner.
+await stageTemplate('template', `${OUT}/template`);
 
 // The shell's manifest is written here, not committed, because the one thing
 // it must get right is the **exact** version of this package — and that is
