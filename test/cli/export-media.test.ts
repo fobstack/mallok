@@ -1,4 +1,12 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import {
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -70,14 +78,18 @@ afterEach(async () => {
 
 describe('mallok export', () => {
   it('writes inline text verbatim and fetches media by URL', async () => {
+    const mediaUrl = '/media/original/abc.jpg';
+    const mediaSha = createHash('sha256')
+      .update(`bytes-for:${mediaUrl}`)
+      .digest('hex');
     const client = stubSite({
       '/export': {
         files: [
           { path: 'articles/one/index.md', text: '---\ntitle: One\n---\n\nA' },
           {
             path: 'articles/one/images/photo.jpg',
-            url: '/media/original/abc.jpg',
-            sha256: 'abc',
+            url: mediaUrl,
+            sha256: mediaSha,
           },
         ],
         counts: { content: 1, files: 2, media: 1 },
@@ -95,7 +107,7 @@ describe('mallok export', () => {
     ).toBe('bytes-for:/media/original/abc.jpg');
   });
 
-  it('skips a manifest entry that carries neither text nor a URL', async () => {
+  it('rejects a manifest entry that carries neither text nor a URL', async () => {
     const client = stubSite({
       '/export': {
         files: [
@@ -106,11 +118,29 @@ describe('mallok export', () => {
       },
     });
 
-    expect((await exportSite(client, dir, silent)).files).toBe(1);
+    await expect(exportSite(client, dir, silent)).rejects.toThrow(
+      /exactly one of text or url/i,
+    );
+    expect(await readdir(dir)).toEqual([]);
   });
 
   it('refuses a path that would escape the export directory', async () => {
-    for (const path of ['../escape.md', 'a/../../escape.md', '/etc/passwd']) {
+    for (const path of [
+      '../escape.md',
+      'a/../../escape.md',
+      '/etc/passwd',
+      '..\\escape.md',
+      'folder\\escape.md',
+      'C:\\Windows\\system.ini',
+      'C:/Windows/system.ini',
+      'articles/./escape.md',
+      'articles//escape.md',
+      'articles/bad:name.md',
+      'articles/trailing-dot.',
+      'articles/CON',
+      'articles/COM¹.txt',
+      `articles/bad-${String.fromCharCode(0xd800)}.txt`,
+    ]) {
       const client = stubSite({
         '/export': {
           files: [{ path, text: 'x' }],
@@ -122,6 +152,116 @@ describe('mallok export', () => {
       );
       expect(error, path).toBeInstanceOf(CliError);
       expect((error as CliError).code).toBe(EXIT.remote);
+    }
+  });
+
+  it('validates every path before writing the first file', async () => {
+    const client = stubSite({
+      '/export': {
+        files: [
+          { path: 'safe/first.md', text: 'would otherwise be written' },
+          { path: '..\\outside.md', text: 'unsafe' },
+        ],
+        counts: { content: 1, files: 2, media: 0 },
+      },
+    });
+
+    await expect(exportSite(client, dir, silent)).rejects.toBeInstanceOf(
+      CliError,
+    );
+    await expect(readFile(join(dir, 'safe/first.md'))).rejects.toThrow();
+  });
+
+  it('refuses duplicate paths before either can overwrite the other', async () => {
+    const client = stubSite({
+      '/export': {
+        files: [
+          { path: 'Site.json', text: 'first' },
+          { path: 'site.json', text: 'second' },
+        ],
+        counts: { content: 0, files: 2, media: 0 },
+      },
+    });
+
+    const error = await exportSite(client, dir, silent).catch((cause) => cause);
+    expect(error).toBeInstanceOf(CliError);
+    expect((error as Error).message).toMatch(/more than once/i);
+    await expect(readFile(join(dir, 'Site.json'))).rejects.toThrow();
+    await expect(readFile(join(dir, 'site.json'))).rejects.toThrow();
+  });
+
+  it('refuses an incomplete backup when any plugin export failed', async () => {
+    const client = stubSite({
+      '/export': {
+        files: [{ path: 'site.json', text: '{}' }],
+        counts: { content: 0, files: 1, media: 0 },
+        pluginExportFailures: [
+          { plugin: 'inquiry', error: 'unsafe export path' },
+        ],
+      },
+    });
+
+    await expect(exportSite(client, dir, silent)).rejects.toThrow(
+      /could not export data.*inquiry/i,
+    );
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it('keeps the destination untouched when a later download fails', async () => {
+    const base = stubSite({
+      '/export': {
+        files: [
+          { path: 'site.json', text: '{}' },
+          {
+            path: 'media/file.bin',
+            url: '/media/file.bin',
+            sha256: 'a'.repeat(64),
+          },
+        ],
+        counts: { content: 0, files: 2, media: 1 },
+      },
+    });
+    const client: SiteClient = {
+      ...base,
+      async bytes() {
+        throw new CliError(EXIT.remote, 'download failed');
+      },
+    };
+
+    await expect(exportSite(client, dir, silent)).rejects.toThrow(
+      /download failed/i,
+    );
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it('refuses a non-empty or symbolic-link destination', async () => {
+    await writeFile(join(dir, 'keep.txt'), 'do not replace', 'utf8');
+    const client = stubSite({
+      '/export': {
+        files: [{ path: 'site.json', text: '{}' }],
+        counts: { content: 0, files: 1, media: 0 },
+      },
+    });
+
+    await expect(exportSite(client, dir, silent)).rejects.toThrow(/not empty/i);
+    await expect(readFile(join(dir, 'keep.txt'), 'utf8')).resolves.toBe(
+      'do not replace',
+    );
+
+    const outside = await mkdtemp(join(tmpdir(), 'mallok-export-outside-'));
+    try {
+      await rm(dir, { recursive: true, force: true });
+      await symlink(
+        outside,
+        dir,
+        process.platform === 'win32' ? 'junction' : 'dir',
+      );
+      await expect(exportSite(client, dir, silent)).rejects.toThrow(
+        /new or empty directory/i,
+      );
+      expect(await readdir(outside)).toEqual([]);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
     }
   });
 });

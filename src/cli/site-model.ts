@@ -101,7 +101,8 @@ export function buildSiteModel(
       // never rewrites source text, so it records the identity in
       // `mallok.json` instead (docs/CONTENT_FORMAT.md §6). Without reading
       // it back, every language would land on the default locale's slug.
-      const recorded = bundle.identity?.items[document.locale]?.path;
+      const identityItem = bundle.identity?.items[document.locale];
+      const recorded = identityItem?.path;
       const fromIdentity =
         recorded === undefined
           ? undefined
@@ -112,7 +113,7 @@ export function buildSiteModel(
       const slug =
         typeof frontmatter.slug === 'string' && frontmatter.slug !== ''
           ? frontmatter.slug
-          : (fromIdentity ?? bundle.name);
+          : (identityItem?.slug ?? fromIdentity ?? bundle.name);
       const status = resolveStatus(frontmatter, now);
       const published =
         typeof frontmatter.date === 'string'

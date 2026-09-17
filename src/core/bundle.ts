@@ -147,7 +147,10 @@ export function resolveStatus(
 export interface BundleIdentity {
   readonly translation_group: string;
   readonly items: Readonly<
-    Record<string, { id: string; created_at: string; path: string }>
+    Record<
+      string,
+      { id: string; created_at: string; path: string; slug?: string }
+    >
   >;
 }
 
@@ -172,8 +175,11 @@ export function parseBundleIdentity(text: string): BundleIdentity | null {
   }
   const items: Record<
     string,
-    { id: string; created_at: string; path: string }
-  > = {};
+    { id: string; created_at: string; path: string; slug?: string }
+  > = Object.create(null) as Record<
+    string,
+    { id: string; created_at: string; path: string; slug?: string }
+  >;
   for (const [locale, value] of Object.entries(
     record.items as Record<string, unknown>,
   )) {
@@ -190,6 +196,7 @@ export function parseBundleIdentity(text: string): BundleIdentity | null {
         id: item.id,
         created_at: item.created_at,
         path: item.path,
+        ...(typeof item.slug === 'string' ? { slug: item.slug } : {}),
       };
     }
   }
@@ -199,7 +206,7 @@ export function parseBundleIdentity(text: string): BundleIdentity | null {
 /** Serialises `mallok.json` with stable key order. */
 export function formatBundleIdentity(identity: BundleIdentity): string {
   const locales = Object.keys(identity.items).sort();
-  const items: Record<string, unknown> = {};
+  const items = Object.create(null) as Record<string, unknown>;
   for (const locale of locales) {
     const item = identity.items[locale];
     if (item !== undefined) {
@@ -207,6 +214,7 @@ export function formatBundleIdentity(identity: BundleIdentity): string {
         id: item.id,
         created_at: item.created_at,
         path: item.path,
+        ...(item.slug === undefined ? {} : { slug: item.slug }),
       };
     }
   }

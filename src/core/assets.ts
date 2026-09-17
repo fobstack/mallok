@@ -8,6 +8,7 @@
 
 import type { Element, Root } from 'hast';
 import { visit } from 'unist-util-visit';
+import { exportPathProblem } from './export-path.js';
 
 /** Metadata about one stored media object, as needed for rendering. */
 export interface ResolvedAsset {
@@ -90,7 +91,7 @@ export function normalizeRelativePath(raw: string): string | null {
   const hasAllowedPrefix = ALLOWED_PREFIXES.some((prefix) =>
     path.startsWith(prefix),
   );
-  return hasAllowedPrefix ? path : null;
+  return hasAllowedPrefix && exportPathProblem(path) === null ? path : null;
 }
 
 /** Builds the public URL of the original media object. */

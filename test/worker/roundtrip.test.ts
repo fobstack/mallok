@@ -415,4 +415,77 @@ describe('round-trip guarantees', () => {
       identity?.text,
     );
   });
+
+  it('rejects content identities that cannot round-trip portably', async () => {
+    const markdown = '---\ntitle: Unsafe\n---\n\nBody.\n';
+    const badSlug = await api('POST', '/_mallok/api/content', {
+      kind: 'article',
+      slug: '../escape',
+      markdown,
+      assets: {},
+    });
+    expect(badSlug.status).toBe(400);
+
+    const badLocale = await api('POST', '/_mallok/api/content', {
+      kind: 'article',
+      locale: '__proto__',
+      slug: 'safe',
+      markdown,
+      assets: {},
+    });
+    expect(badLocale.status).toBe(400);
+
+    const aliases = await api('POST', '/_mallok/api/content', {
+      kind: 'article',
+      slug: 'asset-aliases',
+      markdown,
+      assets: {
+        'images/File.png': 'a'.repeat(64),
+        'images/file.png': 'b'.repeat(64),
+      },
+    });
+    expect(aliases.status).toBe(400);
+  });
+
+  it('gives unsafe original media names a portable export filename', async () => {
+    const sha = await putMedia('unsafe-name', '../CON: product image. ');
+    const files = await exportFiles();
+    const exported = [...files.values()].find((file) => file.sha256 === sha);
+
+    expect(exported?.path).toMatch(/^media\/[a-f0-9]{8}-/);
+    expect(exported?.path).not.toMatch(/[\\:*?"<>|]/);
+    expect(exported?.path).not.toContain('..');
+  });
+
+  it('keeps colliding locale-only groups in distinct portable bundles', async () => {
+    const settings = await api('PATCH', '/_mallok/api/settings', {
+      locales: ['en', 'de'],
+    });
+    expect(settings.status).toBe(200);
+    const markdown = (title: string) => `---\ntitle: ${title}\n---\n\nBody.\n`;
+
+    for (const [locale, title] of [
+      ['en', 'English group'],
+      ['de', 'German group'],
+    ] as const) {
+      const saved = await api('POST', '/_mallok/api/content', {
+        kind: 'article',
+        locale,
+        slug: 'same-export-slug',
+        markdown: markdown(title),
+        assets: {},
+      });
+      expect(saved.status).toBe(201);
+    }
+
+    const files = await exportFiles();
+    const identities = [...files.entries()]
+      .filter(([path]) => path.startsWith('content/article/same-export-slug'))
+      .filter(([path]) => path.endsWith('/mallok.json'));
+    expect(identities).toHaveLength(2);
+    expect(new Set(identities.map(([path]) => path)).size).toBe(2);
+    for (const [, file] of identities) {
+      expect(file.text).toContain('"slug": "same-export-slug"');
+    }
+  });
 });

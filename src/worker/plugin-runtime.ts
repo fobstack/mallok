@@ -8,7 +8,7 @@
  */
 
 import type { BeforeRenderHook } from '../core/index.js';
-import { sha256Hex } from '../core/index.js';
+import { exportPathKey, exportPathProblem, sha256Hex } from '../core/index.js';
 import { loadSiteRenderData, type PluginStateRow } from '../db/queries.js';
 import type {
   ContentDraft,
@@ -170,22 +170,61 @@ export async function collectPluginExports(
   executionCtx: ExecutionContext,
   rows: readonly PluginStateRow[],
   site: SiteSettings,
+  reservedPaths: readonly string[] = [],
 ): Promise<{
   files: { path: string; text: string }[];
   failed: { plugin: string; error: string }[];
 }> {
   const files: { path: string; text: string }[] = [];
   const failed: { plugin: string; error: string }[] = [];
-  for (const active of activePlugins(rows)) {
+  let claimed = new Map<string, string>();
+  for (const path of reservedPaths) {
+    claimExportPath(claimed, path, 'the core export');
+  }
+  const exportingPlugins = [...activePlugins(rows)].sort((left, right) =>
+    left.state.plugin_id < right.state.plugin_id
+      ? -1
+      : left.state.plugin_id > right.state.plugin_id
+        ? 1
+        : 0,
+  );
+  for (const active of exportingPlugins) {
     const hook = active.plugin.exportFiles;
     if (hook === undefined) {
       continue;
     }
     try {
       const ctx = await buildPluginContext(env, executionCtx, site, active);
-      for (const file of await hook(ctx)) {
-        files.push({ path: file.path, text: file.text });
+      const returned: unknown = await hook(ctx);
+      if (!Array.isArray(returned)) {
+        throw new Error('exportFiles must return an array.');
       }
+
+      // Validate one plugin atomically. If its last file is unsafe or collides,
+      // none of its earlier files enter the manifest.
+      const nextClaims = new Map(claimed);
+      const nextFiles: { path: string; text: string }[] = [];
+      for (const value of returned as readonly unknown[]) {
+        if (
+          value === null ||
+          typeof value !== 'object' ||
+          typeof (value as { path?: unknown }).path !== 'string' ||
+          typeof (value as { text?: unknown }).text !== 'string'
+        ) {
+          throw new Error(
+            'exportFiles entries must be { path: string, text: string } objects.',
+          );
+        }
+        const file = value as { path: string; text: string };
+        claimExportPath(
+          nextClaims,
+          file.path,
+          `plugin "${active.state.plugin_id}"`,
+        );
+        nextFiles.push({ path: file.path, text: file.text });
+      }
+      claimed = nextClaims;
+      files.push(...nextFiles);
     } catch (error) {
       failed.push({
         plugin: active.state.plugin_id,
@@ -194,6 +233,32 @@ export async function collectPluginExports(
     }
   }
   return { files, failed };
+}
+
+/**
+ * Claims one portable export path, rejecting filesystem escapes and aliases.
+ *
+ * Export manifests are consumed on the operator's machine, which may use a
+ * different path syntax and a case-insensitive filesystem. Backslashes and
+ * drive prefixes are therefore unsafe even while this code runs on workerd.
+ */
+function claimExportPath(
+  claimed: Map<string, string>,
+  path: string,
+  owner: string,
+): void {
+  const problem = exportPathProblem(path);
+  if (problem !== null) {
+    throw new Error(`Export path ${JSON.stringify(path)} ${problem}.`);
+  }
+  const key = exportPathKey(path);
+  const previous = claimed.get(key);
+  if (previous !== undefined) {
+    throw new Error(
+      `Export path ${JSON.stringify(path)} is already produced by ${previous}.`,
+    );
+  }
+  claimed.set(key, owner);
 }
 
 /**

@@ -15,7 +15,10 @@
 import {
   type BundleIdentity,
   bundleFileName,
+  exportPathKey,
+  exportPathProblem,
   formatBundleIdentity,
+  slugify,
 } from '../core/index.js';
 import {
   type ContentRow,
@@ -51,6 +54,51 @@ export interface ExportFile {
   readonly url?: string;
 }
 
+function bundleDirectorySlug(slug: string, translationGroup: string): string {
+  const normalized = slugify(slug);
+  return normalized === '' ? `item-${translationGroup}` : normalized;
+}
+
+function portableMediaName(original: string, ext: string): string {
+  let name = '';
+  for (const character of original.normalize('NFC')) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    name +=
+      '/\\<>:"|?*'.includes(character) ||
+      codePoint <= 0x1f ||
+      codePoint === 0x7f ||
+      (codePoint >= 0xd800 && codePoint <= 0xdfff)
+        ? '-'
+        : character;
+  }
+  name = name.replace(/^[ .]+|[ .]+$/g, '');
+  if (name === '') {
+    name = `file.${ext}`;
+  }
+  const characters = [...name];
+  while (new TextEncoder().encode(characters.join('')).byteLength > 200) {
+    characters.pop();
+  }
+  return characters.join('').replace(/[ .]+$/g, '') || `file.${ext}`;
+}
+
+function coreExportProblem(files: readonly ExportFile[]): string | null {
+  const claimed = new Map<string, string>();
+  for (const file of files) {
+    const unsafe = exportPathProblem(file.path);
+    if (unsafe !== null) {
+      return `${JSON.stringify(file.path)} ${unsafe}`;
+    }
+    const key = exportPathKey(file.path);
+    const previous = claimed.get(key);
+    if (previous !== undefined) {
+      return `${JSON.stringify(file.path)} conflicts with ${JSON.stringify(previous)}`;
+    }
+    claimed.set(key, file.path);
+  }
+  return null;
+}
+
 /** Turns rows into the file list an export writes. */
 function buildFiles(
   rows: readonly ContentRow[],
@@ -58,6 +106,7 @@ function buildFiles(
   mediaExt: ReadonlyMap<string, string>,
 ): ExportFile[] {
   const files: ExportFile[] = [];
+  const claimedDirectories = new Set<string>();
   // Rows arrive ordered by kind then group, so a group's locales are adjacent.
   const groups = new Map<string, ContentRow[]>();
   for (const row of rows) {
@@ -76,11 +125,28 @@ function buildFiles(
     if (primary === undefined) {
       continue;
     }
-    const dir = `content/${kind}/${primary.slug}`;
+    const directorySlug = bundleDirectorySlug(
+      primary.slug,
+      primary.translation_group,
+    );
+    const baseDir = `content/${kind}/${directorySlug}`;
+    const baseKey = exportPathKey(baseDir);
+    let dir = claimedDirectories.has(baseKey)
+      ? `${baseDir}-${primary.translation_group}`
+      : baseDir;
+    let collision = 2;
+    while (claimedDirectories.has(exportPathKey(dir))) {
+      dir = `${baseDir}-${primary.translation_group}-${collision}`;
+      collision++;
+    }
+    claimedDirectories.add(exportPathKey(dir));
     const items: Record<
       string,
-      { id: string; created_at: string; path: string }
-    > = {};
+      { id: string; created_at: string; path: string; slug: string }
+    > = Object.create(null) as Record<
+      string,
+      { id: string; created_at: string; path: string; slug: string }
+    >;
 
     for (const row of members) {
       files.push({
@@ -93,6 +159,7 @@ function buildFiles(
         id: row.id,
         created_at: row.created_at,
         path: row.path,
+        slug: row.slug,
       };
       let assets: Record<string, string> = {};
       try {
@@ -212,10 +279,18 @@ export async function getExport(
       // Unreferenced media keeps its original name, prefixed with a hash
       // fragment so two files of the same name cannot collide
       // (docs/CONTENT_FORMAT.md §5).
-      path: `media/${item.sha256.slice(0, 8)}-${item.original_name}`,
+      path: `media/${item.sha256.slice(0, 8)}-${portableMediaName(item.original_name, item.ext)}`,
       sha256: item.sha256,
       url: `/media/${item.sha256}.${item.ext}`,
     });
+  }
+
+  const invalidCoreFile = coreExportProblem(files);
+  if (invalidCoreFile !== null) {
+    return problem(
+      500,
+      `The stored content cannot be exported safely: ${invalidCoreFile}.`,
+    );
   }
 
   // Plugins that own business data contribute their own files; the core does
@@ -225,6 +300,7 @@ export async function getExport(
     ctx,
     (await loadSiteRenderData(env.DB)).plugins,
     settings,
+    files.map((file) => file.path),
   );
   files.push(...pluginData.files);
 

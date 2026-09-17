@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod';
+import { LOCALE_PATTERN } from './paths.js';
 
 const LAYOUT_PATH = /^layouts\/[a-z0-9-]+\.liquid$/;
 
@@ -124,8 +125,8 @@ export const themeManifestSchema = z.object({
   kinds: z.record(z.string().regex(/^[a-z][a-z0-9_]*$/), themeKindSchema),
   options: z.record(z.string(), themeOptionSchema).default({}),
   /** Locales for which `locales/<locale>.json` exists. */
-  locales: z.array(z.string()).min(1),
-  defaultLocale: z.string(),
+  locales: z.array(z.string().regex(LOCALE_PATTERN)).min(1),
+  defaultLocale: z.string().regex(LOCALE_PATTERN),
   /** WebP variant widths this theme wants, ascending. */
   imageWidths: z
     .array(z.number().int().positive())

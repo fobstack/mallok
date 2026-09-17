@@ -15,6 +15,7 @@
  */
 
 import { z } from 'zod';
+import { LOCALE_PATTERN } from '../core/index.js';
 import { countAdminUsers } from '../db/auth.js';
 import {
   findContentById,
@@ -38,8 +39,8 @@ const UNPURGEABLE_TTL = 60;
 
 const siteStepSchema = z.object({
   name: z.string().min(1).max(120),
-  defaultLocale: z.string().min(2).max(10),
-  locales: z.array(z.string().min(2).max(10)).min(1),
+  defaultLocale: z.string().regex(LOCALE_PATTERN),
+  locales: z.array(z.string().regex(LOCALE_PATTERN)).min(1),
 });
 
 const starterStepSchema = z.object({

@@ -139,7 +139,12 @@ describe('bundle identity', () => {
   const identity = {
     translation_group: 'group-1',
     items: {
-      zh: { id: 'b', created_at: '2026-01-02T00:00:00Z', path: '/zh/x' },
+      zh: {
+        id: 'b',
+        created_at: '2026-01-02T00:00:00Z',
+        path: '/zh/x',
+        slug: 'zi',
+      },
       en: { id: 'a', created_at: '2026-01-01T00:00:00Z', path: '/x' },
     },
   };

@@ -70,12 +70,9 @@ function BackupSection(): JSX.Element {
       setResult(
         `${built.counts.content} items and ${built.counts.media} files in ${built.fileName}.`,
       );
-      for (const failure of built.failures) {
-        notice.value = `The "${failure.plugin}" plugin could not add its data: ${failure.error}`;
-      }
     } catch (caught) {
       notice.value =
-        caught instanceof ApiError ? caught.message : 'The export failed.';
+        caught instanceof Error ? caught.message : 'The export failed.';
     } finally {
       setBusy(false);
       setProgress(null);

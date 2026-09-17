@@ -3,6 +3,9 @@
  * is prefixed with `/<locale>`. See docs/ARCHITECTURE.md §9.
  */
 
+/** Locale subset used in URLs and `index.<locale>.md` bundle names. */
+export const LOCALE_PATTERN = /^[a-z]{2}(?:-[A-Za-z]{2,4})?$/;
+
 /** Inputs for {@link buildPublicPath}. */
 export interface PublicPathInput {
   readonly kind: string;

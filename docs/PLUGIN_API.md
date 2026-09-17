@@ -9,7 +9,7 @@
 
 ## 1. In one sentence
 
-**A plugin is real JavaScript or TypeScript that reaches five hooks and six
+**A plugin is real JavaScript or TypeScript that reaches five hooks and seven
 capabilities through a declarative `plugin.json`. It runs in the user's own
 Cloudflare account with the Worker's full permissions.**
 
@@ -253,9 +253,10 @@ and do not try to finish everything at once.
 All of these are exported from `mallok/worker`, so a third-party plugin
 annotates its own handlers with the same types the official one uses:
 `PluginContext`, `PluginRequestContext`, `PluginRenderContext`,
-`ContentDraft`, `RouteInput`, `EmailMessage` and `PluginSiteSettings`, plus
-`MallokPlugin` and `PluginInput`. There is no private interface (§1), and
-until 0.1.0-rc.5 the package exported only `MallokPlugin` with an opaque
+`ContentDraft`, `RouteInput`, `EmailMessage`, `PluginSiteSettings`,
+`PluginExportFile` and `PluginMigration`, plus `MallokPlugin` and
+`PluginInput`. There is no private interface (§1), and before 0.1.0-rc.5 the
+package exported only `MallokPlugin` with an opaque
 manifest — enough to *name* a plugin and not enough to write one.
 
 
@@ -287,7 +288,7 @@ sense of security. The convention is: a plugin touches only its own
 `p_<id>_`-prefixed tables, may read core tables, and needs a good reason to
 write to one.
 
-## 7. The six capabilities
+## 7. The seven capabilities
 
 ### 7.1 Tables
 
@@ -434,6 +435,29 @@ one day.
 Email templates live at `emails/<name>.<locale>.liquid` and go through the
 same restricted engine as themes, so **what a buyer typed is escaped by
 default in the email too**.
+
+### 7.7 Export files
+
+A plugin that owns portable business data implements `exportFiles`:
+
+```ts
+export async function exportFiles(
+  ctx: PluginContext,
+): Promise<readonly PluginExportFile[]>;
+```
+
+Each result is `{ path, text }`. Paths use forward slashes and must be
+relative and portable: no absolute or drive path, backslash, dot or empty
+segment, control character, reserved Windows filename, trailing dot or space,
+or overlong segment. Case-only and canonically equivalent Unicode names count
+as the same path. A plugin cannot replace a core export file or another
+plugin's file, and one invalid entry rejects that plugin's entire contribution
+rather than leaving half of it in the manifest. Cross-plugin conflicts are
+resolved deterministically by plugin id.
+
+The manifest names every plugin whose export failed. Both the CLI and the
+browser refuse to produce a backup when that list is non-empty, so an archive
+without inquiries or other plugin-owned data cannot be reported as complete.
 
 ## 8. Lifecycle
 

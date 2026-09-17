@@ -105,8 +105,10 @@ attributes and `javascript:` links are removed. External images
    the key in `assets` and **leaves `index.md` untouched**.
 2. Only the `images/` and `files/` prefixes are allowed. No `..`, no absolute
    paths, no `file:`, no protocol-relative paths.
-3. Paths are case-sensitive. Percent-encoded spaces and non-ASCII characters
-   match against the decoded filename.
+3. Paths are case-sensitive while rendering, but an export must also survive
+   a case-insensitive filesystem. Percent-encoded spaces and non-ASCII
+   characters match against the decoded filename; two asset keys that differ
+   only by case or canonical Unicode form are therefore refused at save time.
 4. Relative paths are resolved wherever they appear: Markdown image and link
    syntax, `<img src>` and `<a href>` in inline HTML that survives
    sanitisation, `cover` in front matter, and any field a schema declares as
@@ -165,8 +167,8 @@ identity:
 {
   "translation_group": "5c1d…",
   "items": {
-    "zh": { "id": "a1b2…", "created_at": "2026-08-28T02:10:00Z", "path": "/news/titanium-price-2026-08" },
-    "en": { "id": "c3d4…", "created_at": "2026-08-28T02:12:00Z", "path": "/en/news/titanium-price-2026-08" }
+    "zh": { "id": "a1b2…", "created_at": "2026-08-28T02:10:00Z", "path": "/news/titanium-price-2026-08", "slug": "titanium-price-2026-08" },
+    "en": { "id": "c3d4…", "created_at": "2026-08-28T02:12:00Z", "path": "/en/news/titanium-price-2026-08", "slug": "titanium-price-2026-08" }
   }
 }
 ```
@@ -175,6 +177,12 @@ It is optional: a bundle written by hand or by an AI pipeline has no such
 file, and import assigns a fresh `id` and `translation_group`. It is also the
 only private file Mallok is allowed to put in a bundle; Astro, Hugo and
 Obsidian ignore it.
+
+`slug` lets an export use a suffixed directory when two translation groups
+would otherwise have the same portable folder name. Re-import takes the slug
+from this identity before falling back to the directory name, so collision
+avoidance never changes a public URL. Older identity files without `slug`
+remain valid.
 
 ## 7. The import contract
 

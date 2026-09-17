@@ -12,6 +12,7 @@ import {
   configure,
 } from '../../src/worker/composition.js';
 import {
+  collectPluginExports,
   enforcePluginRouteNoStore,
   handlePluginRoute,
 } from '../../src/worker/plugin-runtime.js';
@@ -345,6 +346,165 @@ describe('plugin route cache policy', () => {
       expect(response.headers.get('cdn-cache-control')).toBe('no-store');
       expect(response.headers.get('surrogate-control')).toBe('no-store');
       expect(response.headers.get('cache-tag')).toBeNull();
+    } finally {
+      configure(previous);
+    }
+  });
+});
+
+describe('plugin export paths', () => {
+  const site = {
+    name: 'Example',
+    tagline: '',
+    defaultLocale: 'en',
+    locales: ['en'],
+    kinds: {},
+    nav: {},
+    themeOptions: {},
+    domain: null,
+    mediaBaseUrl: '',
+    cacheTtl: 60,
+  } as const;
+
+  it('omits a whole plugin when one path escapes or collides', async () => {
+    const previous = { theme: activeTheme(), plugins: compiledPlugins() };
+    const plugins = [
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'first' },
+        exportFiles: async () => [
+          { path: 'first.csv', text: 'first' },
+          { path: 'shared.csv', text: 'shared-first' },
+        ],
+      }),
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'core-collision' },
+        exportFiles: async () => [{ path: 'site.json', text: 'replace core' }],
+      }),
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'plugin-collision' },
+        exportFiles: async () => [
+          { path: 'shared.csv', text: 'replace plugin' },
+        ],
+      }),
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'parent-path' },
+        exportFiles: async () => [{ path: '../outside.txt', text: 'escape' }],
+      }),
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'windows-path' },
+        exportFiles: async () => [
+          { path: '..\\outside.txt', text: 'windows escape' },
+        ],
+      }),
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'self-collision' },
+        exportFiles: async () => [
+          { path: 'own.csv', text: 'one' },
+          { path: 'OWN.csv', text: 'two' },
+        ],
+      }),
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'surrogate-path' },
+        exportFiles: async () => [
+          {
+            path: `bad-${String.fromCharCode(0xd800)}.txt`,
+            text: 'invalid Unicode scalar',
+          },
+        ],
+      }),
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'windows-device' },
+        exportFiles: async () => [
+          { path: 'archive/COM¹.txt', text: 'reserved device' },
+        ],
+      }),
+    ];
+    configure({ theme: previous.theme, plugins });
+    try {
+      const rows = plugins.map((plugin) => ({
+        plugin_id: plugin.manifest.id,
+        enabled: 1,
+        version: plugin.manifest.version,
+        settings: '{}',
+        secrets: '{}',
+        updated_at: '2026-09-17T00:00:00.000Z',
+      }));
+
+      const result = await collectPluginExports(
+        env,
+        createExecutionContext(),
+        rows,
+        site,
+        ['site.json'],
+      );
+
+      expect(result.files).toEqual([
+        { path: 'first.csv', text: 'first' },
+        { path: 'shared.csv', text: 'shared-first' },
+      ]);
+      expect(result.failed.map((failure) => failure.plugin)).toEqual([
+        'core-collision',
+        'parent-path',
+        'plugin-collision',
+        'self-collision',
+        'surrogate-path',
+        'windows-device',
+        'windows-path',
+      ]);
+      const errors = result.failed.map((failure) => failure.error).join('\n');
+      expect(errors).toMatch(/core export/i);
+      expect(errors).toMatch(/already produced/i);
+      expect(errors).toMatch(/dot segment/i);
+      expect(errors).toMatch(/backslash/i);
+      expect(errors).toMatch(/portable across filesystems/i);
+      expect(errors).toMatch(/reserved Windows filename/i);
+    } finally {
+      configure(previous);
+    }
+  });
+
+  it('refuses a duplicate already present in the core manifest', async () => {
+    await expect(
+      collectPluginExports(env, createExecutionContext(), [], site, [
+        'site.json',
+        'SITE.json',
+      ]),
+    ).rejects.toThrow(/already produced/i);
+  });
+
+  it('resolves cross-plugin collisions in plugin-id order', async () => {
+    const previous = { theme: activeTheme(), plugins: compiledPlugins() };
+    const plugins = [
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'z-last' },
+        exportFiles: async () => [{ path: 'shared.csv', text: 'z' }],
+      }),
+      definePlugin({
+        manifest: { ...MINIMAL, id: 'a-first' },
+        exportFiles: async () => [{ path: 'shared.csv', text: 'a' }],
+      }),
+    ];
+    configure({ theme: previous.theme, plugins });
+    try {
+      const rows = plugins.map((plugin) => ({
+        plugin_id: plugin.manifest.id,
+        enabled: 1,
+        version: plugin.manifest.version,
+        settings: '{}',
+        secrets: '{}',
+        updated_at: '2026-09-17T00:00:00.000Z',
+      }));
+      const result = await collectPluginExports(
+        env,
+        createExecutionContext(),
+        rows,
+        site,
+      );
+
+      expect(result.files).toEqual([{ path: 'shared.csv', text: 'a' }]);
+      expect(result.failed.map((failure) => failure.plugin)).toEqual([
+        'z-last',
+      ]);
     } finally {
       configure(previous);
     }

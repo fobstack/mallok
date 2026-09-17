@@ -10,6 +10,11 @@
  * thing a mature library should do (docs/TECH_STACK.md §11.6).
  */
 
+import {
+  exportPathKey,
+  exportPathProblem,
+  sha256HexOfBytes,
+} from '../core/index.js';
 import { api } from './api.js';
 
 /** One file the manifest asks for. */
@@ -53,21 +58,78 @@ export async function buildExportZip(
   onProgress?: (progress: ExportProgress) => void,
 ): Promise<ExportResult> {
   const manifest = await api<ExportManifest>('/export');
+  const failures = manifest.pluginExportFailures ?? [];
+  if (failures.length > 0) {
+    throw new Error(
+      `The export is incomplete because these plugins failed: ${failures
+        .map((failure) => failure.plugin)
+        .join(', ')}. No backup was downloaded.`,
+    );
+  }
+
+  const claimed = new Map<string, string>();
+  for (const file of manifest.files) {
+    const problem = exportPathProblem(file.path);
+    if (problem !== null) {
+      throw new Error(`The export path "${file.path}" ${problem}.`);
+    }
+    const key = exportPathKey(file.path);
+    const previous = claimed.get(key);
+    if (previous !== undefined) {
+      throw new Error(
+        `The export path "${file.path}" conflicts with "${previous}".`,
+      );
+    }
+    claimed.set(key, file.path);
+    const hasText = typeof file.text === 'string';
+    const hasUrl = typeof file.url === 'string';
+    if (hasText === hasUrl) {
+      throw new Error(
+        `The export entry "${file.path}" must contain exactly one of text or url.`,
+      );
+    }
+    if (
+      hasUrl &&
+      (!file.url?.startsWith('/') ||
+        file.url.startsWith('//') ||
+        file.url.includes('\\'))
+    ) {
+      throw new Error(
+        `The export URL for "${file.path}" is not site-relative.`,
+      );
+    }
+    if (
+      hasUrl &&
+      (typeof file.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(file.sha256))
+    ) {
+      throw new Error(
+        `The export entry "${file.path}" has no valid sha256 for its downloaded bytes.`,
+      );
+    }
+  }
+
   const { zipSync } = await import('fflate');
 
   const encoder = new TextEncoder();
-  const entries: Record<string, Uint8Array> = {};
+  const entries = Object.create(null) as Record<string, Uint8Array>;
   let done = 0;
   for (const file of manifest.files) {
     if (file.text !== undefined) {
       entries[file.path] = encoder.encode(file.text);
     } else if (file.url !== undefined) {
       const response = await fetch(file.url, { credentials: 'same-origin' });
-      if (response.ok) {
-        entries[file.path] = new Uint8Array(await response.arrayBuffer());
+      if (!response.ok) {
+        throw new Error(
+          `Could not fetch "${file.path}" while building the export (${response.status}).`,
+        );
       }
-      // A missing object is the documented missing-media state, not a
-      // failure: the reference stays in the text and no file is written.
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if ((await sha256HexOfBytes(bytes)) !== file.sha256) {
+        throw new Error(
+          `The downloaded bytes for "${file.path}" do not match its sha256.`,
+        );
+      }
+      entries[file.path] = bytes;
     }
     done++;
     onProgress?.({ done, total: manifest.files.length });
@@ -80,7 +142,7 @@ export async function buildExportZip(
     }),
     fileName: `mallok-export-${stamp}.zip`,
     counts: manifest.counts,
-    failures: manifest.pluginExportFailures ?? [],
+    failures,
   };
 }
 

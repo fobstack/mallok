@@ -146,7 +146,10 @@ export async function publishBundles(
           : { translationGroup: bundle.identity.translation_group }),
         kind: bundle.kind,
         locale: document.locale,
-        slug: typeof data.slug === 'string' ? data.slug : bundle.name,
+        slug:
+          typeof data.slug === 'string'
+            ? data.slug
+            : (identityItem?.slug ?? bundle.name),
         markdown: document.markdown,
         assets,
         ...(options.createOnly ? { createOnly: true } : {}),

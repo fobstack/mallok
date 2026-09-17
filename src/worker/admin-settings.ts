@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import {
   buildPublicPath,
+  LOCALE_PATTERN,
   PIPELINE_VERSION,
   themeAssetBase,
 } from '../core/index.js';
@@ -49,7 +50,7 @@ const settingsSchema = z
   .object({
     name: z.string().min(1).max(120),
     tagline: z.string().max(300).nullable(),
-    locales: z.array(z.string().min(2).max(10)).min(1),
+    locales: z.array(z.string().regex(LOCALE_PATTERN)).min(1),
     kinds: z.record(
       z.string().regex(/^[a-z][a-z0-9_]*$/),
       z.object({ base: z.string().regex(/^[a-z0-9-]*$/) }),
@@ -179,7 +180,7 @@ export async function getHealth(env: Env): Promise<Response> {
 }
 
 const defaultLocaleSchema = z.object({
-  locale: z.string().min(2).max(10),
+  locale: z.string().regex(LOCALE_PATTERN),
   /** Required: this rewrites every public URL on the site. */
   confirm: z.literal(true),
 });

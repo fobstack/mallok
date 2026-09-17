@@ -29,6 +29,7 @@ export {
   resolveStatus,
 } from './bundle.js';
 export { LOCALE_OPTIONS_KEY } from './constants.js';
+export { exportPathKey, exportPathProblem } from './export-path.js';
 export {
   type BeforeRenderHook,
   computeFragmentCacheKey,
@@ -85,6 +86,7 @@ export {
 export {
   buildHomePath,
   buildPublicPath,
+  LOCALE_PATTERN,
   type ParsedPath,
   type PublicPathInput,
   parsePublicPath,

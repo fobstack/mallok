@@ -10,6 +10,8 @@ import { z } from 'zod';
 import {
   buildPublicPath,
   deriveFrontmatter,
+  exportPathKey,
+  LOCALE_PATTERN,
   normalizeRelativePath,
   PIPELINE_VERSION,
   type RenderedFragment,
@@ -56,7 +58,7 @@ const MAX_PAGE_SIZE = 200;
 const contentInputSchema = z.object({
   id: z.string().uuid().optional(),
   kind: z.string().regex(/^[a-z][a-z0-9_]*$/),
-  locale: z.string().min(2).max(10).optional(),
+  locale: z.string().regex(LOCALE_PATTERN).optional(),
   slug: z.string().min(1).max(80).optional(),
   translationGroup: z.string().uuid().optional(),
   /** Full `index.md` text including the front matter block. */
@@ -192,13 +194,28 @@ export async function saveContent(
   if (slug === '') {
     return problem(400, 'Could not derive a slug; provide one explicitly.');
   }
+  if (slugify(slug) !== slug) {
+    return problem(
+      400,
+      'The slug must use lowercase ASCII letters, digits and single dashes.',
+    );
+  }
 
   const assets: Record<string, string> = {};
+  const assetKeys = new Set<string>();
   for (const [rawPath, sha] of Object.entries(input.assets)) {
     const normalized = normalizeRelativePath(rawPath);
     if (normalized === null) {
       return problem(400, `Invalid asset path "${rawPath}".`);
     }
+    const portableKey = exportPathKey(normalized);
+    if (assetKeys.has(portableKey)) {
+      return problem(
+        400,
+        `Asset path "${rawPath}" conflicts with another path on a case-insensitive filesystem.`,
+      );
+    }
+    assetKeys.add(portableKey);
     assets[normalized] = sha;
   }
 

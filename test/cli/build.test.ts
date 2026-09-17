@@ -64,7 +64,12 @@ describe('mallok build', () => {
         translation_group: 'g1',
         items: {
           en: { id: 'a', created_at: 't', path: '/families/alloys' },
-          zh: { id: 'b', created_at: 't', path: '/zh/families/hejin' },
+          zh: {
+            id: 'b',
+            created_at: 't',
+            path: '/zh/families/old-path',
+            slug: 'hejin',
+          },
         },
       }),
     );

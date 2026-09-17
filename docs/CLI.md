@@ -332,6 +332,13 @@ Produces the directory layout in `CONTENT_FORMAT §5`, with hard guarantees:
 `--include-inquiries` controls `inquiries.csv`, included by default because
 being able to take your data with you is a product promise.
 
+The target must be a **new or empty directory**. Mallok validates the whole
+manifest first, writes into a private sibling staging directory, verifies each
+downloaded object's sha256, and publishes the directory only after every file
+succeeds. It refuses unsafe or duplicate cross-platform paths and any plugin
+export failure. A failed export therefore leaves an existing empty target
+untouched and never mixes an old backup with a partial new one.
+
 ## 8. `mallok preview`
 
 Renders locally, **entirely offline**.
@@ -384,6 +391,11 @@ Three refusals:
   delete` in the locked Wrangler takes a name or a binding, not a UUID, so
   the delete is still by name; the check is what makes that name refer to the
   right thing at the moment it is used. R2 and Workers have no such id.)
+- it also compares the current project's Worker name plus its `DB` and `MEDIA`
+  bindings with the ledger and registry before the first delete. R2 and
+  Workers expose no stable resource id through the locked Wrangler, so their
+  verifiable identity is the account, configured binding and recorded name;
+  any disagreement or unreadable config stops the run.
 - it tries the **bucket first** and stops there if Cloudflare refuses because
   it is not empty — before the Worker and the database are gone, because the
   opposite order leaves a site that is down with two resources still billing
