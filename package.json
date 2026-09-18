@@ -56,7 +56,8 @@
     "lighthouse:gate": "node scripts/lighthouse-gate.mjs",
     "build:package": "node scripts/build-package.mjs",
     "test:release": "vitest run --project release",
-    "test:candidate": "vitest run --project core test/cli/package-release.test.ts test/cli/strict-consumer.test.ts"
+    "test:candidate": "vitest run --project core test/cli/package-release.test.ts test/cli/strict-consumer.test.ts",
+    "build:demo": "pnpm build:package && node scripts/build-demo.mjs"
   },
   "dependencies": {
     "hast-util-to-string": "3.0.1",

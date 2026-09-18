@@ -4,6 +4,13 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
+[Live demo](https://demo.mallok.dev/) · [Documentation](docs/README.md) · [npm](https://www.npmjs.com/package/mallok)
+
+[![Atelier — Mallok’s default theme](docs/images/atelier-desktop.jpg)](https://demo.mallok.dev/)
+
+Explore the English-first, read-only Atelier demo. The sample company and
+content are fictional; inquiry collection and the admin are not enabled there.
+
 Deploy to your own Cloudflare account. Store content in D1 and media in R2,
 edit through the admin or CLI, and export your content when you need it.
 Publishing content does not require rebuilding the website. Changes to code,
@@ -24,10 +31,10 @@ See [release status](docs/RELEASE_STATUS.md) for measured results and gaps.
 
 **[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) and
 [npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6) are published.**
-Create a site with the explicit candidate version:
+Create your site:
 
 ```sh
-npx mallok@0.1.0-rc.6 create my-site
+npx mallok create my-site
 ```
 
 This creates resources and deploys to your Cloudflare account; sign in with

@@ -4,6 +4,12 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
+[在线演示](https://demo.mallok.dev/) · [文档](docs/zh-CN/README.md) · [npm](https://www.npmjs.com/package/mallok)
+
+[![Atelier — Mallok 默认主题（英文界面）](docs/images/atelier-desktop.jpg)](https://demo.mallok.dev/)
+
+演示站默认展示英文，提供中文入口；示例企业与内容为虚构，演示站不开放询盘收集和后台。
+
 部署到自己的 Cloudflare 账号，内容存储在 D1，媒体存储在 R2。
 通过后台或 CLI 编辑，随时导出内容。发布内容无需重新构建网站；修改代码、主题和已安装插件需要构建并部署。
 
@@ -13,10 +19,10 @@
 
 维护者已接受此限制用于公开源码与提供 RC 试用。真实询盘邮件送达、自然七天媒体回收及真实升级回滚等验证仍未完成。详见[发布状态](docs/zh-CN/RELEASE_STATUS.md)。
 
-**[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) 和 [npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6) 均已发布。** 使用明确的候选版版本号创建网站：
+**[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) 和 [npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6) 均已发布。** 创建网站：
 
 ```sh
-npx mallok@0.1.0-rc.6 create my-site
+npx mallok create my-site
 ```
 
 此命令会在你的 Cloudflare 账号创建资源并部署网站，请先通过 Wrangler 登录。加上 `--no-deploy` 则只生成并验证本地项目，不创建云资源。
