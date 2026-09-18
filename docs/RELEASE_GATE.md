@@ -11,6 +11,8 @@
   0.1.0-rc.4 on 2026-09-12 (§3, §5.1, §8, §9, §11, §12, §14, §15.1, §17),
   and updated for the 0.1.0-rc.5 candidate on 2026-09-17 with fail-closed
   checks (§4–§6, §8–§12, §16, §17).
+- The runbook is updated for the 0.1.0-rc.6 candidate on 2026-09-18;
+  rc.5 measurements remain historical evidence, not rc.6 measurements.
 - Scope: everything between "all local work is done" and "0.1.0 is released".
 
 Every step below **except §4** needs something this repository cannot provide:
