@@ -1,5 +1,10 @@
 # The Mallok product vision
 
+> **2026-09-18 update:** Atelier 2.5’s homepage has an explicitly approved,
+> declared manual carousel script. Other content pages remain script-free.
+> Older blanket zero-JavaScript statements below have this exception.
+
+
 - Direction: 0.1 baseline (second revision, 2026-08-28: the foreign-trade B2B
   vertical established as the first)
 - Document date: 2026-08-28

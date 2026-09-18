@@ -4,42 +4,84 @@
   "defaultLocale": "en",
   "locales": ["en", "zh"],
   "kinds": {
-    "page": { "base": "" },
-    "product": { "base": "products" },
-    "category": { "base": "families" },
-    "case": { "base": "cases" },
-    "faq": { "base": "faq" },
-    "article": { "base": "news" }
+    "page": {
+      "base": ""
+    },
+    "product": {
+      "base": "products"
+    },
+    "category": {
+      "base": "families"
+    },
+    "case": {
+      "base": "cases"
+    },
+    "faq": {
+      "base": "faq"
+    },
+    "article": {
+      "base": "news"
+    }
   },
   "nav": {
     "en": [
-      { "label": "Products", "href": "/products" },
-      { "label": "Cases", "href": "/cases" },
-      { "label": "FAQ", "href": "/faq" },
-      { "label": "News", "href": "/news" },
-      { "label": "About", "href": "/about" }
+      {
+        "label": "Products",
+        "href": "/products"
+      },
+      {
+        "label": "Cases",
+        "href": "/cases"
+      },
+      {
+        "label": "FAQ",
+        "href": "/faq"
+      },
+      {
+        "label": "News",
+        "href": "/news"
+      },
+      {
+        "label": "About",
+        "href": "/about"
+      }
     ],
     "zh": [
-      { "label": "产品", "href": "/zh/products" },
-      { "label": "案例", "href": "/zh/cases" },
-      { "label": "常见问题", "href": "/zh/faq" },
-      { "label": "资讯", "href": "/zh/news" },
-      { "label": "关于", "href": "/zh/about" }
+      {
+        "label": "产品",
+        "href": "/zh/products"
+      },
+      {
+        "label": "案例",
+        "href": "/zh/cases"
+      },
+      {
+        "label": "常见问题",
+        "href": "/zh/faq"
+      },
+      {
+        "label": "资讯",
+        "href": "/zh/news"
+      },
+      {
+        "label": "关于",
+        "href": "/zh/about"
+      }
     ]
   },
   "themeOptions": {
     "$locales": {
       "zh": {
-        "hero_title": "按规格交付的钛材。",
-        "hero_lede": "面向航空与化工采购的棒、板、管。在同一个厂区轧制、检测、出证。",
-        "hero_badge": "每批货随附 EN 10204 3.1 证书",
-        "stats": "28 年|轧制钛材 ;; 42|出口国家 ;; 1,800 吨|去年发货量",
-        "band_title": "一个厂区。完整可追溯。",
-        "band_lede": "熔炼、轧制、检测、出证都在一个屋顶下。证书上的每一个炉号，都打在它所描述的那批材料上。",
-        "band_features": "按 AMS-STD-2154 做超声检测|12 mm 以上棒料可做 A 级。 ;; 证书先于货物|3.1 文件在发运前发给你确认。 ;; 接电话的是人，不是系统|给你图纸报价的工程师，就是负责这个订单的人。",
-        "cta_title": "发一份图纸过来，24 小时内给报价。",
-        "cta_lede": "附上规格和吨位——回你的人，就是后面负责轧这批料的人。",
-        "inquiry_note": "告诉我们牌号、形态和吨位。工程师一个工作日内回复。",
+        "hero_title": "选对材料，让构想向前一步。",
+        "hero_lede": "探索适合项目的钛棒、钛板与钛管。比较材料形态，了解规格要求，开启一次专业的沟通。",
+        "hero_badge": "为认真造物的人提供钛材",
+        "stats": "棒材|精密加工坯料 ;; 板材|多样规格形态 ;; 管材|轻量中空结构",
+        "band_title": "每一个细节，从材料开始。",
+        "band_lede": "从最初的规格到最终的应用，把需求说清楚。了解材料、提出问题，为项目做好准备。",
+        "band_features": "选择材料形态|根据用途比较棒材、板材和管材。 ;; 确认技术要求|说明牌号、尺寸及所需文件。 ;; 规划下一步|沟通数量、加工与交付要求。",
+        "cta_title": "下一个项目，从这里开始。",
+        "cta_lede": "发来材料规格、图纸，或简单描述你的项目。",
+        "inquiry_note": "告诉我们所需材料形态、尺寸与数量。",
         "quote_href": "/zh/lianxi"
       }
     }

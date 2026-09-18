@@ -32,7 +32,9 @@
 
     <div class="detail-main">
       {% assign shots = content.frontmatter.gallery %}
-      {% if shots.size > 0 %}
+      {% assign has_gallery = false %}
+      {% for path in shots %}{% if content.images[path] %}{% assign has_gallery = true %}{% endif %}{% endfor %}
+      {% if has_gallery %}
       <figure class="gallery" role="group" aria-label="{{ t.gallery }}">
         <div class="gallery-strip">
           {% for path in shots %}
@@ -47,6 +49,12 @@
           {% for path in shots %}<a href="#shot-{{ forloop.index }}"><span class="visually-hidden">{{ forloop.index }}</span></a>{% endfor %}
         </nav>
         {% endif %}
+      </figure>
+      {% else %}
+      <figure class="product-photo">
+        {% if content.frontmatter.form == "Tube" or content.frontmatter.form == "管材" %}{% assign material_image = "tubes" %}{% elsif content.frontmatter.form == "Plate" or content.frontmatter.form == "Sheet" or content.frontmatter.form == "板材" %}{% assign material_image = "plates" %}{% else %}{% assign material_image = "bars" %}{% endif %}
+        <img src="{{ theme.asset_base }}/images/{{ material_image }}.jpg" srcset="{{ theme.asset_base }}/images/{{ material_image }}-768.jpg 768w, {{ theme.asset_base }}/images/{{ material_image }}.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" width="1536" height="1152" alt="{{ t.material_library }}" decoding="async">
+        <figcaption>{{ t.sample_photo }}</figcaption>
       </figure>
       {% endif %}
 
@@ -78,6 +86,15 @@
       {% for item in content.siblings limit: 3 %}
       <a class="card" href="{{ item.path }}">
         <div class="card-art card-art-{{ forloop.index }}">
+        {% if item.cover != blank %}
+        <img src="{{ item.cover }}" alt="{{ item.title }}" width="960" height="720" loading="lazy" decoding="async">
+        {% elsif item.frontmatter.form == "Tube" or item.frontmatter.form == "管材" %}
+        <img src="{{ theme.asset_base }}/images/tubes.jpg" srcset="{{ theme.asset_base }}/images/tubes-768.jpg 768w, {{ theme.asset_base }}/images/tubes.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.material_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% elsif item.frontmatter.form == "Plate" or item.frontmatter.form == "Sheet" or item.frontmatter.form == "板材" %}
+        <img src="{{ theme.asset_base }}/images/plates.jpg" srcset="{{ theme.asset_base }}/images/plates-768.jpg 768w, {{ theme.asset_base }}/images/plates.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.plate_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% else %}
+        <img src="{{ theme.asset_base }}/images/bars.jpg" srcset="{{ theme.asset_base }}/images/bars-768.jpg 768w, {{ theme.asset_base }}/images/bars.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.bar_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% endif %}
           {% if item.frontmatter.grade %}<span class="card-tag">{{ item.frontmatter.grade }}</span>{% endif %}
         </div>
         <div class="card-body">

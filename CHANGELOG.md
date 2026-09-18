@@ -4,6 +4,23 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.6] — 2026-09-18
+
+### Added and changed
+
+- Atelier 2.5: redesigned industrial imagery, local typography, bilingual copy,
+  responsive product imagery and three manual homepage stories.
+- The homepage carousel supports selectors, arrows, keyboard and touch input;
+  native horizontal navigation remains available without JavaScript. Other
+  content pages remain script-free. No carousel framework is required.
+- JavaScript theme assets require an exact path declaration in `clientScripts`.
+- Missing product galleries fall back to illustrative material photographs.
+- English-first contributor and release documentation with Chinese translations.
+
+This is a public preview candidate, not stable 0.1. The rc.5 CPU measurements
+remain historical; real inquiry delivery, natural media retention and complete
+production upgrade/rollback acceptance remain outstanding.
+
 ## [0.1.0-rc.5] — unreleased
 
 **rc.4 never left the local release gate.** This candidate turns the failures

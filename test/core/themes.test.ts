@@ -185,10 +185,13 @@ describe.each(themeDirs)('theme %s', (dir) => {
       expect(html).not.toContain('undefined');
       // page.head is mandatory (docs/THEME_FORMAT.md §7.1).
       expect(html).toContain('<link rel="canonical"');
-      // Visitor pages carry no client JavaScript; the only script element
-      // allowed is the JSON-LD data block (docs/PRODUCT_VISION.md §5.6).
+      // Only the homepage carousel may add an executable theme script.
       for (const tag of html.match(/<script[^>]*>/g) ?? []) {
-        expect(tag).toContain('application/ld+json');
+        if (tag.includes('application/ld+json')) continue;
+        expect(dir).toBe('atelier');
+        expect(html).toBe(home);
+        expect(tag).toContain('/hero-carousel.js');
+        expect(tag).toContain('defer');
       }
     }
   });
@@ -288,9 +291,11 @@ describe('atelier trade layouts', () => {
     expect(page).toContain('>English<');
     expect(page).toContain('>中文<');
     expect(page).toContain('hreflang="zh"');
-    // Still no script anywhere on the page.
+    // The language picker needs no script; the homepage carousel is declared.
     for (const tag of page.match(/<script[^>]*>/g) ?? []) {
-      expect(tag).toContain('application/ld+json');
+      if (tag.includes('application/ld+json')) continue;
+      expect(tag).toContain('/hero-carousel.js');
+      expect(tag).toContain('defer');
     }
   });
 
@@ -326,3 +331,34 @@ describe('atelier trade layouts', () => {
     expect(home).toContain('type="checkbox"');
   });
 });
+
+it.each(['Plate', '板材'])(
+  'Atelier shows a material photo when a %s gallery cannot resolve',
+  async (form) => {
+    const { manifest, files } = await loadTheme('atelier');
+    const item = summary('product');
+    const fragment = await renderFragment({
+      body: BODY,
+      frontmatter: {},
+      assets: {},
+      mediaBaseUrl: '',
+    });
+    const html = await renderPage(
+      compileTheme(manifest, files, 1),
+      'layouts/product.liquid',
+      buildContentPageView(
+        contextFor(manifest, files, item.path),
+        {
+          ...item,
+          frontmatter: { ...item.frontmatter, form, gallery: ['missing.jpg'] },
+          updatedAt: '2026-08-02T00:00:00Z',
+        },
+        { html: fragment.html, meta: fragment.meta },
+        [{ locale: 'en', path: item.path }],
+      ),
+    );
+    expect(html).toContain('/images/plates.jpg');
+    expect(html).toContain('Illustrative material photograph');
+    expect(html).not.toContain('class="gallery-strip"');
+  },
+);

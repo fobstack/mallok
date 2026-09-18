@@ -58,6 +58,7 @@ const ASSET_PATH = /^assets\/[a-z0-9][a-z0-9._/-]*$/;
  */
 export const THEME_ASSET_TYPES: Readonly<Record<string, string>> = {
   css: 'text/css; charset=utf-8',
+  js: 'text/javascript; charset=utf-8',
   woff2: 'font/woff2',
   woff: 'font/woff',
   png: 'image/png',
@@ -131,6 +132,17 @@ export function readThemePackage(
       if (THEME_ASSET_TYPES[ext] === undefined) {
         throw new ThemePackageError(
           `"${path}" has an unsupported extension. Theme assets may be: ${Object.keys(THEME_ASSET_TYPES).join(', ')}.`,
+        );
+      }
+      if (
+        ext === 'js' &&
+        !manifest.clientScripts.some(
+          (script) =>
+            (typeof script === 'string' ? script : script.path) === path,
+        )
+      ) {
+        throw new ThemePackageError(
+          `"${path}" must be declared in clientScripts.`,
         );
       }
       assets[path] = bytes;
@@ -241,8 +253,7 @@ function assertLocalesExist(
 
 /**
  * Refuses a theme whose templates emit script the manifest does not declare.
- * This is what makes "official themes ship zero client JavaScript" checkable
- * rather than a claim (docs/THEME_FORMAT.md §9).
+ * Undeclared scripts remain forbidden (docs/THEME_FORMAT.md §9).
  */
 function assertNoUndeclaredScripts(
   manifest: ThemeManifest,

@@ -1,8 +1,8 @@
 {
   "id": "atelier",
   "name": "Atelier",
-  "description": "A premium B2B catalogue for mills and manufacturers: split hero, certification strip, product families, case studies and an FAQ, with a CSS-only mobile nav and gallery.",
-  "version": "2.3.1",
+  "description": "A material-first industrial catalogue with a progressively enhanced homepage carousel and script-free content pages.",
+  "version": "2.5.0",
   "themeApi": 1,
   "home": "layouts/home.liquid",
   "kinds": {
@@ -153,52 +153,52 @@
     "hero_title": {
       "type": "string",
       "label": "Hero headline",
-      "default": "Titanium, delivered to specification."
+      "default": "The right material. A stronger beginning."
     },
     "hero_lede": {
       "type": "text",
       "label": "Hero paragraph",
-      "default": "Bar, plate and tube for aerospace and chemical-process buyers. Rolled, tested and documented at one mill."
+      "default": "Explore titanium bar, plate and tube for your next project. Compare material forms, review specifications and start a conversation."
     },
     "hero_badge": {
       "type": "string",
       "label": "Hero badge",
-      "default": "EN 10204 3.1 certificate with every shipment"
+      "default": "Titanium for considered engineering"
     },
     "stats": {
       "type": "text",
       "label": "Stats (value|label ;; value|label)",
-      "default": "28 yrs|rolling titanium ;; 42|export countries ;; 1,800 t|shipped last year"
+      "default": "Bar|Precision stock ;; Plate|Versatile formats ;; Tube|Hollow sections"
     },
     "certifications": {
       "type": "string",
       "label": "Certifications (comma-separated)",
-      "default": "ISO 9001, AS9100D, PED 2014/68/EU, NADCAP UT, EN 10204 3.1"
+      "default": "Bar & rod, Plate & sheet, Seamless tube"
     },
     "band_title": {
       "type": "string",
       "label": "Capability band title",
-      "default": "One mill. Full traceability."
+      "default": "Every detail starts with the material."
     },
     "band_lede": {
       "type": "text",
       "label": "Capability band paragraph",
-      "default": "Melt, roll, test and certify under one roof. Every heat number on the certificate is stamped on the material it describes."
+      "default": "From the first specification to the final application, make your requirements clear. Explore the material, ask the right questions and build a better brief."
     },
     "band_features": {
       "type": "text",
       "label": "Capability features (Title|text ;; Title|text)",
-      "default": "Ultrasonic inspection to AMS-STD-2154|Class A available on bar above 12 mm. ;; Certificates before the goods move|3.1 documents emailed for approval before despatch. ;; A person answers, not a portal|The engineer who quotes your drawing handles the order."
+      "default": "Choose the right form|Compare bar, plate and tube for your application. ;; Define the specification|Share the grade, dimensions and documentation needed. ;; Plan the next step|Discuss quantities, processing and delivery requirements."
     },
     "cta_title": {
       "type": "string",
       "label": "Bottom CTA title",
-      "default": "Send a drawing. Get a quotation in 24 hours."
+      "default": "What are you making next?"
     },
     "cta_lede": {
       "type": "string",
       "label": "Bottom CTA text",
-      "default": "Attach the spec and the tonnage — the person who replies is the person who will roll it."
+      "default": "Share your material specification, drawing or a few details about your project."
     },
     "quote_href": {
       "type": "string",
@@ -208,11 +208,17 @@
     "inquiry_note": {
       "type": "text",
       "label": "Text above the inquiry form",
-      "default": "Tell us the grade, the form and the tonnage. An engineer replies within one working day."
+      "default": "Tell us the material form, dimensions and quantity your project needs."
     }
   },
   "locales": ["en", "zh"],
   "defaultLocale": "en",
   "imageWidths": [480, 960, 1440],
-  "clientScripts": []
+  "clientScripts": [
+    {
+      "path": "assets/hero-carousel.js",
+      "purpose": "Homepage only: manual carousel controls, keyboard navigation and touch swipe.",
+      "bytes": 2616
+    }
+  ]
 }

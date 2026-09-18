@@ -6,6 +6,14 @@ Snapshot: **September 18, 2026**. Version: **0.1.0-rc.5**. This page is the
 current release summary; older task reports and acceptance tables remain
 historical evidence, not a claim that their results apply to every build.
 
+## rc.6 publication in progress
+
+The selected source now includes Atelier 2.5 and is versioned 0.1.0-rc.6.
+Local carousel checks passed, including touch, keyboard, no-JavaScript fallback,
+and accessibility. The rc.5 artifact and performance results below are retained
+as historical evidence; they do not apply automatically to rc.6. Final package
+provenance and distribution status will be recorded with the GitHub prerelease.
+
 ## Source opening versus a stable release
 
 The maintainer accepts the measured CPU limitation for opening the source and

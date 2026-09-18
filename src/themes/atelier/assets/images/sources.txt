@@ -1,0 +1,8 @@
+Atelier sample material photographs
+Source: project owner’s supplied titanium material library.
+Files: tubes.jpg, bars.jpg, plates.jpg.
+Processing: orientation, 4:3 crop, resize, JPEG compression; no generative changes.
+These images illustrate material forms, not a specific grade, certification or customer order.
+The updated image API passed the models check, but image-edit requests disconnected; no generated output is included.
+
+Carousel: hero-materials uses titanium-round-tube-bundles.jpg; hero-processing uses cnc-lathe-machining-detail.jpg; hero-quality uses industrial-metal-ring-inspection.jpg. Each has a separate mobile crop. Supplied library photographs; no new AI generation.

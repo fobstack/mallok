@@ -193,6 +193,26 @@ test.describe('the official themes', () => {
           const response = await page.goto(`${server.origin}${path}`);
           expect(response?.status(), `${theme} ${path}`).toBe(200);
           await scan(page, `${theme} ${path}`);
+          if (theme === 'atelier') {
+            if (path === '/') {
+              for (const index of [1, 2, 0]) {
+                await page.locator(`[data-slide-link="${index}"]`).click();
+                await scan(page, `${theme} slide ${index + 1}`);
+              }
+            }
+
+            await page.emulateMedia({ colorScheme: 'dark' });
+            await scan(page, `${theme} ${path} dark`);
+            await page.emulateMedia({ colorScheme: 'light' });
+            await page.setViewportSize({ width: 390, height: 844 });
+            expect(
+              await page.evaluate(
+                'document.documentElement.scrollWidth <= window.innerWidth',
+              ),
+            ).toBe(true);
+            await scan(page, `${theme} ${path} mobile`);
+            await page.setViewportSize({ width: 1280, height: 720 });
+          }
         }
       } finally {
         await server?.close();

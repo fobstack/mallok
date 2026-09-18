@@ -23,7 +23,7 @@ npm run deploy       # wrangler deploy
 ## Upgrading Mallok
 
 ```sh
-npx mallok upgrade --to 0.1.0-rc.5
+npx mallok upgrade --to 0.1.0-rc.6
 ```
 
 It sets the exact version, installs it, and re-runs this project's own

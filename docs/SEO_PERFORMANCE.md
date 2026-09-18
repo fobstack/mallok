@@ -1,5 +1,10 @@
 # Mallok SEO and performance
 
+> **2026-09-18 update:** Atelier 2.5’s homepage has an explicitly approved,
+> declared manual carousel script. Other content pages remain script-free.
+> Older blanket zero-JavaScript statements below have this exception.
+
+
 - Status: 0.1 baseline
 - Date: 2026-08-28
 - Standing: defines the SEO output built into the core, the performance

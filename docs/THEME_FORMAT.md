@@ -558,8 +558,9 @@ budget — so do not nest `{% for %}` three deep.
 
 ## 9. `clientScripts`
 
-A theme declares the client-side JavaScript it emits. **Official themes are
-always `[]`** (`PRODUCT_VISION §5.6`).
+A theme declares the client-side JavaScript it emits. Official themes default
+to `[]`. Atelier 2.5 declares one homepage-only manual carousel script, an
+explicit product decision; its content pages remain script-free.
 
 ```jsonc
 "clientScripts": [
@@ -681,7 +682,7 @@ applying, and come back if the theme does.
 | `manual` | A handbook or knowledge base | `page`, `article` |
 | `folio` | A portfolio | `page`, `article`, `project` |
 
-All of them: 0 bytes of client-side JavaScript, `clientScripts: []`, at least
+Except for Atelier’s declared homepage carousel, all ship 0 bytes of client-side JavaScript. All provide at least
 `en` and `zh` language packs, and passing the performance and SEO gates in
 `SEO_PERFORMANCE.md`.
 

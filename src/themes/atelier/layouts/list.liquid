@@ -7,6 +7,15 @@
     {% for item in list.items %}
     <a class="card" href="{{ item.path }}">
       <div class="card-art card-art-{{ forloop.index | modulo: 3 | plus: 1 }}">
+        {% if item.cover != blank %}
+        <img src="{{ item.cover }}" alt="{{ item.title }}" width="960" height="720" loading="lazy" decoding="async">
+        {% elsif item.frontmatter.form == "Tube" or item.frontmatter.form == "管材" %}
+        <img src="{{ theme.asset_base }}/images/tubes.jpg" srcset="{{ theme.asset_base }}/images/tubes-768.jpg 768w, {{ theme.asset_base }}/images/tubes.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.material_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% elsif item.frontmatter.form == "Plate" or item.frontmatter.form == "Sheet" or item.frontmatter.form == "板材" %}
+        <img src="{{ theme.asset_base }}/images/plates.jpg" srcset="{{ theme.asset_base }}/images/plates-768.jpg 768w, {{ theme.asset_base }}/images/plates.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.plate_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% else %}
+        <img src="{{ theme.asset_base }}/images/bars.jpg" srcset="{{ theme.asset_base }}/images/bars-768.jpg 768w, {{ theme.asset_base }}/images/bars.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.bar_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% endif %}
         {% if item.frontmatter.grade %}<span class="card-tag">{{ item.frontmatter.grade }}</span>{% endif %}
       </div>
       <div class="card-body">

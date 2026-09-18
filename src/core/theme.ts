@@ -132,7 +132,7 @@ export const themeManifestSchema = z.object({
     .array(z.number().int().positive())
     .default([480, 960, 1440, 1920]),
   /**
-   * Client-side scripts the theme ships. Official themes ship none; anything
+   * Client-side scripts the theme ships. Scripts are opt-in; anything
    * listed here is shown to the site owner as a cost.
    */
   clientScripts: z

@@ -11,9 +11,9 @@ themes, and installed plugins require a build and deployment.
 
 ## Release status
 
-**0.1.0-rc.5 is a release candidate, not the 0.1 stable release.** Real
+**0.1.0-rc.6 is a release candidate, not the 0.1 stable release.** Real
 Cloudflare deployment, publishing, cache invalidation, and performance tests
-have been run. All 60 requests in the latest CPU sample succeeded, but cold
+were run on rc.5; those measurements do not certify the new rc.6 theme. All 60 requests in the latest CPU sample succeeded, but cold
 rendering exceeded the project's 10 ms CPU target in 16 requests. This is a
 known performance limitation, not a measured 16-request failure rate.
 

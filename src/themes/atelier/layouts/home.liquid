@@ -1,50 +1,43 @@
 {% layout "layouts/base" %}
 {% block content %}
-<section class="hero">
-  <div class="shell hero-grid">
-    <div class="hero-copy">
-      {% if theme.options.hero_badge != "" %}
-      <p class="badge">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 1l1.8 3.6L13 5.2l-3 2.9.7 4L7 10.2 3.3 12l.7-4-3-2.9 4.2-.6L7 1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
-        {{ theme.options.hero_badge }}
-      </p>
-      {% endif %}
-      <h1>{{ theme.options.hero_title }}</h1>
-      <p class="hero-lede">{{ theme.options.hero_lede }}</p>
-      <div class="hero-actions">
-        <a class="btn btn-solid" href="{{ theme.options.quote_href }}">{{ t.request_quote }}</a>
-        {% for item in site.nav %}{% if forloop.first %}<a class="btn btn-ghost" href="{{ item.href }}">{{ t.browse }} {{ item.label | downcase }}</a>{% endif %}{% endfor %}
-      </div>
-      {% assign stat_items = theme.options.stats | split: ";;" %}
-      {% if stat_items.size > 0 %}
-      <dl class="stats">
-        {% for stat in stat_items %}
-          {% assign bits = stat | split: "|" %}
-          <div class="stat"><dt>{{ bits[1] | strip }}</dt><dd>{{ bits[0] | strip }}</dd></div>
-        {% endfor %}
-      </dl>
-      {% endif %}
-    </div>
-    <div class="hero-art" aria-hidden="true">
-      <div class="hero-panel">
-        <div class="hero-grid-lines"></div>
-        <div class="hero-glow"></div>
-        <div class="hero-bar hero-bar-1"></div>
-        <div class="hero-bar hero-bar-2"></div>
-        <div class="hero-bar hero-bar-3"></div>
-        {% for item in recent.product %}{% if forloop.first %}
-        <div class="hero-card">
-          <div>
-            <span class="hero-card-eyebrow">{{ t.in_stock }}</span>
-            <span class="hero-card-title">{{ item.frontmatter.grade }}{% if item.frontmatter.standard %} · {{ item.frontmatter.standard }}{% endif %}</span>
+<section class="hero-carousel" data-carousel role="region" aria-roledescription="{{ t.carousel }}" aria-label="{{ t.hero_collection }}">
+  <div class="hero-stage">
+    {% for number in (1..3) %}
+      {% case number %}
+      {% when 1 %}{% assign slide_name = t.slide_materials %}{% assign slide_title = theme.options.hero_title %}{% assign slide_lede = theme.options.hero_lede %}{% assign slide_image = "hero-materials" %}{% assign slide_alt = t.material_photo %}{% assign slide_cta = t.all_products %}{% assign slide_href = "#products" %}
+      {% when 2 %}{% assign slide_name = t.slide_processing %}{% assign slide_title = t.processing_title %}{% assign slide_lede = t.processing_lede %}{% assign slide_image = "hero-processing" %}{% assign slide_alt = t.processing_photo %}{% assign slide_cta = t.processing_cta %}{% assign slide_href = "#capabilities" %}
+      {% when 3 %}{% assign slide_name = t.slide_quality %}{% assign slide_title = t.quality_title %}{% assign slide_lede = t.quality_lede %}{% assign slide_image = "hero-quality" %}{% assign slide_alt = t.quality_photo %}{% assign slide_cta = t.quality_cta %}{% assign slide_href = theme.options.quote_href %}
+      {% endcase %}
+      <div class="hero-slide" id="hero-slide-{{ number }}" role="group" aria-roledescription="{{ t.slide }}" aria-label="{{ number }} / 3 — {{ slide_name }}" data-slide>
+        <picture class="hero-slide-media">
+          <source media="(max-width: 47.99rem)" srcset="{{ theme.asset_base }}/images/{{ slide_image }}-mobile.jpg">
+          <img src="{{ theme.asset_base }}/images/{{ slide_image }}.jpg" width="1536" height="1024" alt="{{ slide_alt }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}"{% if forloop.first %} fetchpriority="high"{% endif %} decoding="async">
+        </picture>
+        <div class="shell hero-slide-inner">
+          <div class="hero-slide-copy">
+            <p class="hero-slide-label">{{ slide_name }}</p>
+            {% if forloop.first %}<h1>{{ slide_title }}</h1>{% else %}<h2>{{ slide_title }}</h2>{% endif %}
+            <p class="hero-slide-lede">{{ slide_lede }}</p>
+            <a class="btn hero-slide-cta" href="{{ slide_href }}">{{ slide_cta }} <span aria-hidden="true">↗</span></a>
           </div>
-          {% if item.frontmatter.lead_time %}<span class="hero-card-chip">{{ item.frontmatter.lead_time }}</span>{% endif %}
         </div>
-        {% endif %}{% endfor %}
       </div>
+    {% endfor %}
+  </div>
+  <div class="shell hero-controls">
+    <nav class="hero-selectors" aria-label="{{ t.choose_slide }}">
+      <a href="#hero-slide-1" data-slide-link="0" aria-current="true"><span aria-hidden="true">01</span>{{ t.slide_materials }}</a>
+      <a href="#hero-slide-2" data-slide-link="1"><span aria-hidden="true">02</span>{{ t.slide_processing }}</a>
+      <a href="#hero-slide-3" data-slide-link="2"><span aria-hidden="true">03</span>{{ t.slide_quality }}</a>
+    </nav>
+    <div class="hero-arrows" hidden data-carousel-arrows>
+      <button type="button" data-prev aria-label="{{ t.previous_slide }}">←</button>
+      <button type="button" data-next aria-label="{{ t.next_slide }}">→</button>
     </div>
+    <p class="visually-hidden" aria-live="polite" aria-atomic="true" data-carousel-status></p>
   </div>
 </section>
+<script src="{{ theme.asset_base }}/hero-carousel.js" defer></script>
 
 {% assign certs = theme.options.certifications | split: "," %}
 {% if certs.size > 0 %}
@@ -55,7 +48,7 @@
 {% endif %}
 
 {% if recent.product.size > 0 %}
-<section class="products shell">
+<section class="products shell" id="products">
   <div class="section-head">
     <div>
       <p class="eyebrow">{{ t.product_range }}</p>
@@ -71,6 +64,15 @@
     {% for item in recent.product limit: 3 %}
     <a class="card" href="{{ item.path }}">
       <div class="card-art card-art-{{ forloop.index }}">
+        {% if item.cover != blank %}
+        <img src="{{ item.cover }}" alt="{{ item.title }}" width="960" height="720" loading="lazy" decoding="async">
+        {% elsif item.frontmatter.form == "Tube" or item.frontmatter.form == "管材" %}
+        <img src="{{ theme.asset_base }}/images/tubes.jpg" srcset="{{ theme.asset_base }}/images/tubes-768.jpg 768w, {{ theme.asset_base }}/images/tubes.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.material_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% elsif item.frontmatter.form == "Plate" or item.frontmatter.form == "Sheet" or item.frontmatter.form == "板材" %}
+        <img src="{{ theme.asset_base }}/images/plates.jpg" srcset="{{ theme.asset_base }}/images/plates-768.jpg 768w, {{ theme.asset_base }}/images/plates.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.plate_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% else %}
+        <img src="{{ theme.asset_base }}/images/bars.jpg" srcset="{{ theme.asset_base }}/images/bars-768.jpg 768w, {{ theme.asset_base }}/images/bars.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" alt="{{ t.bar_photo }}" width="1536" height="1152" loading="lazy" decoding="async">
+        {% endif %}
         {% if item.frontmatter.grade %}<span class="card-tag">{{ item.frontmatter.grade }}</span>{% endif %}
       </div>
       <div class="card-body">
@@ -88,7 +90,8 @@
 {% endif %}
 
 <section class="shell">
-  <div class="band">
+  <div class="band" id="capabilities">
+    <img class="band-image" src="{{ theme.asset_base }}/images/bars.jpg" srcset="{{ theme.asset_base }}/images/bars-768.jpg 768w, {{ theme.asset_base }}/images/bars.jpg 1536w" sizes="(max-width: 47.99rem) 100vw, 50vw" width="1536" height="1152" alt="{{ t.bar_photo }}" loading="lazy" decoding="async">
     <div>
       <h2 class="band-title">{{ theme.options.band_title }}</h2>
       <p class="band-lede">{{ theme.options.band_lede }}</p>

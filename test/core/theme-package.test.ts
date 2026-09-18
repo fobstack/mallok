@@ -140,6 +140,25 @@ describe('readThemePackage', () => {
     );
   });
 
+  it('rejects a JavaScript asset unless its exact path is declared', () => {
+    expectRejected(
+      [...themeSource('trade', '1.0.0'), file('assets/x.js', 'void 0;')],
+      /must be declared/,
+    );
+    const source = withManifest(themeSource('trade', '1.0.0'), (manifest) => {
+      manifest.clientScripts = [{ path: 'assets/x.js', purpose: 'carousel' }];
+    });
+    expect(
+      readThemePackage([...source, file('assets/x.js', 'void 0;')]).assets[
+        'assets/x.js'
+      ],
+    ).toBeDefined();
+    expectRejected(
+      [...source, file('assets/other.js', 'void 0;')],
+      /must be declared/,
+    );
+  });
+
   it('allows scripts once the manifest declares them', () => {
     const declared = withFile(
       withManifest(themeSource('trade', '1.0.0'), (manifest) => {

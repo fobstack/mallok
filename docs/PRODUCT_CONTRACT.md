@@ -102,7 +102,9 @@ repeated here because they are the ones most often argued with:
   database state and take effect immediately. The interface must keep those
   two things apart and must not pretend to hot-swap.
 - Visitor pages send **no client-side JavaScript** by default. The documented
-  exception is the inquiry plugin's Turnstile widget.
+  exceptions are the inquiry plugin's Turnstile widget and Atelier 2.5’s
+  declared homepage-only manual carousel, approved on 2026-09-18. Other
+  Atelier pages remain script-free.
 - `mallok build` remains a parallel path for sites that do not want D1: a full
   static build from local files, with the documented costs (no inquiry form,
   no admin, rebuild to publish).

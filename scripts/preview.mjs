@@ -319,11 +319,11 @@ not a mailbox.`,
 /** Per-theme demo identity, so each theme is shown as the site it is for. */
 const IDENTITIES = {
   atelier: {
-    name: 'Baoji Titanium Works',
+    name: 'Northbound Titanium',
     tagline: 'Titanium bar, plate and tube for process and airframe work',
   },
   journal: {
-    name: 'Baoji Titanium Works',
+    name: 'Northbound Titanium',
     tagline: 'Notes from a titanium mill',
   },
   gazette: {
@@ -341,7 +341,7 @@ const IDENTITIES = {
 };
 
 const SITE = {
-  name: 'Baoji Titanium Works',
+  name: 'Northbound Titanium',
   tagline: 'Titanium bar, plate and tube for process and airframe work',
   defaultLocale: 'en',
   locales: ['en'],

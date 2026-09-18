@@ -89,3 +89,61 @@ test('does not let a public page reach the admin API', async ({ request }) => {
     expect(response.status(), path).toBe(401);
   }
 });
+
+test('homepage carousel supports selectors, wraparound and keyboard navigation', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const slides = page.locator('[data-slide]');
+  await expect(slides).toHaveCount(3);
+  await expect(slides.nth(0)).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Previous slide', exact: true })
+    .click();
+  await expect(slides.nth(2)).toBeVisible();
+  await expect(slides.nth(0)).toBeHidden();
+  await page.getByRole('button', { name: 'Next slide', exact: true }).click();
+  await expect(slides.nth(0)).toBeVisible();
+  const selectors = page.locator('[data-slide-link]');
+  await selectors.nth(1).click();
+  await expect(slides.nth(1)).toBeVisible();
+  await selectors.nth(1).press('End');
+  await expect(slides.nth(2)).toBeVisible();
+  await expect(selectors.nth(2)).toBeFocused();
+  await selectors.nth(2).press('Home');
+  await expect(slides.nth(0)).toBeVisible();
+  await expect(selectors.nth(0)).toHaveAttribute('aria-current', 'true');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const touch = await page.context().newCDPSession(page);
+  await touch.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: 300, y: 200 }],
+  });
+  await touch.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: 80, y: 205 }],
+  });
+  await touch.send('Input.dispatchTouchEvent', {
+    type: 'touchEnd',
+    touchPoints: [],
+  });
+  await touch.detach();
+  await expect(slides.nth(1)).toBeVisible();
+});
+
+test('homepage remains navigable with JavaScript disabled', async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ javaScriptEnabled: false });
+  const page = await context.newPage();
+  try {
+    await page.goto('http://127.0.0.1:8788/');
+    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.locator('[data-carousel-arrows]')).toBeHidden();
+    await page.locator('[data-slide-link="2"]').click();
+    await expect(page).toHaveURL(/#hero-slide-3$/);
+    await expect(page.locator('#hero-slide-3')).toBeInViewport();
+  } finally {
+    await context.close();
+  }
+});
