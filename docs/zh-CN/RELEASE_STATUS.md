@@ -7,13 +7,13 @@
 ## 已发布的 rc.6
 
 - [公开源码与发布页](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6)。
-- npm 发布等待账号启用双重验证（2FA）；平台已拒绝本次发布，npm 目前还没有 `mallok@0.1.0-rc.6`。
+- [npm 包](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6)已发布。`next` 和 `latest` 均指向本候选版，不代表 0.1 稳定版。
 - 源码：`563b366e6e66d535c260543e4c91147269ea2395`。
 - 包：`mallok-0.1.0-rc.6.tgz`。
 - SHA-256：`aed30e5e2dd828a246665895a1da51696c48b5176a41328c32a147c0f640d3ff`。
 - [CI](https://github.com/fobstack/mallok/actions/runs/35333476382) 与[完整发行检查](https://github.com/fobstack/mallok/actions/runs/35333476953)通过。
 - 同一个包已部署到 `rc5-gate.mallok.dev`，中英文页面及 Atelier 2.5 资源返回 HTTP 200。这是包含验收内容的测试站，不是正式演示站。
-- 公共 registry 完整性校验和全新安装仍需等待 npm 发布。
+- npm 完整性校验与发行包一致。全新 `mallok create --no-deploy`、空缓存 `npm ci` 和真实本地 Worker 启动检查均通过；生成项目的依赖审计为零告警。
 - Linux CI 与本机构建的 tarball 逐字节一致。
 - GitHub 私密安全漏洞报告已启用。
 

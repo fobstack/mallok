@@ -22,9 +22,17 @@ sharing an RC. Remaining verification includes real inquiry email delivery,
 the natural seven-day media cleanup window, and production upgrade/rollback.
 See [release status](docs/RELEASE_STATUS.md) for measured results and gaps.
 
-**The [GitHub preview](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) is public. npm publication is pending account 2FA setup as of September 18, 2026.** Do not
-assume `npx mallok` installs this candidate. Source availability, npm
-publication, and stable-release acceptance are separate milestones.
+**[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) and
+[npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6) are published.**
+Create a site with the explicit candidate version:
+
+```sh
+npx mallok@0.1.0-rc.6 create my-site
+```
+
+This creates resources and deploys to your Cloudflare account; sign in with
+Wrangler first. Add `--no-deploy` to generate and validate a local project
+without creating cloud resources.
 
 ## Features
 
@@ -64,9 +72,8 @@ resources. It does not deploy a site or create Cloudflare resources. Open the lo
 from your local `.dev.vars` into the setup wizard. Keep this file private;
 it is ignored by Git. See [Testing](docs/TESTING.md) for browser tests. Run `pnpm test` for unit and integration checks.
 
-Once the package is published, the intended site creation entry is
-`npx mallok@<published-version> create my-site`. Until then, package testing
-uses the source-bound tarball described in the [release runbook](docs/RELEASE_GATE.md).
+The npm package and GitHub attachment are the same verified tarball. See the
+[release runbook](docs/RELEASE_GATE.md) for the verification procedure.
 The Deploy to Cloudflare button is not available yet.
 
 ## Framework and site repositories

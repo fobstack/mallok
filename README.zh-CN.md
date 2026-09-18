@@ -13,7 +13,13 @@
 
 维护者已接受此限制用于公开源码与提供 RC 试用。真实询盘邮件送达、自然七天媒体回收及真实升级回滚等验证仍未完成。详见[发布状态](docs/zh-CN/RELEASE_STATUS.md)。
 
-**[GitHub 预览版](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6)已公开。截至 2026 年 9 月 18 日，npm 发布仍等待账号启用双重验证（2FA）。** 不要假定 `npx mallok` 会安装本候选版本。公开源码、发布 npm 包、通过稳定版验收是不同事项。
+**[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) 和 [npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6) 均已发布。** 使用明确的候选版版本号创建网站：
+
+```sh
+npx mallok@0.1.0-rc.6 create my-site
+```
+
+此命令会在你的 Cloudflare 账号创建资源并部署网站，请先通过 Wrangler 登录。加上 `--no-deploy` 则只生成并验证本地项目，不创建云资源。
 
 ## 功能
 
@@ -45,8 +51,7 @@ pnpm dev
 
 这会启动使用本地 Wrangler 资源的框架开发环境，不会部署网站或创建云资源。打开 Wrangler 输出的本地地址，在向导中填写本地 `.dev.vars` 的 `MALLOK_SETUP_KEY`。此文件已被 Git 忽略，不要公开。浏览器测试见英文[测试文档](docs/TESTING.md)。`pnpm test` 运行单元与集成测试。
 
-npm 发布后，预期入口为 `npx mallok@<已发布版本> create my-site`。
-当前发行包测试使用[发布手册](docs/RELEASE_GATE.md)描述的、关联源码提交的 tarball。Deploy to Cloudflare 按钮暂不可用。
+npm 包与 GitHub 附件来自同一个经过验证的 tarball，验证流程见[发布手册](docs/RELEASE_GATE.md)。Deploy to Cloudflare 按钮暂不可用。
 
 ## 框架仓库和网站仓库
 

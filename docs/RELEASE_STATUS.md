@@ -8,7 +8,7 @@ This is a public release candidate, not stable 0.1.
 ## Published rc.6 candidate
 
 - [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6).
-- npm publication is pending account 2FA setup. The registry rejected the publication attempt; `mallok@0.1.0-rc.6` is not yet available from npm.
+- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6): `0.1.0-rc.6`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
 - Source: `563b366e6e66d535c260543e4c91147269ea2395`.
 - Package: `mallok-0.1.0-rc.6.tgz`.
 - SHA-256: `aed30e5e2dd828a246665895a1da51696c48b5176a41328c32a147c0f640d3ff`.
@@ -17,7 +17,7 @@ This is a public release candidate, not stable 0.1.
 - The exact package was deployed to `rc5-gate.mallok.dev`; English and Chinese
   pages and Atelier 2.5 assets returned HTTP 200. This is a test site with
   verification content, not a curated demo.
-- Public-registry integrity and reinstallation remain pending npm publication.
+- Registry integrity matches the release artifact. A fresh `mallok create --no-deploy`, empty-cache `npm ci`, and real local Worker smoke check passed; the generated project audit reported zero vulnerabilities.
 - Linux CI and the local build produced byte-for-byte identical tarballs.
 - GitHub private vulnerability reporting is enabled.
 
