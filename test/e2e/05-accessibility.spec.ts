@@ -114,6 +114,18 @@ test.describe('the admin', () => {
     await page.getByRole('button', { name: 'New' }).click();
     await expect(page.locator('#fm-title')).toBeVisible();
 
+    // The form appears before the debounced preview is rendered. Scanning
+    // immediately can detach axe's iframe while it is collecting results.
+    // Wait for this edit in the real preview, rather than sleeping or
+    // excluding the sandboxed frame from accessibility coverage.
+    await page.locator('#fm-title').fill('Accessibility preview');
+    await expect(
+      page.frameLocator('iframe[title="Preview"]').getByRole('heading', {
+        name: 'Accessibility preview',
+        exact: true,
+      }),
+    ).toBeVisible();
+
     await scan(page, 'admin: editor');
   });
 
