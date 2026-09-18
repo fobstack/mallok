@@ -58,8 +58,14 @@ function describe(violation: Violation): string {
 }
 
 /** Scans the current page and fails on anything serious or critical. */
-async function scan(page: Page, label: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
+async function scan(
+  page: Page,
+  label: string,
+  exclude?: string,
+): Promise<void> {
+  const builder = new AxeBuilder({ page });
+  if (exclude !== undefined) builder.exclude(exclude);
+  const results = await builder
     // WCAG 2.1 AA is the standard the docs commit to; `best-practice` rules
     // are advice, and are reported below rather than enforced.
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -115,9 +121,8 @@ test.describe('the admin', () => {
     await expect(page.locator('#fm-title')).toBeVisible();
 
     // The form appears before the debounced preview is rendered. Scanning
-    // immediately can detach axe's iframe while it is collecting results.
-    // Wait for this edit in the real preview, rather than sleeping or
-    // excluding the sandboxed frame from accessibility coverage.
+    // immediately can inspect an empty document. Wait for this edit in the
+    // real preview rather than sleeping.
     await page.locator('#fm-title').fill('Accessibility preview');
     await expect(
       page.frameLocator('iframe[title="Preview"]').getByRole('heading', {
@@ -126,7 +131,30 @@ test.describe('the admin', () => {
       }),
     ).toBeVisible();
 
-    await scan(page, 'admin: editor');
+    const frame = page.locator('iframe[title="Preview"]');
+    await expect(frame).toHaveAccessibleName('Preview');
+    await expect(frame).toHaveAttribute('sandbox', 'allow-same-origin');
+    const preview = await frame.getAttribute('srcdoc');
+    expect(preview).toContain('Accessibility preview');
+
+    // Chromium on Linux does not complete axe.runPartial inside this
+    // script-disabled frame (CI trace: call@913). Keep the product sandbox;
+    // audit the editor controls and this exact rendered document separately.
+    // The frame's name and sandbox are checked above, its contents below.
+    await scan(page, 'admin: editor', 'iframe[title="Preview"]');
+    const previewPage = await page.context().newPage();
+    try {
+      await previewPage.setContent(preview ?? '', { waitUntil: 'load' });
+      await expect(
+        previewPage.getByRole('heading', {
+          name: 'Accessibility preview',
+          exact: true,
+        }),
+      ).toBeVisible();
+      await scan(previewPage, 'admin: rendered preview');
+    } finally {
+      await previewPage.close();
+    }
   });
 
   test('has no serious or critical violations on the sign-in screen', async ({
