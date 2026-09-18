@@ -2,19 +2,26 @@
 
 [English](../RELEASE_STATUS.md) · [简体中文](RELEASE_STATUS.md)
 
-更新日期：**2026-09-18**。版本：**0.1.0-rc.5**。本文翻译英文发布摘要；更早的任务记录与验收表保留为历史证据。
+更新日期：**2026-09-18**。当前版本：**0.1.0-rc.6**，是公开候选版，不是 0.1 稳定版。
 
-## rc.6 发布准备
+## 已发布的 rc.6
 
-当前源码包含 Atelier 2.5，版本更新为 0.1.0-rc.6。轮播的触摸、键盘、禁用
-JavaScript 回退和可访问性检查已通过。下文 rc.5 的发布包和性能数据保留为
-历史证据，不自动代表 rc.6；最终包来源和分发状态会记录在 GitHub 预发布中。
+- [公开源码与发布页](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6)。
+- npm 发布等待账号启用双重验证（2FA）；平台已拒绝本次发布，npm 目前还没有 `mallok@0.1.0-rc.6`。
+- 源码：`563b366e6e66d535c260543e4c91147269ea2395`。
+- 包：`mallok-0.1.0-rc.6.tgz`。
+- SHA-256：`aed30e5e2dd828a246665895a1da51696c48b5176a41328c32a147c0f640d3ff`。
+- [CI](https://github.com/fobstack/mallok/actions/runs/35333476382) 与[完整发行检查](https://github.com/fobstack/mallok/actions/runs/35333476953)通过。
+- 同一个包已部署到 `rc5-gate.mallok.dev`，中英文页面及 Atelier 2.5 资源返回 HTTP 200。这是包含验收内容的测试站，不是正式演示站。
+- 公共 registry 完整性校验和全新安装仍需等待 npm 发布。
+- Linux CI 与本机构建的 tarball 逐字节一致。
+- GitHub 私密安全漏洞报告已启用。
 
-## 开源与稳定版的区别
+本版包含 Atelier 2.5、响应式图片，以及支持键盘、触摸和禁用 JavaScript 回退的三图轮播。本地与 Linux CI 浏览器／可访问性检查通过。由于 Linux 下 axe 无法完成禁止脚本的 iframe 内扫描，后台界面和同一份预览 HTML 分别验收；产品沙箱没有放宽。
 
-维护者接受已测得的 CPU 限制用于公开源码及 RC 试用；性能目标仍未通过，不能改写为通过。0.1 稳定版验收尚未完成。本次检查时 GitHub 仓库仍为私有，npm 尚未发布。公开仓库不会自动发布 npm 包。
+后续文档提交不会改变上述发行包。下文 rc.5 性能数据仅为历史证据，不能作为 rc.6 跑分。维护者接受已测 CPU 限制用于开源及 RC 试用；稳定版验收仍未完成。
 
-## 已测产物
+## rc.5 历史产物
 
 - 源码提交：`99df344be185d069412bf68391d3f57c7b443250`。
 - 包：`mallok-0.1.0-rc.5.tgz`。
@@ -51,13 +58,6 @@ JavaScript 回退和可访问性检查已通过。下文 rc.5 的发布包和性
 - 导出到第二站完整恢复、真实升级回滚仍待验证。
 - 测试域名有 Cloudflare 注入的统计脚本；主题不输出 JS 不等于最终响应没有 JS。
 - 测量时生成站点依赖审计为零告警；框架开发工具链还有 6 high、3 moderate、2 low，集中在 happy-dom/Lighthouse 相关依赖，需另行评估，不能据此认定运行时受影响或不受影响。
-- npm 发布、公共 registry 重装及公开 GitHub CI 仍待执行。Deploy to Cloudflare starter 仓库/按钮尚不可用。
-
-## 公开前步骤
-
-1. 最终文档改动后检查跟踪文件并扫描完整 Git 历史；凭据、原始请求日志不进入仓库。
-2. 确认 GitHub 私密漏洞报告渠道可用；私有状态下该 API 返回404，尚未验证。
-3. 推送审核后的源码、运行 GitHub CI，以 RC 状态公开。
-4. npm 发布与宣布稳定版独立进行；仅发布有对应来源和验证记录的选定包。
+- Deploy to Cloudflare starter 仓库/按钮尚不可用。
 
 详细流程见英文[发布手册](../RELEASE_GATE.md)。

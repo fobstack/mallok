@@ -2,27 +2,37 @@
 
 [English](RELEASE_STATUS.md) · [简体中文](zh-CN/RELEASE_STATUS.md)
 
-Snapshot: **September 18, 2026**. Version: **0.1.0-rc.5**. This page is the
-current release summary; older task reports and acceptance tables remain
-historical evidence, not a claim that their results apply to every build.
+Snapshot: **September 18, 2026**. Current version: **0.1.0-rc.6**.
+This is a public release candidate, not stable 0.1.
 
-## rc.6 publication in progress
+## Published rc.6 candidate
 
-The selected source now includes Atelier 2.5 and is versioned 0.1.0-rc.6.
-Local carousel checks passed, including touch, keyboard, no-JavaScript fallback,
-and accessibility. The rc.5 artifact and performance results below are retained
-as historical evidence; they do not apply automatically to rc.6. Final package
-provenance and distribution status will be recorded with the GitHub prerelease.
+- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6).
+- npm publication is pending account 2FA setup. The registry rejected the publication attempt; `mallok@0.1.0-rc.6` is not yet available from npm.
+- Source: `563b366e6e66d535c260543e4c91147269ea2395`.
+- Package: `mallok-0.1.0-rc.6.tgz`.
+- SHA-256: `aed30e5e2dd828a246665895a1da51696c48b5176a41328c32a147c0f640d3ff`.
+- [CI](https://github.com/fobstack/mallok/actions/runs/35333476382) and
+  [complete release gate](https://github.com/fobstack/mallok/actions/runs/35333476953) passed.
+- The exact package was deployed to `rc5-gate.mallok.dev`; English and Chinese
+  pages and Atelier 2.5 assets returned HTTP 200. This is a test site with
+  verification content, not a curated demo.
+- Public-registry integrity and reinstallation remain pending npm publication.
+- Linux CI and the local build produced byte-for-byte identical tarballs.
+- GitHub private vulnerability reporting is enabled.
 
-## Source opening versus a stable release
+The release includes Atelier 2.5, responsive imagery, and a three-slide homepage
+carousel with keyboard, touch and no-JavaScript navigation. Local and Linux CI
+browser/accessibility checks passed. The editor and its rendered preview are
+scanned separately because axe cannot complete inside the script-disabled
+preview frame on Linux; the product's sandbox remains enabled.
 
-The maintainer accepts the measured CPU limitation for opening the source and
-RC evaluation. The failed performance target stays failed; this decision does
-not turn it into a passing test. Stable 0.1 acceptance remains incomplete.
-GitHub visibility is still private at this snapshot, and npm publication has
-not happened. Making the repository public does not publish the npm package.
+Documentation commits after the selected source do not change the released
+artifact. rc.5 performance measurements below are historical and must not be
+reported as rc.6 benchmarks. The maintainer accepted the measured CPU limitation
+for source opening and RC evaluation; stable acceptance remains incomplete.
 
-## Tested artifact
+## Historical rc.5 artifact
 
 - Source commit: `99df344be185d069412bf68391d3f57c7b443250`.
 - Package: `mallok-0.1.0-rc.5.tgz`.
@@ -73,18 +83,6 @@ force regeneration of every D1 content fragment or cover all page types.
   framework development toolchain still reported 6 high, 3 moderate, and 2 low
   findings in happy-dom/Lighthouse-related dependencies. These require triage;
   they are not evidence that the shipped runtime is affected or unaffected.
-- npm publication, public-registry reinstallation, and public GitHub Actions
-  execution remain distribution tasks. The Deploy to Cloudflare starter
-  repository/button is not available.
-
-## Before changing repository visibility
-
-1. Review the tracked files and full-history secret scan after the final docs
-   changes. Keep private credentials and raw request logs out of the repository.
-2. Confirm GitHub private vulnerability reporting works; its API returned 404
-   while the repository was private, so availability is not verified.
-3. Push the reviewed source, run GitHub CI, and make the source public as an RC.
-4. Keep npm publication and a stable 0.1 announcement separate. Publish only a
-   selected, verified package with matching provenance.
+- The Deploy to Cloudflare starter repository/button is not available.
 
 See [the release runbook](RELEASE_GATE.md) for the remaining procedures.

@@ -22,7 +22,7 @@ sharing an RC. Remaining verification includes real inquiry email delivery,
 the natural seven-day media cleanup window, and production upgrade/rollback.
 See [release status](docs/RELEASE_STATUS.md) for measured results and gaps.
 
-**The npm package has not been published as of September 18, 2026.** Do not
+**The [GitHub preview](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) is public. npm publication is pending account 2FA setup as of September 18, 2026.** Do not
 assume `npx mallok` installs this candidate. Source availability, npm
 publication, and stable-release acceptance are separate milestones.
 
