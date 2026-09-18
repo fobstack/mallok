@@ -1,7 +1,7 @@
 # Mallok documentation
 
 Mallok is an open-source, Cloudflare-native content website: content lives as
-Markdown in D1, an edit is live immediately, there is no build step, and the
+Markdown in D1, content edits require no rebuild; cache invalidation controls visibility, and the
 content can be taken elsewhere at any time. The first vertical is
 foreign-trade B2B company sites.
 
@@ -43,51 +43,13 @@ rest are the contracts for individual subsystems.
 | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The task sequence, the gates, the dependency graph, the definition of done per task |
 | [tasks/](tasks/) | One document per task: what was implemented, the decisions taken, deviations from the design, the evidence, and what is left. Already written in English. |
 
-## Status
+## Current release status
 
-- **Implementation**: all seventeen tasks are implemented and `pnpm test`
-  exits 0 — the number of tests is not written here, because it drifts and
-  the command prints it. The Worker is 290.0 KiB gzip, well inside Mallok's
-  own 3 MiB gzip budget.
-  (Cloudflare's own limit is 64 MiB uncompressed on either plan; the
-  "free-plan ceiling" this line used to cite does not exist.)
-- **Verification**: **Gate A ran for real 2026-09-03/04** — seven of the nine
-  `ARCHITECTURE.md §18` measurements against a real Cloudflare account, the
-  other two needing a public repository and Turnstile/Resend accounts.
-  `mallok create` ran end to end and found a real deploy-breaking bug (fixed).
-  See [ACCEPTANCE.md §14](ACCEPTANCE.md) for the criterion-by-criterion
-  evidence: 5 criteria are now `VERIFIED_HUMAN` and 10 still need a real
-  account for other reasons. Two findings briefly raised a wording or
-  implementation question rather than settling one — a content-length safety
-  net for `AC-CONTENT-10` (2026-09-05) and a purge-latency reword for
-  `AC-CONTENT-02b` (2026-09-06) — both are now closed and no criterion is
-  `PENDING_DECISION`.
-- **Distribution**: nothing published to npm; the repository is private.
-- **Licence**: Apache-2.0.
+See [RELEASE_STATUS.md](RELEASE_STATUS.md) for the September 18, 2026 RC
+snapshot, measured results, accepted CPU limitation, and remaining work.
+Older task reports are historical evidence, not the current release summary.
 
-## Open gates
+## Translations
 
-Gate A is done — see [tasks/TASK-01.md §5](tasks/TASK-01.md) for the full
-results and [ARCHITECTURE.md §18](ARCHITECTURE.md) for what they mean. Ten
-acceptance criteria remain `NOT_AVAILABLE` for reasons Gate A could never have
-closed: a public repository, a second real deployment, elapsed real time or
-cron, and Resend/Turnstile/Lighthouse accounts
-([ACCEPTANCE.md §14.4](ACCEPTANCE.md)). Both of Gate A's own findings that
-raised a wording or implementation question are now settled: stage-one CPU
-routinely running past the Free plan's budget was settled 2026-09-05 —
-`saveContent` now skips rendering and saves a draft instead, past a
-conservative length threshold — and purge latency (≈ 20 s) was settled
-2026-09-06, reworded from "within seconds" to "within a minute"
-([ACCEPTANCE.md §14.2](ACCEPTANCE.md), items 6–7).
-
-The Markdown engine question was settled on 2026-08-29: **stay with unified**.
-The reasoning and its cost are in [tasks/TASK-01.md §6](tasks/TASK-01.md) —
-Gate A's real CPU numbers now make this a live decision again (item 7 above).
-
-Whether to keep inline HTML was settled on 2026-09-02: **keep it, sanitised**
-— `rehype-raw` was added ([SECURITY.md §4](SECURITY.md),
-[TECH_STACK.md §11.1](TECH_STACK.md)).
-
-The earlier "macOS desktop Studio plus build-time prerendering" design was
-abandoned in full. It survives in git commit `2e775cb` for reference only and
-is not a basis for any implementation.
+English is primary. [Chinese documentation](zh-CN/README.md) supplements the
+English references; its index identifies which pages are translated.

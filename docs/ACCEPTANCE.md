@@ -1,5 +1,12 @@
 # Mallok 0.1 acceptance criteria
 
+> **Current RC snapshot (2026-09-18):** see [RELEASE_STATUS.md](RELEASE_STATUS.md).
+> Earlier status tables below predate the latest isolated deployment. They
+> remain historical/runbook material, not the current release verdict.
+> The maintainer accepts the measured CPU shortfall for source opening and RC
+> evaluation; stable-release criteria and the failed measurement are unchanged.
+
+
 - Status: 0.1 baseline
 - Date: 2026-08-28
 - Standing: the only test of "0.1 is done". **Every criterion is an observable

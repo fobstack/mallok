@@ -1,162 +1,110 @@
 # Mallok
 
-**An open-source, Cloudflare-native content website. Markdown lives in D1, edits go live within a minute, there is no build step, and your content is always one export away from leaving.** The first vertical is B2B foreign-trade company sites: one-click setup, multiple languages, a product catalog, and inquiries delivered straight to your inbox — starting at $0.
+**An open-source website framework for Cloudflare, with Markdown content, a web admin, Liquid themes, and plugins.** Built first for multilingual B2B and export-business websites.
 
-> The editing experience of WordPress, the performance of the edge, open source and never locked in.
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-## The problem
+Deploy to your own Cloudflare account. Store content in D1 and media in R2,
+edit through the admin or CLI, and export your content when you need it.
+Publishing content does not require rebuilding the website. Changes to code,
+themes, and installed plugins require a build and deployment.
 
-Content websites today take one of two roads, each with a structural flaw:
+## Release status
 
-- **CMS (WordPress, Ghost)** — great editing, instant publishing. The price is a server, a database and a never-ending stream of security updates.
-- **Static generators (Astro, Hugo)** — excellent output and performance. The price is that fixing a typo means a commit, a CI run, a build and a redeploy; non-technical people are locked out.
+**0.1.0-rc.5 is a release candidate, not the 0.1 stable release.** Real
+Cloudflare deployment, publishing, cache invalidation, and performance tests
+have been run. All 60 requests in the latest CPU sample succeeded, but cold
+rendering exceeded the project's 10 ms CPU target in 16 requests. This is a
+known performance limitation, not a measured 16-request failure rate.
 
-Foreign-trade company sites concentrate both flaws: several languages, a product catalog, industry news that changes daily and an inquiry form that must not fail — mostly running on dated WordPress templates or yearly-fee site builders. Mallok's bet is that neither price is necessary.
+The maintainer has accepted this limitation for opening the source and
+sharing an RC. Remaining verification includes real inquiry email delivery,
+the natural seven-day media cleanup window, and production upgrade/rollback.
+See [release status](docs/RELEASE_STATUS.md) for measured results and gaps.
 
-## How it works
+**The npm package has not been published as of September 18, 2026.** Do not
+assume `npx mallok` installs this candidate. Source availability, npm
+publication, and stable-release acceptance are separate milestones.
 
-Deploy one Worker into your own Cloudflare account. Content is stored as Markdown in D1; images live in R2 behind an R2 custom domain. When you save, the Worker renders the Markdown into an HTML fragment cached in D1; when a visitor arrives, it only applies the theme template and writes the page to the edge cache, so almost every request is served from cache. Saving an article is one database write and one cache purge — live within a minute.
+## Features
 
-- One way in for 0.1: `npx mallok create`. A Deploy to Cloudflare button and a hosted setup assistant are planned, and neither is available yet
+- Markdown content in D1; original content remains exportable.
+- Multilingual content, locale URLs, canonical links, and automatic hreflang.
+- Liquid themes with five bundled designs; content kinds declared by themes.
+- React admin for content, settings, media, and plugin configuration.
+- A B2B starter with products, categories, cases, FAQs, and news.
+- An inquiry plugin integrating Turnstile and Resend; real delivery acceptance
+  is still pending for this candidate.
+- HTML edge caching and reusable rendered fragments in D1.
+- CLI tools for creation, publishing, export, and upgrades.
+- An optional static build; static output does not include the admin or
+  server-backed inquiry handling.
 
-> **The Deploy to Cloudflare button is withdrawn from 0.1.** It deploys the repository it points at, and this repository is the framework — pointing it here would deploy Mallok's own source as somebody's website, which is exactly what 0.1 stopped doing. The button needs a small public *starter site* repository of its own: four lines of composition, a `wrangler.jsonc` and an exact dependency on `mallok`. That repository does not exist yet, and it is not Nundar. Until it does, `npx mallok create` is the supported path.
+The runtime is internal to Mallok (`src/runtime`). There is no separate
+runtime package to install. Site-level functionality extends Mallok through
+its theme, plugin, and starter interfaces.
 
-- Multilingual content model: every item has a locale and a translation group, URLs are locale-prefixed, `hreflang` is automatic
-- Content kinds are declared by the theme; the trade starter ships products, categories, cases, FAQs and news
-- Inquiry plugin: native form + Turnstile + database + two-way email via Resend + admin list + CSV export
-- Content, settings, theme options and plugin toggles change instantly; themes, plugins and upgrades live in the source tree and take a redeploy — the UI says so rather than pretending otherwise
-- A CLI publishes content bundles (`index.md` + `images/`) from disk, ready for AI content pipelines
-- Or skip D1 entirely: `pnpm build:site` compiles this repository's `content/` into a static site with the same renderer
-- One-click export to plain `.md` folders plus `inquiries.csv` — take it to Astro, Hugo or Obsidian any time
-- Every dependency has a free tier; the only upgrade is Workers Paid ($5/month) with no architectural change
+## Try the source locally
 
-## Where your content lives
-
-The repository you fork **is** your site. Its content is real files you edit:
-
-```
-site.json               name, languages, content kinds, navigation
-content/
-├── page/about/index.md         ← one directory per item
-├── page/about/index.zh.md      ← its Chinese translation, same directory
-├── product/grade-5-titanium-bar/
-│   ├── index.md
-│   ├── index.zh.md
-│   └── images/hero.png         ← images travel with the item
-├── category/  case/  faq/  article/
-```
-
-Like an Astro collection, one directory per content kind — except each item is
-a directory too, so exporting, importing or emailing an article moves its
-images with it. The kinds are not a fixed list: they come from `site.json`,
-which the theme's declared kinds fill in. Flat `content/article/post.md` files
-work as well, and Astro's `pubDate`/`heroImage` and Hugo's `lastmod`/`summary`
-front matter are mapped on import.
-
-There is one copy of this. The setup wizard imports `content/` into D1 for the
-live site; `pnpm build:site` compiles the same files into a static site. What
-the two paths differ on is spelled out in [`docs/CLI.md §6.7`](docs/CLI.md) —
-a static build has no inquiry form, no admin, and needs rebuilding after edits.
-
-## Status
-
-**The rc.5 local release gate passed on 2026-09-17; Mallok is not released,
-and no real-account evidence stands for this version.** The rendering core,
-database schema, Worker request path, edge cache, management API, media
-pipeline, SEO endpoints, multilingual model, plugin runtime with the official
-inquiry plugin, five zero-JavaScript themes, the admin app, import/export, the
-CLI, the page runtime and the `trade-b2b` starter with its setup wizard all
-exist, and the local gate that covers them is one command line:
+Prerequisites: Node.js 22 or newer and pnpm 10.34.5. See `.nvmrc` for the
+repository's test version.
 
 ```sh
-pnpm lint && pnpm typecheck && pnpm test && pnpm test:release \
-  && pnpm build && pnpm bundle:size && pnpm admin:size \
-  && pnpm build:site \
-  && pnpm test:coverage && pnpm test:e2e && pnpm scan:secrets
+git clone https://github.com/fobstack/mallok.git
+cd mallok
+pnpm install --frozen-lockfile
+# First checkout only: create local secrets without overwriting an existing file.
+(umask 077; set -C; printf 'MALLOK_SECRET=%s\nMALLOK_SETUP_KEY=%s\n' \
+  "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .dev.vars)
+pnpm dev
 ```
 
-`.github/workflows/release.yml` runs this suite in one sequential job on any
-tag, then packs one candidate, tests that exact tarball and verifies its
-independent hash record before exposing it as the workflow artifact.
+This starts the framework development environment with local Wrangler
+resources. It does not deploy a site or create Cloudflare resources. Open the local URL printed by Wrangler and enter the `MALLOK_SETUP_KEY`
+from your local `.dev.vars` into the setup wizard. Keep this file private;
+it is ignored by Git. See [Testing](docs/TESTING.md) for browser tests. Run `pnpm test` for unit and integration checks.
 
-That runs unit and integration tests across Node, real `workerd`, a DOM and
-real Vite builds; browser tests that drive a real `wrangler dev` through the
-wizard, sign-in, the publish loop and the public site; axe over the admin and
-all five themes; an enforced coverage floor; and a scan of every blob in Git
-history for credential shapes. It also builds the publishable package,
-installs it from a throwaway registry and creates a project from it — the same
-thing a user does.
+Once the package is published, the intended site creation entry is
+`npx mallok@<published-version> create my-site`. Until then, package testing
+uses the source-bound tarball described in the [release runbook](docs/RELEASE_GATE.md).
+The Deploy to Cloudflare button is not available yet.
 
-**Gate A ran for real on 2026-09-03/04, and its evidence does not carry over.**
-Those five criteria were verified against the previous `mallok create`, a
-Worker whose theme and plugins were compiled-in constants, and a package that
-shipped a copy of this repository. All three were replaced in 0.1.0-rc.3, so
-those rows are `STALE` (`docs/TESTING.md §6`) and **no criterion is
-`VERIFIED_STAGING`**. [`docs/ACCEPTANCE.md §14`](docs/ACCEPTANCE.md) is the
-row-by-row status; [`docs/RELEASE_GATE.md`](docs/RELEASE_GATE.md) is what a
-real account has to do to change it. Nothing is published to npm and the
-repository is private. Treat this as a codebase to try, not a product to
-deploy.
+## Framework and site repositories
 
-The version is `0.1.0-rc.5`: every criterion that can be closed without a
-Cloudflare account, a domain or a third-party key is closed. What remains is
-listed with exact commands, pass conditions and rollbacks in
-[`docs/RELEASE_GATE.md`](docs/RELEASE_GATE.md). A local `workerd` result is
-never recorded as a real-edge result — that distinction is what the statuses
-in `docs/TESTING.md §6` exist to keep.
+This repository develops **the Mallok framework**. A generated site is a
+separate, small project depending on an exact `mallok` package version. Its
+configuration, content, custom themes, and plugins belong to the site owner;
+upgrades do not require merging a fork of this framework.
 
-```sh
-pnpm install
-pnpm test          # unit tests in Node + integration tests inside workerd
-pnpm dev           # wrangler dev on http://127.0.0.1:8787
-```
+Content bundles use Markdown files and relative media paths. The setup flow
+can import the starter content into D1. Admin edits update D1; they do not
+write back to Git. Export creates portable content bundles. See
+[content format](docs/CONTENT_FORMAT.md) and [CLI](docs/CLI.md).
 
-Design documents, starting with [the product vision](docs/PRODUCT_VISION.md)
-and [the architecture](docs/ARCHITECTURE.md) — the full set is indexed in
-[docs/README.md](docs/README.md).
+## Hosting and caching
 
-Contributing guidelines, including the code style, are in [CONTRIBUTING.md](CONTRIBUTING.md).
+Mallok is designed to start on Cloudflare's free allowances. Actual cost and
+capacity depend on usage, plan limits, domain registration, and optional
+services such as email. Free operation is not an unlimited-service promise.
 
-## Upgrading and rolling back
+For automatic cache invalidation, configure `CF_API_TOKEN` with Cache Purge
+permission scoped to the site's zone, together with `CF_ZONE_ID`, as Worker
+secrets. Without them, visitors can see the previous version until its cache
+expires. Never commit credentials. Cloudflare or third-party integrations can
+inject JavaScript even where Mallok's theme itself emits none.
 
-A site depends on `mallok` at an exact version, so upgrading is one number and
-a deploy — not a merge against a repository you forked months ago:
+## Documentation and contributing
 
-```sh
-npx mallok upgrade --to <version>
-```
+- [Documentation index](docs/README.md) · [中文文档导航](docs/zh-CN/README.md)
+- [Release status and known limitations](docs/RELEASE_STATUS.md)
+- [Theme format](docs/THEME_FORMAT.md) · [Plugin API](docs/PLUGIN_API.md)
+- [Contributing](CONTRIBUTING.md) · [中文贡献指南](CONTRIBUTING.zh-CN.md)
+- [Security reporting](SECURITY.md) · [Code of conduct](CODE_OF_CONDUCT.md)
 
-That installs the target release and re-runs the site's own typecheck, tests,
-build and deploy dry-run against it. A failure restores `package.json` and the
-lockfile and reinstalls the version that worked. Nothing rewrites the files in
-a site's own directory: 0.1 has no project-file migration system, and will get
-one designed around the first migration that actually needs it.
-
-Migrations apply themselves on the first request after a deploy, once, behind
-a lock — concurrent cold starts cannot race. `npx wrangler rollback` returns
-the Worker to its previous version, but **it does not undo a D1 migration**:
-write the reverse path before shipping a destructive one.
-
-Content, settings, theme options and plugin toggles are data and survive every
-upgrade untouched.
-
-### One repository, no hidden dependency
-
-The page runtime — routing, the page lifecycle, Liquid, islands, cache
-semantics and the Cloudflare adapter — lives at `src/runtime`. It is part of
-Mallok, not a package to install: a clone builds, tests and deploys with no
-sibling checkout and nothing to pin. `docs/ARCHITECTURE.md §3.1` explains why
-it stopped being a separate package and why it will not become one again.
+English is the primary documentation language. Chinese translations supplement
+it; untranslated technical references remain linked to their English originals.
 
 ## License
 
-[Apache-2.0](LICENSE). Chosen over MIT for its explicit patent grant and
-patent-retaliation clause — the same reason a company's legal review tends to
-prefer it.
-
-## Contributing
-
-[`CONTRIBUTING.md`](CONTRIBUTING.md) has the code style and the checks a
-change has to pass. Report security problems privately through
-[a security advisory](https://github.com/FobStack/mallok/security/advisories/new),
-never a public issue — see [`SECURITY.md`](SECURITY.md).
+[Apache-2.0](LICENSE). See [NOTICE](NOTICE) and the distribution's generated
+third-party notices for bundled dependencies and font attribution.

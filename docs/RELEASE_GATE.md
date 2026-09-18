@@ -1,5 +1,12 @@
 # The 0.1 release gate
 
+> **Current RC snapshot (2026-09-18):** see [RELEASE_STATUS.md](RELEASE_STATUS.md).
+> Earlier status tables below predate the latest isolated deployment. They
+> remain historical/runbook material, not the current release verdict.
+> The maintainer accepts the measured CPU shortfall for source opening and RC
+> evaluation; stable-release criteria and the failed measurement are unchanged.
+
+
 - Status: runbook. Written 2026-09-09, rewritten 2026-09-11, corrected for
   0.1.0-rc.4 on 2026-09-12 (§3, §5.1, §8, §9, §11, §12, §14, §15.1, §17),
   and updated for the 0.1.0-rc.5 candidate on 2026-09-17 with fail-closed
@@ -12,35 +19,27 @@ package. §4 is the local prerequisite; the external dependency is the reason
 the later sections remain open. Each one names the exact command, what a pass
 looks like, and how to undo it.
 
-**Only the local prerequisite is evidence for this release.** §4 is
-`VERIFIED_LOCAL` for the 0.1.0-rc.5 candidate on 2026-09-17. Every external
-section remains `NOT_RUN` until an operator records otherwise, and a local
-`workerd` result never promotes one of those rows — `docs/ACCEPTANCE.md §14`
-explains why that distinction is load-bearing. §15.1 is the one row that is
-neither: `NOT_AVAILABLE`, withdrawn rather than pending. The 2026-09-12 rc.4
-local run is retained separately as `STALE` history in §4.1.
+## Current run and historical snapshots
 
-## Active gate run — 2026-09-17
+The current results and remaining work are summarized in
+[RELEASE_STATUS.md](RELEASE_STATUS.md), including the exact tested source and
+artifact hash. The isolated test hostname is `rc5-gate.mallok.dev`.
 
-The status snapshot above and the original §4 evidence describe the first rc.5
-artifact, not every subsequent build with that unpublished version. The real
-isolated deployment exposed two regressions: D1 name probes resolved a local
-placeholder UUID, and cached HTML returned a four-hour browser lifetime instead
-of the declared zero. The D1 fix was deployed successfully; the cache-policy
-fix must be verified against a new source-bound tarball before release.
+D1 probe and browser cache-policy regressions found during deployment were
+fixed and retested in the selected candidate. Source opening and RC evaluation
+may proceed with the documented CPU limitation accepted by the maintainer;
+this is not approval of every stable-release criterion.
 
-The gate site is `rc5-gate.mallok.dev`, Worker `mallok-gate-20260917-rc5`, with
-its own D1 and R2 resources. No production resource is part of this run.
-Creation, the browser setup wizard, publishing, and credential cache bypass
-were exercised on the intermediate artifact. These are diagnostic results,
-not a blanket approval of the replacement artifact. The full external gate
-remains incomplete. Cloudflare also injects an analytics beacon in browser
-responses; the zero-client-JavaScript check has not passed on this hostname.
+The sections below retain the original procedures and dated snapshots. Use
+the current status summary to distinguish completed measurements from open
+work; do not treat the original `NOT_RUN` labels as a statement that the
+September 17–18 tests never happened.
 
 ## 0. Vocabulary
 
 The statuses are `docs/TESTING.md §6`'s and no others — the same set
-`docs/ACCEPTANCE.md` uses. Every current gate section is `NOT_RUN` but two:
+`docs/ACCEPTANCE.md` uses. At the original local-only checkpoint, every external gate was `NOT_RUN`
+except the withdrawn button. The two exceptions at that checkpoint were:
 
 - **§4** is `VERIFIED_LOCAL` — it needs no account, and the rc.5 local gate,
   source-bound candidate checks and clean-checkout reproducibility check pass;

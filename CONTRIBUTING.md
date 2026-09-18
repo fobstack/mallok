@@ -2,16 +2,19 @@
 
 Mallok is early. Until 0.1 ships, work is organised as numbered tasks under
 `docs/tasks/`; each task implements one demonstrable loop and ends with test
-evidence. Read the design documents first — they are the contract, and code
-that contradicts them is a bug even when it works.
+evidence. Read the design documents first. If implementation, measurements, and design
+disagree, describe the conflict and propose a correction with evidence.
 
 ## Language
 
-Everything that lives in the repository is written in **English**: code,
-comments, JSDoc, commit messages, test names, and developer documentation.
-Design documents under `docs/` are currently maintained in Chinese and will
-get English translations; when both exist, the English file is canonical for
-implementation.
+English is the primary language for code, comments, commit messages, tests,
+and technical documentation. Chinese translations are welcome in
+`README.zh-CN.md`, `CONTRIBUTING.zh-CN.md`, and `docs/zh-CN/`.
+Link translations to their English originals and keep changes in sync.
+Do not replace English entry points with a translation or label an English
+link as if it were already translated.
+
+[中文贡献指南](CONTRIBUTING.zh-CN.md)
 
 ## Code style
 
