@@ -8,6 +8,11 @@ foreign-trade B2B company sites.
 > **English is the primary language of this project and the authoritative
 > version of every document here.**
 
+## Start here
+
+[Create your first site](GETTING_STARTED.md): install, deploy, finish setup,
+publish a product and configure inquiries.
+
 ## Design documents
 
 Read in order. The first six are the product and architecture contract; the

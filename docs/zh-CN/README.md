@@ -6,6 +6,8 @@
 
 ## 中文内容
 
+- [创建第一个网站](GETTING_STARTED.md)
+
 - [项目介绍与本地试用](../../README.zh-CN.md)
 - [发布状态与已知限制](RELEASE_STATUS.md)
 - [贡献指南](../../CONTRIBUTING.zh-CN.md)

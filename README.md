@@ -41,6 +41,9 @@ This creates resources and deploys to your Cloudflare account; sign in with
 Wrangler first. Add `--no-deploy` to generate and validate a local project
 without creating cloud resources.
 
+Read the [step-by-step setup guide](docs/GETTING_STARTED.md) for login, deployment,
+admin setup, publishing and inquiry configuration.
+
 ## Features
 
 - Markdown content in D1; original content remains exportable.

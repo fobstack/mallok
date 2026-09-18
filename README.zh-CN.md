@@ -27,6 +27,8 @@ npx mallok create my-site
 
 此命令会在你的 Cloudflare 账号创建资源并部署网站，请先通过 Wrangler 登录。加上 `--no-deploy` 则只生成并验证本地项目，不创建云资源。
 
+登录、部署、后台初始化、发布与询盘配置见[入门指南](docs/zh-CN/GETTING_STARTED.md)。
+
 ## 功能
 
 - D1 中的 Markdown 内容，可导出原始内容。
