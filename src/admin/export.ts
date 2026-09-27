@@ -54,6 +54,58 @@ export interface ExportResult {
 }
 
 /** Fetches every file in the manifest and zips them. */
+const DOWNLOAD_ATTEMPTS = 3;
+const RETRY_BASE_MS = 250;
+
+/** A refusal the site would repeat, so retrying it only wastes the operator's time. */
+class PermanentDownloadError extends Error {}
+
+/**
+ * Fetches one object and proves it arrived intact, retrying transport faults.
+ *
+ * A backup is deliberately all-or-nothing, so one flaky response must not be
+ * what decides the operator cannot have their data. A status the server will
+ * simply repeat (4xx: gone, or not theirs to read) is not retried.
+ */
+async function downloadVerified(
+  url: string,
+  file: ExportFile,
+): Promise<Uint8Array> {
+  let reason = '';
+  for (let attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(url, { credentials: 'same-origin' });
+      if (response.status >= 400 && response.status < 500) {
+        throw new PermanentDownloadError(
+          `Could not fetch "${file.path}" while building the export (${response.status}).`,
+        );
+      }
+      if (!response.ok) {
+        reason = `the site answered ${response.status}`;
+      } else {
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        if ((await sha256HexOfBytes(bytes)) === file.sha256) {
+          return bytes;
+        }
+        reason = 'the bytes did not match its sha256';
+      }
+    } catch (caught) {
+      if (caught instanceof PermanentDownloadError) {
+        throw caught;
+      }
+      reason = caught instanceof Error ? caught.message : String(caught);
+    }
+    if (attempt < DOWNLOAD_ATTEMPTS) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_BASE_MS * attempt),
+      );
+    }
+  }
+  throw new Error(
+    `The downloaded bytes for "${file.path}" did not verify after ${DOWNLOAD_ATTEMPTS} attempts: ${reason}. No backup was downloaded.`,
+  );
+}
+
 export async function buildExportZip(
   onProgress?: (progress: ExportProgress) => void,
 ): Promise<ExportResult> {
@@ -117,19 +169,7 @@ export async function buildExportZip(
     if (file.text !== undefined) {
       entries[file.path] = encoder.encode(file.text);
     } else if (file.url !== undefined) {
-      const response = await fetch(file.url, { credentials: 'same-origin' });
-      if (!response.ok) {
-        throw new Error(
-          `Could not fetch "${file.path}" while building the export (${response.status}).`,
-        );
-      }
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if ((await sha256HexOfBytes(bytes)) !== file.sha256) {
-        throw new Error(
-          `The downloaded bytes for "${file.path}" do not match its sha256.`,
-        );
-      }
-      entries[file.path] = bytes;
+      entries[file.path] = await downloadVerified(file.url, file);
     }
     done++;
     onProgress?.({ done, total: manifest.files.length });

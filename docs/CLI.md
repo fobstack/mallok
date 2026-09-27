@@ -340,6 +340,12 @@ succeeds. It refuses unsafe or duplicate cross-platform paths and any plugin
 export failure. A failed export therefore leaves an existing empty target
 untouched and never mixes an old backup with a partial new one.
 
+Because publishing is all-or-nothing, a download that fails in transit is
+retried up to **three times** with a growing delay: a reset connection or a
+truncated body must not be what decides an operator cannot have their backup.
+A refusal the site would repeat — an object that is gone, or a token without
+the scope to read it — is not retried, and fails the export immediately.
+
 ## 8. `mallok preview`
 
 Renders locally, **entirely offline**.

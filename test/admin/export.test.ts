@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildExportZip } from '../../src/admin/export.js';
+import { sha256HexOfBytes } from '../../src/core/index.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -65,6 +66,53 @@ describe('the browser export', () => {
     vi.stubGlobal('fetch', fetch);
 
     await expect(buildExportZip()).rejects.toThrow(/could not fetch/i);
+  });
+
+  it('retries a transient failure rather than losing the whole backup', async () => {
+    // A backup is all-or-nothing on purpose, so one flaky response must not be
+    // what decides an operator cannot have their data.
+    const bytes = new TextEncoder().encode('real media bytes');
+    const sha = await sha256HexOfBytes(bytes);
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(
+        manifest({
+          files: [
+            { path: 'media/file.bin', url: '/media/file.bin', sha256: sha },
+          ],
+          counts: { content: 0, files: 1, media: 1 },
+        }),
+      )
+      .mockResolvedValueOnce(new Response('upstream', { status: 503 }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([1, 2]))) // truncated
+      .mockResolvedValueOnce(new Response(bytes));
+    vi.stubGlobal('fetch', fetch);
+
+    const result = await buildExportZip();
+
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(result.counts.media).toBe(1);
+  });
+
+  it('gives up on a download that never verifies, and says how many tries', async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(
+        manifest({
+          files: [
+            {
+              path: 'media/file.bin',
+              url: '/media/file.bin',
+              sha256: 'a'.repeat(64),
+            },
+          ],
+          counts: { content: 0, files: 1, media: 1 },
+        }),
+      )
+      .mockResolvedValue(new Response('never matches'));
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(buildExportZip()).rejects.toThrow(/3 attempts/i);
   });
 
   it('refuses an archive key that object-backed ZIP readers can lose', async () => {

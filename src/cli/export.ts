@@ -222,6 +222,60 @@ async function assertDestinationUnchanged(
   }
 }
 
+const DOWNLOAD_ATTEMPTS = 3;
+const RETRY_BASE_MS = 250;
+
+/**
+ * Fetches one object and proves it arrived intact, retrying transport faults.
+ *
+ * An export publishes nothing unless every file succeeds (docs/CLI.md §7), so
+ * without this a single reset connection or truncated response costs the
+ * operator the whole backup. A refusal the site will simply repeat — a token
+ * without the scope, a manifest entry with no digest — is not retried.
+ */
+async function downloadVerified(
+  client: SiteClient,
+  file: ExportFile,
+): Promise<Uint8Array> {
+  const url = file.url;
+  if (url === undefined || file.sha256 === undefined) {
+    throw new CliError(
+      EXIT.remote,
+      `The manifest entry ${JSON.stringify(file.path)} has no URL and digest to download.`,
+    );
+  }
+  let reason = '';
+  for (let attempt = 1; attempt <= DOWNLOAD_ATTEMPTS; attempt++) {
+    try {
+      const bytes = await client.bytes(url);
+      if ((await sha256HexOfBytes(bytes)) === file.sha256) {
+        return bytes;
+      }
+      reason = 'the bytes did not match its sha256';
+    } catch (error) {
+      // Authentication and argument faults are deterministic: retrying them
+      // only delays the same failure.
+      if (
+        error instanceof CliError &&
+        (error.code === EXIT.auth || error.code === EXIT.user)
+      ) {
+        throw error;
+      }
+      reason = error instanceof Error ? error.message : String(error);
+    }
+    if (attempt < DOWNLOAD_ATTEMPTS) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_BASE_MS * attempt),
+      );
+    }
+  }
+  throw new CliError(
+    EXIT.remote,
+    `The downloaded bytes for ${JSON.stringify(file.path)} did not verify after ${DOWNLOAD_ATTEMPTS} attempts: ${reason}.`,
+    'Run the export again. If it keeps failing, the stored object itself may be damaged.',
+  );
+}
+
 /** Writes a full export into `directory`. */
 export async function exportSite(
   client: SiteClient,
@@ -276,17 +330,7 @@ export async function exportSite(
         // rewrites source text (docs/CONTENT_FORMAT.md §8).
         await writeFile(target, file.text, 'utf8');
       } else if (file.url !== undefined) {
-        const bytes = await client.bytes(file.url);
-        if (
-          file.sha256 === undefined ||
-          (await sha256HexOfBytes(bytes)) !== file.sha256
-        ) {
-          throw new CliError(
-            EXIT.remote,
-            `The downloaded bytes for ${JSON.stringify(file.path)} do not match its sha256.`,
-          );
-        }
-        await writeFile(target, bytes);
+        await writeFile(target, await downloadVerified(client, file));
       }
       written++;
       if (written % 25 === 0) {

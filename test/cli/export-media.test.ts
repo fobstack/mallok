@@ -30,7 +30,11 @@ import { CliError, EXIT, makeReporter } from '../../src/cli/output.js';
 /** A site that answers from fixtures and records what was sent to it. */
 function stubSite(
   responses: Record<string, unknown>,
-  options: { readonly putStatus?: number } = {},
+  options: {
+    readonly putStatus?: number;
+    /** Overrides the default fixture bytes, e.g. to fail a download. */
+    readonly bytes?: (path: string) => Promise<Uint8Array>;
+  } = {},
 ): SiteClient & {
   puts: { path: string; bytes: number }[];
   posts: { path: string; body: unknown }[];
@@ -58,9 +62,10 @@ function stubSite(
       puts.push({ path, bytes: body.byteLength });
       return new Response('', { status: options.putStatus ?? 200 });
     },
-    async bytes(path: string): Promise<Uint8Array> {
-      return new Uint8Array(Buffer.from(`bytes-for:${path}`));
-    },
+    bytes:
+      options.bytes ??
+      (async (path: string): Promise<Uint8Array> =>
+        new Uint8Array(Buffer.from(`bytes-for:${path}`))),
   };
 }
 
@@ -372,6 +377,103 @@ describe('the CLI media pipeline', () => {
       expect(error, String(status)).toBeInstanceOf(CliError);
       expect((error as CliError).code).toBe(expected);
     }
+  });
+
+  it('retries a truncated download instead of failing the whole backup', async () => {
+    // A verified export refuses to publish a partial directory, so without a
+    // retry one flaky object makes the entire backup unobtainable — and the
+    // operator's only recourse is to run the whole thing again.
+    const mediaUrl = '/media/original/flaky.jpg';
+    const good = new Uint8Array(Buffer.from(`bytes-for:${mediaUrl}`));
+    const mediaSha = createHash('sha256').update(good).digest('hex');
+    let attempts = 0;
+    const client = stubSite(
+      {
+        '/export': {
+          files: [
+            {
+              path: 'articles/one/images/photo.jpg',
+              url: mediaUrl,
+              sha256: mediaSha,
+            },
+          ],
+          counts: { content: 0, files: 1, media: 1 },
+        },
+      },
+      {
+        bytes: async (): Promise<Uint8Array> => {
+          attempts++;
+          if (attempts === 1) {
+            throw new CliError(EXIT.remote, 'connection reset');
+          }
+          if (attempts === 2) {
+            return good.slice(0, 4); // truncated: sha256 will not match
+          }
+          return good;
+        },
+      },
+    );
+
+    const result = await exportSite(client, dir, silent);
+
+    expect(attempts).toBe(3);
+    expect(result.files).toBe(1);
+    expect(await readdir(join(dir, 'articles/one/images'))).toEqual([
+      'photo.jpg',
+    ]);
+  });
+
+  it('gives up on a download that never verifies, and says how many tries', async () => {
+    const mediaUrl = '/media/original/broken.jpg';
+    const client = stubSite({
+      '/export': {
+        files: [
+          {
+            path: 'articles/one/images/photo.jpg',
+            url: mediaUrl,
+            sha256: 'a'.repeat(64),
+          },
+        ],
+        counts: { content: 0, files: 1, media: 1 },
+      },
+    });
+
+    const error: unknown = await exportSite(client, dir, silent).catch(
+      (cause: unknown) => cause,
+    );
+
+    expect(error).toBeInstanceOf(CliError);
+    expect((error as CliError).message).toMatch(/3 attempts|3 times/);
+    // The refusal to publish a partial backup still holds.
+    expect(await readdir(dir)).toEqual([]);
+  });
+
+  it('does not retry a download the token is not allowed to make', async () => {
+    let attempts = 0;
+    const client = stubSite(
+      {
+        '/export': {
+          files: [
+            {
+              path: 'articles/one/images/photo.jpg',
+              url: '/media/original/denied.jpg',
+              sha256: 'b'.repeat(64),
+            },
+          ],
+          counts: { content: 0, files: 1, media: 1 },
+        },
+      },
+      {
+        bytes: async (): Promise<Uint8Array> => {
+          attempts++;
+          throw new CliError(EXIT.auth, 'the token lacks media:read');
+        },
+      },
+    );
+
+    await exportSite(client, dir, silent).catch(() => undefined);
+
+    expect(attempts).toBe(1);
   });
 
   it('asks about existing hashes in bounded batches', async () => {
