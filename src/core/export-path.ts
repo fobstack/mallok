@@ -60,11 +60,10 @@ export function exportPathProblem(path: string): string | null {
   if (segments.some((segment) => RESERVED_WINDOWS_NAME.test(segment))) {
     return 'contains a reserved Windows filename';
   }
-  if (
-    segments.some((segment) =>
-      ['__proto__', 'prototype', 'constructor'].includes(segment.toLowerCase()),
-    )
-  ) {
+  // `__proto__` only: a plain object keyed by path would silently lose it.
+  // `prototype` and `constructor` are safe here and are ordinary words a slug
+  // can be — rejecting them made a site with such an article unexportable.
+  if (segments.some((segment) => segment.toLowerCase() === '__proto__')) {
     return 'contains a reserved archive key';
   }
   if (segments.some((segment) => utf8Length(segment) > MAX_SEGMENT_BYTES)) {

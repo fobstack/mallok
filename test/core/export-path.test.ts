@@ -11,6 +11,18 @@ describe('portable export paths', () => {
     );
   });
 
+  it.each(['prototype', 'constructor', 'Prototype'])(
+    'accepts %j as a directory name, because a slug can be exactly that',
+    (slug) => {
+      // "prototype" is ordinary foreign-trade vocabulary, and `saveContent`
+      // accepts the slug, so refusing it here would make the site
+      // unexportable with no way for the operator to see why. Object-key
+      // injection is prevented where keys are built, not here: this value
+      // becomes a filesystem path.
+      expect(exportPathProblem(`content/article/${slug}/index.md`)).toBeNull();
+    },
+  );
+
   it.each([
     ['', 'empty'],
     ['../outside', 'dot segment'],
