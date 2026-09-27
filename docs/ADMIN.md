@@ -148,6 +148,15 @@ import/export path, so rewriting the source's formatting is allowed there.
 The editor must not rewrite Markdown the user has not edited. Opening an item
 and closing it again must leave `markdown` byte-identical.
 
+The **slug** is the exception, and only because it is not prose: it becomes a
+folder name in an export, so the server refuses anything `slugify` would
+change. The field canonicalises on blur and again before saving, and says what
+it changed ("ASTM B265" becomes `astm-b265`). A value with no Latin letters or
+digits to build a name from is kept in the field, not erased, with an
+explanation — the operator can see what they typed while they fix it. Nobody
+should meet that refusal as a bare 400 after writing an article
+(`src/admin/slug.ts`).
+
 ### 6.3 Preview
 
 Preview calls `src/core/`'s `renderFragment` and `renderPage` — **the same
@@ -296,7 +305,11 @@ This is the only place lower-level vocabulary is allowed:
   honestly that nothing was purged and the cache will expire on its own.
   Never claim success.**
 - **Backup**: one-click export (`CONTENT_FORMAT §5`), with a prompt to export
-  before upgrading the Worker (`ARCHITECTURE §15`).
+  before upgrading the Worker (`ARCHITECTURE §15`). The zip is built only if
+  every listed object downloads and matches its digest; a transient failure is
+  retried three times first, so one flaky response does not decide the
+  operator cannot have their data. Same contract as `mallok export`
+  (`CLI.md §7`).
 - **Diagnostics**: whether a custom domain is bound, whether caching is in
   effect, whether `CF_API_TOKEN` is configured, whether Resend is configured,
   and the schema version.

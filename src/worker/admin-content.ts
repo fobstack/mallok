@@ -194,10 +194,16 @@ export async function saveContent(
   if (slug === '') {
     return problem(400, 'Could not derive a slug; provide one explicitly.');
   }
-  if (slugify(slug) !== slug) {
+  // A slug becomes a folder name in an export, so it has to survive a round
+  // trip through a filesystem. Name the value that would have been accepted:
+  // the rule alone leaves the caller guessing.
+  const canonicalSlug = slugify(slug);
+  if (canonicalSlug !== slug) {
     return problem(
       400,
-      'The slug must use lowercase ASCII letters, digits and single dashes.',
+      canonicalSlug === ''
+        ? `The slug "${slug}" has no Latin letters or digits to build a folder name from. Provide one written in Latin characters.`
+        : `The slug must use lowercase Latin letters, digits and single dashes. Use "${canonicalSlug}".`,
     );
   }
 

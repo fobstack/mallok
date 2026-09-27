@@ -26,6 +26,7 @@ import { SchemaForm } from '../form/form.js';
 import { toSpecs } from '../form/types.js';
 import { renderPreview } from '../preview.js';
 import { navigate } from '../router.js';
+import { normalizeSlugInput } from '../slug.js';
 import { activeLocale, notice, settings, theme } from '../state.js';
 import type { MediaItem } from '../types.js';
 
@@ -216,6 +217,18 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
     new Promise((resolve) => setPicker({ kind: mediaKind, resolve }));
 
   const save = async (status: 'draft' | 'published'): Promise<void> => {
+    // A keyboard save never passes through the field's blur, and a slug loaded
+    // from an older item may predate this rule. Either way the server would
+    // refuse it, so settle it here instead of spending the request.
+    const canonical = normalizeSlugInput(slug);
+    if (canonical.slug !== slug) {
+      setSlug(canonical.slug);
+    }
+    if (!canonical.usable) {
+      notice.value = canonical.notice;
+      return;
+    }
+
     setBusy(true);
     setSaved(false);
     try {
@@ -229,7 +242,8 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
           ...(loaded === null ? {} : { id: loaded.id }),
           kind,
           locale: activeLocale.value,
-          ...(slug === '' ? {} : { slug }),
+          // `canonical`, not `slug`: `setSlug` above has not landed yet.
+          ...(canonical.slug === '' ? {} : { slug: canonical.slug }),
           ...(loaded === null
             ? {}
             : { translationGroup: loaded.translationGroup }),
@@ -298,6 +312,16 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
             onInput={(event) => {
               setSlug(event.currentTarget.value);
               setDirty(true);
+            }}
+            // Canonicalised on the way out of the field rather than per
+            // keystroke, so a trailing dash can still be typed through.
+            onBlur={(event) => {
+              const result = normalizeSlugInput(event.currentTarget.value);
+              if (result.notice === null) {
+                return;
+              }
+              setSlug(result.slug);
+              notice.value = result.notice;
             }}
           />
         </label>

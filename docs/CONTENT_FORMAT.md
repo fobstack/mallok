@@ -59,7 +59,7 @@ but that is the user deliberately editing, not the import/export path.
 | `description` | string | Summary, used on list pages, in `<meta description>` and in feeds. When absent, stage-one rendering derives it from the body |
 | `date` | ISO 8601 | Publication time. A future time means scheduled publishing |
 | `updated` | ISO 8601 | Last modification. Defaults to import time |
-| `slug` | string | Defaults to the bundle name (default locale) or is generated from `title` |
+| `slug` | string | Defaults to the bundle name (default locale) or is generated from `title`. Lowercase Latin letters, digits and single dashes only, because an export turns it into a folder name; a save that supplies anything else is refused and told which value would be accepted |
 | `tags` | string[] | Stored, and merged with the aliases in §3.3. **Archives live at `/tags/<tag>`, or `/<locale>/tags/<tag>`, and list across content kinds.** A tag nobody uses returns 404 rather than generating a thin page for an arbitrary string |
 | `draft` | boolean | `true` means draft. Defaults to `false` |
 | `cover` | relative path | Cover image, e.g. `images/hero.jpg` |
