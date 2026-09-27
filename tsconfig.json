@@ -21,6 +21,7 @@
     "src/admin",
     "test/admin",
     "src/runtime/react",
-    "test/runtime/dom"
+    "test/runtime/dom",
+    "test/themes"
   ]
 }

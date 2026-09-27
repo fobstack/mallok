@@ -63,6 +63,13 @@ Inactive enhanced slides use `hidden` so their links cannot receive focus.
 Without JavaScript, all three stories remain in a native scroll-snap strip
 and the selectors use fragment links. All copy is translated into Chinese.
 
+The script takes over only when it has found every control it needs, and it
+reverts to that no-JavaScript state if anything goes wrong while wiring up.
+This matters because the enhanced state hides all but one slide: a carousel
+half-applied to an edited template would leave the hero blank rather than
+merely un-enhanced. A slide with no `<img>` is driven normally; only its
+preload hint is lost. Covered by `test/themes/hero-carousel.test.ts`.
+
 The approved homepage carousel is an exception to the older official-theme
 zero-JavaScript rule. Other Atelier pages keep their script-free rendering.
 The theme package only accepts a `.js` asset when its exact `assets/…` path

@@ -218,7 +218,7 @@
     {
       "path": "assets/hero-carousel.js",
       "purpose": "Homepage only: manual carousel controls, keyboard navigation and touch swipe.",
-      "bytes": 2616
+      "bytes": 4010
     }
   ]
 }

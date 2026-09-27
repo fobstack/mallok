@@ -32,7 +32,7 @@
     "build": "pnpm run build:themes && pnpm run build:admin && wrangler deploy --dry-run --outdir dist/worker",
     "dev": "pnpm run build:themes && pnpm run build:admin && wrangler dev",
     "deploy": "pnpm run build && node scripts/ensure-secret.mjs && wrangler deploy",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/core/tsconfig.json --noEmit && tsc -p src/runtime/core/tsconfig.json --noEmit && tsc -p src/runtime/react/tsconfig.json --noEmit && tsc -p src/admin/tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p src/core/tsconfig.json --noEmit && tsc -p src/runtime/core/tsconfig.json --noEmit && tsc -p src/runtime/react/tsconfig.json --noEmit && tsc -p src/admin/tsconfig.json --noEmit && tsc -p test/themes/tsconfig.json --noEmit",
     "lint": "biome check . && cd template && biome check .",
     "lint:fix": "biome check --write . && cd template && biome check --write .",
     "test": "vitest run --project core --project worker --project worker-setup-key --project worker-unclaimable --project runtime --project runtime-workerd --project runtime-dom --project runtime-build",

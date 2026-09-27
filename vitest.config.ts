@@ -280,6 +280,23 @@ export default defineConfig({
       },
       {
         test: {
+          // A theme's declared client script is shipped to visitors, so its
+          // failure modes are product behaviour rather than decoration.
+          name: 'themes',
+          environment: 'happy-dom',
+          environmentOptions: {
+            happyDOM: {
+              settings: {
+                disableJavaScriptFileLoading: true,
+                disableCSSFileLoading: true,
+              },
+            },
+          },
+          include: ['test/themes/**/*.test.ts'],
+        },
+      },
+      {
+        test: {
           name: 'runtime-build',
           environment: 'node',
           include: ['test/runtime/build/**/*.test.ts'],

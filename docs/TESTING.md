@@ -40,7 +40,7 @@ globals in Node is not accepted — it cannot exercise the real semantics of
 
 ## 3. The current baseline
 
-`pnpm test` runs eight Vitest projects, and what it must do is exit 0. The
+`pnpm test` runs nine Vitest projects, and what it must do is exit 0. The
 count of files and tests is deliberately **not** written here: that number
 starts drifting the day it is typed, and the command prints the current one.
 
@@ -53,6 +53,7 @@ starts drifting the day it is typed, and the command prints the current one.
   runtime-workerd    workerd    the same runtime inside the real platform
   runtime-dom        happy-dom  island mounting
   runtime-build      Node       the Vite plugin and the island manifest
+  themes             happy-dom  a theme's declared client script and its fallback
 ```
 
 The two extra worker projects exist because a **binding** is what they differ

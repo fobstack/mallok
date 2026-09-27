@@ -1,0 +1,12 @@
+{
+  // A theme's client script runs in a browser, so its tests need the DOM
+  // library — which cannot share a project with the Workers types. Same split
+  // as `src/admin` and `src/runtime/react`; `pnpm typecheck` runs all of them.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // The test reads the script off disk; the script itself gets no types.
+    "types": ["node"]
+  },
+  "include": ["./**/*.ts"]
+}
