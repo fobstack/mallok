@@ -2,7 +2,7 @@
   "id": "atelier",
   "name": "Atelier",
   "description": "A material-first industrial catalogue with a progressively enhanced homepage carousel and script-free content pages.",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "themeApi": 1,
   "home": "layouts/home.liquid",
   "kinds": {

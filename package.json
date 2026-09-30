@@ -54,6 +54,7 @@
     "bundle:size": "pnpm run build && node scripts/bundle-size.mjs",
     "build:core": "node scripts/build-core.mjs",
     "build:themes": "node scripts/build-themes.mjs",
+    "themes:record": "node scripts/theme-asset-versions.mjs --record",
     "preview": "node scripts/preview.mjs",
     "build:admin": "vite build",
     "dev:admin": "vite",

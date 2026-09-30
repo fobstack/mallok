@@ -656,7 +656,12 @@ applying, and come back if the theme does.
 ## 13. Versions and compatibility
 
 - `version` is x.y.z. It appears in asset URLs, so changing a theme asset
-  requires bumping it — otherwise visitors keep the cached old file.
+  requires bumping it — otherwise visitors keep the cached old file. For the
+  official themes this is enforced: `test/core/theme-asset-versions.json`
+  records each theme's version and the SHA-256 of every asset, and
+  `pnpm test` fails when an asset changes under a recorded version. After
+  bumping, `pnpm themes:record` records the new version; it refuses to
+  record changed assets under an unchanged one.
 - The contract in this document has its own version, `themeApi`, which is `1`
   in 0.1. `theme.json` may declare `"themeApi": 1`; omitting it means `1`.
   When the contract changes incompatibly, this is what raises a clear error

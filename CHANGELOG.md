@@ -10,7 +10,11 @@ Notable changes to Mallok. The format follows
 
 - Atelier's homepage carousel checks every control before changing the page
   and falls back to the no-JavaScript layout, so a template missing one keeps
-  a readable hero instead of hiding every slide but the first.
+  a readable hero instead of hiding every slide but the first. Atelier is now
+  2.5.1: the fix first went out under the unchanged 2.5.0, whose assets are
+  cached as immutable, so returning visitors would have kept the old script.
+- `pnpm test` now fails when an official theme's asset changes without a new
+  theme version, and `pnpm themes:record` records a bumped one.
 - Export downloads retry up to three times with a growing delay on both the
   CLI and the browser path. Refusals the site would repeat, such as a missing
   object or a token without the scope, still fail immediately.
