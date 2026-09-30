@@ -4,6 +4,33 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.7] — 2026-09-30
+
+### Fixed
+
+- Atelier's homepage carousel checks every control before changing the page
+  and falls back to the no-JavaScript layout, so a template missing one keeps
+  a readable hero instead of hiding every slide but the first.
+- Export downloads retry up to three times with a growing delay on both the
+  CLI and the browser path. Refusals the site would repeat, such as a missing
+  object or a token without the scope, still fail immediately.
+- The admin slug field normalises its value on blur and before saving, and
+  says what it changed, instead of rejecting it with a 400 after the fact.
+- Articles whose slug is `prototype` or `constructor` no longer make the
+  whole site unexportable.
+
+### Documentation
+
+- An English-first site setup and inquiry guide, and a visual quick start for
+  the read-only Atelier demo.
+- GitHub, npm and README describe Mallok as the Cloudflare-native CMS for
+  multilingual B2B websites; the npm keywords drop `headless-cms`, which
+  Mallok is not.
+
+This is still a public preview candidate, not stable 0.1. rc.5 CPU
+measurements remain historical; real inquiry delivery, natural media retention
+and complete production upgrade/rollback acceptance remain outstanding.
+
 ## [0.1.0-rc.6] — 2026-09-18
 
 ### Added and changed

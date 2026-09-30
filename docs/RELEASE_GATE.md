@@ -13,6 +13,8 @@
   checks (§4–§6, §8–§12, §16, §17).
 - The runbook is updated for the 0.1.0-rc.6 candidate on 2026-09-18;
   rc.5 measurements remain historical evidence, not rc.6 measurements.
+- The runbook is updated for the 0.1.0-rc.7 candidate on 2026-09-30;
+  rc.5 measurements remain historical evidence, not rc.7 measurements.
 - Scope: everything between "all local work is done" and "0.1.0 is released".
 
 Every step below **except §4** needs something this repository cannot provide:
