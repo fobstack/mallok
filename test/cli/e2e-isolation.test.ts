@@ -7,6 +7,7 @@ import {
   stat,
   writeFile,
 } from 'node:fs/promises';
+import { createServer, type Server } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -21,9 +22,45 @@ import {
 } from '../../scripts/e2e-server.mjs';
 
 let workspace = '';
+let recoveryPort = 0;
+
+/** Listens on 127.0.0.1, replying to every connection with `reply`. */
+async function listen(port: number, reply?: string): Promise<Server> {
+  const server = createServer((socket) => {
+    socket.on('error', () => {});
+    if (reply !== undefined) {
+      socket.end(reply);
+    }
+  });
+  await new Promise<void>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen({ host: '127.0.0.1', port }, () => resolve());
+  });
+  return server;
+}
+
+async function close(server: Server): Promise<void> {
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+}
+
+/**
+ * A free loopback port for the recovery claim. Left to the default, the port
+ * is hashed from the random temporary path and can land on one that another
+ * suite's server is listening on.
+ */
+async function reservePort(): Promise<number> {
+  const server = await listen(0);
+  const address = server.address();
+  await close(server);
+  if (address === null || typeof address === 'string') {
+    throw new Error('the loopback listener has no port');
+  }
+  return address.port;
+}
 
 beforeEach(async () => {
   workspace = await mkdtemp(join(tmpdir(), 'mallok-e2e-isolation-'));
+  recoveryPort = await reservePort();
 });
 
 afterEach(async () => {
@@ -70,6 +107,7 @@ describe('the browser-suite lock', () => {
       pid: 23456,
       token: 'replacement',
       isAlive: (pid) => pid === 23456,
+      recoveryPort,
     });
     const owner = JSON.parse(
       await readFile(join(lockPath, 'owner.json'), 'utf8'),
@@ -125,6 +163,7 @@ describe('the browser-suite lock', () => {
         pid,
         token: `contender-${pid}`,
         isAlive: (candidate) => candidate === 20001 || candidate === 20002,
+        recoveryPort,
       }),
     );
     const results = await Promise.allSettled(contenders);
@@ -158,6 +197,7 @@ describe('the browser-suite lock', () => {
       pid: 20001,
       token: 'slow-recoverer',
       isAlive: (pid) => pid === 20001 || pid === 20002,
+      recoveryPort,
       afterQuarantine: async () => {
         reachedQuarantine?.();
         await recoveryMayFinish;
@@ -171,6 +211,7 @@ describe('the browser-suite lock', () => {
       pid: 20002,
       token: 'new-owner',
       isAlive: (pid) => pid === 20001 || pid === 20002,
+      recoveryPort,
     });
     resumeRecovery?.();
 
@@ -180,6 +221,54 @@ describe('the browser-suite lock', () => {
     ) as { token: string };
     expect(owner.token).toBe('new-owner');
     await releaseNewOwner();
+  });
+
+  it('fails at once when an unrelated process holds the recovery port', async () => {
+    const lockPath = join(workspace, 'e2e.lock');
+    await acquireE2eLock(lockPath, { pid: 10001, token: 'dead' });
+    // A port hashed from a path is anyone's port. An HTTP server says nothing
+    // until it is spoken to; this one answers at once, as others might.
+    const silent = await listen(recoveryPort);
+    const talkative = await listen(await reservePort(), 'HTTP/1.1 400\r\n\r\n');
+    const talkativePort = (talkative.address() as { port: number }).port;
+    try {
+      for (const port of [recoveryPort, talkativePort]) {
+        await expect(
+          acquireE2eLock(lockPath, {
+            pid: 20001,
+            token: 'blocked',
+            isAlive: (pid) => pid === 20001,
+            recoveryPort: port,
+          }),
+        ).rejects.toThrow(`Port ${port}, which serialises stale-lock recovery`);
+      }
+      const owner = JSON.parse(
+        await readFile(join(lockPath, 'owner.json'), 'utf8'),
+      ) as { token: string };
+      expect(owner.token).toBe('dead');
+    } finally {
+      await close(silent);
+      await close(talkative);
+    }
+  });
+
+  it('waits for another Mallok recoverer to finish instead of failing', async () => {
+    const lockPath = join(workspace, 'e2e.lock');
+    await acquireE2eLock(lockPath, { pid: 10001, token: 'dead' });
+    const recoverer = await listen(recoveryPort, 'mallok-e2e-recovery\n');
+    setTimeout(() => void close(recoverer), 50);
+
+    const release = await acquireE2eLock(lockPath, {
+      pid: 20001,
+      token: 'patient',
+      isAlive: (pid) => pid === 20001,
+      recoveryPort,
+    });
+    const owner = JSON.parse(
+      await readFile(join(lockPath, 'owner.json'), 'utf8'),
+    ) as { token: string };
+    expect(owner.token).toBe('patient');
+    await release();
   });
 
   it('releases the lock when setup throws', async () => {

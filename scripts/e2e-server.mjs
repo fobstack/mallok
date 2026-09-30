@@ -21,7 +21,7 @@ import {
   symlink,
   writeFile,
 } from 'node:fs/promises';
-import { createServer } from 'node:net';
+import { connect, createServer } from 'node:net';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { writeE2eConfig } from './e2e-config.mjs';
@@ -159,18 +159,61 @@ function recoveryPort(path) {
   return 40_000 + (hash.readUInt16BE(0) % 20_000);
 }
 
-async function acquireRecoveryClaim(path) {
-  const server = createServer();
+/**
+ * What a claim listener says to anyone who connects. The port is derived from
+ * a path hash, so it can just as well be held by an unrelated process — a dev
+ * server, a test's local registry — and `EADDRINUSE` alone cannot tell the
+ * two apart. Treating every refusal as a busy recoverer used to spin through
+ * all the retries and then report a lock nobody was holding.
+ */
+const RECOVERY_BANNER = 'mallok-e2e-recovery\n';
+const PROBE_TIMEOUT_MS = 2_000;
+
+/**
+ * Who holds a recovery port that refused to bind: `recoverer` for a Mallok
+ * claim (on this lock, or on another whose path hashed to the same port —
+ * either is gone in milliseconds), `released` when the holder let go before
+ * the probe connected, and `foreign` for anything else.
+ */
+function probeRecoveryPort(port) {
+  return new Promise((resolveProbe) => {
+    const socket = connect({ host: '127.0.0.1', port });
+    let received = '';
+    const settle = (holder) => {
+      socket.destroy();
+      resolveProbe(holder);
+    };
+    socket.setEncoding('utf8');
+    socket.setTimeout(PROBE_TIMEOUT_MS, () => settle('foreign'));
+    socket.on('data', (chunk) => {
+      received += chunk;
+      if (received.length >= RECOVERY_BANNER.length) {
+        settle(received.startsWith(RECOVERY_BANNER) ? 'recoverer' : 'foreign');
+      }
+    });
+    socket.on('end', () => settle('foreign'));
+    socket.on('error', (error) =>
+      settle(
+        error?.code === 'ECONNREFUSED' || error?.code === 'ECONNRESET'
+          ? 'released'
+          : 'foreign',
+      ),
+    );
+  });
+}
+
+async function acquireRecoveryClaim(port) {
+  const server = createServer((socket) => {
+    socket.on('error', () => {});
+    socket.end(RECOVERY_BANNER);
+  });
   await new Promise((resolveListen, reject) => {
     const failed = (error) => reject(error);
     server.once('error', failed);
-    server.listen(
-      { host: '127.0.0.1', port: recoveryPort(path), exclusive: true },
-      () => {
-        server.off('error', failed);
-        resolveListen();
-      },
-    );
+    server.listen({ host: '127.0.0.1', port, exclusive: true }, () => {
+      server.off('error', failed);
+      resolveListen();
+    });
   });
   let closed = false;
   return async () => {
@@ -216,15 +259,24 @@ const wait = (milliseconds) =>
  * are serialised by an OS-owned listener, so a killed recoverer leaves no
  * second filesystem lock that itself needs unsafe stale deletion.
  */
-async function recoverObservedLock(path, observed, isAlive, afterQuarantine) {
+async function recoverObservedLock(
+  path,
+  observed,
+  { port, isAlive, afterQuarantine },
+) {
   let releaseRecovery;
   try {
-    releaseRecovery = await acquireRecoveryClaim(path);
+    releaseRecovery = await acquireRecoveryClaim(port);
   } catch (error) {
-    if (error?.code === 'EADDRINUSE') {
-      return false;
+    if (error?.code !== 'EADDRINUSE') {
+      throw error;
     }
-    throw error;
+    if ((await probeRecoveryPort(port)) === 'foreign') {
+      throw new E2eLockError(
+        `Port ${port}, which serialises stale-lock recovery for ${path}, is held by another process. Stop that process, or remove the stale lock by hand after confirming that no E2E wrapper is running.`,
+      );
+    }
+    return false;
   }
 
   try {
@@ -272,7 +324,8 @@ async function recoverObservedLock(path, observed, isAlive, afterQuarantine) {
 /**
  * Acquires an atomic directory lock and returns an ownership-checked release.
  * Options are injectable so the stale-owner cases can be tested without
- * starting or killing a real process.
+ * starting or killing a real process — and, for `recoveryPort`, without
+ * depending on whichever port a temporary directory happens to hash to.
  */
 export async function acquireE2eLock(
   path = lockPath,
@@ -282,6 +335,7 @@ export async function acquireE2eLock(
     now = () => Date.now(),
     isAlive = processIsAlive,
     afterQuarantine,
+    recoveryPort: port = recoveryPort(path),
   } = {},
 ) {
   await mkdir(dirname(path), { recursive: true });
@@ -310,7 +364,11 @@ export async function acquireE2eLock(
       );
     }
     if (
-      !(await recoverObservedLock(path, observed, isAlive, afterQuarantine))
+      !(await recoverObservedLock(path, observed, {
+        port,
+        isAlive,
+        afterQuarantine,
+      }))
     ) {
       await wait(RECOVERY_RETRY_MS);
     }

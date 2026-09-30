@@ -386,7 +386,11 @@ Playwright cannot send its configured graceful shutdown signal on Windows and
 may force-kill the wrapper. The next run verifies that the recorded PID is
 dead, takes an OS-owned recovery claim, moves exactly that stale lock aside,
 and installs a new owner atomically. If a recoverer itself is force-killed,
-the operating system releases that claim. Each run has a UUID-named snapshot,
+the operating system releases that claim. The claim is a loopback port derived
+from the lock path, so an unrelated process can hold it too; a claim answers
+connections with a Mallok banner, and a port held by anything else fails the
+run at once with its number rather than waiting for a recoverer that does not
+exist. Each run has a UUID-named snapshot,
 so the next run does not delete files an orphaned Wrangler process might still
 be using. If port 8788 remains occupied, stop that orphaned process and rerun;
 only then may leftover `.tmp/e2e-runs/` directories be removed manually.

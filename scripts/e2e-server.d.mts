@@ -10,6 +10,8 @@ export interface E2eLockOptions {
   readonly now?: () => number;
   readonly isAlive?: (pid: number) => boolean;
   readonly afterQuarantine?: () => void | Promise<void>;
+  /** Loopback port serialising stale-lock recovery; derived from the path by default. */
+  readonly recoveryPort?: number;
 }
 
 export declare function acquireE2eLock(
