@@ -2,7 +2,7 @@
   "name": "mallok",
   "version": "0.1.0-rc.6",
   "private": true,
-  "description": "Open-source, Cloudflare-native content website. Markdown in D1, instant publishing, no build step.",
+  "description": "The Cloudflare-native CMS for multilingual B2B websites. A WordPress alternative: Markdown in D1, web admin, Liquid themes, plugins, inquiry forms. Runs on Cloudflare's free tier.",
   "license": "Apache-2.0",
   "author": "FobStack",
   "repository": {
@@ -14,14 +14,26 @@
     "url": "https://github.com/FobStack/mallok/issues"
   },
   "keywords": [
+    "fobstack",
     "cms",
+    "website-framework",
+    "wordpress-alternative",
     "cloudflare",
     "cloudflare-workers",
+    "cloudflare-d1",
+    "cloudflare-r2",
     "d1",
     "markdown",
-    "static-site",
-    "headless-cms",
-    "b2b"
+    "liquid",
+    "multilingual",
+    "i18n",
+    "seo",
+    "b2b",
+    "b2b-website",
+    "business-website",
+    "website-builder",
+    "self-hosted",
+    "typescript"
   ],
   "type": "module",
   "engines": {
