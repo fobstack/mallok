@@ -2,24 +2,30 @@
 
 [English](../RELEASE_STATUS.md) · [简体中文](RELEASE_STATUS.md)
 
-更新日期：**2026-09-18**。当前版本：**0.1.0-rc.6**，是公开候选版，不是 0.1 稳定版。
+更新日期：**2026-09-30**。当前版本：**0.1.0-rc.7**，是公开候选版，不是 0.1 稳定版。
 
-## 已发布的 rc.6
+## 已发布的 rc.7
 
-- [公开源码与发布页](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6)。
-- [npm 包](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6)已发布。`next` 和 `latest` 均指向本候选版，不代表 0.1 稳定版。
-- 源码：`563b366e6e66d535c260543e4c91147269ea2395`。
+- [公开源码与发布页](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.7)。
+- [npm 包](https://www.npmjs.com/package/mallok/v/0.1.0-rc.7)已发布。`next` 和 `latest` 均指向本候选版，不代表 0.1 稳定版。
+- 源码：`0af520bf87c81fa3814a3abb3361ca93fa87e457`。
+- 包：`mallok-0.1.0-rc.7.tgz`。
+- SHA-256：`45813a782d00a2d4984334b8ecb18df21f0c6a2d2694a33652c7b1846dd648a9`。
+- [CI](https://github.com/fobstack/mallok/actions/runs/36703634156) 与[完整发行检查](https://github.com/fobstack/mallok/actions/runs/36703638298)通过。
+- Linux CI、本机构建与全新克隆重建的 tarball 逐字节一致；针对该确切包的 27 项安装消费者检查通过。
+- 既有隔离测试站用 `mallok upgrade` 从 rc.6 升级，并部署同一个包到 `rc5-gate.mallok.dev`。中英文页面、SEO 端点及 Atelier 2.5.1 资源返回 HTTP 200，线上轮播脚本与发行包一致；缓存 MISS/HIT、HEAD 命中、凭证请求绕过、主题 404 及后台 401/404 边界符合预期。
+- npm 完整性校验与发行包一致。npm 在公开前对上传做了约 19 分钟的校验。
+
+rc.7 包含 rc.6 之后的修复，并将 Atelier 升级到 2.5.1：轮播修复改动了 rc.6 以 2.5.0 路径长期缓存（immutable）的资源，必须换版本号老访客才能拿到修复。现在官方主题资源改动而版本号未变时，`pnpm test` 会失败。
+
+rc.6 与 rc.7 均未重新采集 CPU 样本。下文 rc.5 性能数据仅为历史证据，不能作为 rc.7 跑分。维护者接受已测 CPU 限制用于开源及 RC 试用；稳定版验收仍未完成。
+
+## rc.6 历史产物
+
+- 源码提交：`563b366e6e66d535c260543e4c91147269ea2395`。
 - 包：`mallok-0.1.0-rc.6.tgz`。
 - SHA-256：`aed30e5e2dd828a246665895a1da51696c48b5176a41328c32a147c0f640d3ff`。
-- [CI](https://github.com/fobstack/mallok/actions/runs/35333476382) 与[完整发行检查](https://github.com/fobstack/mallok/actions/runs/35333476953)通过。
-- 同一个包已部署到 `rc5-gate.mallok.dev`，中英文页面及 Atelier 2.5 资源返回 HTTP 200。这是包含验收内容的测试站，不是正式演示站。
-- npm 完整性校验与发行包一致。全新 `mallok create --no-deploy`、空缓存 `npm ci` 和真实本地 Worker 启动检查均通过；生成项目的依赖审计为零告警。
-- Linux CI 与本机构建的 tarball 逐字节一致。
-- GitHub 私密安全漏洞报告已启用。
-
-本版包含 Atelier 2.5、响应式图片，以及支持键盘、触摸和禁用 JavaScript 回退的三图轮播。本地与 Linux CI 浏览器／可访问性检查通过。由于 Linux 下 axe 无法完成禁止脚本的 iframe 内扫描，后台界面和同一份预览 HTML 分别验收；产品沙箱没有放宽。
-
-后续文档提交不会改变上述发行包。下文 rc.5 性能数据仅为历史证据，不能作为 rc.6 跑分。维护者接受已测 CPU 限制用于开源及 RC 试用；稳定版验收仍未完成。
+- 2026-09-18 发布，包含 Atelier 2.5 与首页轮播；部署在同一个隔离测试站。
 
 ## rc.5 历史产物
 
@@ -53,7 +59,7 @@
 ## 未完成项与限制
 
 - 真实 Turnstile/Resend 询盘发送与收件未验收。
-- 自然七天媒体回收最早在 **2026-09-24 22:28（北京时间）**复核；修改时间戳不能代替。
+- 自然七天媒体回收自 **2026-09-24 14:28 UTC** 起可复核，目前尚未复核；修改时间戳不能代替。
 - 定时发布证据来自中间部署，不能自动算作最终包验收。
 - 导出到第二站完整恢复、真实升级回滚仍待验证。
 - 测试域名有 Cloudflare 注入的统计脚本；主题不输出 JS 不等于最终响应没有 JS。

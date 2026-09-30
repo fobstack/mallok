@@ -15,11 +15,11 @@
 
 ## 发布状态
 
-**0.1.0-rc.6 是候选版本，不是 0.1 稳定版。** rc.5 已完成真实 Cloudflare 部署、发布、缓存失效与性能测试；这些性能数据不自动代表 rc.6。该 CPU 样本的 60 次请求全部成功，但其中 16 次冷渲染超过项目设定的 10ms 目标。这是已知性能限制，不是 16 次请求失败。
+**0.1.0-rc.7 是候选版本，不是 0.1 稳定版。** rc.5 已完成真实 Cloudflare 部署、发布、缓存失效与性能测试；这些性能数据不自动代表后续候选版。该 CPU 样本的 60 次请求全部成功，但其中 16 次冷渲染超过项目设定的 10ms 目标。这是已知性能限制，不是 16 次请求失败。
 
 维护者已接受此限制用于公开源码与提供 RC 试用。真实询盘邮件送达、自然七天媒体回收及真实升级回滚等验证仍未完成。详见[发布状态](docs/zh-CN/RELEASE_STATUS.md)。
 
-**[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) 和 [npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6) 均已发布。** 创建网站：
+**[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.7) 和 [npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.7) 均已发布。** 创建网站：
 
 ```sh
 npx mallok create my-site

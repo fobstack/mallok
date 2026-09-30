@@ -2,35 +2,46 @@
 
 [English](RELEASE_STATUS.md) · [简体中文](zh-CN/RELEASE_STATUS.md)
 
-Snapshot: **September 18, 2026**. Current version: **0.1.0-rc.6**.
+Snapshot: **September 30, 2026**. Current version: **0.1.0-rc.7**.
 This is a public release candidate, not stable 0.1.
 
-## Published rc.6 candidate
+## Published rc.7 candidate
 
-- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6).
-- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6): `0.1.0-rc.6`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
-- Source: `563b366e6e66d535c260543e4c91147269ea2395`.
+- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.7).
+- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.7): `0.1.0-rc.7`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
+- Source: `0af520bf87c81fa3814a3abb3361ca93fa87e457`.
+- Package: `mallok-0.1.0-rc.7.tgz`.
+- SHA-256: `45813a782d00a2d4984334b8ecb18df21f0c6a2d2694a33652c7b1846dd648a9`.
+- [CI](https://github.com/fobstack/mallok/actions/runs/36703634156) and
+  [complete release gate](https://github.com/fobstack/mallok/actions/runs/36703638298) passed.
+- Linux CI, the local build and a clean-clone rebuild produced byte-for-byte
+  identical tarballs; 27 exact-artifact consumer checks passed.
+- The existing isolated test site was upgraded from rc.6 with
+  `mallok upgrade` and the exact package deployed to `rc5-gate.mallok.dev`.
+  English and Chinese pages, SEO endpoints and Atelier 2.5.1 assets returned
+  HTTP 200; the served carousel script matches the artifact. Cache MISS/HIT,
+  HEAD hits, credential bypass, the themed 404 and admin 401/404 boundaries
+  behaved as intended.
+- Registry integrity matches the release artifact. npm validated the upload
+  for about 19 minutes before the version became public.
+
+rc.7 carries the fixes made since rc.6 and moves Atelier to 2.5.1: the
+carousel fix changed an asset that rc.6 served as immutable under 2.5.0, so
+the version had to change for returning visitors to receive it. `pnpm test`
+now fails when an official theme asset changes without a new version.
+
+No CPU sample was taken for rc.6 or rc.7. The rc.5 performance measurements
+below are historical and must not be reported as rc.7 benchmarks. The
+maintainer accepted the measured CPU limitation for source opening and RC
+evaluation; stable acceptance remains incomplete.
+
+## Historical rc.6 artifact
+
+- Source commit: `563b366e6e66d535c260543e4c91147269ea2395`.
 - Package: `mallok-0.1.0-rc.6.tgz`.
 - SHA-256: `aed30e5e2dd828a246665895a1da51696c48b5176a41328c32a147c0f640d3ff`.
-- [CI](https://github.com/fobstack/mallok/actions/runs/35333476382) and
-  [complete release gate](https://github.com/fobstack/mallok/actions/runs/35333476953) passed.
-- The exact package was deployed to `rc5-gate.mallok.dev`; English and Chinese
-  pages and Atelier 2.5 assets returned HTTP 200. This is a test site with
-  verification content, not a curated demo.
-- Registry integrity matches the release artifact. A fresh `mallok create --no-deploy`, empty-cache `npm ci`, and real local Worker smoke check passed; the generated project audit reported zero vulnerabilities.
-- Linux CI and the local build produced byte-for-byte identical tarballs.
-- GitHub private vulnerability reporting is enabled.
-
-The release includes Atelier 2.5, responsive imagery, and a three-slide homepage
-carousel with keyboard, touch and no-JavaScript navigation. Local and Linux CI
-browser/accessibility checks passed. The editor and its rendered preview are
-scanned separately because axe cannot complete inside the script-disabled
-preview frame on Linux; the product's sandbox remains enabled.
-
-Documentation commits after the selected source do not change the released
-artifact. rc.5 performance measurements below are historical and must not be
-reported as rc.6 benchmarks. The maintainer accepted the measured CPU limitation
-for source opening and RC evaluation; stable acceptance remains incomplete.
+- Released September 18, 2026 with Atelier 2.5 and the homepage carousel;
+  deployed to the same isolated test site.
 
 ## Historical rc.5 artifact
 
@@ -71,8 +82,9 @@ force regeneration of every D1 content fragment or cover all page types.
 ## Remaining work and known limitations
 
 - Real Turnstile/Resend inquiry delivery and receipt have not been verified.
-- Natural seven-day media cleanup cannot be checked before September 24,
-  2026 at 14:28 UTC; changing timestamps is not equivalent evidence.
+- Natural seven-day media cleanup could be checked from September 24, 2026
+  at 14:28 UTC and has not been checked yet; changing timestamps is not
+  equivalent evidence.
 - Scheduled publishing was verified on an intermediate deployment; final
   artifact coverage must not be inferred from it.
 - Full export/restore into a second deployment and real upgrade/rollback

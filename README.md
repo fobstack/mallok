@@ -18,19 +18,20 @@ themes, and installed plugins require a build and deployment.
 
 ## Release status
 
-**0.1.0-rc.6 is a release candidate, not the 0.1 stable release.** Real
+**0.1.0-rc.7 is a release candidate, not the 0.1 stable release.** Real
 Cloudflare deployment, publishing, cache invalidation, and performance tests
-were run on rc.5; those measurements do not certify the new rc.6 theme. All 60 requests in the latest CPU sample succeeded, but cold
-rendering exceeded the project's 10 ms CPU target in 16 requests. This is a
-known performance limitation, not a measured 16-request failure rate.
+were run on rc.5; those measurements do not certify later candidates. All 60
+requests in that CPU sample succeeded, but cold rendering exceeded the
+project's 10 ms CPU target in 16 requests. This is a known performance
+limitation, not a measured 16-request failure rate.
 
 The maintainer has accepted this limitation for opening the source and
 sharing an RC. Remaining verification includes real inquiry email delivery,
 the natural seven-day media cleanup window, and production upgrade/rollback.
 See [release status](docs/RELEASE_STATUS.md) for measured results and gaps.
 
-**[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.6) and
-[npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.6) are published.**
+**[GitHub](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.7) and
+[npm](https://www.npmjs.com/package/mallok/v/0.1.0-rc.7) are published.**
 Create your site:
 
 ```sh
