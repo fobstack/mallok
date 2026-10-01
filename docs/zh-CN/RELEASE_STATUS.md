@@ -2,23 +2,31 @@
 
 [English](../RELEASE_STATUS.md) · [简体中文](RELEASE_STATUS.md)
 
-更新日期：**2026-09-30**。当前版本：**0.1.0-rc.7**，是公开候选版，不是 0.1 稳定版。
+更新日期：**2026-10-02**。当前版本：**0.1.0-rc.8**，是公开候选版，不是 0.1 稳定版。
 
-## 已发布的 rc.7
+## 已发布的 rc.8
 
-- [公开源码与发布页](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.7)。
-- [npm 包](https://www.npmjs.com/package/mallok/v/0.1.0-rc.7)已发布。`next` 和 `latest` 均指向本候选版，不代表 0.1 稳定版。
-- 源码：`0af520bf87c81fa3814a3abb3361ca93fa87e457`。
+- [公开源码与发布页](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.8)。
+- [npm 包](https://www.npmjs.com/package/mallok/v/0.1.0-rc.8)已发布。`next` 和 `latest` 均指向本候选版，不代表 0.1 稳定版。
+- 源码：`ee063e9ffdd9914f1e8560d71fbf11807d1953a6`。
+- 包：`mallok-0.1.0-rc.8.tgz`。
+- SHA-256：`a1350de000a4776146d1f60b008bf55e3084cc02c6cd1070f777173e50996003`。
+- [CI](https://github.com/fobstack/mallok/actions/runs/36894290342) 与[完整发行检查](https://github.com/fobstack/mallok/actions/runs/36894296545)通过。
+- Linux CI、本机构建与全新克隆重建的 tarball 逐字节一致；针对该确切包的 27 项安装消费者检查通过。
+- 隔离测试站用 `mallok upgrade` 从 rc.7 升级，并部署同一个包到 `rc5-gate.mallok.dev`。页面、SEO 端点、Atelier 2.5.1 资源、缓存 MISS/HIT 与 HEAD 命中、凭证请求绕过及后台边界均符合预期。
+- **修复已在线上验证：**一个只有 `content:write` 权限的真实 API 令牌请求询盘面板，被拒绝并返回 403，提示需要 `export` 权限。该令牌专为此次验证创建，验证后已吊销。
+- npm 完整性校验与发行包一致。
+
+rc.8 是安全修复版本。读取插件面板数据现在需要 `export` 权限；此前任何 API 令牌都能通过面板接口读取全部询盘，绕过站点导出中保护同一批数据的权限。没有 `export` 的 API 令牌现在会收到 403，管理员登录会话不受影响。rc.8 不包含插件 API 2 的任何功能。
+
+rc.6、rc.7 与 rc.8 均未重新采集 CPU 样本。下文 rc.5 性能数据仅为历史证据，不能作为 rc.8 跑分。维护者接受已测 CPU 限制用于开源及 RC 试用；稳定版验收仍未完成。
+
+## rc.7 历史产物
+
+- 源码提交：`0af520bf87c81fa3814a3abb3361ca93fa87e457`。
 - 包：`mallok-0.1.0-rc.7.tgz`。
 - SHA-256：`45813a782d00a2d4984334b8ecb18df21f0c6a2d2694a33652c7b1846dd648a9`。
-- [CI](https://github.com/fobstack/mallok/actions/runs/36703634156) 与[完整发行检查](https://github.com/fobstack/mallok/actions/runs/36703638298)通过。
-- Linux CI、本机构建与全新克隆重建的 tarball 逐字节一致；针对该确切包的 27 项安装消费者检查通过。
-- 既有隔离测试站用 `mallok upgrade` 从 rc.6 升级，并部署同一个包到 `rc5-gate.mallok.dev`。中英文页面、SEO 端点及 Atelier 2.5.1 资源返回 HTTP 200，线上轮播脚本与发行包一致；缓存 MISS/HIT、HEAD 命中、凭证请求绕过、主题 404 及后台 401/404 边界符合预期。
-- npm 完整性校验与发行包一致。npm 在公开前对上传做了约 19 分钟的校验。
-
-rc.7 包含 rc.6 之后的修复，并将 Atelier 升级到 2.5.1：轮播修复改动了 rc.6 以 2.5.0 路径长期缓存（immutable）的资源，必须换版本号老访客才能拿到修复。现在官方主题资源改动而版本号未变时，`pnpm test` 会失败。
-
-rc.6 与 rc.7 均未重新采集 CPU 样本。下文 rc.5 性能数据仅为历史证据，不能作为 rc.7 跑分。维护者接受已测 CPU 限制用于开源及 RC 试用；稳定版验收仍未完成。
+- 2026-09-30 发布，包含 Atelier 2.5.1 与主题资源版本检查；部署在同一个隔离测试站。
 
 ## rc.6 历史产物
 

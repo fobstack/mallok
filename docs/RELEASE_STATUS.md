@@ -2,38 +2,48 @@
 
 [English](RELEASE_STATUS.md) · [简体中文](zh-CN/RELEASE_STATUS.md)
 
-Snapshot: **September 30, 2026**. Current version: **0.1.0-rc.7**.
+Snapshot: **October 2, 2026**. Current version: **0.1.0-rc.8**.
 This is a public release candidate, not stable 0.1.
 
-## Published rc.7 candidate
+## Published rc.8 candidate
 
-- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.7).
-- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.7): `0.1.0-rc.7`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
-- Source: `0af520bf87c81fa3814a3abb3361ca93fa87e457`.
-- Package: `mallok-0.1.0-rc.7.tgz`.
-- SHA-256: `45813a782d00a2d4984334b8ecb18df21f0c6a2d2694a33652c7b1846dd648a9`.
-- [CI](https://github.com/fobstack/mallok/actions/runs/36703634156) and
-  [complete release gate](https://github.com/fobstack/mallok/actions/runs/36703638298) passed.
+- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.8).
+- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.8): `0.1.0-rc.8`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
+- Source: `ee063e9ffdd9914f1e8560d71fbf11807d1953a6`.
+- Package: `mallok-0.1.0-rc.8.tgz`.
+- SHA-256: `a1350de000a4776146d1f60b008bf55e3084cc02c6cd1070f777173e50996003`.
+- [CI](https://github.com/fobstack/mallok/actions/runs/36894290342) and
+  [complete release gate](https://github.com/fobstack/mallok/actions/runs/36894296545) passed.
 - Linux CI, the local build and a clean-clone rebuild produced byte-for-byte
   identical tarballs; 27 exact-artifact consumer checks passed.
-- The existing isolated test site was upgraded from rc.6 with
-  `mallok upgrade` and the exact package deployed to `rc5-gate.mallok.dev`.
-  English and Chinese pages, SEO endpoints and Atelier 2.5.1 assets returned
-  HTTP 200; the served carousel script matches the artifact. Cache MISS/HIT,
-  HEAD hits, credential bypass, the themed 404 and admin 401/404 boundaries
-  behaved as intended.
-- Registry integrity matches the release artifact. npm validated the upload
-  for about 19 minutes before the version became public.
+- The isolated test site was upgraded from rc.7 with `mallok upgrade` and the
+  exact package deployed to `rc5-gate.mallok.dev`. Pages, SEO endpoints,
+  Atelier 2.5.1 assets, cache MISS/HIT and HEAD hits, credential bypass and
+  admin boundaries behaved as intended.
+- **The fix was checked on the deployed site:** a real API token holding only
+  `content:write` asked for the inquiry panel and was refused with 403, naming
+  the `export` scope. The token was created for the check and revoked
+  afterwards.
+- Registry integrity matches the release artifact.
 
-rc.7 carries the fixes made since rc.6 and moves Atelier to 2.5.1: the
-carousel fix changed an asset that rc.6 served as immutable under 2.5.0, so
-the version had to change for returning visitors to receive it. `pnpm test`
-now fails when an official theme asset changes without a new version.
+rc.8 is a security release. Reading a plugin panel's rows now requires the
+`export` scope; before it, any API token could read every inquiry through the
+panel route, bypassing the scope that guards the same rows in the site
+export. An API token without `export` now receives 403; admin sessions are
+unaffected. No plugin API 2 feature ships in rc.8.
 
-No CPU sample was taken for rc.6 or rc.7. The rc.5 performance measurements
-below are historical and must not be reported as rc.7 benchmarks. The
-maintainer accepted the measured CPU limitation for source opening and RC
-evaluation; stable acceptance remains incomplete.
+No CPU sample was taken for rc.6, rc.7 or rc.8. The rc.5 performance
+measurements below are historical and must not be reported as rc.8
+benchmarks. The maintainer accepted the measured CPU limitation for source
+opening and RC evaluation; stable acceptance remains incomplete.
+
+## Historical rc.7 artifact
+
+- Source commit: `0af520bf87c81fa3814a3abb3361ca93fa87e457`.
+- Package: `mallok-0.1.0-rc.7.tgz`.
+- SHA-256: `45813a782d00a2d4984334b8ecb18df21f0c6a2d2694a33652c7b1846dd648a9`.
+- Released September 30, 2026 with Atelier 2.5.1 and the theme asset version
+  guard; deployed to the same isolated test site.
 
 ## Historical rc.6 artifact
 
