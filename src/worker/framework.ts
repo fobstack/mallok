@@ -24,6 +24,12 @@ import { configure } from './composition.js';
 import type { Env } from './env.js';
 import { mallokHandler } from './handler.js';
 
+/**
+ * Helpers a plugin needs for its own HTML and email (docs/PLUGIN_API.md
+ * §7.6). A plugin in a site can import only this entry, and the official
+ * plugin's forms and emails are built with exactly these two.
+ */
+export { escapeHtml, renderTextTemplate } from '../core/index.js';
 export type { PluginInput } from '../plugins/define.js';
 export { definePlugin, PluginDefinitionError } from '../plugins/define.js';
 /**

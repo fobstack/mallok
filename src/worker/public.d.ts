@@ -361,6 +361,28 @@ export declare class PluginDefinitionError extends Error {
  */
 export declare function definePlugin(input: PluginInput): MallokPlugin;
 
+/**
+ * Escapes text for safe interpolation into HTML: `&`, `<`, `>`, `"` and `'`.
+ *
+ * For a plugin's own markup — a form it injects, the HTML body of an email.
+ * Theme templates escape their output already and do not need it.
+ */
+export declare function escapeHtml(value: string): string;
+
+/**
+ * Renders a small plain-text Liquid template, such as an email body an
+ * operator edits in the plugin's settings, against `data`.
+ *
+ * The engine is the restricted one themes use: unknown filters are an error,
+ * only own properties are read, and parsing and memory are bounded. The output
+ * is **text and is not HTML-escaped**; for an HTML body, build the markup
+ * yourself and pass each value through {@link escapeHtml}.
+ */
+export declare function renderTextTemplate(
+  source: string,
+  data: Readonly<Record<string, unknown>>,
+): Promise<string>;
+
 /** The five official themes, ready to pass to {@link createMallok}. */
 export declare const atelier: BundledTheme;
 export declare const folio: BundledTheme;

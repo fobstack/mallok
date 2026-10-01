@@ -359,6 +359,62 @@ describe('a project that installed only the tarball', () => {
     expect(result.stdout).toContain('plugin: ok');
   }, 120_000);
 
+  it('builds plugin email from the public helpers alone', async () => {
+    // A plugin that lives in a site can import only `mallok/worker`. The
+    // official plugin escapes its HTML and renders its operator-authored text
+    // templates with helpers from `src/core`, which a third-party plugin
+    // cannot reach; Nundar's order emails need the same two.
+    await writeFile(
+      join(sandbox, 'src/emails.ts'),
+      [
+        "import { escapeHtml, renderTextTemplate } from 'mallok/worker';",
+        '',
+        'export async function orderEmail(',
+        '  name: string,',
+        '  note: string,',
+        '): Promise<{ readonly text: string; readonly html: string }> {',
+        '  const text = await renderTextTemplate(',
+        "    'Thanks, {{ name }}. {{ note }}',",
+        '    { name, note },',
+        '  );',
+        "  const html = '<p>Thanks, ' + escapeHtml(name) + '.</p><p>' + escapeHtml(note) + '</p>';",
+        '  return { text, html };',
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    const compiled = await run(
+      join(sandbox, 'node_modules/.bin/tsc'),
+      ['-p', 'tsconfig.json', '--noEmit', 'false', '--outDir', 'compiled'],
+      sandbox,
+    );
+    expect(compiled.code, compiled.stdout + compiled.stderr).toBe(0);
+
+    const script = join(sandbox, 'emails-check.mjs');
+    await writeFile(
+      script,
+      [
+        "import { orderEmail } from './compiled/emails.js';",
+        '',
+        "const mail = await orderEmail('Ada <script>', 'Tom & \"Jerry\"');",
+        '// A text template is text: nothing is escaped.',
+        'if (mail.text !== \'Thanks, Ada <script>. Tom & "Jerry"\') {',
+        "  throw new Error('text: ' + mail.text);",
+        '}',
+        "if (mail.html !== '<p>Thanks, Ada &lt;script&gt;.</p><p>Tom &amp; &quot;Jerry&quot;</p>') {",
+        "  throw new Error('html: ' + mail.html);",
+        '}',
+        'process.stdout.write("emails: ok\\n");',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    const result = await run('node', [script], sandbox);
+    expect(result.code, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain('emails: ok');
+  }, 300_000);
+
   it('ships declarations that name no package it does not depend on', async () => {
     const declarations = await readFile(
       join(sandbox, 'node_modules/mallok/types/worker.d.ts'),

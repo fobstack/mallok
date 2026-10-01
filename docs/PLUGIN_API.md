@@ -442,9 +442,25 @@ the core's `job` table.
 (`ARCHITECTURE §17`). 0.1 builds no adapter for a mail provider it might use
 one day.
 
-Email templates live at `emails/<name>.<locale>.liquid` and go through the
-same restricted engine as themes, so **what a buyer typed is escaped by
-default in the email too**.
+A plugin builds its own messages, with two helpers exported from
+`mallok/worker` for that purpose:
+
+```ts
+import { escapeHtml, renderTextTemplate } from 'mallok/worker';
+
+escapeHtml(value: string): string;
+renderTextTemplate(source: string, data: Readonly<Record<string, unknown>>): Promise<string>;
+```
+
+`renderTextTemplate` renders a plain-text Liquid template — typically one the
+operator edits in the plugin's settings — with the same restricted engine
+themes use (strict filters, own properties only, bounded parsing and
+memory). **Its output is text and is not HTML-escaped.** An HTML body is the
+plugin's own markup, and every value in it, rendered template text included,
+goes through `escapeHtml`; that is what keeps what a buyer typed from becoming
+markup in the email. The official `inquiry` plugin does exactly this
+(`src/plugins/inquiry/emails.ts`), and a broken operator template falls back
+to built-in text rather than losing the message.
 
 ### 7.7 Export files
 
@@ -581,7 +597,7 @@ inquiry cart or a booking plugin as much as a shop.
 
 | Addition | Where it is documented | Task | Status |
 | --- | --- | --- | --- |
-| Public helpers: `escapeHtml`, `renderTextTemplate` | §7.6 and the `mallok/worker` exports | 20 | Planned |
+| Public helpers: `escapeHtml`, `renderTextTemplate` | §7.6 and the `mallok/worker` exports | 20 | Done |
 | Site-level email settings used by `ctx.sendEmail` | §7.6 | 21 | Planned |
 | `renderData`: plugin data read while rendering a page | §5, §6 | 22 | Planned |
 | Plugin cache tags (`p:<plugin-id>:<tag>`) | §9 | 23 | Planned |

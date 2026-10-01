@@ -31,7 +31,7 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–35) | **Planned 2026-10-01**, from the owner's task list for the Nundar shop plugin; baseline `0.1.0-rc.7` (`0af520b`). Not started |
+| Phase six, plugin API 2 (Tasks 18–35) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin; baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers). Records in `tasks/TASK-18.md` onward |
 
 ## 2. The two gates
 
