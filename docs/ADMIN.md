@@ -331,7 +331,8 @@ The complete rules are in `SECURITY.md`. On the interface side:
 - The session cookie is `HttpOnly; Secure; SameSite=Strict`.
 - Every write carries a CSRF token.
 - API token management: create (**shown once**), name, scopes, revoke, last
-  used.
+  used. A revoked token stays in the list as history, marked revoked with its
+  date and offering no Revoke; a failed revoke says why in the notice.
 
 ## 13. Quality gates
 

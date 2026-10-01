@@ -9,6 +9,11 @@ import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { notice, session } from '../state.js';
+import {
+  describeToken,
+  revokeFailureMessage,
+  type TokenSummary,
+} from '../tokens.js';
 
 const SCOPES = [
   'content:write',
@@ -17,17 +22,9 @@ const SCOPES = [
   'settings:write',
 ] as const;
 
-interface TokenRow {
-  readonly id: string;
-  readonly name: string;
-  readonly scopes: readonly string[];
-  readonly createdAt: string;
-  readonly lastUsedAt: string | null;
-}
-
 export function AccountPage(): JSX.Element {
   const current = session.value;
-  const [tokens, setTokens] = useState<readonly TokenRow[]>([]);
+  const [tokens, setTokens] = useState<readonly TokenSummary[]>([]);
   const [minted, setMinted] = useState('');
   const [name, setName] = useState('');
   const [chosen, setChosen] = useState<string[]>(['content:write']);
@@ -35,7 +32,7 @@ export function AccountPage(): JSX.Element {
 
   const reload = useCallback(async (): Promise<void> => {
     try {
-      const result = await api<{ tokens: TokenRow[] }>('/tokens');
+      const result = await api<{ tokens: TokenSummary[] }>('/tokens');
       setTokens(result.tokens);
     } catch (caught) {
       notice.value =
@@ -64,6 +61,16 @@ export function AccountPage(): JSX.Element {
     } finally {
       setBusy(false);
     }
+  };
+
+  const revoke = async (id: string): Promise<void> => {
+    try {
+      await api(`/tokens/${id}`, { method: 'DELETE' });
+    } catch (caught) {
+      notice.value = revokeFailureMessage(caught);
+    }
+    // Reloaded either way: after a 404 the list is what is out of date.
+    await reload();
   };
 
   const activeSession = current === null || current === false ? null : current;
@@ -126,29 +133,30 @@ export function AccountPage(): JSX.Element {
           </div>
         )}
         <ul className="rows">
-          {tokens.map((token) => (
-            <li key={token.id}>
-              <span>{token.name}</span>
-              <span className="code">{token.scopes.join(' ')}</span>
-              <span className="help">
-                {token.lastUsedAt === null
-                  ? 'Never used'
-                  : `Last used ${token.lastUsedAt.slice(0, 10)}`}
-              </span>
-              <button
-                type="button"
-                className="ghost"
-                onClick={() => {
-                  void (async () => {
-                    await api(`/tokens/${token.id}`, { method: 'DELETE' });
-                    await reload();
-                  })();
-                }}
+          {tokens.map((token) => {
+            const view = describeToken(token);
+            return (
+              <li
+                key={token.id}
+                className={view.revocable ? undefined : 'revoked'}
               >
-                Revoke
-              </button>
-            </li>
-          ))}
+                <span>{token.name}</span>
+                <span className="code">{token.scopes.join(' ')}</span>
+                <span className="help">{view.status}</span>
+                {view.revocable ? (
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      void revoke(token.id);
+                    }}
+                  >
+                    Revoke
+                  </button>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
         <form className="inline-form" onSubmit={(event) => void create(event)}>
           <div className="field">

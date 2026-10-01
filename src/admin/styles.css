@@ -493,6 +493,12 @@ main {
 .rows li:last-child {
   border-bottom: 0;
 }
+/* A revoked token stays listed as history. Colour and a strike, not opacity,
+   so the text keeps its contrast. */
+.rows li.revoked > span:first-child {
+  color: var(--muted);
+  text-decoration: line-through;
+}
 .rows-table {
   width: 100%;
   border-collapse: collapse;
