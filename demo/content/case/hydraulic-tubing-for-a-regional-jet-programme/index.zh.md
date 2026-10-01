@@ -2,7 +2,7 @@
 title: 支线飞机液压管路项目
 description: 一个展示管材规格确认与交付计划的虚构应用案例。
 industry: 航空
-product: grade-9-titanium-tube
+product: gr9-tihejin-guan
 ---
 
 ## 项目背景

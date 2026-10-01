@@ -2,7 +2,7 @@
 title: 海水淡化换热器改造
 description: 一个展示板材需求、文件要求与分批交付的虚构应用案例。
 industry: 水处理
-product: grade-2-titanium-plate
+product: gr2-tiban
 ---
 
 ## 项目需求
