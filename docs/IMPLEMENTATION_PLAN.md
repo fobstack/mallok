@@ -30,7 +30,8 @@
 | The nine measurements in `ARCHITECTURE §18` | **Run 2026-09-03/04** — `TASK-01.md §5`. Seven of nine measured against a real account; item 9 (Turnstile/Resend) needs those accounts, and item 7 (Deploy button) is `NOT_AVAILABLE` rather than pending — see `docs/RELEASE_GATE.md §15.1` |
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
-| Not started | Nothing. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
+| Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
+| Phase six, plugin API 2 (Tasks 18–35) | **Planned 2026-10-01**, from the owner's task list for the Nundar shop plugin; baseline `0.1.0-rc.7` (`0af520b`). Not started |
 
 ## 2. The two gates
 
@@ -258,6 +259,300 @@ Replaces Task 01's spike shortcut (`Bearer MALLOK_SECRET`).
   throughout).
 - Depends on: everything.
 
+### Phase six: plugin API 2
+
+Generic extension points for site-level plugins, driven by the Nundar shop
+plugin and commerce theme (`docs/PRODUCT_CONTRACT.md §2`). **No commerce logic
+enters Mallok**: prices, orders and stock live only in that plugin, and every
+extension point here must make sense for any plugin, such as an inquiry cart
+or a booking plugin. The source is the owner's task list of 2026-10-01; its
+identifiers are kept in brackets for traceability.
+
+Rules for the whole phase:
+
+- `pluginApi` goes from `1` to `2` and stays backward compatible: the official
+  `inquiry` plugin works unchanged. Theme additions are optional: the five
+  official themes pass unchanged. Where a security check is added for every
+  plugin (Task 26), the change is stated in the upgrade notes.
+- The owner's scope decisions of 2026-10-01 hold: English stays unprefixed and
+  other locales are prefixed (no "always prefix" mode); one administrator, no
+  roles and no translation-completeness view; the shop plugin and theme are
+  copied into a site as source.
+- Every "current state" was verified at `0af520b` and is re-checked before its
+  task starts. **[OWNER]** marks a decision the owner makes before that part
+  is built; **[VERIFY]** marks a Cloudflare fact checked against the current
+  official documentation, with the source and date recorded.
+- Order: the P0 tasks (18–30) in this order, then P1 (31–33), then P2 (34),
+  then the close-out (35). One task per branch.
+- Done means §5 plus `pnpm admin:size`, with a `docs/tasks/TASK-NN.md` record.
+
+Where the owner's list grouped parts of one item, the parts that are separate
+demonstrable paths are split into separate tasks (§6: one task, one path).
+The order differs from the list in two places, both by owner decision on
+2026-10-01: the panel-read scope fix comes first and ships on its own as
+`0.1.0-rc.8`, and rate-limit tiers move from P1 into P0 because the phase-one
+cart cannot live within the shared 10-per-minute budget.
+
+#### P0 — Nundar phase 1: catalogue with variants, cart, inquiry cart
+
+**Task 18 — documentation corrections** [M0]
+- `PRODUCT_VISION.md §9` names the extension points this phase adds instead of
+  "the six plugin capabilities … no new concept".
+- `RELEASE_GATE.md §15.1` and `ARCHITECTURE.md §15` align with
+  `PRODUCT_CONTRACT.md §2` ("Nundar is a Mallok starter, theme and plugin
+  set") while keeping their point: the Deploy-button starter repository is not
+  Nundar.
+- `PRODUCT_CONTRACT.md §5` adds that Mallok's core still does no carts or
+  payments; commerce comes from the Nundar plugin through generic extension
+  points.
+- **Owner decision, 2026-10-01: `CLAUDE.md`'s product boundary ("0.1 does not
+  do … carts or payments") gains the same one-line clarification**, so that
+  generic extension points a cart needs are not read as crossing it.
+- `PLUGIN_API.md` gains a `pluginApi: 2` section (what is new, the
+  compatibility rule), filled in as tasks land.
+- The path: the contradictions are gone, and every later extension point has a
+  place to be documented.
+- Depends on: nothing. Docs only, on a `docs/` branch.
+
+**Task 19 — scope check on plugin panel reads** [M6, part F]
+- Reading a panel's rows checks the token's scope; writes keep the existing
+  `x-mallok-csrf` check. This closes a gap present in `0.1.0-rc.7`: the panel
+  read route in `src/worker/admin-plugins.ts` is the one plugin admin route
+  without `withScope`, so any authenticated token can read every panel.
+- **Owner decision, 2026-10-01: released on its own as `0.1.0-rc.8`** through
+  `docs/RELEASE_GATE.md`, ahead of the rest of the phase.
+- The path: a token without the scope is refused; the inquiry panel behaves as
+  before.
+- Depends on: nothing. Contract: `PLUGIN_API.md §7.5`, `SECURITY.md`.
+
+**Task 20 — public helpers for plugins** [M1]
+- Export `escapeHtml` and `renderTextTemplate` from `mallok/worker`, with types
+  and docs (today the official plugin imports them from `src/core`).
+- The path: a third-party plugin importing only public exports compiles,
+  renders an email template and escapes HTML
+  (`test/cli/strict-consumer.test.ts`).
+- Depends on: Task 18.
+
+**Task 21 — site-level email settings** [M1, part 3]
+- **Owner decision, 2026-10-01: the Resend key and sender address become a
+  site setting**, so every plugin that sends email uses one configuration
+  instead of each holding its own. Today `ctx.sendEmail` reads the calling
+  plugin's own `resend_api_key` secret and `from_address` setting
+  (`src/worker/email.ts`).
+- The key is stored encrypted with `MALLOK_SECRET`, like plugin secrets
+  (`SECURITY.md`), in a new site-level column or table with its own migration
+  (`DATA_MODEL.md`), and edited in the admin's site settings; it never appears
+  in a response or a log.
+- A plugin's own key and address, where set, still take precedence, so the
+  `inquiry` plugin keeps working unchanged on existing sites.
+- **Owner decision, 2026-10-01: upgrading moves an existing `inquiry` key and
+  sender address into the site setting.** Moving means the plugin's copy is
+  removed once the site copy is written, so rotating the site key later
+  reaches every plugin. A site setting that already exists is never
+  overwritten. The key is encrypted per plugin, so the move decrypts and
+  re-encrypts with `MALLOK_SECRET` inside the Worker; a SQL migration cannot
+  do it. It is idempotent and safe to interrupt. Afterwards the plugin's own
+  key field says the site setting is in use rather than looking unset.
+- Resend stays the one implementation, called with `fetch`; this is a setting,
+  not a provider layer (`ARCHITECTURE.md §17`).
+- `PLUGIN_API.md §7.6` documents the lookup order.
+- The path: set the key once in site settings, and two plugins without their
+  own key both send; a plugin with its own key keeps using it; an upgraded
+  site's inquiry key now lives in the site setting.
+- Depends on: Task 20. Contracts: `PLUGIN_API.md §7.6`, `SECURITY.md`,
+  `ADMIN.md`, `DATA_MODEL.md`.
+
+**Task 22 — the `renderData` hook** [M2]
+- A render-path hook with read access to D1, run on a cache miss only, after
+  the content is loaded, all plugins concurrently. Content pages pass the
+  item; list and home pages pass the items on that page, so one `IN` query
+  covers them. The JSON-serialisable result reaches templates as
+  `plugins.<plugin-id>` in `snake_case`; plugins return display-ready values.
+- At most one D1 call per plugin per render (one query or one `batch`),
+  enforced by a wrapped `db` that counts calls. `test/worker/budget.test.ts`
+  counts every statement as a round trip and concurrency does not reduce the
+  count; a cold content render makes two today, so within `AC-INV-05`'s four
+  **at most two plugins on a page may use `renderData`**, and the docs say so.
+- A second call is refused in production as well as in tests and
+  development, and handled as a failed hook; a guard that only exists in tests
+  leaves the production budget unguarded.
+- Deterministic: output depends only on database state and the hook's inputs.
+- **[OWNER]** Read-only: document it, or have the wrapped `db` reject writes
+  (recommended; the rejection is by statement keyword, which the docs state).
+- **[OWNER]** A throwing hook: recommended — drop that plugin's data, render
+  the page, log a structured event, and do not store that degraded page in
+  the edge cache.
+- The path: a test theme shows `plugins.<id>` data on a content page and a
+  list page; a cache hit does not call the hook; identical database state
+  gives byte-identical HTML; a second query is refused; a throwing hook still
+  renders the page and logs.
+- Depends on: Task 18. Contracts: `PLUGIN_API.md §5`, `§6`;
+  `THEME_FORMAT.md §7`; `ARCHITECTURE.md` (render path).
+
+**Task 23 — plugin-declared cache tags** [M3]
+- `renderData` may return `cacheTags`; the core namespaces them as
+  `p:<plugin-id>:<tag>` and appends them to the page's `Cache-Tag`.
+  `ctx.purgeTags` accepts the same namespaced tags.
+- **[OWNER]** Recommended: a plugin may purge only its own namespace, plus
+  `site`.
+- **[VERIFY]** Free-plan purge-by-tag rate limits; tag character set, tag
+  length and total header length. Over-limit tags are truncated with a logged
+  event.
+- The path: pages carry the declared tags; purging one affects only the
+  matching pages; a plugin cannot purge another's tags.
+- Depends on: Task 22. Contracts: `PLUGIN_API.md §9`, `ARCHITECTURE.md §6`.
+
+**Task 24 — route enhancements** [M4, parts 1–3]
+- Multi-segment paths with parameters (`orders/:orderNo`) as `input.params`.
+- A locale segment after the plugin prefix (`/_mallok/p/<id>/<locale>/…`)
+  sets `ctx.locale`; any other first segment leaves the default. Locales are
+  site settings that can change after a build, so the rule for a route whose
+  first segment equals a locale code is fixed here: build-time validation
+  refuses route segments shaped like a locale code, and at request time the
+  locale reading wins.
+- Non-string JSON values are kept (`input.json`); form fields stay in
+  `input.fields`.
+- The path: parameters parse; a locale segment is recognised and a non-locale
+  segment is not; numbers and booleans survive.
+- Depends on: Task 18. Contracts: `PLUGIN_API.md §4`, `§7.2`.
+
+**Task 25 — rate-limit tiers** [M4, part 4]
+- **Owner decision, 2026-10-01: moved into P0**, since the cart cannot share
+  one 10-per-minute budget with the rest of the plugin.
+- **[OWNER]** (a) key by route, `<plugin-id>:<route>:<ip>`, same limit; or (b)
+  a second binding with `rateLimit: "strict" | "relaxed"`, which changes the
+  binding list in `CLOUDFLARE_RESOURCES.md §4` and the template, with an
+  upgrade note. Recommended: (b), since (a) leaves the cart at ten a minute.
+- **[VERIFY]** The Rate Limiting binding's allowed limit and period values,
+  against Nundar's reference budgets (cart about 120 a minute; checkout about
+  10 per 10 minutes).
+- The path: routes with different tiers no longer share a budget.
+- Depends on: Task 24. Contracts: `PLUGIN_API.md §7.2`,
+  `CLOUDFLARE_RESOURCES.md §4`.
+
+**Task 26 — plugin pages rendered through the theme** [M5]
+- A route may declare `"render": "page"` and a `layout`; its handler returns a
+  view, and the core renders the theme's plugin layout with the full
+  `PageView` plus `plugin_page`, a language switcher over Task 24's locale
+  segment, `private, no-store` and `noindex`.
+- Themes declare `pluginLayouts` in `theme.json`, validated at build; a missing
+  layout falls back to a minimal built-in one, and the admin says so.
+- A cross-site check on page routes and state-changing POSTs, for every plugin
+  (owner decision, 2026-10-01): a request a browser marks as cross-site
+  (`Sec-Fetch-Site`, else `Origin` against the site host) is refused; a
+  request carrying neither header, which no current browser sends for a form
+  POST, is allowed. The `inquiry` plugin's own same-site form passes; the
+  change is in the upgrade notes.
+- The path: a plugin page renders through a test theme's layout with strings;
+  the locale segment and switcher work; a missing layout falls back; a
+  cross-site POST is refused; the inquiry form still submits.
+- Depends on: Task 24. Contracts: `PLUGIN_API.md §7.2`; a new "plugin page
+  layouts" section in `THEME_FORMAT.md` with §15 reworded; `ARCHITECTURE.md`.
+
+**Task 27 — content save and delete hooks** [M7]
+- Call the documented but never-called `onContentSave` on the save path; it
+  may change the Markdown or reject the save, and `mallok publish` takes the
+  same path.
+- Ordering on the save path: the hook runs first, then the
+  `MAX_SAFE_RENDER_BYTES` check on the hook's result (a hook can make the
+  content longer), then the "unchanged" comparison against the stored item.
+  Comparing the hook's result keeps a second `mallok publish` of the same
+  file a no-op, provided the hook is idempotent, which the docs require.
+- Add `onContentDelete(ref, ctx)` after a delete, with `lastInGroup` true when
+  the last language of a `translation_group` goes.
+- Hook time counts toward the save request's budget.
+- The path: saving calls the hook, which can modify or reject; republishing the
+  same file is reported unchanged; deleting passes the right reference and
+  `lastInGroup`; CLI publishing triggers the same hooks.
+- Depends on: Task 18. Contract: `PLUGIN_API.md §5.4` plus a new delete-hook
+  section.
+
+**Task 28 — editable `records` panels, with sorting and search** [M6, parts A and E]
+- A list with create and edit forms, using the theme field vocabulary plus
+  `money` (integer minor units and a currency) and `rows` (a repeatable group).
+  Every write goes through a handler the plugin declares; the admin never runs
+  generic SQL.
+- Sortable columns and text search over declared fields.
+- New form components load on demand, inside the 150 KB first-load budget.
+- The path: a declared records panel creates and edits records and shows
+  validation errors; a `rows` field adds and removes rows; sorting and search
+  work; the inquiry table panel is unchanged.
+- Depends on: Task 19. Contracts: `PLUGIN_API.md §7.5`, `ADMIN.md`.
+
+**Task 29 — panels attached to the content editor** [M6, part B]
+- `"attachTo": { "kind": "product" }` shows a records panel beside the editor
+  for the open item, keyed by its `translation_group`.
+- The path: an attached panel shows only the open item's records, and deleting
+  the item cleans them up through Task 27's hook.
+- Depends on: Tasks 27 and 28. Contracts: `PLUGIN_API.md §7.5`, `ADMIN.md`.
+
+**Task 30 — theme script validation with declared scripts** [M10]
+- Templates are still scanned when a theme declares `clientScripts`: only
+  `<script src>` tags naming a declared path pass; inline scripts and `on*=`
+  attributes are rejected. A declared path written through the asset prefix,
+  `{{ theme.asset_base }}/<path>`, counts as naming it — that is how Atelier's
+  home layout loads its carousel.
+- `THEME_FORMAT.md §3` and `theme-package.ts` agree on `.js` assets.
+- The path: a declared-path reference passes; inline script, undeclared path
+  and `onclick=` are each rejected; all five official themes pass, including
+  Atelier's carousel.
+- Depends on: Task 18. Contract: `THEME_FORMAT.md §3`, `§9`.
+
+#### P1 — Nundar phase 2: payment and orders
+
+**Task 31 — raw-body routes** [M8]
+- `"body": "raw"`: the core does not parse the body and the handler reads
+  `ctx.request`. No Turnstile; exempt from Task 26's cross-site check; may
+  disable rate limiting; a body-size cap (**[VERIFY]** Stripe's event size).
+- The path: the handler receives the exact bytes sent, and an HMAC over them
+  verifies; an oversized body is refused.
+- Depends on: Task 26. Contract: `PLUGIN_API.md §7.2`.
+
+**Task 32 — action parameters and related rows** [M6, parts C and D]
+- Actions declare `params`, the admin prompts for them, and the handler
+  receives `(ids, params, ctx)`.
+- A detail view shows related rows from a declared child table.
+- The path: parameters reach the handler; related rows are shown.
+- Depends on: Task 28. Contracts: `PLUGIN_API.md §7.5`, `ADMIN.md`.
+
+**Task 33 — isolated scheduled hooks and a job API** [M9]
+- A `try/catch` per plugin in the cron tick, logging the plugin id.
+- `ctx.enqueue(name, payload, { runAt? })` writes a `job` row; plugins declare
+  `jobs`; each tick runs a bounded number, with retries and backoff, and marks
+  exhausted jobs failed in the admin. At-least-once: handlers are idempotent.
+- **[OWNER]** Retry count and backoff schedule. Recommended: the email jobs'
+  existing rule, five attempts at 2, 4, 8 and 16 minutes
+  (`src/db/queries.ts`, `failJob`).
+- The path: one throwing plugin no longer stops the others; jobs run, retry
+  and fail at the limit; a tick stays within its bound.
+- Depends on: Task 18. Contracts: `PLUGIN_API.md §5.5`, `§7.4`;
+  `DATA_MODEL.md §2.9`.
+
+#### P2 — Nundar phase 3
+
+**Task 34 — site-provided starter content** [M11]
+- **[OWNER]** `createMallok({ theme, plugins, starters })`, or a documented
+  "ship `content/` and import it with `mallok publish`" flow with a separate
+  path for plugin data.
+- The path: a fresh deployment ends up as a shop with sample products and
+  variants.
+- Depends on: Task 18; sample plugin data (variants) is written through
+  Task 28's declared write handlers.
+
+#### Close-out
+
+**Task 35 — re-measure, release and report back to Nundar**
+- Re-run the budget-related release gates on a real account with
+  `renderData` active: product-page cold-render CPU and D1 round trips
+  (`TASK-01.md §5`'s method). The rc.5 sample already had 16 of 30 cold
+  renders over the 10 ms target, so this is measured, not assumed.
+- Release through `docs/RELEASE_GATE.md`. **[OWNER]** The version: another
+  `0.1.0-rc` or `0.2.0`, given the plugin contract change.
+- Report to Nundar: the published version (Nundar pins it exactly), each
+  task's final interface wherever it differs from the owner's drafts, the
+  measured numbers, and every owner decision and deviation.
+- Depends on: every task Nundar's current phase needs (P0 for phase 1).
+
 ## 4. The dependency graph
 
 ```
@@ -268,6 +563,28 @@ Gate B ─────────────► Task 07 ──► Task 08 ─�
 Task 02 ──► Task 03 ──► Task 04 ────────► Task 09       Task 13 ──► Task 14
    │           │           │                 │                │
    └───────────┴───────────┴──► Task 10 ──► Task 11 ──► Task 12 ──► Task 15 ──► Task 16 ──► Task 17
+```
+
+Phase six builds on `0.1.0-rc.7`, after Task 17. The arrows below are the
+hard dependencies; the P0 build order is
+18 → 19 (released as `0.1.0-rc.8`) → 20 → 21 → 22 → 23 → 24 → 25 → 26 → 27 →
+28 → 29 → 30, and Task 35 closes each Nundar phase.
+
+```
+Task 19 [M6 F] ──► rc.8 ──► Task 28 [M6 A, E] ──┬──► Task 29 [M6 B]
+                                                ├──► Task 32 [M6 C, D]  (P1)
+                                                └──► Task 34 [M11]      (P2)
+
+                ┌──► Task 20 [M1] ──► Task 21 [M1 site email]
+                ├──► Task 22 [M2] ──► Task 23 [M3]
+                ├──► Task 24 [M4 1–3] ──┬──► Task 25 [M4 tiers]
+Task 18 [M0] ───┤                       └──► Task 26 [M5] ──► Task 31 [M8]  (P1)
+                ├──► Task 27 [M7]
+                ├──► Task 30 [M10]
+                └──► Task 33 [M9]                                         (P1)
+
+Task 27 ──► Task 29   (an attached panel's records are cleaned up by the delete hook)
+all of a phase ──► Task 35
 ```
 
 ## 5. What "done" means for a task
