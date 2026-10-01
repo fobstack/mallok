@@ -409,6 +409,14 @@ export const actions = {
 Action ids are unique across the whole plugin, because the implementation map
 is plugin-wide even when the declarations appear in different panels.
 
+Scopes, for API tokens (a signed-in session holds every scope):
+
+| Request | Scope |
+| --- | --- |
+| Reading a panel's rows | `export` — panel rows are plugin business data, guarded like the site export |
+| A `download` action | `export` |
+| Any other action | `content:write` |
+
 The inquiry list, and any future order list, is a panel of this kind. **This
 mechanism exists so that a plugin never needs to write React or Preact code**
 — the moment a plugin can inject frontend code into the admin, both the
@@ -596,5 +604,5 @@ pass unchanged.
 
 | Check | Effect on a version 1 plugin | Task | Status |
 | --- | --- | --- | --- |
-| Reading a panel's rows requires the token's scope | A token without the scope can no longer read panels; the admin's own session is unaffected | 19 | Planned, ships as `0.1.0-rc.8` |
+| Reading a panel's rows requires the `export` scope (§7.5) | A token without `export` gets 403 instead of the rows; the admin's own session is unaffected | 19 | Done, ships as `0.1.0-rc.8` |
 | Cross-site submissions to page routes and state-changing POSTs are refused | A same-site form, such as the inquiry form, still submits; a request with neither `Sec-Fetch-Site` nor `Origin` is allowed | 26 | Planned |

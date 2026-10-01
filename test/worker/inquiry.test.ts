@@ -62,6 +62,8 @@ const PASSWORD = 'a sufficiently long password';
 const RESEND_KEY = 're_test_abcdefgh';
 
 let token = '';
+let sessionCookie = '';
+let sessionCsrf = '';
 let productPath = '';
 let productId = '';
 
@@ -140,6 +142,8 @@ describe('inquiry plugin', () => {
     const cookie =
       (session.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
     const { csrf } = (await session.json()) as { csrf: string };
+    sessionCookie = cookie;
+    sessionCsrf = csrf;
     const minted = await SELF.fetch(`${ORIGIN}/_mallok/api/tokens`, {
       method: 'POST',
       headers: {
@@ -380,6 +384,41 @@ describe('inquiry plugin', () => {
       .bind(mine?.id)
       .first<{ status: string }>();
     expect(updated?.status).toBe('spam');
+  });
+
+  it('reads panel rows only with the export scope, as the CSV export does', async () => {
+    // Panel rows are the same inquiries — names, addresses, messages — that
+    // the export scope guards in the site export and the CSV action. A
+    // publishing-only token must not read them through the panel instead.
+    const minted = await SELF.fetch(`${ORIGIN}/_mallok/api/tokens`, {
+      method: 'POST',
+      headers: {
+        cookie: sessionCookie,
+        'x-mallok-csrf': sessionCsrf,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ name: 'publish-only', scopes: ['content:write'] }),
+    });
+    const publishOnly = ((await minted.json()) as { token: string }).token;
+    const panelUrl = `${ORIGIN}/_mallok/api/plugins/inquiry/panels/inquiries`;
+
+    const refused = await SELF.fetch(panelUrl, {
+      headers: { authorization: `Bearer ${publishOnly}` },
+    });
+    expect(refused.status).toBe(403);
+    const { error } = (await refused.json()) as { error: string };
+    expect(error).toContain('"export" scope');
+
+    const withExport = await api(
+      'GET',
+      '/_mallok/api/plugins/inquiry/panels/inquiries',
+    );
+    expect(withExport.status).toBe(200);
+
+    const bySession = await SELF.fetch(panelUrl, {
+      headers: { cookie: sessionCookie },
+    });
+    expect(bySession.status).toBe(200);
   });
 
   it('exports inquiries as CSV through the download action', async () => {

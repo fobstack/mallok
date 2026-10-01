@@ -132,6 +132,10 @@ Every write requires a CSRF token (`ARCHITECTURE §14`):
 - Generated in the admin, shown in cleartext once; D1 stores `sha256(token)`
   (`DATA_MODEL §2.8`).
 - Scoped: `content:write`, `media:write`, `export`, `settings:write`.
+  Scopes guard writes; reads of content, media and settings need only a valid
+  token. The exception is business data held by plugins: reading a plugin
+  panel's rows, like the site export and a panel's download action, needs
+  `export` (`PLUGIN_API.md §7.5`). A session holds every scope.
 - Revocable (`revoked_at`), with `last_used_at` recorded.
 - Prefixed `mlk_live_` so secret scanners recognise them.
 

@@ -83,7 +83,13 @@ export async function routePlugins(
     );
   }
   if (parts.length === 3 && parts[1] === 'panels' && method === 'GET') {
-    return getPanel(request, env, plugin, parts[2] ?? '');
+    // Panel rows are plugin business data — the inquiry panel holds buyers'
+    // names, addresses and messages. The site export and a panel's download
+    // action already require `export` for the same rows, so reading them here
+    // does too; reads elsewhere in the API stay unscoped.
+    return withScope(principal, 'export', () =>
+      getPanel(request, env, plugin, parts[2] ?? ''),
+    );
   }
   if (
     parts.length === 5 &&
