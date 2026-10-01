@@ -1,6 +1,6 @@
 # Mallok
 
-**面向多语言 B2B 网站的 Cloudflare 原生 CMS。** 开源的 WordPress 替代方案，内置 Markdown 内容、网页后台、Liquid 主题、插件和询盘表单，直接跑在 Cloudflare 免费套餐上。
+**面向多语言 B2B 网站的 Cloudflare 原生 CMS 与建站工具。** 开源的 WordPress 替代方案，内置 Markdown 内容、网页后台、Liquid 主题、插件和询盘表单，直接跑在 Cloudflare 免费套餐上。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 

@@ -239,7 +239,7 @@ await writeFile(
       name: 'mallok',
       version,
       description:
-        "The Cloudflare-native CMS for multilingual B2B websites. A WordPress alternative: Markdown in D1, web admin, Liquid themes, plugins, inquiry forms. Runs on Cloudflare's free tier.",
+        "The Cloudflare-native CMS and website builder for multilingual B2B websites. A WordPress alternative: Markdown in D1, web admin, Liquid themes, plugins, inquiry forms. Runs on Cloudflare's free tier.",
       type: 'module',
       bin: { mallok: './cli/index.js' },
       exports: {
@@ -329,8 +329,9 @@ function packageReadme(packageVersion) {
     '# mallok',
     '',
     '[Mallok](https://github.com/fobstack/mallok) is the Cloudflare-native CMS',
-    'for multilingual B2B websites: an open-source WordPress alternative with',
-    'Markdown in D1, published instantly, running on your own account.',
+    'and website builder for multilingual B2B websites: an open-source',
+    'WordPress alternative with Markdown in D1, published instantly, running',
+    'on your own account.',
     '',
     '```sh',
     'npx mallok create my-site        # a project, verified locally, then deployed',

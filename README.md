@@ -1,6 +1,6 @@
 # Mallok
 
-**The Cloudflare-native CMS for multilingual B2B websites.** An open-source WordPress alternative with Markdown content, a web admin, Liquid themes, plugins, and inquiry forms, running on Cloudflare's free tier.
+**The Cloudflare-native CMS and website builder for multilingual B2B websites.** An open-source WordPress alternative with Markdown content, a web admin, Liquid themes, plugins, and inquiry forms, running on Cloudflare's free tier.
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
