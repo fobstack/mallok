@@ -1847,9 +1847,10 @@ some content, four lines of composition — with an exact dependency on
 follow-up work after 0.1.0-rc.5**, on a clean account, and it is tracked
 separately.
 
-**It is not Nundar.** Nundar is the commerce engine in the same organisation;
-it is neither a Mallok starter nor a place to put one, and nothing in this
-release touches it.
+**It is not Nundar.** Nundar is a Mallok starter, theme and plugin set for
+commerce (`docs/PRODUCT_CONTRACT.md §2`), distributed as its own site
+repository. The button needs the plain starter shell that `mallok create`
+writes, which is a different repository.
 
 Until that repository exists and has been clicked on a clean account, every
 document must say the button is unavailable. `README.md`,

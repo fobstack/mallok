@@ -88,7 +88,9 @@ looks up rows without rendering belongs to that dead design.
   Workers Paid without an architectural change. Every design is budgeted
   against the free limits; "suggest an upgrade" is not a way around one.
 - 0.1 does not build hosting, accounts, billing, multi-tenancy, collaborative
-  editing, carts or payments.
+  editing, carts or payments. The core still does no carts or payments;
+  generic plugin extension points that a cart plugin uses do not cross that
+  line (`PRODUCT_CONTRACT.md §5`).
 - 0.1 targets Cloudflare only and Resend only. No provider or adapter layer is
   abstracted ahead of a second implementation.
 

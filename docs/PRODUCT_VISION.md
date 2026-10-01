@@ -337,10 +337,16 @@ Directions, not commitments, and none of it may enter 0.1 early:
   plugins; a full storefront plugin with variants, stock, orders and order
   email.
 
-The line from inquiries to a storefront is straight: the tables, write routes,
-secrets, scheduled work, admin panels and email a storefront needs are exactly
-the six plugin capabilities 0.1 built for the inquiry plugin. The core needs
-no new concept.
+The line from inquiries to a storefront is straight, though not free. The
+tables, write routes, secrets, scheduled work, admin panels and email a
+storefront needs are the capabilities 0.1 built for the inquiry plugin.
+Plugin API 2 (`docs/PLUGIN_API.md §13`, phase six of
+`docs/IMPLEMENTATION_PLAN.md`) adds the generic extension points a shop also
+needs: plugin data read while rendering, with plugin cache tags; multi-segment,
+locale-aware routes with rate-limit tiers; plugin pages rendered through the
+theme; content save and delete hooks; editable admin panels; and stricter
+checks on declared theme scripts. None of them is commerce-specific. The
+storefront itself is the Nundar plugin, not Mallok's core.
 
 ## 10. Non-goals
 

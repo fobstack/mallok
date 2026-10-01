@@ -11,7 +11,8 @@
 
 **A plugin is real JavaScript or TypeScript that reaches five hooks and seven
 capabilities through a declarative `plugin.json`. It runs in the user's own
-Cloudflare account with the Worker's full permissions.**
+Cloudflare account with the Worker's full permissions.** Plugin API 2 adds
+optional hooks and capabilities on top of these (§13).
 
 ## 2. The honest boundary (which the interface must state as-is)
 
@@ -205,8 +206,9 @@ neither the fragment cache nor the regression tests hold.
 > **Contract-version warning**: `beforeRender`'s parameter type is bound to
 > remark's mdast. Should the core ever change Markdown engine (the open
 > decision in `TASK-01 §6`), this signature necessarily breaks, and
-> `pluginApi` must go to 2 rather than degrade silently. 0.1 defines the
-> contract against unified and mdast.
+> `pluginApi` must go to a new version rather than degrade silently — 3, since
+> 2 is the additive version in §13. 0.1 defines the contract against unified
+> and mdast.
 
 ### 5.3 `afterRender`
 
@@ -537,3 +539,62 @@ Turnstile script (`PRODUCT_VISION §5.6`).
 - No KV, Queues or Durable Objects for plugins (`TECH_STACK §12`).
 - No inter-plugin dependency declarations or version solving. With one
   official plugin in 0.1, that would be premature abstraction.
+
+## 13. Plugin API 2
+
+- Status: **in progress** (phase six of `docs/IMPLEMENTATION_PLAN.md`,
+  Tasks 18–35). Each row below is filled in when its task lands; until then a
+  row names what is planned, not what exists, and nothing marked planned may
+  be relied on.
+
+Version 2 exists for site-level plugins such as the Nundar shop plugin, which
+ship as source inside a site. Every addition is generic: none of them knows
+about prices, orders or stock, and each must make sense for any plugin — an
+inquiry cart or a booking plugin as much as a shop.
+
+### 13.1 The compatibility rule
+
+- **Version 2 only adds.** A new hook, a new key in a route or panel
+  declaration, a new member on a context object. Nothing defined by version 1
+  changes meaning or goes away, so a plugin declaring `pluginApi: 1`, or
+  omitting it, runs unchanged on a build that supports 2. The official
+  `inquiry` plugin is the standing proof and is not edited to pass.
+- A plugin declaring `pluginApi: 2` is refused at build time by a build that
+  supports only 1 — "This plugin needs plugin API 2; this build supports 1"
+  (`src/core/plugin.ts`) — rather than degrading silently.
+- A security check added for **every** plugin, whichever version it declares,
+  is listed in §13.3 and in the release's upgrade notes. Tightening a check is
+  the one kind of change that can affect a version 1 plugin, and it is never
+  made silently.
+- The build's supported version (`PLUGIN_API_VERSION` in `src/core/plugin.ts`)
+  becomes 2 when the first addition below lands.
+
+### 13.2 Additions
+
+| Addition | Where it is documented | Task | Status |
+| --- | --- | --- | --- |
+| Public helpers: `escapeHtml`, `renderTextTemplate` | §7.6 and the `mallok/worker` exports | 20 | Planned |
+| Site-level email settings used by `ctx.sendEmail` | §7.6 | 21 | Planned |
+| `renderData`: plugin data read while rendering a page | §5, §6 | 22 | Planned |
+| Plugin cache tags (`p:<plugin-id>:<tag>`) | §9 | 23 | Planned |
+| Multi-segment routes with parameters, a locale segment, `input.json` | §4, §7.2 | 24 | Planned |
+| Rate-limit tiers | §7.2 | 25 | Planned |
+| Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md`, plugin page layouts | 26 | Planned |
+| `onContentSave` called on every save path; `onContentDelete` | §5.4, and a new delete-hook section | 27 | Planned |
+| Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Planned |
+| Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Planned |
+| Raw-body routes (`body: "raw"`) | §7.2 | 31 | Planned |
+| Action parameters and related rows | §7.5 | 32 | Planned |
+| Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`) | §5.5, §7.4 | 33 | Planned |
+
+Theme-side additions in the same phase — layouts for plugin pages, and the
+script check for themes that declare `clientScripts` (Task 30) — are
+documented in `THEME_FORMAT.md`, and remain optional: the five official themes
+pass unchanged.
+
+### 13.3 Checks that apply to every plugin
+
+| Check | Effect on a version 1 plugin | Task | Status |
+| --- | --- | --- | --- |
+| Reading a panel's rows requires the token's scope | A token without the scope can no longer read panels; the admin's own session is unaffected | 19 | Planned, ships as `0.1.0-rc.8` |
+| Cross-site submissions to page routes and state-changing POSTs are refused | A same-site form, such as the inquiry form, still submits; a request with neither `Sec-Fetch-Site` nor `Origin` is allowed | 26 | Planned |

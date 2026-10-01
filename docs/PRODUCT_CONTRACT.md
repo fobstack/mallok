@@ -43,8 +43,10 @@ its own, and not a merge against a fork.
   and the capabilities that would have justified it belong in the starter,
   theme and plugin APIs instead.
 - **Nundar is a Mallok starter, theme and plugin set.** A commerce site built
-  *on* Mallok, not a second engine beside it. It has no bearing on this
-  release and nothing in this repository is shaped for it in advance.
+  *on* Mallok, not a second engine beside it. It brings no commerce code into
+  this repository: prices, orders and stock live in its own plugin. What
+  Mallok adds for it are generic extension points that any plugin can use
+  (plugin API 2, `docs/PLUGIN_API.md §13`).
 - **Fobly is a separate CRM.** It integrates through stable APIs and events.
   It does not use the page runtime and shares no business model with Mallok.
 
@@ -109,7 +111,10 @@ repeated here because they are the ones most often argued with:
   static build from local files, with the documented costs (no inquiry form,
   no admin, rebuild to publish).
 - 0.1 targets Cloudflare only, Resend only, and does not do hosting, accounts,
-  billing, multi-tenancy, collaborative editing, carts or payments.
+  billing, multi-tenancy, collaborative editing, carts or payments. Mallok's
+  core still does no carts or payments after 0.1: commerce belongs to the
+  Nundar plugin, and Mallok provides only the generic extension points it is
+  built on. Adding such an extension point does not cross this line.
 
 ## 6. How documents relate
 

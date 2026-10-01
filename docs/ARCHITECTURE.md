@@ -753,8 +753,10 @@ wizard. Each site's resources, naming and creation order are in
    button needs is a separate, public **starter site** repository: the same
    thin shell `mallok create` writes, with an exact dependency on `mallok`.
    Building and publishing that repository is external follow-up work, it has
-   never been clicked, and it is **not Nundar** — Nundar is the commerce
-   engine and has nothing to do with this. On that future path, upgrading is
+   never been clicked, and it is **not Nundar** — Nundar is a Mallok starter,
+   theme and plugin set for commerce (`PRODUCT_CONTRACT.md §2`) with its own
+   repository, while the button needs the plain starter shell. On that future
+   path, upgrading is
    still `mallok upgrade --to <version>` in the starter, and installing a
    third-party plugin still means editing the composition and redeploying.
 3. **A hosted setup assistant** (1.0): the project site creates the resources
