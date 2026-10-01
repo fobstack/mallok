@@ -4,6 +4,39 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.8] — 2026-10-02
+
+### Security
+
+- Reading a plugin panel's rows through the management API now requires the
+  `export` scope. The panel read was the one plugin admin route without a
+  scope check, so any API token — a publishing-only token included — could
+  read every inquiry, with buyers' names, addresses and messages, that the
+  site export and the panel's CSV action already keep behind `export`.
+
+**Upgrade note:** an API token without `export` now receives 403 instead of
+panel rows; give it `export` if it needs them. Signed-in admin sessions hold
+every scope and are unaffected.
+
+### Documentation
+
+- The plan for plugin API 2 (phase six of `docs/IMPLEMENTATION_PLAN.md`), and
+  `docs/PLUGIN_API.md §13` with its compatibility rule: version 2 only adds,
+  and the official `inquiry` plugin runs unchanged.
+- Product documents no longer contradict each other about Nundar, which is a
+  Mallok starter, theme and plugin set; Mallok's core still does no carts or
+  payments.
+- GitHub, npm and README describe Mallok as a CMS and website builder.
+
+### Development
+
+- The browser-test lock tells a stale-lock recoverer from an unrelated process
+  holding its loopback port, instead of retrying until a timeout and reporting
+  a lock nobody held.
+
+This is still a public preview candidate, not stable 0.1. No new CPU sample
+was taken; the rc.5 measurements remain historical.
+
 ## [0.1.0-rc.7] — 2026-09-30
 
 ### Fixed
