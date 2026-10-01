@@ -23,6 +23,23 @@ export function isAppPath(pathname: string): boolean {
   return pathname === APP_PREFIX || pathname.startsWith(`${APP_PREFIX}/`);
 }
 
+/**
+ * Request headers that would let Static Assets answer with less than the whole
+ * shell. A reload sends the validators of the response the browser cached, and
+ * a match comes back as 304 — but that 304 would be about `index.html`, not the
+ * route the browser asked for, and the shell is served `no-cache` with its own
+ * body every time. Left in, a 304 reached the `!ok` branch below and a reload
+ * under `wrangler dev`, which sends an ETag, said the app was not built.
+ */
+const PARTIAL_RESPONSE_HEADERS = [
+  'if-match',
+  'if-none-match',
+  'if-modified-since',
+  'if-unmodified-since',
+  'if-range',
+  'range',
+] as const;
+
 /** Serves the app shell for a client-side route. */
 export async function handleApp(request: Request, env: Env): Promise<Response> {
   if (request.method !== 'GET' && request.method !== 'HEAD') {
@@ -36,10 +53,14 @@ export async function handleApp(request: Request, env: Env): Promise<Response> {
   }
 
   const url = new URL(request.url);
+  const headers = new Headers(request.headers);
+  for (const name of PARTIAL_RESPONSE_HEADERS) {
+    headers.delete(name);
+  }
   const shell = await env.ASSETS.fetch(
     new Request(`${url.origin}${APP_PREFIX}/index.html`, {
       method: 'GET',
-      headers: request.headers,
+      headers,
     }),
   );
   if (!shell.ok) {
