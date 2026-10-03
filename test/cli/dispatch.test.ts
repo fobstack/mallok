@@ -176,10 +176,13 @@ describe('the mallok command line', () => {
 describe('a publish and export round trip', () => {
   let dir = '';
   let saved: Record<string, unknown>[] = [];
+  /** Every settings PATCH the stub site received. */
+  let patches: Record<string, unknown>[] = [];
 
   /** Answers the handful of endpoints these two commands call. */
   function stubSite(options: { readonly failSave?: boolean } = {}): void {
     saved = [];
+    patches = [];
     // The site's kinds, as its settings hold them; a PATCH replaces them, the
     // way applying a `site.json` does.
     let kinds: Record<string, { base: string }> = {
@@ -198,6 +201,7 @@ describe('a publish and export round trip', () => {
           const patch = JSON.parse(String(init.body)) as {
             kinds?: Record<string, { base: string }>;
           };
+          patches.push(patch);
           kinds = patch.kinds ?? kinds;
         }
         return json({ defaultLocale: 'en', kinds, maxImageEdge: null });
@@ -322,6 +326,56 @@ describe('a publish and export round trip', () => {
     // and the template's `page/hello` in node_modules is not this site's.
     expect(
       saved.map((item) => `${String(item.kind)}/${String(item.slug)}`).sort(),
+    ).toEqual(['article/hello', 'product/bar']);
+  });
+
+  it('applies no settings in a dry run, and still reports what a real run would publish', async () => {
+    stubSite();
+    await writeFile(
+      join(dir, 'site.json'),
+      JSON.stringify({
+        name: 'Shop',
+        kinds: {
+          article: { base: 'articles' },
+          page: { base: '' },
+          product: { base: 'products' },
+        },
+      }),
+      'utf8',
+    );
+    await mkdir(join(dir, 'content/product/bar'), { recursive: true });
+    await writeFile(
+      join(dir, 'content/product/bar/index.md'),
+      '---\ntitle: Bar\n---\n\nA bar.\n',
+      'utf8',
+    );
+
+    const result = await run(
+      [
+        'publish',
+        dir,
+        '--with-settings',
+        '--dry-run',
+        '--url',
+        'https://example.com',
+        '--json',
+      ],
+      { MALLOK_TOKEN: 'token' },
+    );
+
+    expect(result.code, result.err).toBe(EXIT.ok);
+    // A dry run writes nothing: not content, and not the site's settings.
+    expect(saved).toEqual([]);
+    expect(patches).toEqual([]);
+    // It still reports the product, a kind only `site.json` enables, because
+    // a real run would have applied the file before placing the bundles.
+    const summary = JSON.parse(result.out) as {
+      dryRun: boolean;
+      items: { bundle: string; kind: string }[];
+    };
+    expect(summary.dryRun).toBe(true);
+    expect(
+      summary.items.map((item) => `${item.kind}/${item.bundle}`).sort(),
     ).toEqual(['article/hello', 'product/bar']);
   });
 

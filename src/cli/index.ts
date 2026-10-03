@@ -169,13 +169,33 @@ async function runPublish(
   // overwrites navigation, kinds and theme options (docs/CONTENT_FORMAT.md §7.1).
   // Applied before the site's kinds are read: a kind this file enables has to
   // exist by the time the scan decides which directories are content.
+  const dryRun = boolFlag(args, 'dry-run');
+  let wouldApply: SettingsPatch | null = null;
   if (boolFlag(args, 'with-settings')) {
-    const applied = await applySiteJson(client, resolve(dir), report);
-    if (!applied) {
+    const patch = await readSiteJson(resolve(dir));
+    if (patch === null) {
       report.warn('No site.json found; settings were left alone.');
+    } else {
+      if (dryRun) {
+        // A dry run writes nothing, the site's settings included.
+        wouldApply = patch.settings;
+        report.step(
+          `Dry run: site.json would be applied (${Object.keys(patch.settings).join(', ')}).`,
+        );
+      } else {
+        report.step('Applying site.json…');
+        await client.patch('/settings', patch.settings);
+      }
+      await warnAboutTheme(client, patch.themeId, report);
     }
   }
-  const context = await loadContext(client);
+  const remote = await loadContext(client);
+  // What a real run would see once the file was applied: the settings API
+  // replaces `kinds` wholesale, and the scan places bundles by those.
+  const context =
+    wouldApply?.kinds === undefined
+      ? remote
+      : { ...remote, kinds: Object.keys(wouldApply.kinds) };
 
   report.step(`Scanning ${resolve(dir)}…`);
   const scan = await scanDirectory(resolve(dir), {
@@ -197,7 +217,7 @@ async function runPublish(
       mode,
       draft: boolFlag(args, 'draft'),
       createOnly: boolFlag(args, 'create-only'),
-      dryRun: boolFlag(args, 'dry-run'),
+      dryRun,
       failOnMissing: boolFlag(args, 'fail-on-missing'),
       widths: context.widths,
       maxEdge: context.maxEdge,
@@ -218,7 +238,7 @@ async function runPublish(
   report.done(
     {
       command: mode,
-      dryRun: boolFlag(args, 'dry-run'),
+      dryRun,
       items: outcomes,
       counts: {
         total: outcomes.length,
@@ -263,18 +283,22 @@ async function runExport(
   return EXIT.ok;
 }
 
+/** The fields of a `site.json` the settings API accepts. */
+interface SettingsPatch {
+  readonly kinds?: Readonly<Record<string, unknown>>;
+  readonly [key: string]: unknown;
+}
+
 /**
- * Applies an export's `site.json`.
+ * Reads an export's `site.json` as a settings patch; null when there is none.
  *
- * Only the fields the settings API accepts are sent; the theme block is
+ * Only the fields the settings API accepts are kept; the theme block is
  * informational, because a theme is source code and an import cannot install
  * one (docs/CONTENT_FORMAT.md §5).
  */
-async function applySiteJson(
-  client: SiteClient,
+async function readSiteJson(
   root: string,
-  report: Reporter,
-): Promise<boolean> {
+): Promise<{ settings: SettingsPatch; themeId: string | undefined } | null> {
   const { readFile } = await import('node:fs/promises');
   let parsed: Record<string, unknown>;
   try {
@@ -282,9 +306,9 @@ async function applySiteJson(
       await readFile(resolve(root, 'site.json'), 'utf8'),
     ) as Record<string, unknown>;
   } catch {
-    return false;
+    return null;
   }
-  const patch: Record<string, unknown> = {};
+  const settings: Record<string, unknown> = {};
   for (const key of [
     'name',
     'tagline',
@@ -294,25 +318,31 @@ async function applySiteJson(
     'themeOptions',
   ]) {
     if (parsed[key] !== undefined) {
-      patch[key] = parsed[key];
+      settings[key] = parsed[key];
     }
   }
   if (Array.isArray(parsed.locales)) {
-    patch.locales = parsed.locales;
+    settings.locales = parsed.locales;
   }
-  report.step('Applying site.json…');
-  await client.patch('/settings', patch);
-
   const theme = parsed.theme as { id?: string } | undefined;
-  if (theme?.id !== undefined) {
-    const active = await client.get<{ id: string }>('/theme');
-    if (active.id !== theme.id) {
-      report.warn(
-        `This export was made with the "${theme.id}" theme; the site runs "${active.id}". Content and URLs are unaffected, but kinds that theme does not declare fall back to the page layout.`,
-      );
-    }
+  return { settings, themeId: theme?.id };
+}
+
+/** Says so when an export was made with a theme the site does not run. */
+async function warnAboutTheme(
+  client: SiteClient,
+  themeId: string | undefined,
+  report: Reporter,
+): Promise<void> {
+  if (themeId === undefined) {
+    return;
   }
-  return true;
+  const active = await client.get<{ id: string }>('/theme');
+  if (active.id !== themeId) {
+    report.warn(
+      `This export was made with the "${themeId}" theme; the site runs "${active.id}". Content and URLs are unaffected, but kinds that theme does not declare fall back to the page layout.`,
+    );
+  }
 }
 
 /**

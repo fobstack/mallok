@@ -206,6 +206,11 @@ publishes exactly the bundles under `content/`, and nothing from
 read, so a kind that file enables is already there when its bundles are
 placed.
 
+With `--dry-run` as well, `site.json` is **not** applied — a dry run writes
+nothing, settings included. It says which settings it would apply, and places
+bundles by the kinds the site would have afterwards, so the report lists what
+a real run would publish.
+
 When a directory name or `--kind` matches no enabled kind, **the import stops
 and lists what it could not place. It never guesses, and never quietly files
 things under `article`.**

@@ -49,9 +49,10 @@ everything else in the project are left alone.
 - **Reading only `content/` in the export layout** is what keeps a project's
   README, plugin documentation and sources from being treated as content. The
   skip list alone would not: those are ordinary directories.
-- **`--with-settings` still writes during `--dry-run`**, as before this task;
-  applying the settings earlier does not change that. It is recorded as a
-  separate defect rather than fixed here.
+- **`--with-settings` wrote during `--dry-run`**, before this task and after
+  it; applying the settings earlier did not change that. It was fixed right
+  after as its own change: a dry run now reports the settings it would apply
+  and resolves kinds from them locally, without a PATCH.
 
 ## 5. Verification
 
