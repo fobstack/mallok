@@ -4,6 +4,64 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.9] — 2026-10-03
+
+Defects found building a real site on rc.7 and rc.8, fixed.
+
+### Fixed
+
+- **`mallok publish` puts every language of a bundle into one translation
+  group.** A bundle without `mallok.json` was saved one language at a time
+  and each got a group of its own, so the pages had no hreflang and no
+  language switcher, while `mallok build` grouped the same files correctly.
+- **The home page receives `recent.<kind>` for every kind the theme lists**,
+  not `article` alone. A theme's product section never appeared on a served
+  site. The Worker and `mallok build` now use one rule: the kinds the site
+  enables and the theme gives a list layout, the ten newest of each.
+- **A generated site type-checks its text imports.** The package now declares
+  `*.liquid`, `*.css`, `*.sql` and `*.md` modules, so a site with its own theme
+  or a plugin migration passes `npm run typecheck`.
+- **`.dev.vars.example` carries `MALLOK_SETUP_KEY`**, without which the wizard
+  refuses to create the administrator of a local site.
+- **`mallok publish . --with-settings` works from a project root.** Only
+  `content/` is read, so the package's own template content in `node_modules`
+  is no longer published as a page of the site, and `site.json` is applied
+  before the site's kinds are read, so bundles of a kind it enables are not
+  dropped.
+- **A publish dry run no longer applies `site.json`.** `--with-settings
+  --dry-run` used to change the live site's settings.
+- **The admin shows a revoked API token as revoked**, with its date and no
+  Revoke button; revoking used to look like a button that did nothing.
+- **Reloading an admin route no longer answers 503** when the browser sends
+  cache validators. It showed under `wrangler dev`.
+
+### Added
+
+- `escapeHtml` and `renderTextTemplate` are exported from `mallok/worker`, so
+  a plugin that lives in a site can build its own HTML and email. A rendered
+  text template is not HTML-escaped; `docs/PLUGIN_API.md §7.6` says how the
+  two are used together.
+- `POST /content` returns `translationGroup`, and `GET /content` accepts a
+  `slug` filter.
+
+### Upgrade notes
+
+- **Bundles already split into several translation groups are not merged** by
+  publishing again: an existing item keeps its group, whatever is sent with
+  it. Delete the extra languages and publish the bundle again.
+- **A static build's home page lists ten items per kind, not twelve**, and a
+  kind without a list layout gets no `recent` group. A theme that loops a
+  whole group shows two fewer items after `mallok build`; a served site
+  always showed ten.
+- **A site with its own `text-modules.d.ts` should delete it.** With
+  `skipLibCheck: false` the two copies are reported as duplicate identifiers;
+  with the template's `skipLibCheck: true` nothing is reported.
+- Deploy after upgrading before you publish: a newer CLI against a site still
+  running an older release falls back to one group per language.
+
+This is still a public preview candidate, not stable 0.1. No new CPU sample
+was taken; the rc.5 measurements remain historical.
+
 ## [0.1.0-rc.8] — 2026-10-02
 
 ### Security
