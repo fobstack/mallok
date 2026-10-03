@@ -200,6 +200,10 @@ describe('a publish and export round trip', () => {
       if (path === '/media/check') {
         return json({ existing: [] });
       }
+      if (path.startsWith('/content?')) {
+        // The bundle's translation-group lookup: an empty site holds none.
+        return json({ items: [], hasNext: false });
+      }
       if (path === '/content') {
         if (options.failSave === true) {
           return json({ error: 'The site is unwell.' }, 500);

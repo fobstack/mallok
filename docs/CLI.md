@@ -205,7 +205,8 @@ scan the directory → detect the layout → parse each bundle
   → collect relative-path references and hash each file with sha256
   → ask the API which shas already exist
   → for the rest: sharp converts to WebP, generates variants, uploads
-  → POST each item, with its assets map
+  → find the bundle's translation group (CONTENT_FORMAT §7.2)
+  → POST each item, with its assets map and that group
   → print the result table
 ```
 
@@ -222,6 +223,12 @@ re-run without consequence.
 
 Handled per the table in `CONTENT_FORMAT §7.2`. With `--create-only`, an
 existing item is an error and nothing is overwritten.
+
+Every language of a bundle lands in one translation group, with or without
+`mallok.json`, which is what gives the published pages their hreflang and
+language switcher. When the group of a bundle without `mallok.json` cannot be
+looked up, that bundle's languages are reported as failed rather than saved
+into separate groups; the rest of the run continues.
 
 ### 6.5 Batching
 

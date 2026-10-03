@@ -43,6 +43,8 @@ export interface PublishOptions {
 interface SaveResponse {
   readonly id: string;
   readonly path: string;
+  /** The group the saved item belongs to (docs/CONTENT_FORMAT.md §2). */
+  readonly translationGroup?: string;
   readonly unchanged?: boolean;
   readonly missingAssets?: readonly string[];
   readonly warning?: string;
@@ -100,6 +102,36 @@ export async function publishBundles(
       }
     }
 
+    // One bundle is one translation group (docs/CONTENT_FORMAT.md §2). A
+    // bundle with `mallok.json` names its group; one without joins the group
+    // of any language the site already holds, or else the group its first
+    // saved language is given. Posting each language on its own used to give
+    // each a fresh group.
+    let group = bundle.identity?.translation_group;
+    if (group === undefined && !options.dryRun) {
+      try {
+        group = await existingGroup(client, bundle);
+      } catch (error) {
+        if (error instanceof CliError && error.code === EXIT.auth) {
+          throw error;
+        }
+        // Saving without knowing the group would split the bundle again, so
+        // its languages are reported as failed instead.
+        const message = error instanceof Error ? error.message : String(error);
+        for (const document of bundle.documents) {
+          outcomes.push({
+            bundle: bundle.name,
+            locale: document.locale,
+            kind: bundle.kind,
+            status: 'failed',
+            error: `Could not look up this bundle's translation group: ${message}`,
+            missing: document.missing,
+          });
+        }
+        continue;
+      }
+    }
+
     for (const document of bundle.documents) {
       const { data } = splitFrontmatter(document.markdown);
       const status = options.draft
@@ -141,15 +173,10 @@ export async function publishBundles(
       const identityItem = bundle.identity?.items[document.locale];
       const body = {
         ...(identityItem === undefined ? {} : { id: identityItem.id }),
-        ...(bundle.identity === null
-          ? {}
-          : { translationGroup: bundle.identity.translation_group }),
+        ...(group === undefined ? {} : { translationGroup: group }),
         kind: bundle.kind,
         locale: document.locale,
-        slug:
-          typeof data.slug === 'string'
-            ? data.slug
-            : (identityItem?.slug ?? bundle.name),
+        slug: documentSlug(bundle, document),
         markdown: document.markdown,
         assets,
         ...(options.createOnly ? { createOnly: true } : {}),
@@ -160,6 +187,7 @@ export async function publishBundles(
 
       try {
         const result = await client.post<SaveResponse>('/content', body);
+        group ??= result.translationGroup;
         outcomes.push({
           bundle: bundle.name,
           locale: document.locale,
@@ -188,6 +216,48 @@ export async function publishBundles(
   }
 
   return outcomes;
+}
+
+/** The slug a document is saved under: front matter, identity, or folder. */
+function documentSlug(bundle: Bundle, document: Bundle['documents'][number]) {
+  const { data } = splitFrontmatter(document.markdown);
+  if (typeof data.slug === 'string') {
+    return data.slug;
+  }
+  return bundle.identity?.items[document.locale]?.slug ?? bundle.name;
+}
+
+/**
+ * The translation group of a bundle's language the site already holds, by
+ * its natural key (kind, locale, slug); undefined when it holds none.
+ */
+async function existingGroup(
+  client: SiteClient,
+  bundle: Bundle,
+): Promise<string | undefined> {
+  for (const document of bundle.documents) {
+    const slug = documentSlug(bundle, document);
+    const query = new URLSearchParams({
+      kind: bundle.kind,
+      locale: document.locale,
+      slug,
+      limit: '1',
+    });
+    const found = await client.get<{
+      items: readonly {
+        readonly slug: string;
+        readonly translationGroup: string;
+      }[];
+    }>(`/content?${query.toString()}`);
+    // Checked rather than trusted: a site still running a release without
+    // the `slug` filter ignores it and answers with any item of the kind and
+    // locale, whose group is not this bundle's.
+    const match = found.items.find((item) => item.slug === slug);
+    if (match !== undefined) {
+      return match.translationGroup;
+    }
+  }
+  return undefined;
 }
 
 /** The fields a dry run compares against. */

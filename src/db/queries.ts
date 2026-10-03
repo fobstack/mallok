@@ -473,6 +473,8 @@ export async function findContentById(
 export interface ContentListFilter {
   readonly kind?: string;
   readonly locale?: string;
+  /** Exact slug, for looking one item up by its natural key. */
+  readonly slug?: string;
   readonly status?: ContentRow['status'];
   readonly limit: number;
   readonly offset: number;
@@ -500,6 +502,10 @@ export async function listContent(
   if (filter.status !== undefined) {
     clauses.push('status = ?');
     bindings.push(filter.status);
+  }
+  if (filter.slug !== undefined) {
+    clauses.push('slug = ?');
+    bindings.push(filter.slug);
   }
   const where = clauses.length === 0 ? '' : `WHERE ${clauses.join(' AND ')}`;
   const rows = await db

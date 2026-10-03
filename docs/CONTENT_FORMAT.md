@@ -209,8 +209,19 @@ files things under `article`.
 | --- | --- |
 | The bundle has `mallok.json` and that `id` exists | Update that item; `id`, `translation_group` and `created_at` are unchanged |
 | No `mallok.json`, but `(kind, locale, slug)` already exists | Update the existing item — this is what makes republishing idempotent |
-| No match | Create, assigning `id` and `translation_group` |
+| No match | Create, assigning `id`; the `translation_group` is the bundle's (below) |
 | `--create-only` | An existing item is an error; nothing is overwritten |
+
+**One bundle, one group** (§2 rule 1). Every language of a bundle is saved
+into the same `translation_group`: the one in `mallok.json` when there is one;
+otherwise the group of any language of the bundle the site already holds,
+matched by `(kind, locale, slug)`; otherwise the group the bundle's first
+saved language is given. Up to and including 0.1.0-rc.8, a bundle without
+`mallok.json` was saved one language at a time and each language got a group
+of its own.
+Publishing such a bundle again does not merge those groups — an existing item
+keeps its group — so repair it by deleting the extra languages and publishing
+the bundle again.
 
 **Idempotence**: when a bundle's content (the text of every `index*.md` and
 the sha of every referenced file) is identical to what is live, the import is

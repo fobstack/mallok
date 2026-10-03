@@ -34,6 +34,8 @@ interface StubOptions {
   readonly failFor?: Record<string, CliError>;
   /** Extra fields merged into a successful save response. */
   readonly saveResponse?: Record<string, unknown>;
+  /** Thrown by the translation-group lookup instead of answering. */
+  readonly lookupFailure?: CliError;
   /** Items the site already has, for dry-run comparison. */
   readonly items?: readonly {
     readonly id: string;
@@ -56,8 +58,19 @@ function stubSite(options: StubOptions = {}): SiteClient & {
     saves,
     uploads,
     async get<T>(path: string): Promise<T> {
+      if (path.startsWith('/content?') && options.lookupFailure !== undefined) {
+        throw options.lookupFailure;
+      }
       if (path.startsWith('/content?')) {
-        return { items: items.map((item) => ({ id: item.id })) } as T;
+        // Like a site before the `slug` filter: every item, whatever slug
+        // was asked for.
+        return {
+          items: items.map((item) => ({
+            id: item.id,
+            slug: item.slug,
+            translationGroup: `group-of-${item.id}`,
+          })),
+        } as T;
       }
       const id = path.replace('/content/', '');
       const found = items.find((item) => item.id === id);
@@ -244,6 +257,93 @@ describe('publishing bundles', () => {
 
     expect(client.saves[0]?.body.id).toBe('item-1');
     expect(client.saves[0]?.body.translationGroup).toBe('group-1');
+  });
+
+  it("carries the first language's new group into the others", async () => {
+    const client = stubSite({
+      saveResponse: { translationGroup: 'group-new' },
+    });
+
+    await publishBundles(
+      client,
+      [
+        bundle('fresh', [
+          { locale: 'en', markdown: article('Fresh') },
+          { locale: 'de', markdown: article('Frisch') },
+          { locale: 'fr', markdown: article('Frais') },
+        ]),
+      ],
+      baseOptions,
+      recordingReporter(),
+    );
+
+    // The site held none of them: the first save is given a group, and the
+    // rest are sent into it rather than each receiving its own.
+    expect(client.saves[0]?.body.translationGroup).toBeUndefined();
+    expect(client.saves[1]?.body.translationGroup).toBe('group-new');
+    expect(client.saves[2]?.body.translationGroup).toBe('group-new');
+  });
+
+  it("fails a bundle's languages, not the run, when its group cannot be looked up", async () => {
+    const client = stubSite({
+      lookupFailure: new CliError(EXIT.remote, 'The site replied 500.'),
+    });
+
+    const outcomes = await publishBundles(
+      client,
+      [
+        bundle('unknown', [
+          { locale: 'en', markdown: article('Unknown') },
+          { locale: 'de', markdown: article('Unbekannt') },
+        ]),
+      ],
+      baseOptions,
+      recordingReporter(),
+    );
+
+    // Saving without the group would split the bundle again.
+    expect(client.saves).toEqual([]);
+    expect(outcomes.map((row) => row.status)).toEqual(['failed', 'failed']);
+    expect(outcomes[0]?.error).toContain('translation group');
+  });
+
+  it('ignores a lookup answer for another slug, as an older site gives', async () => {
+    // A site without the `slug` filter answers with any item of the kind.
+    const client = stubSite({
+      items: [
+        {
+          id: 'other',
+          slug: 'someone-else',
+          markdown: article('Other'),
+          assets: {},
+          path: '/other',
+        },
+      ],
+    });
+
+    await publishBundles(
+      client,
+      [bundle('mine', [{ locale: 'en', markdown: article('Mine') }])],
+      baseOptions,
+      recordingReporter(),
+    );
+
+    expect(client.saves[0]?.body.translationGroup).toBeUndefined();
+  });
+
+  it('stops the run when the group lookup is refused for authorization', async () => {
+    const client = stubSite({
+      lookupFailure: new CliError(EXIT.auth, 'The token was refused.'),
+    });
+
+    await expect(
+      publishBundles(
+        client,
+        [bundle('locked', [{ locale: 'en', markdown: article('Locked') }])],
+        baseOptions,
+        recordingReporter(),
+      ),
+    ).rejects.toThrow('The token was refused.');
   });
 
   it('uploads only the media the site does not already hold', async () => {

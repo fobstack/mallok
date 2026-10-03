@@ -88,6 +88,7 @@ export async function getContentList(env: Env, url: URL): Promise<Response> {
   const result = await listContent(env.DB, {
     ...optional('kind', url.searchParams.get('kind')),
     ...optional('locale', url.searchParams.get('locale')),
+    ...optional('slug', url.searchParams.get('slug')),
     ...(status === null ? {} : { status }),
     limit,
     offset,
@@ -256,7 +257,12 @@ export async function saveContent(
     existing.status === status &&
     existing.published_at === publishedAt
   ) {
-    return json({ id: existing.id, path: existing.path, unchanged: true });
+    return json({
+      id: existing.id,
+      path: existing.path,
+      translationGroup: existing.translation_group,
+      unchanged: true,
+    });
   }
 
   const path = buildPublicPath({
@@ -342,6 +348,9 @@ export async function saveContent(
     {
       id: row.id,
       path: row.path,
+      // Returned so a client saving several languages of one bundle can put
+      // the rest in the same group (docs/CONTENT_FORMAT.md §2).
+      translationGroup: row.translation_group,
       status: row.status,
       publishedAt: row.published_at,
       missingAssets: fragment.meta.missing,
