@@ -31,7 +31,7 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–40) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally). Records in `tasks/TASK-18.md` onward |
+| Phase six, plugin API 2 (Tasks 18–40) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Records in `tasks/TASK-18.md` onward |
 
 ## 2. The two gates
 
@@ -398,9 +398,9 @@ before the rest of the phase. Every "current state" below was re-checked at
   `node_modules`, `dist`, `.wrangler`, `.mallok` and dot-directories. With
   `--with-settings`, apply the settings first and resolve kinds from the
   result.
-- **[OWNER]** A project root already detects as the export layout. Confirm
-  that is intended, so that `mallok publish . --with-settings` from a
-  project root is a supported use.
+- **Owner decision, 2026-10-03:** a project root is a supported input.
+  `mallok publish . --with-settings` from a project made by `mallok create`
+  is a documented use.
 - The path: from a generated project's root,
   `mallok publish . --with-settings` publishes exactly the bundles under
   `content/`, including kinds only the applied `site.json` enables.

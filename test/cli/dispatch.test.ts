@@ -180,6 +180,12 @@ describe('a publish and export round trip', () => {
   /** Answers the handful of endpoints these two commands call. */
   function stubSite(options: { readonly failSave?: boolean } = {}): void {
     saved = [];
+    // The site's kinds, as its settings hold them; a PATCH replaces them, the
+    // way applying a `site.json` does.
+    let kinds: Record<string, { base: string }> = {
+      article: { base: 'articles' },
+      page: { base: '' },
+    };
     vi.stubGlobal('fetch', async (url: string, init: RequestInit = {}) => {
       const path = url.replace('https://example.com/_mallok/api', '');
       const json = (body: unknown, status = 200): Response =>
@@ -188,11 +194,13 @@ describe('a publish and export round trip', () => {
           headers: { 'content-type': 'application/json' },
         });
       if (path === '/settings') {
-        return json({
-          defaultLocale: 'en',
-          kinds: { article: { base: 'articles' }, page: { base: '' } },
-          maxImageEdge: null,
-        });
+        if (init.method === 'PATCH') {
+          const patch = JSON.parse(String(init.body)) as {
+            kinds?: Record<string, { base: string }>;
+          };
+          kinds = patch.kinds ?? kinds;
+        }
+        return json({ defaultLocale: 'en', kinds, maxImageEdge: null });
       }
       if (path === '/theme') {
         return json({ imageWidths: [320], kinds: { article: {} } });
@@ -264,6 +272,57 @@ describe('a publish and export round trip', () => {
     };
     expect(summary.command).toBe('publish');
     expect(summary.counts).toEqual({ total: 1, unchanged: 0, failed: 0 });
+  });
+
+  it('publishes a site project from its root, with the kinds its site.json enables', async () => {
+    stubSite();
+    // A project as `mallok create` leaves it: `site.json` and `content/`,
+    // beside dependencies that carry the package's own template content.
+    await writeFile(
+      join(dir, 'site.json'),
+      JSON.stringify({
+        name: 'Shop',
+        kinds: {
+          article: { base: 'articles' },
+          page: { base: '' },
+          product: { base: 'products' },
+        },
+      }),
+      'utf8',
+    );
+    await mkdir(join(dir, 'content/product/bar'), { recursive: true });
+    await writeFile(
+      join(dir, 'content/product/bar/index.md'),
+      '---\ntitle: Bar\n---\n\nA bar.\n',
+      'utf8',
+    );
+    const decoy = join(dir, 'node_modules/mallok/template/content/page/hello');
+    await mkdir(decoy, { recursive: true });
+    await writeFile(
+      join(decoy, 'index.md'),
+      '---\ntitle: Template\n---\n\nNot this site.\n',
+      'utf8',
+    );
+    await writeFile(join(dir, 'README.md'), '# My site\n', 'utf8');
+
+    const result = await run(
+      [
+        'publish',
+        dir,
+        '--with-settings',
+        '--url',
+        'https://example.com',
+        '--json',
+      ],
+      { MALLOK_TOKEN: 'token' },
+    );
+
+    expect(result.code, result.err).toBe(EXIT.ok);
+    // `product` exists on the site only once `site.json` has been applied,
+    // and the template's `page/hello` in node_modules is not this site's.
+    expect(
+      saved.map((item) => `${String(item.kind)}/${String(item.slug)}`).sort(),
+    ).toEqual(['article/hello', 'product/bar']);
   });
 
   it('returns the remote exit code when every item fails', async () => {

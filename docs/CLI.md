@@ -193,6 +193,19 @@ Both accept `--draft` to force a draft.
 Three are detected automatically (`CONTENT_FORMAT §7.1`): a Mallok export, a
 directory of bundles, and loose `*.md` files.
 
+A site project's root is the export layout, so from inside a project made by
+`mallok create`:
+
+```sh
+npx mallok publish . --with-settings
+```
+
+publishes exactly the bundles under `content/`, and nothing from
+`node_modules`, build output or the project's own Markdown. With
+`--with-settings`, `site.json` is applied **before** the site's kinds are
+read, so a kind that file enables is already there when its bundles are
+placed.
+
 When a directory name or `--kind` matches no enabled kind, **the import stops
 and lists what it could not place. It never guesses, and never quietly files
 things under `article`.**

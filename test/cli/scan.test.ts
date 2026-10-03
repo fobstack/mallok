@@ -97,6 +97,63 @@ describe('scanDirectory', () => {
     expect(result.bundles[0]?.documents).toHaveLength(1);
   });
 
+  it('reads only content/ when pointed at a site project', async () => {
+    // A project made by `mallok create` has `site.json` and `content/`, so it
+    // is the export layout — and it also has a README, its own sources, build
+    // output, and a `node_modules` holding the package's template, whose
+    // `content/page/hello` used to be collected as a bundle of this site.
+    const root = await tree({
+      'site.json': '{"name":"Mine"}',
+      'README.md': '# My site',
+      'content/page/about/index.md': '---\ntitle: About\n---\n\nBody.',
+      'content/product/bar/index.md': '---\ntitle: Bar\n---\n\nBody.',
+      'node_modules/mallok/template/content/page/hello/index.md':
+        '---\ntitle: Hello\n---\n\nTemplate.',
+      'node_modules/some-dep/docs/article/guide/index.md': '# Guide',
+      'dist/demo/page/stale/index.md': '---\ntitle: Stale\n---\n\nOld.',
+      '.wrangler/tmp/article/cached/index.md': '# Cached',
+      '.mallok/article/state/index.md': '# State',
+      '.git/article/objects/index.md': '# Git',
+      'src/plugins/shop/README.md': '# Shop',
+      'docs/notes/index.md': '# Notes',
+    });
+
+    const result = await scanDirectory(root, OPTIONS);
+    expect(result.layout).toBe('export');
+    expect(
+      result.bundles.map((bundle) => `${bundle.kind}/${bundle.name}`).sort(),
+    ).toEqual(['page/about', 'product/bar']);
+  });
+
+  it('skips dependency, build and dot directories in any layout', async () => {
+    const root = await tree({
+      'article/hello/index.md': '---\ntitle: Hello\n---\n\nBody.',
+      'node_modules/pkg/article/theirs/index.md': '# Theirs',
+      'dist/article/built/index.md': '# Built',
+      '.wrangler/article/tmp/index.md': '# Tmp',
+      '.mallok/article/state/index.md': '# State',
+    });
+
+    const result = await scanDirectory(root, OPTIONS);
+    expect(result.bundles.map((bundle) => bundle.name)).toEqual(['hello']);
+  });
+
+  it('still reads content whose slug is an ordinary word like "dist"', async () => {
+    // Only the top level of the scanned directory holds dependencies and
+    // build output. Below it, `dist` is somebody's slug.
+    const root = await tree({
+      'site.json': '{"name":"Mine"}',
+      'content/page/dist/index.md': '---\ntitle: Distribution\n---\n\nBody.',
+      'content/article/node_modules/index.md':
+        '---\ntitle: About node_modules\n---\n\nBody.',
+    });
+
+    const result = await scanDirectory(root, OPTIONS);
+    expect(
+      result.bundles.map((bundle) => `${bundle.kind}/${bundle.name}`).sort(),
+    ).toEqual(['article/node_modules', 'page/dist']);
+  });
+
   it('says so when there is nothing to import', async () => {
     const root = await tree({ 'readme.txt': 'no markdown here' });
     await expect(scanDirectory(root, OPTIONS)).rejects.toThrow(

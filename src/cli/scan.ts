@@ -49,12 +49,33 @@ export interface ScanResult {
   readonly bundles: readonly Bundle[];
 }
 
+/**
+ * Directories that never hold a site's content. A site project has
+ * dependencies and build output beside its `content/`, and
+ * `node_modules/mallok/template/content/` looks exactly like a bundle of the
+ * site being published.
+ *
+ * `node_modules` and `dist` are skipped at the top of the scanned directory
+ * only, which is where a project keeps them: further down, `dist` is
+ * somebody's slug. A hidden directory (`.git`, `.wrangler`, `.mallok`) is
+ * skipped at any depth, since no kind or slug starts with a dot.
+ */
+function isSkippedDirectory(name: string, topLevel: boolean): boolean {
+  if (name.startsWith('.')) {
+    return true;
+  }
+  return topLevel && (name === 'node_modules' || name === 'dist');
+}
+
 async function listFiles(dir: string): Promise<string[]> {
   const out: string[] = [];
   const walk = async (current: string): Promise<void> => {
     for (const entry of await readdir(current, { withFileTypes: true })) {
       const full = join(current, entry.name);
       if (entry.isDirectory()) {
+        if (isSkippedDirectory(entry.name, current === dir)) {
+          continue;
+        }
         await walk(full);
       } else if (entry.isFile()) {
         out.push(relative(dir, full).split(sep).join('/'));
@@ -166,10 +187,18 @@ export async function scanDirectory(
     );
   }
 
+  // An export keeps its content under `content/` (docs/CONTENT_FORMAT.md §5).
+  // A site project is the same layout with a README, sources and
+  // documentation beside it, and none of that Markdown is content.
+  const candidates =
+    layout === 'export'
+      ? paths.filter((path) => path.startsWith('content/'))
+      : paths;
+
   /** Directories that hold an `index*.md`, with their kind directory. */
   const bundleDirs = new Map<string, string>();
   const flatFiles: string[] = [];
-  for (const path of paths) {
+  for (const path of candidates) {
     const parts = path.split('/');
     const file = parts.at(-1) ?? '';
     if (!file.endsWith('.md')) {

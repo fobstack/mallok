@@ -191,13 +191,20 @@ remain valid.
 Three layouts are accepted and detected automatically:
 
 1. **A Mallok export** (§5). When `site.json` is present, importing the
-   settings is opt-in.
+   settings is opt-in. A site project made by `mallok create` has the same two
+   things, `site.json` and `content/`, so its root is this layout too, and
+   only what is under `content/` is read: the project's README, its sources
+   and its documentation are not content.
 2. **A directory of bundles**. The content kind comes from `--kind` or from
    matching the parent directory name against an enabled kind.
 3. **Flat files**: `*.md` in a directory, each treated as a single-locale
    bundle, with image paths resolved relative to that file's directory.
    Astro's `src/content/<collection>/` layout is handled this way, with
    `<collection>` mapped to a content kind.
+
+In every layout, the top of the directory being read skips `node_modules` and
+`dist`, and hidden directories (`.git`, `.wrangler`, `.mallok`) are skipped at
+any depth. Below the top level, a directory named `dist` is an ordinary slug.
 
 When a directory name or `--kind` matches no enabled content kind, the import
 stops and lists what it could not place. It never guesses, and never quietly

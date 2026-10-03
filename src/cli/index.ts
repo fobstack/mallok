@@ -164,16 +164,18 @@ async function runPublish(
     throw new CliError(EXIT.user, `mallok ${mode} needs a directory.`);
   }
   const client = await connect(args);
-  const context = await loadContext(client);
 
   // An export carries `site.json`; importing it is opt-in because it
   // overwrites navigation, kinds and theme options (docs/CONTENT_FORMAT.md §7.1).
+  // Applied before the site's kinds are read: a kind this file enables has to
+  // exist by the time the scan decides which directories are content.
   if (boolFlag(args, 'with-settings')) {
     const applied = await applySiteJson(client, resolve(dir), report);
     if (!applied) {
       report.warn('No site.json found; settings were left alone.');
     }
   }
+  const context = await loadContext(client);
 
   report.step(`Scanning ${resolve(dir)}…`);
   const scan = await scanDirectory(resolve(dir), {
