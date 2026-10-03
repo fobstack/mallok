@@ -158,7 +158,18 @@ await chmod(`${OUT}/cli/index.js`, 0o755);
 // this file honest is `test/types/public-surface.ts`, which type-checks the
 // implementation against it (src/worker/public.d.ts explains the choice).
 await mkdir(`${OUT}/types`, { recursive: true });
-await copyFile('src/worker/public.d.ts', `${OUT}/types/worker.d.ts`);
+// A site's `wrangler.jsonc` bundles `*.liquid`, `*.css`, `*.sql` and `*.md`
+// as text, and its own theme and plugin migrations import them. Wildcard
+// module declarations cannot live in `worker.d.ts` itself — a file with
+// imports is a module, where `declare module` is an augmentation — so they
+// ship beside it and are referenced from it. Every site imports
+// `mallok/worker`, so the declarations reach a site that was generated before
+// they existed, on upgrade, without a file being added to it.
+await copyFile('text-modules.d.ts', `${OUT}/types/text-modules.d.ts`);
+await writeFile(
+  `${OUT}/types/worker.d.ts`,
+  `/// <reference path="./text-modules.d.ts" />\n${await readFile('src/worker/public.d.ts', 'utf8')}`,
+);
 
 // ---- Assets --------------------------------------------------------------
 //

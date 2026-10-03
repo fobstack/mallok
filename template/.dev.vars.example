@@ -7,6 +7,18 @@
 #   openssl rand -base64 32
 MALLOK_SECRET=change-me-to-32-random-bytes
 
+# The first-run wizard asks for this key before it creates the
+# administrator, locally as on a deployed site. Any random value; you type it
+# into the wizard once:
+#   openssl rand -hex 32
+MALLOK_SETUP_KEY=change-me-to-a-random-key
+
+# Alternative, for local development only: let the wizard run without a key.
+# Leave it commented out unless you want that. It belongs only in `.dev.vars`
+# and never in `wrangler.jsonc`: `mallok create` refuses to deploy a
+# configuration that carries it.
+# MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY=true
+
 # Optional. With a zone-scoped Cache Purge token, an edit is visible
 # immediately; without one it is visible when the cached page expires.
 # CF_API_TOKEN=

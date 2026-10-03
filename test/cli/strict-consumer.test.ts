@@ -415,6 +415,42 @@ describe('a project that installed only the tarball', () => {
     expect(result.stdout).toContain('emails: ok');
   }, 300_000);
 
+  it('type-checks a site that brings its own theme and a plugin migration', async () => {
+    // `wrangler.jsonc` bundles `*.liquid`, `*.css`, `*.sql` and `*.md` as
+    // text, and the template's README shows importing a layout. Nothing told
+    // TypeScript what those modules are, so `npm run typecheck` failed as
+    // soon as a site added its own theme or a plugin with a migration.
+    await writeFile(
+      join(sandbox, 'src/site-theme.ts'),
+      [
+        "import { definePlugin, defineTheme } from 'mallok/worker';",
+        "import base from './theme/layouts/base.liquid';",
+        "import style from './theme/assets/style.css';",
+        "import about from './content/about.md';",
+        "import createTables from './plugins/shop/0001_init.sql';",
+        '',
+        "export const theme = defineTheme({ id: 'site' }, {",
+        "  'layouts/base.liquid': base,",
+        "  'assets/style.css': style,",
+        '});',
+        'export const aboutLength: number = about.length;',
+        'export const shop = definePlugin({',
+        "  manifest: { id: 'shop', name: 'Shop', version: '1.0.0' },",
+        "  migrations: [{ id: 'plugin:shop:0001', sql: createTables }],",
+        '});',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const result = await run(
+      join(sandbox, 'node_modules/.bin/tsc'),
+      ['-p', 'tsconfig.json'],
+      sandbox,
+    );
+    expect(result.code, result.stdout + result.stderr).toBe(0);
+  }, 300_000);
+
   it('ships declarations that name no package it does not depend on', async () => {
     const declarations = await readFile(
       join(sandbox, 'node_modules/mallok/types/worker.d.ts'),

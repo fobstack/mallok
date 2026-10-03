@@ -20,6 +20,17 @@ npm run smoke        # a real request to a real Worker
 npm run deploy       # wrangler deploy
 ```
 
+## Running locally
+
+```sh
+cp .dev.vars.example .dev.vars   # then replace the two change-me values
+npm run dev
+```
+
+Open the address Wrangler prints. The first-run wizard asks for the
+`MALLOK_SETUP_KEY` you put in `.dev.vars` before it creates the
+administrator. `.dev.vars` is ignored by Git; keep it that way.
+
 ## Upgrading Mallok
 
 ```sh
@@ -57,6 +68,11 @@ const mine = defineTheme(manifest, {
 
 export default createMallok({ theme: mine });
 ```
+
+`wrangler.jsonc` bundles `*.liquid`, `*.css`, `*.sql` and `*.md` as text, and
+the `mallok` package declares those modules to TypeScript, so imports like the
+ones above type-check as they are. A plugin migration imports its `.sql` the
+same way.
 
 `wrangler.jsonc` already declares the Text rule that makes those `.liquid`
 imports work. The theme format is documented at
