@@ -591,7 +591,11 @@ inquiry cart or a booking plugin as much as a shop.
   the one kind of change that can affect a version 1 plugin, and it is never
   made silently.
 - The build's supported version (`PLUGIN_API_VERSION` in `src/core/plugin.ts`)
-  becomes 2 when the first addition below lands.
+  becomes 2 with the first addition that changes what a `plugin.json` may
+  declare or what a hook receives (Task 22, `renderData`). Until then it stays
+  1, so that a plugin declaring `pluginApi: 2` is never accepted by a build
+  holding only part of version 2. Additions that are plain exports, such as
+  the public helpers, need no declaration and are usable under version 1.
 
 ### 13.2 Additions
 
