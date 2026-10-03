@@ -21,7 +21,6 @@ import { parseSiteSettings, type SiteSettings, siteOrigin } from '../site.js';
 import { getCompiledTheme } from '../theme-cache.js';
 
 export const LIST_PAGE_SIZE = 20;
-export const HOME_RECENT = 10;
 
 /** The per-request state the page modules share. */
 export interface PublicLocals {

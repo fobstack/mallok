@@ -374,6 +374,31 @@ export function faqPairs(value: unknown): FaqPair[] {
   return pairs;
 }
 
+/** Items in each of a home page's lists (docs/DATA_MODEL.md §3). */
+export const HOME_RECENT = 10;
+
+/**
+ * The kinds a home page lists as `recent.<kind>` (docs/THEME_FORMAT.md §7.4):
+ * those the site enables and the theme gives a list layout, in the site's own
+ * order.
+ *
+ * One rule for both paths. The Worker used to supply `article` alone and
+ * `mallok build` every enabled kind, so the same content rendered two
+ * different home pages.
+ */
+export function homeKinds(
+  siteKinds: Readonly<Record<string, unknown>>,
+  themeKinds: Readonly<
+    Record<string, { readonly listLayout?: string | undefined }>
+  >,
+): string[] {
+  return Object.keys(siteKinds).filter(
+    (kind) =>
+      Object.hasOwn(themeKinds, kind) &&
+      themeKinds[kind]?.listLayout !== undefined,
+  );
+}
+
 /** Builds the view for the home page of one locale. */
 export function buildHomePageView(
   ctx: ViewContext,

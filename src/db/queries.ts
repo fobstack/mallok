@@ -182,6 +182,37 @@ export async function listPublished(
   return { items, hasNext: rows.results.length > limit };
 }
 
+/**
+ * The newest published items of several kinds in one locale, for a home page:
+ * one bounded statement per kind, in a single batch, so the number of kinds a
+ * theme lists does not add round trips (docs/DATA_MODEL.md §3).
+ */
+export async function listRecentByKind(
+  db: D1Database,
+  kinds: readonly string[],
+  locale: string,
+  limit: number,
+  now: string,
+): Promise<Record<string, ContentSummaryRow[]>> {
+  if (kinds.length === 0) {
+    return {};
+  }
+  const statement = db.prepare(
+    `SELECT ${SUMMARY_COLUMNS} FROM content
+     WHERE kind = ? AND locale = ? AND status = 'published' AND published_at <= ?
+     ORDER BY published_at DESC, id
+     LIMIT ?`,
+  );
+  const results = await db.batch<ContentSummaryRow>(
+    kinds.map((kind) => statement.bind(kind, locale, now, limit)),
+  );
+  const recent: Record<string, ContentSummaryRow[]> = {};
+  kinds.forEach((kind, index) => {
+    recent[kind] = results[index]?.results ?? [];
+  });
+  return recent;
+}
+
 /** Default values for a freshly deployed site. */
 export interface SiteDefaults {
   readonly name: string;

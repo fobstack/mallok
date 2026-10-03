@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { buildStatic } from '../../src/cli/build.js';
 import { makeReporter } from '../../src/cli/output.js';
+import { themeSource } from '../fixtures/theme-source.js';
 
 /**
  * A site built entirely from files, with no database anywhere.
@@ -218,5 +219,65 @@ describe('mallok build', () => {
         makeReporter(false, true),
       ),
     ).rejects.toThrow(/No site.json/);
+  });
+});
+
+describe("mallok build's home page", () => {
+  it('lists the kinds the theme lists, ten each, as the Worker does', async () => {
+    // A theme whose home prints what it was given: Atelier draws only three
+    // items, which would hide both the kind rule and the bound.
+    const themeDir = await mkdtemp(join(tmpdir(), 'mallok-theme-'));
+    for (const entry of themeSource('probe', '1.0.0')) {
+      const text =
+        entry.path === 'layouts/home.liquid'
+          ? '<!doctype html><html><body>articles:{{ recent.article.size }} {% if recent.page %}pages-listed{% endif %}</body></html>'
+          : new TextDecoder().decode(entry.bytes);
+      await put(themeDir, entry.path, text);
+    }
+    const root = await mkdtemp(join(tmpdir(), 'mallok-home-'));
+    const dir = await mkdtemp(join(tmpdir(), 'mallok-home-out-'));
+    await put(
+      root,
+      'site.json',
+      JSON.stringify({
+        name: 'Home',
+        tagline: '',
+        defaultLocale: 'en',
+        locales: ['en'],
+        kinds: { page: { base: '' }, article: { base: 'news' } },
+        nav: {},
+        themeOptions: {},
+      }),
+    );
+    await put(
+      root,
+      'content/page/about/index.md',
+      '---\ntitle: About\n---\n\nBody.',
+    );
+    for (let index = 1; index <= 12; index++) {
+      const day = String(index).padStart(2, '0');
+      await put(
+        root,
+        `content/article/note-${day}/index.md`,
+        `---\ntitle: Note ${day}\ndate: 2026-01-${day}T00:00:00Z\n---\n\nBody.`,
+      );
+    }
+
+    await buildStatic(
+      {
+        root,
+        themeDir,
+        outDir: dir,
+        origin: 'https://example.com',
+        now: new Date('2026-06-01T00:00:00Z'),
+      },
+      makeReporter(false, true),
+    );
+
+    const home = await readFile(join(dir, 'index.html'), 'utf8');
+    // Twelve articles, ten on the home page; `page` has no list layout, so
+    // the home page is not given a `recent.page` at all.
+    expect(home).toContain('articles:10');
+    expect(home).not.toContain('pages-listed');
   });
 });

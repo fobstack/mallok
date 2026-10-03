@@ -4,6 +4,7 @@ import {
   buildImageViews,
   buildRelationsView,
   faqPairs,
+  homeKinds,
   parseThemeManifest,
   type SummaryInput,
   type ViewContext,
@@ -248,5 +249,33 @@ describe('buildImageViews', () => {
     expect(
       buildImageViews(assets, 'https://media.example.com')['files/sheet.pdf'],
     ).toBeUndefined();
+  });
+});
+
+describe('homeKinds', () => {
+  const theme = {
+    page: {},
+    article: { listLayout: 'layouts/list.liquid' },
+    product: { listLayout: 'layouts/list.liquid' },
+    faq: { listLayout: 'layouts/list.liquid' },
+  };
+
+  it('lists the enabled kinds the theme gives a list layout, in site order', () => {
+    expect(
+      homeKinds(
+        { page: { base: '' }, product: { base: 'p' }, article: { base: 'n' } },
+        theme,
+      ),
+    ).toEqual(['product', 'article']);
+  });
+
+  it('leaves out a kind the theme does not know and one the site has not enabled', () => {
+    expect(
+      homeKinds({ article: { base: 'n' }, widget: { base: 'w' } }, theme),
+    ).toEqual(['article']);
+  });
+
+  it('is not fooled by a kind named like an Object member', () => {
+    expect(homeKinds({ constructor: { base: 'c' } }, theme)).toEqual([]);
   });
 });

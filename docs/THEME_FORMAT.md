@@ -369,8 +369,11 @@ list, use `item.description`.
 {% for item in recent.product %}…{% endfor %}
 ```
 
-Recent content grouped by kind and bounded, with `LIMIT ≤ 12` per group
-(`DATA_MODEL §3`).
+Recent content grouped by kind: a group for every kind the site enables and
+this theme gives a `listLayout`, in the site's order, each holding the ten
+newest published items in the page's locale (`DATA_MODEL §3`). A kind without
+a list layout, such as `page`, has no group. The Worker and `mallok build`
+apply the same rule, so a home page is the same on both.
 
 ### 7.5 Images, files and related content
 

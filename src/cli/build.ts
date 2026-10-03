@@ -29,6 +29,8 @@ import {
   buildRobots,
   buildSitemap,
   compileTheme,
+  HOME_RECENT,
+  homeKinds,
   renderFragment,
   renderPage,
   type SitemapEntry,
@@ -312,8 +314,12 @@ export async function buildStatic(
   for (const locale of config.locales) {
     const homePath = buildHomePath(locale, config.defaultLocale);
     const recent: Record<string, SummaryInput[]> = {};
-    for (const kind of Object.keys(config.kinds)) {
-      recent[kind] = listOf(model, kind, locale).slice(0, 12).map(toSummary);
+    // The same kinds and the same bound as the Worker's home page, so the
+    // two paths render the same page from the same content.
+    for (const kind of homeKinds(config.kinds, manifest.kinds)) {
+      recent[kind] = listOf(model, kind, locale)
+        .slice(0, HOME_RECENT)
+        .map(toSummary);
     }
     await write(
       options.outDir,

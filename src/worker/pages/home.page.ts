@@ -7,36 +7,35 @@
  * document.
  */
 
-import { listPublished } from '../../db/queries.js';
+import { HOME_RECENT, homeKinds } from '../../core/index.js';
+import { listRecentByKind } from '../../db/queries.js';
 import { definePage } from '../../runtime/core/index.js';
 import { runAfterRender } from '../plugin-runtime.js';
 import { renderHomePage, resolveCovers } from '../render.js';
-import { HOME_RECENT, type PublicLocals, publicHeaders } from './context.js';
+import { type PublicLocals, publicHeaders } from './context.js';
 
 export default definePage<PublicLocals>()({
   load: async ({ locals }) => {
-    const recent = await listPublished(
+    // Every kind the theme lists, not `article` alone: a theme's
+    // `recent.product` used to be empty on a served site
+    // (docs/THEME_FORMAT.md §7.4).
+    const recent = await listRecentByKind(
       locals.env.DB,
-      'article',
+      homeKinds(locals.settings.kinds, locals.render.theme.manifest.kinds),
       locals.locale,
       HOME_RECENT,
-      0,
       locals.now,
     );
     const covers = await resolveCovers(
       locals.env.DB,
-      recent.items,
+      Object.values(recent).flat(),
       locals.settings.mediaBaseUrl,
     );
     return { recent, covers };
   },
 
   render: async ({ recent, covers }, { locals }) => {
-    const rendered = await renderHomePage(
-      locals.render,
-      { article: recent.items },
-      covers,
-    );
+    const rendered = await renderHomePage(locals.render, recent, covers);
     const body = await runAfterRender(locals.data.plugins, rendered, {
       site: locals.settings,
       locale: locals.locale,

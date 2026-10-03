@@ -302,7 +302,7 @@ bounded number of rows:
 | Related content (any content page) | one row per `reference` field, `LIMIT 24` per back-reference, `LIMIT 6` for siblings; one batch, at most 8 + 1 statements | Bounded; a product page is 1 + 6 in practice |
 | Resolving covers | `media` by `sha256 IN (…)`, one query | ≤ the number of items on the page |
 | A list page | `content` through the `content_list` index, `LIMIT n+1` | n+1 (21 by default) |
-| A home page | Several bounded lists declared by the theme, each `LIMIT ≤ 12` | ≤ 50 |
+| A home page | One list per kind the theme lists, each `LIMIT 10`, all in one batch; covers in one more query | 10 per listed kind (Atelier lists five: ≤ 50) |
 | A sitemap | Published `content` rows, paginated `LIMIT 5000` | Bounded, cached for a long time |
 | A 404 | One `redirect` row | 1 |
 | Saving content | Read the old row (1), write `content` (1), write `render_cache` (1), update `media.ref_count` (≤ the reference count), write `job` (≤ 3) | A small constant |

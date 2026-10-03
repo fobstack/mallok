@@ -222,4 +222,16 @@ describe('cold render D1 budget', () => {
     // items are resolved in the same second round trip.
     expect(calls).toEqual(['batch(5)', 'batch(3)']);
   });
+
+  it('lists every kind on the home page in one more round trip', async () => {
+    // Runs after the case above, so page, article, product and category are
+    // enabled. Atelier gives a list layout to the last three, and each is one
+    // statement of a single batch: the number of kinds a theme lists must
+    // not add round trips (docs/DATA_MODEL.md §3).
+    const { db, calls } = countingDb(env.DB);
+    const response = await coldRender('/', db);
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('Heavy');
+    expect(calls).toEqual(['batch(5)', 'batch(3)']);
+  });
 });

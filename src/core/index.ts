@@ -144,6 +144,8 @@ export {
   type FaqPair,
   type FragmentInputView,
   faqPairs,
+  HOME_RECENT,
+  homeKinds,
   type ListInput,
   type NavEntry,
   type RelationsInput,
