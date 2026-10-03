@@ -31,7 +31,7 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–35) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin; baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers). Records in `tasks/TASK-18.md` onward |
+| Phase six, plugin API 2 (Tasks 18–40) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers). Records in `tasks/TASK-18.md` onward |
 
 ## 2. The two gates
 
@@ -282,8 +282,10 @@ Rules for the whole phase:
   task starts. **[OWNER]** marks a decision the owner makes before that part
   is built; **[VERIFY]** marks a Cloudflare fact checked against the current
   official documentation, with the source and date recorded.
-- Order: the P0 tasks (18–30) in this order, then P1 (31–33), then P2 (34),
-  then the close-out (35). One task per branch.
+- Order: the P0 bug fixes (36, 37, 38, 40) first; then the remaining P0 tasks in
+  the order below (21–30); then P1 (31–33, 39); then P2 (34); then the
+  close-out (35). Tasks 18–20 are done. One task per branch. Task numbers
+  follow the order tasks were added, not the order they are built in.
 - Done means §5 plus `pnpm admin:size`, with a `docs/tasks/TASK-NN.md` record.
 
 Where the owner's list grouped parts of one item, the parts that are separate
@@ -292,6 +294,117 @@ The order differs from the list in two places, both by owner decision on
 2026-10-01: the panel-read scope fix comes first and ships on its own as
 `0.1.0-rc.8`, and rate-limit tiers move from P1 into P0 because the phase-one
 cart cannot live within the shared 10-per-minute budget.
+
+#### P0, bugs first — defects found building Nundar on rc.7
+
+Added 2026-10-03 from the owner's updated list (items M12, M13, M15, dated
+2026-10-02). Each was hit for real on `0.1.0-rc.7`, stands alone, and can ship
+before the rest of the phase. Every "current state" below was re-checked at
+`441a5cc` and audited against the source; the earlier tasks' baseline is
+`0af520b`.
+
+**Task 36 — one translation group per published bundle** [M12]
+- Current: for a bundle without `mallok.json`, `mallok publish` posts each
+  language without `translationGroup` (`src/cli/publish.ts`), and the server
+  gives each a fresh group (`src/worker/admin-content.ts`,
+  `existing?.translation_group ?? input.translationGroup ?? …`). A bundle
+  with `index.md`, `index.de.md`, `index.fr.md` and `index.es.md` landed as
+  four rows in four groups, with no hreflang and no language switcher.
+  `mallok build` groups the same bundle correctly, so the two paths disagree,
+  and `CONTENT_FORMAT.md §2` rule 1 says one bundle is one group.
+- Within one bundle, carry the group the first saved language received into
+  the saves of the others. The save response does **not** return it today
+  (`POST /content` answers with `id`, `path`, `status` and the like,
+  `src/worker/admin-content.ts`; the CLI's `SaveResponse` matches), so the
+  task adds `translationGroup` to that response and documents it.
+- When the site already holds a language of the bundle (same kind, locale and
+  slug), use that item's group. `findExisting` in `src/cli/publish.ts` lists
+  and fetches items one by one and suits `--dry-run` only, so the task adds a
+  `slug` filter to `GET /content` (the server already has
+  `findContentByKey`) rather than reusing it.
+- Republishing stays idempotent (`CONTENT_FORMAT.md §7.2`), and a bundle with
+  `mallok.json` behaves exactly as before.
+- Bundles already split by rc.7 are **not** merged by republishing: the
+  existing row's group wins (`existing?.translation_group ?? …`). The task
+  documents the repair (delete the extra languages and publish again) rather
+  than rewriting stored groups.
+- The path: a four-language bundle with no `mallok.json`, published to an
+  empty site, lands as four rows in one group, each page with hreflang to the
+  others; publishing it again is a no-op.
+- Depends on: nothing. Contracts: `CONTENT_FORMAT.md §2`, `§7`; `CLI.md`;
+  `ADMIN.md` (the management API's save response and list filter).
+
+**Task 37 — `recent.<kind>` on the home page for every listed kind** [M13]
+- Current: `src/worker/pages/home.page.ts` loads published `article` items
+  only and passes `{ article: … }`, while `THEME_FORMAT.md §7.4` documents
+  `recent.<kind>` grouped by kind and Atelier's home reads `recent.product`.
+  `mallok build` supplies every kind, so the Worker and the static build
+  render different home pages from the same content.
+- One rule for both paths, so they render the same home page: the kinds are
+  those the site enables and the theme declares with a `listLayout`, and each
+  list holds the newest `HOME_RECENT` (10) items. Today the Worker uses 10 for
+  `article` only (`src/worker/pages/context.ts`) while `mallok build` uses 12
+  for every enabled kind, list layout or not (`src/cli/build.ts`); both change.
+- Load those lists in **one** D1 batch and resolve covers in the existing
+  single query, within `AC-INV-05`'s four round trips. `DATA_MODEL.md §3`
+  bounds a home page at 50 rows; Atelier lists five kinds, 5 × 10 = 50. The
+  task states that the bound is 10 per listed kind and updates the table row,
+  rather than relying on a theme keeping to five.
+- Purging needs no change: every content change already carries
+  `home:<locale>` (`tagsForContent` in `src/worker/cache.ts`), which is the
+  home page's own tag (`src/worker/pages/home.page.ts`). The task adds a
+  regression test for it.
+- `test/worker/budget.test.ts` has no home-page case today; the task adds one,
+  measuring the cold home render's round trips.
+- The path: a theme's home template receives `recent.<kind>` for each listed
+  kind; the new home-page budget case passes; the Worker and the static build
+  render the same home page for the same content; publishing a product purges
+  the home page.
+- Depends on: nothing. Task 22 builds its home-page `items` on this task's
+  multi-kind loader. Contracts: `THEME_FORMAT.md §7.4`, `DATA_MODEL.md §3`,
+  `ARCHITECTURE.md §6`.
+
+**Task 38 — a generated site type-checks and can be claimed locally** [M15, parts 1–2]
+- Current, at `441a5cc`: the template has no declarations for text modules.
+  The framework's own `text-modules.d.ts` declares `*.liquid`, `*.css`,
+  `*.sql` and `*.md`, and the template's `wrangler.jsonc` has the matching Text
+  rule, but nothing is copied into a generated site, so `npm run typecheck`
+  fails as soon as a site adds its own theme or a plugin migration. And
+  `template/.dev.vars.example` has no `MALLOK_SETUP_KEY`, though the framework
+  README shows how to generate one.
+- Ship text-module declarations with generated sites (in the template or in
+  the package's types).
+- `.dev.vars.example` documents both ways to claim a local site: a
+  `MALLOK_SETUP_KEY`, generated as the framework README shows, and the
+  existing `MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY=true` switch that the template's
+  `wrangler.jsonc` already describes, with the key as the recommended one.
+- The path: a generated project with its own theme and a plugin migration
+  passes `npm run typecheck` unchanged, and a fresh local site is claimed
+  through the wizard with the documented key.
+- Depends on: nothing. Contract: the site template
+  (`CLOUDFLARE_RESOURCES.md §5`).
+
+**Task 40 — `mallok publish` from a project root** [M15, parts 3–4]
+- Split from Task 38 because it is a separate demonstrable path.
+- Current, at `441a5cc`: a project root holds `site.json` and `content/`, so
+  `detectLayout` already recognises it as the export layout
+  (`CONTENT_FORMAT.md §7.1` item 1, `src/core/bundle.ts`). But `scanDirectory`
+  then collects every `index*.md` under the root whatever the layout
+  (`src/cli/scan.ts`), which is how `node_modules/mallok/template/content/…`
+  becomes a bundle. And `--with-settings` reads the site's kinds before it
+  applies `site.json` (`src/cli/index.ts`), so bundles of a kind that file
+  enables are dropped.
+- In the export layout, scan only under `content/`; in every layout, skip
+  `node_modules`, `dist`, `.wrangler`, `.mallok` and dot-directories. With
+  `--with-settings`, apply the settings first and resolve kinds from the
+  result.
+- **[OWNER]** A project root already detects as the export layout. Confirm
+  that is intended, so that `mallok publish . --with-settings` from a
+  project root is a supported use.
+- The path: from a generated project's root,
+  `mallok publish . --with-settings` publishes exactly the bundles under
+  `content/`, including kinds only the applied `site.json` enables.
+- Depends on: nothing. Contracts: `CLI.md`, `CONTENT_FORMAT.md §7.1`.
 
 #### P0 — Nundar phase 1: catalogue with variants, cart, inquiry cart
 
@@ -366,7 +479,7 @@ cart cannot live within the shared 10-per-minute budget.
 - A render-path hook with read access to D1, run on a cache miss only, after
   the content is loaded, all plugins concurrently. Content pages pass the
   item; list and home pages pass the items on that page, so one `IN` query
-  covers them. The JSON-serialisable result reaches templates as
+  covers them. A home page's items are the multi-kind lists Task 37 loads. The JSON-serialisable result reaches templates as
   `plugins.<plugin-id>` in `snake_case`; plugins return display-ready values.
 - At most one D1 call per plugin per render (one query or one `batch`),
   enforced by a wrapped `db` that counts calls. `test/worker/budget.test.ts`
@@ -528,6 +641,26 @@ cart cannot live within the shared 10-per-minute budget.
 - Depends on: Task 18. Contracts: `PLUGIN_API.md §5.5`, `§7.4`;
   `DATA_MODEL.md §2.9`.
 
+**Task 39 — resolve `reference[]` fields** [M14]
+- Added 2026-10-03 (owner's item M14). Current: `loadRelations` in
+  `src/worker/render.ts` resolves `decl.type === 'reference'` only, for both
+  `content.refs` and `content.backrefs`, so a `reference[]` field reaches a
+  template as bare slugs, while `THEME_FORMAT.md §5.2` lists it as supported
+  without saying it is unresolved.
+- Forward: `content.refs.<field>` becomes an array of summaries, in
+  declaration order, bounded. Backward: items whose `reference[]` contains
+  this item's slug appear in `content.backrefs.<kind>`. Both stay inside the
+  existing relations batch and `RELATION_STATEMENTS_MAX`; the back-reference
+  query needs an index strategy for a JSON array (`DATA_MODEL.md §3`). The
+  tag archive's `EXISTS (SELECT 1 FROM json_each(frontmatter, '$.tags') …)`
+  over the `content_list` index (`src/db/queries.ts`) is the precedent.
+- `test/worker/budget.test.ts` has no `reference[]` case today; the task adds
+  a worst case.
+- The path: a product naming two collections appears on both collection
+  pages, and the product page lists both; the new budget case passes.
+- Depends on: nothing. Contracts: `THEME_FORMAT.md §5.2`, `§7.5`;
+  `DATA_MODEL.md §3`.
+
 #### P2 — Nundar phase 3
 
 **Task 34 — site-provided starter content** [M11]
@@ -566,9 +699,15 @@ Task 02 ──► Task 03 ──► Task 04 ────────► Task 09 
 ```
 
 Phase six builds on `0.1.0-rc.7`, after Task 17. The arrows below are the
-hard dependencies; the P0 build order is
-18 → 19 (released as `0.1.0-rc.8`) → 20 → 21 → 22 → 23 → 24 → 25 → 26 → 27 →
-28 → 29 → 30, and Task 35 closes each Nundar phase.
+hard dependencies. Done: 18, 19 (released as `0.1.0-rc.8`) and 20. The build
+order from here is the bug fixes 36 → 37 → 38 → 40, then 21 → 22 → 23 → 24 → 25 →
+26 → 27 → 28 → 29 → 30 for the rest of P0; P1 is 31 → 32 → 33 → 39. Task 35
+closes each Nundar phase.
+
+```
+Task 36 [M12]   Task 37 [M13]   Task 38 [M15 1–2]   Task 40 [M15 3–4]   Task 39 [M14] (P1)
+   (each stands alone; Task 22 later builds on Task 37's home-page loader)
+```
 
 ```
 Task 19 [M6 F] ──► rc.8 ──► Task 28 [M6 A, E] ──┬──► Task 29 [M6 B]
