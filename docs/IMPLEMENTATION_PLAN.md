@@ -31,7 +31,7 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–40) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Records in `tasks/TASK-18.md` onward |
+| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`) was added 2026-10-05 and is planned with Task 22. Records in `tasks/TASK-18.md` onward |
 
 ## 2. The two gates
 
@@ -495,17 +495,52 @@ before the rest of the phase. Every "current state" below was re-checked at
   development, and handled as a failed hook; a guard that only exists in tests
   leaves the production budget unguarded.
 - Deterministic: output depends only on database state and the hook's inputs.
-- **[OWNER]** Read-only: document it, or have the wrapped `db` reject writes
-  (recommended; the rejection is by statement keyword, which the docs state).
-- **[OWNER]** A throwing hook: recommended — drop that plugin's data, render
-  the page, log a structured event, and do not store that degraded page in
-  the edge cache.
+- **Owner decision, 2026-10-05: read-only is enforced.** The wrapped `db`
+  rejects writes; the rejection is by statement keyword, which the docs state.
+- **Owner decision, 2026-10-05: a throwing hook** (a second call and a write
+  included) drops that plugin's data, the page renders, a structured event is
+  logged, and that degraded page is not stored in the edge cache.
 - The path: a test theme shows `plugins.<id>` data on a content page and a
   list page; a cache hit does not call the hook; identical database state
   gives byte-identical HTML; a second query is refused; a throwing hook still
   renders the page and logs.
 - Depends on: Task 18. Contracts: `PLUGIN_API.md §5`, `§6`;
   `THEME_FORMAT.md §7`; `ARCHITECTURE.md` (render path).
+
+**Task 41 — `renderData` adds to the page's structured data** [M16, planned
+with Task 22; added 2026-10-05]
+- Why: a price a plugin puts on the page through Task 22 cannot reach the
+  page's JSON-LD. `contentJsonLd` (`src/core/view.ts`) builds the `Product`
+  node from the content alone, with no `offers`; a theme cannot emit JSON-LD
+  itself, because `assertNoUndeclaredScripts` (`src/core/theme-package.ts`)
+  refuses any `<script` in a template; and `SEO_PERFORMANCE.md §5` allows
+  structured data to describe only what the page shows. Verified against the
+  code at `8bd24e1`.
+- A `renderData` result may carry a reserved key, `structuredData`, holding
+  properties for the node the core already builds for that page. The core
+  merges them into that node and emits it through the existing path in
+  `buildHeadTags` — the same `JSON.stringify`, the same escaping of `<`.
+  **One node, not a second `<script>`.** The reserved key is not exposed to
+  templates as `plugins.<id>.structured_data`.
+- The core's own keys (`@context`, `@type`, `name`, `url` and whatever else
+  `contentJsonLd` sets for that node) cannot be overwritten.
+- **Owner decision, 2026-10-05: an allow-list per node type**, starting with
+  `offers` on `Product` and nothing else; a key outside it is dropped and a
+  structured event is logged. Arbitrary properties would let a plugin make a
+  page claim what it does not show.
+- Only on a content page whose kind already has a node; list and home pages
+  have none and this task adds none. When two plugins supply the same key the
+  rule is fixed and documented (first in the compiled plugin order wins, the
+  other is dropped and logged).
+- A throwing hook leaves the core's node unchanged (Task 22's rule).
+  Deterministic like the rest of `renderData`.
+- The path: a test plugin returning `structuredData.offers` on a product page
+  yields exactly one JSON-LD `Product` node containing `offers`,
+  byte-identical across renders of the same database state; `@type`, `name`
+  and `url` cannot be changed; a key outside the allow-list is dropped and
+  logged; a kind with no node, and a plugin returning nothing, give HTML
+  byte-identical to today; the five official themes pass unchanged.
+- Depends on: Task 22. Contracts: `PLUGIN_API.md §5`, `SEO_PERFORMANCE.md §5`.
 
 **Task 23 — plugin-declared cache tags** [M3]
 - `renderData` may return `cacheTags`; the core namespaces them as
@@ -624,6 +659,14 @@ before the rest of the phase. Every "current state" below was re-checked at
   disable rate limiting; a body-size cap (**[VERIFY]** Stripe's event size).
 - The path: the handler receives the exact bytes sent, and an HMAC over them
   verifies; an oversized body is refused.
+- What the first consumer needs, stated 2026-10-05: the body as received,
+  readable once as text; the request headers (a signature header); one plugin
+  secret in `ctx.secrets`; **the handler's status code passed through
+  unchanged** (a payment provider retries on 500 and not on 400);
+  `ctx.waitUntil`; no rate limit. A single-segment path is enough, so Task
+  24's multi-segment paths are not a prerequisite.
+- **Owner decision, 2026-10-05: the order stays** — after Task 26, in P1.
+  Nundar's first phase needs no payment.
 - Depends on: Task 26. Contract: `PLUGIN_API.md §7.2`.
 
 **Task 32 — action parameters and related rows** [M6, parts C and D]
@@ -706,7 +749,8 @@ Task 02 ──► Task 03 ──► Task 04 ────────► Task 09 
 Phase six builds on `0.1.0-rc.7`, after Task 17. The arrows below are the
 hard dependencies. Done: 18, 19 (released as `0.1.0-rc.8`) and 20. The build
 order from here is the bug fixes 36 → 37 → 38 → 40, then 21 → 22 → 23 → 24 → 25 →
-26 → 27 → 28 → 29 → 30 for the rest of P0; P1 is 31 → 32 → 33 → 39. Task 35
+26 → 27 → 28 → 29 → 30 for the rest of P0, with Task 41 directly after 22;
+P1 is 31 → 32 → 33 → 39. Task 35
 closes each Nundar phase.
 
 ```
@@ -720,7 +764,8 @@ Task 19 [M6 F] ──► rc.8 ──► Task 28 [M6 A, E] ──┬──► Tas
                                                 └──► Task 34 [M11]      (P2)
 
                 ┌──► Task 20 [M1] ──► Task 21 [M1 site email]
-                ├──► Task 22 [M2] ──► Task 23 [M3]
+                ├──► Task 22 [M2] ──┬──► Task 23 [M3]
+                │                   └──► Task 41 [M16]
                 ├──► Task 24 [M4 1–3] ──┬──► Task 25 [M4 tiers]
 Task 18 [M0] ───┤                       └──► Task 26 [M5] ──► Task 31 [M8]  (P1)
                 ├──► Task 27 [M7]
