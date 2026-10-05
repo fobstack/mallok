@@ -235,6 +235,15 @@ export interface PluginRecordInput {
    * `rows` field is an array of objects.
    */
   readonly values: Readonly<Record<string, unknown>>;
+  /**
+   * For a panel attached to content (`attachTo`): the item the record
+   * belongs to. `null` for a panel that is not attached. The core has
+   * checked that content of that kind with that translation group exists.
+   */
+  readonly attachedTo: {
+    readonly translationGroup: string;
+    readonly kind: string;
+  } | null;
 }
 
 /**

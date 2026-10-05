@@ -140,12 +140,14 @@ describe('records panels', () => {
     expect(
       panels.map((panel) => [panel.id, panel.type, panel.canRemove]),
     ).toEqual([
+      ['notes', 'records', true],
       ['items', 'records', true],
       ['log', 'records', false],
     ]);
-    expect(panels[0]?.fields?.price?.type).toBe('money');
-    expect(panels[0]?.fields?.variants?.type).toBe('rows');
-    expect(panels[0]?.search).toEqual(['name', 'code']);
+    const items = panels.find((panel) => panel.id === 'items');
+    expect(items?.fields?.price?.type).toBe('money');
+    expect(items?.fields?.variants?.type).toBe('rows');
+    expect(items?.search).toEqual(['name', 'code']);
     // The inquiry panel is what it always was.
     const inquiry = plugins.find((plugin) => plugin.id === 'inquiry')
       ?.panels[0];
@@ -458,6 +460,160 @@ describe('records panels', () => {
       expect(
         await (await api('GET', `${inquiries}?q=anything&sort=name`)).json(),
       ).toEqual(plain);
+    });
+  });
+
+  describe('a panel attached to content', () => {
+    const Notes = '/_mallok/api/plugins/catalog/panels/notes';
+    let bar = { id: '', group: '' };
+    let barGerman = { id: '', group: '' };
+    let sheet = { id: '', group: '' };
+    let article = { id: '', group: '' };
+
+    async function content(
+      kind: string,
+      slug: string,
+      locale: string,
+      group?: string,
+    ) {
+      const response = await api('POST', '/_mallok/api/content', {
+        kind,
+        slug,
+        locale,
+        markdown: `---\ntitle: ${slug} ${locale}\n---\n\nBody.\n`,
+        ...(group === undefined ? {} : { translationGroup: group }),
+      });
+      const saved = (await response.json()) as {
+        id: string;
+        translationGroup: string;
+      };
+      return { id: saved.id, group: saved.translationGroup };
+    }
+
+    async function note(group: unknown, body: string): Promise<Response> {
+      return api('POST', `${Notes}/records`, {
+        values: { body },
+        ...(group === undefined ? {} : { attachedTo: group }),
+      });
+    }
+
+    async function notesOf(group: string): Promise<string[]> {
+      const response = await api(
+        'GET',
+        `${Notes}?attached=${encodeURIComponent(group)}&sort=body`,
+      );
+      return ((await response.json()) as { rows: { body: string }[] }).rows.map(
+        (row) => row.body,
+      );
+    }
+
+    beforeAll(async () => {
+      await api('PATCH', '/_mallok/api/settings', {
+        locales: ['en', 'de'],
+        kinds: {
+          page: { base: '' },
+          article: { base: 'news' },
+          product: { base: 'products' },
+        },
+      });
+      bar = await content('product', 'bar', 'en');
+      barGerman = await content('product', 'bar', 'de', bar.group);
+      sheet = await content('product', 'sheet', 'en');
+      article = await content('article', 'news-item', 'en');
+    });
+
+    it('is declared to the admin with the kind it belongs to', async () => {
+      const { plugins } = (await (
+        await api('GET', '/_mallok/api/plugins')
+      ).json()) as {
+        plugins: {
+          id: string;
+          panels: { id: string; attachTo?: { kind: string; column: string } }[];
+        }[];
+      };
+      const panels =
+        plugins.find((plugin) => plugin.id === 'catalog')?.panels ?? [];
+      expect(panels.find((panel) => panel.id === 'notes')?.attachTo).toEqual({
+        kind: 'product',
+        column: 'translation_group',
+      });
+      expect(
+        panels.find((panel) => panel.id === 'items')?.attachTo,
+      ).toBeUndefined();
+    });
+
+    it("lists only the open item's records, shared by its languages", async () => {
+      expect(barGerman.group).toBe(bar.group);
+      expect((await note(bar.group, 'bar: first')).status).toBe(201);
+      expect((await note(bar.group, 'bar: second')).status).toBe(201);
+      expect((await note(sheet.group, 'sheet: only')).status).toBe(201);
+
+      // Whichever language of the bar is open, the group is the same one.
+      expect(await notesOf(bar.group)).toEqual(['bar: first', 'bar: second']);
+      expect(await notesOf(sheet.group)).toEqual(['sheet: only']);
+      expect(await notesOf('00000000-0000-4000-8000-000000000000')).toEqual([]);
+    });
+
+    it('tells the plugin which item a record belongs to, and only a real one', async () => {
+      const stored = await env.DB.prepare(
+        'SELECT translation_group FROM p_catalog_note WHERE body = ?',
+      )
+        .bind('sheet: only')
+        .first<{ translation_group: string }>();
+      expect(stored?.translation_group).toBe(sheet.group);
+
+      // No item named: refused before the plugin is asked.
+      expect((await note(undefined, 'orphan')).status).toBe(400);
+      expect((await note('', 'orphan')).status).toBe(400);
+      expect((await note(42, 'orphan')).status).toBe(400);
+      // A group that does not exist, and one that is not a product.
+      expect(
+        (await note('00000000-0000-4000-8000-000000000000', 'orphan')).status,
+      ).toBe(404);
+      expect((await note(article.group, 'orphan')).status).toBe(404);
+      const orphans = await env.DB.prepare(
+        "SELECT COUNT(*) AS n FROM p_catalog_note WHERE body = 'orphan'",
+      ).first<{ n: number }>();
+      expect(orphans?.n).toBe(0);
+    });
+
+    it('edits a record in place, still under its item', async () => {
+      const row = await env.DB.prepare(
+        "SELECT id FROM p_catalog_note WHERE body = 'bar: second'",
+      ).first<{ id: string }>();
+      const response = await api('PUT', `${Notes}/records/${row?.id}`, {
+        values: { body: 'bar: second, edited' },
+        attachedTo: bar.group,
+      });
+      expect(response.status).toBe(200);
+      expect(await notesOf(bar.group)).toEqual([
+        'bar: first',
+        'bar: second, edited',
+      ]);
+    });
+
+    it('keeps the records while a language remains, and drops them with the last', async () => {
+      // One language of the bar goes: the product is still there.
+      expect(
+        (await api('DELETE', `/_mallok/api/content/${barGerman.id}`)).status,
+      ).toBe(200);
+      expect(await notesOf(bar.group)).toHaveLength(2);
+
+      // The last one goes: the plugin's delete hook clears what it kept.
+      expect(
+        (await api('DELETE', `/_mallok/api/content/${bar.id}`)).status,
+      ).toBe(200);
+      expect(await notesOf(bar.group)).toEqual([]);
+      // Another product's records are untouched.
+      expect(await notesOf(sheet.group)).toEqual(['sheet: only']);
+    });
+
+    it('leaves a panel that is not attached alone', async () => {
+      // `attached` means nothing to it, and it asks for no item on save.
+      const all = await list();
+      expect(await list(`?attached=${sheet.group}`)).toEqual(all);
+      const id = await create(item({ code: 'TI-FREE' }));
+      expect(id).not.toBe('');
     });
   });
 });

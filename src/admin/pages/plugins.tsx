@@ -322,9 +322,19 @@ function PluginCard({
         </div>
       )}
 
-      {plugin.panels.map((panel) => (
-        <PluginPanelView key={panel.id} pluginId={plugin.id} panel={panel} />
-      ))}
+      {plugin.panels.map((panel) =>
+        panel.attachTo === undefined ? (
+          <PluginPanelView key={panel.id} pluginId={plugin.id} panel={panel} />
+        ) : (
+          // Its records belong to one content item each; a list of all of
+          // them, with nothing to say whose they are, would only mislead.
+          <p className="help" key={panel.id}>
+            <strong>{panel.label}</strong> is edited where it belongs: open any{' '}
+            <code>{panel.attachTo.kind}</code> in Content, and it is under the
+            editor.
+          </p>
+        ),
+      )}
     </section>
   );
 }

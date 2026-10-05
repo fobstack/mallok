@@ -156,6 +156,11 @@ export interface PluginPanel {
   readonly search: readonly string[];
   /** Whether the plugin can delete a record of this panel. */
   readonly canRemove: boolean;
+  /**
+   * Set when the panel belongs to content of one kind: it is shown in that
+   * kind's editor, for the open item, not on the plugins page.
+   */
+  readonly attachTo?: { readonly kind: string; readonly column: string };
   readonly table: string;
   readonly columns: readonly {
     field: string;

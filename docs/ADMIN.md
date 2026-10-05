@@ -318,6 +318,12 @@ See §4.1. Two additions:
   messages come from the server and appear beside the field they are about,
   including ones only the plugin can produce. Delete is offered only when the
   plugin provides it, and asks first.
+- **A panel attached to a content kind is in that kind's editor**, below the
+  three panes, for the item that is open; the editor bar links down to it.
+  It is not inside the panes — the editor fills the window, and a panel
+  there would take the room from the text. It says which plugin it is from,
+  that it is shared by every language of the item, and that it saves on its
+  own rather than with Publish. A new item shows it after its first save.
 - The form's code loads when the first record is opened, on top of the
   plugins page itself being loaded on demand; none of it is in the first
   load.

@@ -865,6 +865,13 @@ main {
   margin-bottom: 1rem;
 }
 
+/* Plugin panels attached to the content editor */
+.attached-panels {
+  padding: 1rem clamp(0.8rem, 2vw, 1.4rem) 3rem;
+  display: grid;
+  gap: 1rem;
+}
+
 /* Record forms of plugin panels */
 .record-editor .actions {
   margin-top: 1rem;

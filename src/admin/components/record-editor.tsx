@@ -304,11 +304,14 @@ export function RecordEditor({
   panel,
   recordId,
   onClose,
+  attachedTo,
 }: {
   readonly pluginId: string;
   readonly panel: PluginPanel;
   /** `null` creates a record. */
   readonly recordId: string | null;
+  /** The content item's translation group, for an attached panel. */
+  readonly attachedTo?: string;
   /** `changed` is true when the list behind the form is now out of date. */
   readonly onClose: (changed: boolean) => void;
 }): JSX.Element {
@@ -372,7 +375,10 @@ export function RecordEditor({
     try {
       await api(
         recordId === null ? base : `${base}/${encodeURIComponent(recordId)}`,
-        { method: recordId === null ? 'POST' : 'PUT', body: { values } },
+        {
+          method: recordId === null ? 'POST' : 'PUT',
+          body: attachedTo === undefined ? { values } : { values, attachedTo },
+        },
       );
       onClose(true);
     } catch (caught) {

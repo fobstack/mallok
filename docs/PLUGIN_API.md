@@ -928,6 +928,38 @@ export const records = {
 - `definePlugin` refuses a records panel without `load` and `save`, and
   handlers for a panel that is not one.
 
+**Attached to content (plugin API 2).** A records panel can belong to
+content of one kind, and is then edited where that content is edited:
+
+```jsonc
+{
+  "id": "variants", "type": "records", "table": "p_shop_variant",
+  "attachTo": { "kind": "product" },
+  …
+}
+```
+
+- In the admin the panel appears **under the editor of every `product`**,
+  listing the records of the item that is open, and nowhere else: the
+  plugins page only says where to find it.
+- **Records are keyed by the item's translation group**, not by its id: a
+  product's variants are the same whichever language of it is open. The
+  panel's table needs a column holding the group — `translation_group`, or
+  the name given as `attachTo.column` — which is what the list filters on.
+- **`save` is told which item**: `record.attachedTo` is
+  `{ translationGroup, kind }`. The core has checked that content of that
+  kind with that group exists; a request naming none, or another kind's, is
+  refused before the handler runs. For a panel that is not attached it is
+  `null`.
+- A new item has no group until it is first saved, so the panel appears once
+  it has been.
+- The panel's records are saved by its own Save, independently of the item's
+  Publish.
+- **Cleaning up is the plugin's job, through `onContentDelete`** (§5.7): when
+  the hook reports `lastInGroup`, the item is gone in every language and its
+  records should go. The core never deletes from a plugin's table. A plugin
+  with an attached panel and no delete hook leaves orphans.
+
 | Request | Scope |
 | --- | --- |
 | `GET …/panels/<panel>/records/<id>` | `export`, like the list |
@@ -1202,7 +1234,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md §16` | 26 | Done |
 | `onContentSave` called on every save path; `onContentDelete` | §5.4, §5.7 | 27 | Done |
 | Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Done |
-| Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Planned |
+| Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Done |
 | Raw-body routes (`body: "raw"`) | §7.2 | 31 | Planned |
 | Action parameters and related rows | §7.5 | 32 | Planned |
 | Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`) | §5.5, §7.4 | 33 | Planned |

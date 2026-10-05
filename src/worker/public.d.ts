@@ -218,6 +218,10 @@ export interface PluginPanelDeclaration {
   readonly type: 'table' | 'records';
   /** `records` only. */
   readonly fields?: Readonly<Record<string, PluginRecordField>> | undefined;
+  /** `records` only: shown in the editor of content of this kind (§7.5). */
+  readonly attachTo?:
+    | { readonly kind: string; readonly column: string }
+    | undefined;
   readonly search: readonly string[];
   readonly table: string;
   readonly columns: readonly {
@@ -455,6 +459,15 @@ export interface PluginRecordInput {
    * `rows` field is an array of objects.
    */
   readonly values: Readonly<Record<string, unknown>>;
+  /**
+   * For a panel attached to content (`attachTo`): the item the record
+   * belongs to. `null` for a panel that is not attached. The core has
+   * checked that content of that kind with that translation group exists.
+   */
+  readonly attachedTo: {
+    readonly translationGroup: string;
+    readonly kind: string;
+  } | null;
 }
 
 /**

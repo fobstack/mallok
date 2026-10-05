@@ -46,7 +46,19 @@ export const catalogPlugin = definePlugin({
     version: '1.0.0',
     description: 'A test plugin: products with a price and variants.',
     pluginApi: 2,
+    hooks: ['onContentDelete'],
     panels: [
+      {
+        id: 'notes',
+        label: 'Product notes',
+        type: 'records',
+        table: 'p_catalog_note',
+        // Shown in the editor of a product, for that product, in whichever
+        // of its languages is open.
+        attachTo: { kind: 'product' },
+        columns: [{ field: 'body', label: 'Note', sortable: true }],
+        fields: { body: { type: 'text', label: 'Note', required: true } },
+      },
       {
         id: 'items',
         label: 'Catalog items',
@@ -131,6 +143,12 @@ export const catalogPlugin = definePlugin({
           price_currency TEXT,
           PRIMARY KEY (item_id, position)
         );
+        CREATE TABLE p_catalog_note (
+          id TEXT PRIMARY KEY,
+          translation_group TEXT NOT NULL,
+          body TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
         CREATE TABLE p_catalog_log (
           id TEXT PRIMARY KEY,
           note TEXT NOT NULL,
@@ -140,7 +158,52 @@ export const catalogPlugin = definePlugin({
       `,
     },
   ],
+  hooks: {
+    // The notes belong to the product, not to one language of it: they go
+    // when the last language does.
+    onContentDelete: async (ref, ctx) => {
+      if (ref.kind === 'product' && ref.lastInGroup) {
+        await ctx.db
+          .prepare('DELETE FROM p_catalog_note WHERE translation_group = ?')
+          .bind(ref.translationGroup)
+          .run();
+      }
+    },
+  },
   records: {
+    notes: {
+      load: async (id, ctx) =>
+        ctx.db
+          .prepare('SELECT body FROM p_catalog_note WHERE id = ?')
+          .bind(id)
+          .first<{ body: string }>(),
+      save: async (record, ctx) => {
+        if (record.attachedTo === null) {
+          return { errors: { body: 'A note needs a product.' } };
+        }
+        const id = record.id ?? crypto.randomUUID();
+        await ctx.db
+          .prepare(
+            `INSERT INTO p_catalog_note (id, translation_group, body, created_at)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT (id) DO UPDATE SET body = excluded.body`,
+          )
+          .bind(
+            id,
+            record.attachedTo.translationGroup,
+            String(record.values.body),
+            new Date().toISOString(),
+          )
+          .run();
+        return { id };
+      },
+      remove: async (id, ctx) => {
+        await ctx.db
+          .prepare('DELETE FROM p_catalog_note WHERE id = ?')
+          .bind(id)
+          .run();
+      },
+    },
     items: {
       load: async (id, ctx) => {
         const row = await ctx.db

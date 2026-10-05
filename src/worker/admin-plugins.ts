@@ -11,6 +11,7 @@ import { settingsValidator, validateRecord } from '../core/index.js';
 import {
   findPluginState,
   listPluginState,
+  listTranslationsOf,
   loadSite,
   setPluginEnabled,
   setPluginSecrets,
@@ -371,6 +372,13 @@ async function getPanel(
       bindings.push(value);
     }
   }
+  // A panel attached to content lists the records of one item: the one
+  // whose translation group the editor names. The column is the manifest's.
+  const attached = url.searchParams.get('attached');
+  if (panel.attachTo !== undefined && attached !== null) {
+    conditions.push(`${panel.attachTo.column} = ?`);
+    bindings.push(attached);
+  }
   // Text search: a substring match over the columns the panel declares, with
   // the wildcards in what was typed taken literally.
   const term = (url.searchParams.get('q') ?? '').trim().slice(0, SEARCH_MAX);
@@ -505,6 +513,30 @@ async function routeRecords(
   ) {
     return problem(400, 'Body must be {"values": { … }}.');
   }
+  // An attached panel's record belongs to a content item, and the plugin is
+  // told which — after the core has made sure it is a real one of the kind
+  // the panel is for. A handler can then key its rows by the group without
+  // checking that a caller did not make it up.
+  let attachedTo: { translationGroup: string; kind: string } | null = null;
+  if (panel.attachTo !== undefined) {
+    const group = body?.attachedTo;
+    if (typeof group !== 'string' || group === '') {
+      return problem(
+        400,
+        'This panel belongs to a content item: send its translation group as "attachedTo".',
+      );
+    }
+    const owner = (await listTranslationsOf(env.DB, group)).find(
+      (item) => item.kind === panel.attachTo?.kind,
+    );
+    if (owner === undefined) {
+      return problem(
+        404,
+        `No ${panel.attachTo.kind} with that translation group exists.`,
+      );
+    }
+    attachedTo = { translationGroup: group, kind: panel.attachTo.kind };
+  }
   const checked = validateRecord(
     panel.fields,
     submitted as Record<string, unknown>,
@@ -516,7 +548,7 @@ async function routeRecords(
     );
   }
   const saved = await handlers.save(
-    { id: recordId, values: checked.values },
+    { id: recordId, values: checked.values, attachedTo },
     pluginCtx,
   );
   if ('errors' in saved) {

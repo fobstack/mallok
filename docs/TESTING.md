@@ -262,6 +262,7 @@ code a deployed site runs — through the flows that only exist end to end:
 | `09-plugin-secret-remove` | Removing a plugin secret without a reload |
 | `10-records-panel` | A plugin's record form: create, validation, money, rows, edit, sort, search, delete |
 | `11-lazy-remount` | Opening the editor for a second item in one session |
+| `12-attached-panel` | A plugin's panel under a product's editor, listing that product's records only |
 
 `pnpm test:a11y` runs the wizard and the axe spec alone.
 
@@ -269,8 +270,8 @@ code a deployed site runs — through the flows that only exist end to end:
 (`test/e2e/worker/index.ts`, adding `test/fixtures/catalog-plugin.ts`). The
 default composition has no plugin with an editable panel, and without one the
 record form would never be opened by a browser. The plugin is registered
-switched off, like any other; only `10-records-panel.spec.ts` switches it
-on.
+switched off, like any other; `10-records-panel.spec.ts` and
+`12-attached-panel.spec.ts` switch it on.
 
 Three things about this run are worth knowing before changing it:
 

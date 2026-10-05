@@ -161,6 +161,22 @@ const panelSchema = z
     type: z.enum(['table', 'records']),
     /** `records` only: the fields of the create and edit form. */
     fields: recordFieldsSchema.optional(),
+    /**
+     * `records` only: the panel belongs to content of one kind and is shown
+     * in that kind's editor, for the item that is open. Its records are
+     * keyed by the item's translation group — one set for every language —
+     * held in `column` of the panel's table. Plugin API 2.
+     */
+    attachTo: z
+      .object({
+        kind: z.string().regex(/^[a-z][a-z0-9_]*$/),
+        column: z
+          .string()
+          .regex(/^[a-z_][a-z0-9_]*$/)
+          .default('translation_group'),
+      })
+      .strict()
+      .optional(),
     /** Columns a text search looks in, by substring. Plugin API 2. */
     search: z.array(z.string().regex(/^[a-z_][a-z0-9_]*$/)).default([]),
     /** Must carry the plugin's `p_<id>_` prefix; checked below. */
@@ -281,6 +297,12 @@ export const pluginManifestSchema = z
         issue.addIssue({
           code: 'custom',
           message: `Panel "${panel.id}" declares fields but is not a records panel.`,
+        });
+      }
+      if (panel.attachTo !== undefined && panel.type !== 'records') {
+        issue.addIssue({
+          code: 'custom',
+          message: `Panel "${panel.id}" is attached to content but is not a records panel.`,
         });
       }
       if (

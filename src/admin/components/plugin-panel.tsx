@@ -24,6 +24,7 @@ const RecordEditor = lazyRoute<{
   panel: PluginPanel;
   recordId: string | null;
   onClose: (changed: boolean) => void;
+  attachedTo?: string;
 }>(() => import('./record-editor.js').then((module) => module.RecordEditor));
 
 type Row = Record<string, unknown>;
@@ -53,9 +54,16 @@ function cell(
 export function PluginPanelView({
   pluginId,
   panel,
+  attachedTo,
 }: {
   readonly pluginId: string;
   readonly panel: PluginPanel;
+  /**
+   * The translation group of the content item this panel is shown for, when
+   * it is shown in the editor: only that item's records are listed, and new
+   * ones belong to it.
+   */
+  readonly attachedTo?: string;
 }): JSX.Element {
   const [rows, setRows] = useState<readonly Row[]>([]);
   const [hasNext, setHasNext] = useState(false);
@@ -87,6 +95,9 @@ export function PluginPanelView({
         query.set(field, value);
       }
     }
+    if (attachedTo !== undefined) {
+      query.set('attached', attachedTo);
+    }
     if (search.trim() !== '') {
       query.set('q', search.trim());
     }
@@ -106,7 +117,14 @@ export function PluginPanelView({
     } finally {
       setLoading(false);
     }
-  }, [offset, base, JSON.stringify(filters), search, JSON.stringify(sort)]);
+  }, [
+    offset,
+    base,
+    JSON.stringify(filters),
+    search,
+    JSON.stringify(sort),
+    attachedTo,
+  ]);
 
   useEffect(() => {
     void reload();
@@ -358,6 +376,7 @@ export function PluginPanelView({
           panel={panel}
           recordId={editing}
           onClose={closeEditor}
+          {...(attachedTo === undefined ? {} : { attachedTo })}
         />
       )}
     </div>

@@ -21,6 +21,7 @@ import {
 import { ApiError, api } from '../api.js';
 import { MarkdownEditor } from '../components/markdown-editor.js';
 import { MediaPicker } from '../components/media-library.js';
+import { PluginPanelView } from '../components/plugin-panel.js';
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm } from '../form/form.js';
 import { toSpecs } from '../form/types.js';
@@ -28,7 +29,7 @@ import { renderPreview } from '../preview.js';
 import { navigate } from '../router.js';
 import { normalizeSlugInput } from '../slug.js';
 import { activeLocale, notice, settings, theme } from '../state.js';
-import type { MediaItem } from '../types.js';
+import type { MediaItem, PluginInfo } from '../types.js';
 
 /** One translation slot, whether or not it exists yet. */
 interface TranslationSlot {
@@ -71,6 +72,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
   const [saved, setSaved] = useState(false);
   const [preview, setPreview] = useState('');
   const [missing, setMissing] = useState<readonly string[]>([]);
+  const [plugins, setPlugins] = useState<readonly PluginInfo[]>([]);
   const [picker, setPicker] = useState<{
     kind: 'image' | 'file';
     resolve: (path: string | null) => void;
@@ -99,6 +101,28 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
       }
     })();
   }, [id, isNew]);
+
+  // The plugins, for the panels they attach to this kind of content. Loaded
+  // once the item exists: an attached record needs an item to belong to.
+  const loadedId = loaded?.id;
+  useEffect(() => {
+    if (loadedId === undefined) {
+      return;
+    }
+    let cancelled = false;
+    void api<{ plugins: PluginInfo[] }>('/plugins').then(
+      (result) => {
+        if (!cancelled) {
+          setPlugins(result.plugins);
+        }
+      },
+      // The editor works without them; the panels are simply not shown.
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [loadedId]);
 
   // Media rows for whatever the item references, so the preview can resolve
   // relative paths exactly as the server does.
@@ -281,111 +305,133 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
       base: site.kinds[kind]?.base ?? '',
     });
 
+  // Panels plugins attach to this kind of content (docs/PLUGIN_API.md §7.5).
+  const attached =
+    loaded === null
+      ? []
+      : plugins
+          .filter((plugin) => plugin.enabled)
+          .flatMap((plugin) =>
+            plugin.panels
+              .filter((panel) => panel.attachTo?.kind === loaded.kind)
+              .map((panel) => ({ plugin, panel })),
+          );
+
   return (
-    <div className="editor">
-      <div className="editor-bar">
-        <button type="button" className="ghost" onClick={() => navigate('/')}>
-          ← All content
-        </button>
-        <label className="filter">
-          <span>Type</span>
-          <select
-            value={kind}
-            disabled={loaded !== null}
-            onChange={(event) => {
-              setKind(event.currentTarget.value);
-              setDirty(true);
-            }}
+    <>
+      <div className="editor">
+        <div className="editor-bar">
+          <button type="button" className="ghost" onClick={() => navigate('/')}>
+            ← All content
+          </button>
+          <label className="filter">
+            <span>Type</span>
+            <select
+              value={kind}
+              disabled={loaded !== null}
+              onChange={(event) => {
+                setKind(event.currentTarget.value);
+                setDirty(true);
+              }}
+            >
+              {kinds.map((entry) => (
+                <option key={entry} value={entry}>
+                  {active.kinds[entry]?.label ?? entry}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="filter">
+            <span>Slug</span>
+            <input
+              value={slug}
+              placeholder="derived from the title"
+              onInput={(event) => {
+                setSlug(event.currentTarget.value);
+                setDirty(true);
+              }}
+              // Canonicalised on the way out of the field rather than per
+              // keystroke, so a trailing dash can still be typed through.
+              onBlur={(event) => {
+                const result = normalizeSlugInput(event.currentTarget.value);
+                if (result.notice === null) {
+                  return;
+                }
+                setSlug(result.slug);
+                notice.value = result.notice;
+              }}
+            />
+          </label>
+          <span className="grow" />
+          {attached.map(({ plugin, panel }) => (
+            <a
+              className="pill"
+              href="#attached-panels"
+              key={`${plugin.id}/${panel.id}`}
+            >
+              {panel.label} ↓
+            </a>
+          ))}
+          {missing.length === 0 ? null : (
+            <span className="pill warn" title={missing.join(', ')}>
+              {missing.length} image{missing.length === 1 ? '' : 's'} missing
+            </span>
+          )}
+          {dirty ? <span className="pill">Unsaved</span> : null}
+          {saved && !dirty ? <SavedNote /> : null}
+          <button
+            type="button"
+            className="ghost"
+            disabled={busy}
+            onClick={() => void save('draft')}
           >
-            {kinds.map((entry) => (
-              <option key={entry} value={entry}>
-                {active.kinds[entry]?.label ?? entry}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="filter">
-          <span>Slug</span>
-          <input
-            value={slug}
-            placeholder="derived from the title"
-            onInput={(event) => {
-              setSlug(event.currentTarget.value);
-              setDirty(true);
-            }}
-            // Canonicalised on the way out of the field rather than per
-            // keystroke, so a trailing dash can still be typed through.
-            onBlur={(event) => {
-              const result = normalizeSlugInput(event.currentTarget.value);
-              if (result.notice === null) {
-                return;
-              }
-              setSlug(result.slug);
-              notice.value = result.notice;
-            }}
+            Save draft
+          </button>
+          <button
+            type="button"
+            className="primary"
+            disabled={busy}
+            onClick={() => void save('published')}
+          >
+            {busy ? 'Saving…' : 'Publish'}
+          </button>
+        </div>
+
+        {loaded === null ? null : (
+          <TranslationBar
+            translations={loaded.translations}
+            current={loaded.locale}
+            group={loaded.translationGroup}
+            kind={loaded.kind}
           />
-        </label>
-        <span className="grow" />
-        {missing.length === 0 ? null : (
-          <span className="pill warn" title={missing.join(', ')}>
-            {missing.length} image{missing.length === 1 ? '' : 's'} missing
-          </span>
         )}
-        {dirty ? <span className="pill">Unsaved</span> : null}
-        {saved && !dirty ? <SavedNote /> : null}
-        <button
-          type="button"
-          className="ghost"
-          disabled={busy}
-          onClick={() => void save('draft')}
-        >
-          Save draft
-        </button>
-        <button
-          type="button"
-          className="primary"
-          disabled={busy}
-          onClick={() => void save('published')}
-        >
-          {busy ? 'Saving…' : 'Publish'}
-        </button>
-      </div>
 
-      {loaded === null ? null : (
-        <TranslationBar
-          translations={loaded.translations}
-          current={loaded.locale}
-          group={loaded.translationGroup}
-          kind={loaded.kind}
-        />
-      )}
-
-      <div className="editor-panes">
-        <aside className="pane pane-fields">
-          <SchemaForm
-            specs={specs}
-            values={frontmatter}
-            idPrefix="fm"
-            onChange={setField}
-            pickMedia={pickMedia}
-            previewUrl={(path) => {
-              const sha = assets[path];
-              return sha === undefined ? null : (media[sha]?.url ?? null);
-            }}
-          />
-        </aside>
-        <section className="pane pane-source">
-          <MarkdownEditor
-            value={markdown}
-            missing={missing}
-            onChange={(value) => {
-              setMarkdown(value);
-              setDirty(true);
-            }}
-          />
-        </section>
-        <section className="pane pane-preview">
-          {/*
+        <div className="editor-panes">
+          <aside className="pane pane-fields">
+            <SchemaForm
+              specs={specs}
+              values={frontmatter}
+              idPrefix="fm"
+              onChange={setField}
+              pickMedia={pickMedia}
+              previewUrl={(path) => {
+                const sha = assets[path];
+                return sha === undefined ? null : (media[sha]?.url ?? null);
+              }}
+            />
+          </aside>
+          <section className="pane pane-source">
+            <MarkdownEditor
+              value={markdown}
+              missing={missing}
+              onChange={(value) => {
+                setMarkdown(value);
+                setDirty(true);
+              }}
+            />
+          </section>
+          <section className="pane pane-preview">
+            {/*
             `allow-same-origin` **without** `allow-scripts` is the safe
             combination: the frame can load the theme's stylesheet (a fully
             sandboxed srcdoc document has an opaque origin and fetches
@@ -394,32 +440,58 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
             sandbox is there to stop. Granting both together would be the
             dangerous pairing. The body is sanitized before it gets here.
           */}
-          <iframe
-            title="Preview"
-            className="preview-frame"
-            sandbox="allow-same-origin"
-            srcDoc={preview}
-          />
-          <p className="help preview-note">
-            Rendered by the same code the site runs — {previewPath}
-          </p>
-        </section>
-      </div>
+            <iframe
+              title="Preview"
+              className="preview-frame"
+              sandbox="allow-same-origin"
+              srcDoc={preview}
+            />
+            <p className="help preview-note">
+              Rendered by the same code the site runs — {previewPath}
+            </p>
+          </section>
+        </div>
 
-      {picker === null ? null : (
-        <MediaPicker
-          kind={picker.kind}
-          onPick={(path, item) => {
-            setAssets((previous) => ({ ...previous, [path]: item.sha256 }));
-            picker.resolve(path);
-          }}
-          onClose={() => {
-            picker.resolve(null);
-            setPicker(null);
-          }}
-        />
+        {picker === null ? null : (
+          <MediaPicker
+            kind={picker.kind}
+            onPick={(path, item) => {
+              setAssets((previous) => ({ ...previous, [path]: item.sha256 }));
+              picker.resolve(path);
+            }}
+            onClose={() => {
+              picker.resolve(null);
+              setPicker(null);
+            }}
+          />
+        )}
+      </div>
+      {/*
+        Below the editor, not inside it: the editor fills the window, and a
+        panel squeezed into it would take the room from the text being
+        written. The bar above links down to these.
+      */}
+      {loaded === null || attached.length === 0 ? null : (
+        <div className="attached-panels" id="attached-panels">
+          {attached.map(({ plugin, panel }) => (
+            <section
+              className="card attached-panel"
+              key={`${plugin.id}/${panel.id}`}
+            >
+              <p className="help">
+                From the {plugin.name} plugin. Shared by every language of this
+                item, and saved on its own — not with Publish.
+              </p>
+              <PluginPanelView
+                pluginId={plugin.id}
+                panel={panel}
+                attachedTo={loaded.translationGroup}
+              />
+            </section>
+          ))}
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
