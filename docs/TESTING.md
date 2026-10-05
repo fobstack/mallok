@@ -263,6 +263,7 @@ code a deployed site runs — through the flows that only exist end to end:
 | `10-records-panel` | A plugin's record form: create, validation, money, rows, edit, sort, search, delete |
 | `11-lazy-remount` | Opening the editor for a second item in one session |
 | `12-attached-panel` | A plugin's panel under a product's editor, listing that product's records only |
+| `13-editor-untouched` | Opening items without editing them: not "Unsaved", and a CRLF document publishes as unchanged |
 
 `pnpm test:a11y` runs the wizard and the axe spec alone.
 

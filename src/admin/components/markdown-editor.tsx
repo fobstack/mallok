@@ -58,6 +58,16 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
         return;
       }
 
+      // Marks a change the app pushed in, as opposed to one typed here.
+      // The pane is a view of the document: when the item arrives, or the
+      // field form rewrites the front matter, the new text is dispatched
+      // into the editor. Without the mark that dispatch came back out
+      // through the listener below as if it had been typed — an item nobody
+      // touched showed "Unsaved", and one with CRLF line endings would have
+      // been saved with every one of them rewritten, because the editor's
+      // document holds `\n`.
+      const pushed = state.Annotation.define<boolean>();
+
       // A state field holding the current missing paths, and a decoration
       // that marks every line mentioning one of them.
       const missingEffect = state.StateEffect.define<readonly string[]>();
@@ -113,7 +123,12 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
               'aria-label': 'Markdown source',
             }),
             view.EditorView.updateListener.of((update) => {
-              if (update.docChanged) {
+              if (
+                update.docChanged &&
+                !update.transactions.some(
+                  (transaction) => transaction.annotation(pushed) === true,
+                )
+              ) {
                 latest.current.onChange(update.state.doc.toString());
               }
             }),
@@ -130,6 +145,7 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
               to: editor.state.doc.length,
               insert: value,
             },
+            annotations: pushed.of(true),
           });
         },
         setMissing: (paths) => {

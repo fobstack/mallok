@@ -92,6 +92,9 @@ delete hook removes it.
   "Unsaved" as soon as it opens, before anything is edited. The browser test
   only checks that adding a record does not change that. Nothing added in
   this task marks the item as edited, so it is not from here; where it does
-  come from has not been investigated.
+  come from has not been investigated. **Resolved 2026-10-06**: the Markdown
+  pane reported the document being pushed into it as an edit
+  (`src/admin/components/markdown-editor.tsx`,
+  `test/e2e/13-editor-untouched.spec.ts`).
 - **Seen once:** the `gazette` accessibility case of the browser suite hung
   for three minutes in one run and passed in the next three. Not reproduced.
