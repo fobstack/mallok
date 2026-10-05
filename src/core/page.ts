@@ -156,6 +156,17 @@ export interface ThemeView {
   readonly asset_base: string;
 }
 
+/**
+ * What enabled plugins read for this page (docs/PLUGIN_API.md §5.6), keyed
+ * by plugin id with hyphens written as underscores. A plugin that returned
+ * nothing, failed or is switched off has no key, so a template reads through
+ * it as through any other missing value. Always empty in a static build and
+ * in the admin preview, which run no plugin code.
+ */
+export type PluginsView = Readonly<
+  Record<string, Readonly<Record<string, unknown>>>
+>;
+
 /** Everything a template can access. */
 export interface PageView {
   readonly site: SiteView;
@@ -167,6 +178,7 @@ export interface PageView {
   readonly list?: ListView;
   /** Recent items per kind for the home page, keyed by kind. */
   readonly recent?: Readonly<Record<string, readonly ContentSummaryView[]>>;
+  readonly plugins: PluginsView;
 }
 
 /** Renders a full page with the given theme template. */

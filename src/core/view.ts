@@ -19,6 +19,7 @@ import type {
   ListView,
   NavItemView,
   PageView,
+  PluginsView,
   RelationsView,
   SiteView,
   ThemeView,
@@ -57,6 +58,8 @@ export interface ViewContext {
   readonly strings: Readonly<Record<string, string>>;
   /** What each enabled language calls itself, keyed by locale. */
   readonly languageNames?: Readonly<Record<string, string>>;
+  /** Data plugins read for this page; absent wherever no plugin code runs. */
+  readonly plugins?: PluginsView;
 }
 
 /** A content item as the view builders take it. */
@@ -267,6 +270,7 @@ export function buildContentPageView(
     site: buildSiteView(ctx),
     theme: buildThemeView(ctx),
     t: ctx.strings,
+    plugins: ctx.plugins ?? {},
     page: {
       title: content.title,
       description,
@@ -418,6 +422,7 @@ export function buildHomePageView(
     site: buildSiteView(ctx),
     theme: buildThemeView(ctx),
     t: ctx.strings,
+    plugins: ctx.plugins ?? {},
     page: {
       title: ctx.settings.name,
       description: ctx.settings.tagline,
@@ -487,6 +492,7 @@ export function buildListPageView(ctx: ViewContext, list: ListInput): PageView {
     site: buildSiteView(ctx),
     theme: buildThemeView(ctx),
     t: ctx.strings,
+    plugins: ctx.plugins ?? {},
     page: {
       title,
       description: '',

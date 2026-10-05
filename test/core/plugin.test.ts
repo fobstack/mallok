@@ -130,6 +130,24 @@ describe('plugin manifest schema', () => {
     ).toThrow(/plugin API/);
   });
 
+  it('accepts renderData under plugin API 2 and refuses it under 1', () => {
+    expect(PLUGIN_API_VERSION).toBe(2);
+    expect(
+      parsePluginManifest({ ...BASE, pluginApi: 2, hooks: ['renderData'] })
+        .hooks,
+    ).toEqual(['renderData']);
+    // A plugin that says it was written for version 1 cannot have meant a
+    // hook version 1 never had; a build that only knew 1 would refuse it too.
+    expect(() =>
+      parsePluginManifest({ ...BASE, pluginApi: 1, hooks: ['renderData'] }),
+    ).toThrow(/renderData hook needs plugin API 2/);
+    // Version 1 plugins are untouched by the new version.
+    expect(
+      parsePluginManifest({ ...BASE, pluginApi: 1, hooks: ['afterRender'] })
+        .pluginApi,
+    ).toBe(1);
+  });
+
   it('rejects an unknown hook name and a bad route method', () => {
     expect(() => parsePluginManifest({ ...BASE, hooks: ['onBoot'] })).toThrow();
     expect(() =>

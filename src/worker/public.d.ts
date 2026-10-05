@@ -124,7 +124,8 @@ export type PluginHookName =
   | 'beforeRender'
   | 'afterRender'
   | 'onContentSave'
-  | 'scheduled';
+  | 'scheduled'
+  | 'renderData';
 
 export interface PluginSettingDeclaration {
   readonly type:
@@ -240,6 +241,37 @@ export interface PluginRenderContext {
   readonly content: { readonly id: string; readonly kind: string } | null;
 }
 
+/**
+ * Context for `renderData` (§5.6).
+ *
+ * `db` is not the plain binding: it allows one call per render — one query or
+ * one `batch` — and refuses anything but a read. There are no secrets, for
+ * the reason `afterRender` has none.
+ */
+export interface PluginRenderDataContext {
+  readonly db: D1Database;
+  readonly settings: Readonly<Record<string, unknown>>;
+  readonly site: PluginSiteSettings;
+  readonly locale: string;
+  readonly path: string;
+  /** Content pages: the item being rendered. Home and list pages: null. */
+  readonly content: {
+    readonly id: string;
+    readonly kind: string;
+    readonly translationGroup: string;
+    readonly frontmatter: Readonly<Record<string, unknown>>;
+  } | null;
+  /**
+   * Home and list pages: the items shown on this page, so one `IN` query
+   * covers them. Empty on a content page.
+   */
+  readonly items: readonly {
+    readonly id: string;
+    readonly kind: string;
+    readonly translationGroup: string;
+  }[];
+}
+
 /** The draft `onContentSave` sees before anything is written (§5.4). */
 export interface ContentDraft {
   readonly kind: string;
@@ -282,6 +314,13 @@ export interface PluginHooks {
     | Partial<Pick<ContentDraft, 'markdown'>>
     | Promise<undefined | Partial<Pick<ContentDraft, 'markdown'>>>;
   readonly scheduled?: (ctx: PluginContext) => Promise<void>;
+  /**
+   * Reads what this plugin shows on the page being rendered. The result must
+   * be JSON-serialisable; templates see it as `plugins.<plugin_id>`.
+   */
+  readonly renderData?: (
+    ctx: PluginRenderDataContext,
+  ) => Promise<Readonly<Record<string, unknown>> | undefined>;
 }
 
 export type PluginRouteHandler = (

@@ -23,7 +23,13 @@ import {
   renderNotFoundPage,
   resolveCovers,
 } from '../render.js';
-import { LIST_PAGE_SIZE, type PublicLocals, publicHeaders } from './context.js';
+import { runRenderData } from '../render-data.js';
+import {
+  LIST_PAGE_SIZE,
+  type PublicLocals,
+  publicHeaders,
+  renderDataItem,
+} from './context.js';
 
 /** What `load` resolved the path to. */
 type Resolved =
@@ -33,8 +39,15 @@ type Resolved =
       readonly row: ContentRow;
       /** Whether stage one had to re-run, surfaced for operators and tests. */
       readonly fragmentStatus: 'REGENERATED' | 'CACHED';
+      /** A `renderData` hook failed; the page lacks that plugin's data. */
+      readonly degraded: boolean;
     }
-  | { readonly kind: 'list'; readonly html: string; readonly listKind: string }
+  | {
+      readonly kind: 'list';
+      readonly html: string;
+      readonly listKind: string;
+      readonly degraded: boolean;
+    }
   | { readonly kind: 'missing'; readonly html: string };
 
 export default definePage<PublicLocals>()({
@@ -48,6 +61,20 @@ export default definePage<PublicLocals>()({
       ) {
         return await notFound(locals);
       }
+      // Started now and awaited below, so the plugins' reads overlap the
+      // core's own second round trip instead of following it.
+      const pluginData = runRenderData(locals.env.DB, data.plugins, {
+        site: settings,
+        locale: locals.locale,
+        path: locals.pathname,
+        content: {
+          id: data.content.id,
+          kind: data.content.kind,
+          translationGroup: data.content.translation_group,
+          frontmatter: parseFrontmatter(data.content.frontmatter),
+        },
+        items: [],
+      });
       const fragment = await ensureFragment(
         locals.env.DB,
         data.content,
@@ -63,8 +90,9 @@ export default definePage<PublicLocals>()({
         settings.mediaBaseUrl,
         locals.now,
       );
+      const { plugins, degraded } = await pluginData;
       const rendered = await renderContentPage(
-        locals.render,
+        { ...locals.render, plugins },
         data.content,
         fragment,
         data.translations,
@@ -81,6 +109,7 @@ export default definePage<PublicLocals>()({
         html,
         row: data.content,
         fragmentStatus: fragment.regenerated ? 'REGENERATED' : 'CACHED',
+        degraded,
       };
     }
 
@@ -95,15 +124,20 @@ export default definePage<PublicLocals>()({
         (list.page - 1) * LIST_PAGE_SIZE,
         locals.now,
       );
-      const covers = await resolveCovers(
-        locals.env.DB,
-        rows.items,
-        settings.mediaBaseUrl,
-      );
+      const [covers, { plugins, degraded }] = await Promise.all([
+        resolveCovers(locals.env.DB, rows.items, settings.mediaBaseUrl),
+        runRenderData(locals.env.DB, data.plugins, {
+          site: settings,
+          locale: locals.locale,
+          path: locals.pathname,
+          content: null,
+          items: rows.items.map(renderDataItem),
+        }),
+      ]);
       const prefix =
         locals.locale === settings.defaultLocale ? '' : `/${locals.locale}`;
       const rendered = await renderListPage(
-        locals.render,
+        { ...locals.render, plugins },
         list.kind,
         rows,
         list.page,
@@ -117,7 +151,7 @@ export default definePage<PublicLocals>()({
         path: locals.pathname,
         content: null,
       });
-      return { kind: 'list', html, listKind: list.kind };
+      return { kind: 'list', html, listKind: list.kind, degraded };
     }
 
     // 3. A slug that moved. Returning a response stops the lifecycle.
@@ -149,6 +183,11 @@ export default definePage<PublicLocals>()({
     // A 404 is rendered but never stored: the next request has to ask again,
     // because the page it wanted may exist by then.
     if (resolved.kind === 'missing') {
+      return { mode: 'no-store' };
+    }
+    // Rendered without a plugin's data because its hook failed. Storing that
+    // would serve the lesser page for a whole TTL; the next request retries.
+    if (resolved.degraded) {
       return { mode: 'no-store' };
     }
     if (resolved.kind === 'content') {
@@ -193,6 +232,17 @@ function isVisible(
   now: string,
 ): boolean {
   return status === 'published' && publishedAt !== null && publishedAt <= now;
+}
+
+function parseFrontmatter(json: string): Readonly<Record<string, unknown>> {
+  try {
+    const parsed: unknown = JSON.parse(json);
+    return parsed !== null && typeof parsed === 'object'
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 /** `/products` and `/products/page/2`, where `products` is a kind's base. */

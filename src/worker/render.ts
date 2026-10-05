@@ -17,6 +17,7 @@ import {
   type FragmentMeta,
   mediaUrl,
   PIPELINE_VERSION,
+  type PluginsView,
   type RelationsInput,
   renderFragment,
   renderPage,
@@ -154,6 +155,8 @@ export interface RenderContext {
   readonly origin: string;
   readonly locale: string;
   readonly path: string;
+  /** What `renderData` hooks returned for this page; absent means none ran. */
+  readonly plugins?: PluginsView;
 }
 
 /**
@@ -172,6 +175,7 @@ function viewContext(ctx: RenderContext): ViewContext {
     path: ctx.path,
     strings: themeStrings(ctx.theme.manifest, ctx.theme.files, ctx.locale),
     languageNames: themeLanguageNames(ctx.theme.manifest, ctx.theme.files),
+    ...(ctx.plugins === undefined ? {} : { plugins: ctx.plugins }),
   };
 }
 

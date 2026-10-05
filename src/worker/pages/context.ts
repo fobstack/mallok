@@ -56,6 +56,19 @@ export function publicHeaders(
   return locals.noindex ? { 'x-robots-tag': 'noindex', ...extra } : extra;
 }
 
+/** A listed item as a `renderData` hook is told about it. */
+export function renderDataItem(row: {
+  readonly id: string;
+  readonly kind: string;
+  readonly translation_group: string;
+}): { id: string; kind: string; translationGroup: string } {
+  return {
+    id: row.id,
+    kind: row.kind,
+    translationGroup: row.translation_group,
+  };
+}
+
 /** Raised when the site row is missing, i.e. setup has not run. */
 export class SiteNotReady extends Error {}
 

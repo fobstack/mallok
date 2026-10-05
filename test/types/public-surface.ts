@@ -15,6 +15,7 @@ import type {
   PluginHooks as InternalPluginHooks,
   PluginInput as InternalPluginInput,
   PluginRenderContext as InternalPluginRenderContext,
+  PluginRenderDataContext as InternalPluginRenderDataContext,
   PluginRequestContext as InternalPluginRequestContext,
 } from '../../src/plugins/types.js';
 import type { Env as ActualEnv } from '../../src/worker/framework.js';
@@ -26,6 +27,7 @@ import type {
   PluginHooks,
   PluginInput,
   PluginRenderContext,
+  PluginRenderDataContext,
   PluginRequestContext,
 } from '../../src/worker/public.js';
 
@@ -98,6 +100,10 @@ export const internalRenderContextIsPublic: PluginRenderContext =
   undefined as unknown as InternalPluginRenderContext;
 export const publicRenderContextIsInternal: InternalPluginRenderContext =
   undefined as unknown as PluginRenderContext;
+export const internalRenderDataContextIsPublic: PluginRenderDataContext =
+  undefined as unknown as InternalPluginRenderDataContext;
+export const publicRenderDataContextIsInternal: InternalPluginRenderDataContext =
+  undefined as unknown as PluginRenderDataContext;
 
 export const built: BundledTheme = undefined as unknown as ReturnType<
   Actual['defineTheme']

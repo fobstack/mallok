@@ -155,8 +155,8 @@ schema generated from `plugin.json`.
 
 ## 5. Hooks
 
-0.1 exposes five (`ARCHITECTURE §12`). Implementations are properties of the
-`hooks` object passed to `definePlugin`.
+0.1 exposes five (`ARCHITECTURE §12`); plugin API 2 adds `renderData`.
+Implementations are properties of the `hooks` object passed to `definePlugin`.
 
 | Hook | When | Whose CPU it costs | Typical use |
 | --- | --- | --- | --- |
@@ -165,6 +165,7 @@ schema generated from `plugin.json`.
 | `afterRender` | After the complete HTML is generated | The visitor request, on a cache miss | Injecting meta, structured data, form markup |
 | `onContentSave` | When content is saved | The save request | Validation, auto-summaries, notifying something external |
 | `scheduled` | Inside the once-a-minute cron | The cron invocation | Retries, syncing, cleanup |
+| `renderData` (API 2) | While a page is rendered, **on a cache miss only** | The visitor request, on a cache miss | Data from the plugin's tables that templates print: prices, availability |
 
 ### 5.1 `onRequest`
 
@@ -250,12 +251,82 @@ Runs inside the site's single cron (`* * * * *`). Every plugin's `scheduled`
 therefore batch its own work: do a little, leave the rest for the next minute,
 and do not try to finish everything at once.
 
+### 5.6 `renderData`
+
+```ts
+export async function renderData(
+  ctx: PluginRenderDataContext,
+): Promise<Readonly<Record<string, unknown>> | undefined>;
+```
+
+Plugin API 2; the manifest must declare `"pluginApi": 2` and list
+`renderData` in `hooks`. It is the only hook on the render path that may read
+the database, and it exists so that what a plugin stores — a price, an
+availability state — is **in the cached HTML**, not fetched by the browser.
+
+**When it runs.** Once per rendered page: a content page, a kind's list, a tag
+archive, the home page. Never on a cache hit, never for a 404, and never in
+`mallok build` or the admin's preview, which run no plugin code — there
+`plugins` is empty. The hooks of all plugins run concurrently, alongside the
+core's own second round trip.
+
+**What it returns.** An object, or `undefined` for "nothing on this page".
+The core passes it through `JSON.stringify`, so it must be JSON-serialisable:
+a function is dropped, and a cycle or a `BigInt` fails the hook. Templates
+read it as `plugins.<plugin_id>` — the plugin's id with hyphens written as
+underscores, as in its table prefix (`THEME_FORMAT.md §7.9`). The core does
+not rename keys; use `snake_case`, as the rest of the view does. **Return
+values ready to display** — a price already formatted for `ctx.locale` — since
+a plugin cannot register Liquid filters (§12). Strings are HTML-escaped by the
+template engine like any other value.
+
+**What it costs, and the limits that follow.** A cold render may make four D1
+round trips (`ARCHITECTURE §4`) and the core uses two. So:
+
+- **One database call per hook per render**: one query, or one `batch`. The
+  `ctx.db` the hook receives counts calls and refuses a second. On a list or
+  home page `ctx.items` holds every item shown, so one `IN (…)` query covers
+  the page.
+- **At most two plugins run `renderData` on a page.** They are the first two
+  enabled plugins that implement it, in the order the site lists its plugins
+  in `createMallok`. A further one is skipped, and
+  `{"event":"render_data_skipped"}` is logged with its id; the page is
+  otherwise normal and is cached.
+
+**Read-only.** `ctx.db` accepts a single statement that starts with `SELECT`,
+or with `WITH` and contains no `INSERT`, `UPDATE` or `DELETE`. Anything else
+is refused before it reaches D1, as are `exec`, `dump`, `withSession` and a
+statement prepared on another binding. **The check is by keyword, not by
+parsing SQL**: it catches a mistake, it is not a sandbox (§2.1), and it can
+refuse a legitimate query that spells one of those words or a `;` inside a
+string literal — bind the value as a parameter instead.
+
+**Deterministic.** The result may depend only on the database and on the
+context below: not on the clock, a random source or anything about the
+request, none of which the hook is given. The page is stored in the edge cache
+and served to everyone, and identical database state must give identical
+bytes.
+
+**When it fails.** A hook that throws, makes a second call, attempts a write
+or returns something that is not an object loses its own data and nothing
+else: the page renders, the other plugins' data is present,
+`{"event":"render_data_failed","plugin":…,"path":…,"reason":…}` is logged, and
+**that response is not stored in the edge cache** (`cache-control: no-store`),
+so the next request tries again. A hook that catches the refusal of its
+second call and carries on is treated as failed all the same. A template must
+therefore read `plugins.<id>` as optional.
+
+**Freshness.** What the hook read is cached with the page. A later change in
+the plugin's tables reaches visitors when that page's cache entry is purged or
+expires; a plugin purges with `ctx.purgeTags` from the route or action that
+made the change. Cache tags of a plugin's own arrive with Task 23 (§13.2).
+
 ## 6. The context objects
 
 All of these are exported from `mallok/worker`, so a third-party plugin
 annotates its own handlers with the same types the official one uses:
 `PluginContext`, `PluginRequestContext`, `PluginRenderContext`,
-`ContentDraft`, `RouteInput`, `EmailMessage`, `PluginSiteSettings`,
+`PluginRenderDataContext`, `ContentDraft`, `RouteInput`, `EmailMessage`, `PluginSiteSettings`,
 `PluginExportFile` and `PluginMigration`, plus `MallokPlugin` and
 `PluginInput`. There is no private interface (§1), and before 0.1.0-rc.5 the
 package exported only `MallokPlugin` with an opaque
@@ -278,6 +349,33 @@ interface PluginContext {
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }
 ```
+
+```ts
+interface PluginRenderDataContext {
+  /** One call per render, reads only (§5.6). Not the plain binding. */
+  readonly db: D1Database;
+  readonly settings: Readonly<Record<string, unknown>>;
+  readonly site: SiteSettings;
+  readonly locale: string;
+  readonly path: string;
+  /** Content pages: the item being rendered. Home and list pages: null. */
+  readonly content: {
+    readonly id: string;
+    readonly kind: string;
+    readonly translationGroup: string;
+    readonly frontmatter: Readonly<Record<string, unknown>>;
+  } | null;
+  /** Home and list pages: the items shown on this page. Empty on a content page. */
+  readonly items: readonly {
+    readonly id: string;
+    readonly kind: string;
+    readonly translationGroup: string;
+  }[];
+}
+```
+
+`PluginRenderDataContext` has no secrets, no `media`, no `sendEmail` and no
+request: it runs on the visitor path and its output is public and cached.
 
 `PluginRequestContext` adds `request`, `url`, `locale`, `country` and the
 one-way `ipHash`. `PluginRenderContext` contains `settings`, `site`, `locale`,
@@ -533,6 +631,11 @@ output:
   fragment key, but **the edge cache must still be purged** — the core purges
   the `site` tag automatically when it is enabled, disabled or reconfigured.
 
+`renderData` (§5.6) is stage two: what it returns is in the page, never in
+the fragment, so it does not enter the `render_cache` key and a plugin using
+only that hook leaves `affectsFragmentCache` false. Its data is cached with
+the page in the edge cache and is refreshed by purging the page.
+
 Declaring this wrongly means changing a setting and still seeing old content.
 At install the core rejects a plugin that declares `beforeRender` alongside
 `affectsFragmentCache: false`.
@@ -613,11 +716,17 @@ inquiry cart or a booking plugin as much as a shop.
   the one kind of change that can affect a version 1 plugin, and it is never
   made silently.
 - The build's supported version (`PLUGIN_API_VERSION` in `src/core/plugin.ts`)
-  becomes 2 with the first addition that changes what a `plugin.json` may
-  declare or what a hook receives (Task 22, `renderData`). Until then it stays
-  1, so that a plugin declaring `pluginApi: 2` is never accepted by a build
-  holding only part of version 2. Additions that are plain exports, such as
-  the public helpers, need no declaration and are usable under version 1.
+  **is 2 as of Task 22** (`renderData`), the first addition that changes what
+  a `plugin.json` may declare. Releases up to `0.1.0-rc.9` support 1 and
+  refuse a plugin declaring 2. Additions that are plain exports, such as the
+  public helpers, need no declaration and are usable under version 1.
+- **A version 2 hook needs a version 2 declaration.** A manifest that lists
+  `renderData` and declares `"pluginApi": 1` is refused at build time: "The
+  renderData hook needs plugin API 2; this plugin declares 1." A manifest that
+  omits `pluginApi` gets the build's own version, as before.
+- **The rows of §13.2 still marked Planned are not in this build.** A plugin
+  declaring 2 is accepted from here on, so the table, not the version number,
+  says what can be relied on until the phase closes.
 
 ### 13.2 Additions
 
@@ -625,7 +734,7 @@ inquiry cart or a booking plugin as much as a shop.
 | --- | --- | --- | --- |
 | Public helpers: `escapeHtml`, `renderTextTemplate` | §7.6 and the `mallok/worker` exports | 20 | Done |
 | Site-level email settings used by `ctx.sendEmail` | §7.6 | 21 | Done |
-| `renderData`: plugin data read while rendering a page | §5, §6 | 22 | Planned |
+| `renderData`: plugin data read while rendering a page | §5.6, §6; `THEME_FORMAT.md §7.9` | 22 | Done |
 | Plugin cache tags (`p:<plugin-id>:<tag>`) | §9 | 23 | Planned |
 | Multi-segment routes with parameters, a locale segment, `input.json` | §4, §7.2 | 24 | Planned |
 | Rate-limit tiers | §7.2 | 25 | Planned |

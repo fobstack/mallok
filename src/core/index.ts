@@ -78,6 +78,7 @@ export {
   type NavItemView,
   type PageMetaView,
   type PageView,
+  type PluginsView,
   type RelationsView,
   renderPage,
   type SiteView,

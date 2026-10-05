@@ -415,6 +415,77 @@ describe('a project that installed only the tarball', () => {
     expect(result.stdout).toContain('emails: ok');
   }, 300_000);
 
+  it('compiles and defines a plugin that reads data for the page', async () => {
+    // The hook Nundar's product pages are built on: written against the
+    // package alone, with the context type named, under plugin API 2.
+    await writeFile(
+      join(sandbox, 'src/pricing.ts'),
+      [
+        "import { definePlugin, type PluginRenderDataContext } from 'mallok/worker';",
+        '',
+        'async function renderData(ctx: PluginRenderDataContext) {',
+        '  const ids = ctx.content === null',
+        '    ? ctx.items.map((item) => item.id)',
+        '    : [ctx.content.id];',
+        '  if (ids.length === 0) {',
+        '    return undefined;',
+        '  }',
+        '  const rows = await ctx.db',
+        "    .prepare('SELECT content_id, label FROM p_pricing_price WHERE content_id IN (' + ids.map(() => '?').join(', ') + ')')",
+        '    .bind(...ids)',
+        '    .all<{ content_id: string; label: string }>();',
+        '  const group: string = ctx.content?.translationGroup ?? "";',
+        '  return {',
+        '    group,',
+        '    prices: Object.fromEntries(rows.results.map((row) => [row.content_id, row.label])),',
+        '  };',
+        '}',
+        '',
+        'export function build(pluginApi: number) {',
+        '  return definePlugin({',
+        "    manifest: { id: 'pricing', name: 'Pricing', version: '1.0.0', pluginApi, hooks: ['renderData'] },",
+        '    hooks: { renderData },',
+        '  });',
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    const compiled = await run(
+      join(sandbox, 'node_modules/.bin/tsc'),
+      ['-p', 'tsconfig.json', '--noEmit', 'false', '--outDir', 'compiled'],
+      sandbox,
+    );
+    expect(compiled.code, compiled.stdout + compiled.stderr).toBe(0);
+
+    const script = join(sandbox, 'pricing-check.mjs');
+    await writeFile(
+      script,
+      [
+        "import { build } from './compiled/pricing.js';",
+        '',
+        "if (build(2).manifest.hooks.join() !== 'renderData') {",
+        "  throw new Error('renderData was not accepted under plugin API 2');",
+        '}',
+        'let refusal = "";',
+        'try {',
+        '  build(1);',
+        '} catch (error) {',
+        '  refusal = String(error.message) + String(error.hint ?? "");',
+        '}',
+        "if (!refusal.includes('needs plugin API 2')) {",
+        "  throw new Error('version 1 was not refused: ' + refusal);",
+        '}',
+        'process.stdout.write("pricing: ok\\n");',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+    const result = await run('node', [script], sandbox);
+    expect(result.code, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain('pricing: ok');
+  }, 300_000);
+
   it('type-checks a site that brings its own theme and a plugin migration', async () => {
     // `wrangler.jsonc` bundles `*.liquid`, `*.css`, `*.sql` and `*.md` as
     // text, and the template's README shows importing a layout. Nothing told

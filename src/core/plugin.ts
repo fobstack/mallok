@@ -8,7 +8,7 @@
 import { z } from 'zod';
 
 /** Version of the plugin contract this build understands. */
-export const PLUGIN_API_VERSION = 1;
+export const PLUGIN_API_VERSION = 2;
 
 /** Hook points a plugin may declare (docs/PLUGIN_API.md §5). */
 export const PLUGIN_HOOKS = [
@@ -17,7 +17,16 @@ export const PLUGIN_HOOKS = [
   'afterRender',
   'onContentSave',
   'scheduled',
+  'renderData',
 ] as const;
+
+/**
+ * The plugin API version that introduced each hook. A hook absent from this
+ * map has existed since version 1.
+ */
+const HOOK_SINCE: Readonly<
+  Partial<Record<(typeof PLUGIN_HOOKS)[number], number>>
+> = { renderData: 2 };
 
 /** One declared hook name. */
 export type PluginHookName = (typeof PLUGIN_HOOKS)[number];
@@ -155,6 +164,15 @@ export const pluginManifestSchema = z
         message:
           'A plugin with a beforeRender hook must set affectsFragmentCache: true.',
       });
+    }
+    for (const hook of manifest.hooks) {
+      const since = HOOK_SINCE[hook];
+      if (since !== undefined && manifest.pluginApi < since) {
+        issue.addIssue({
+          code: 'custom',
+          message: `The ${hook} hook needs plugin API ${since}; this plugin declares ${manifest.pluginApi}.`,
+        });
+      }
     }
     const panelIds = new Set<string>();
     const actionIds = new Set<string>();

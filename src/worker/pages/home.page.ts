@@ -12,7 +12,8 @@ import { listRecentByKind } from '../../db/queries.js';
 import { definePage } from '../../runtime/core/index.js';
 import { runAfterRender } from '../plugin-runtime.js';
 import { renderHomePage, resolveCovers } from '../render.js';
-import { type PublicLocals, publicHeaders } from './context.js';
+import { runRenderData } from '../render-data.js';
+import { type PublicLocals, publicHeaders, renderDataItem } from './context.js';
 
 export default definePage<PublicLocals>()({
   load: async ({ locals }) => {
@@ -26,16 +27,26 @@ export default definePage<PublicLocals>()({
       HOME_RECENT,
       locals.now,
     );
-    const covers = await resolveCovers(
-      locals.env.DB,
-      Object.values(recent).flat(),
-      locals.settings.mediaBaseUrl,
-    );
-    return { recent, covers };
+    const items = Object.values(recent).flat();
+    const [covers, pluginData] = await Promise.all([
+      resolveCovers(locals.env.DB, items, locals.settings.mediaBaseUrl),
+      runRenderData(locals.env.DB, locals.data.plugins, {
+        site: locals.settings,
+        locale: locals.locale,
+        path: locals.pathname,
+        content: null,
+        items: items.map(renderDataItem),
+      }),
+    ]);
+    return { recent, covers, pluginData };
   },
 
-  render: async ({ recent, covers }, { locals }) => {
-    const rendered = await renderHomePage(locals.render, recent, covers);
+  render: async ({ recent, covers, pluginData }, { locals }) => {
+    const rendered = await renderHomePage(
+      { ...locals.render, plugins: pluginData.plugins },
+      recent,
+      covers,
+    );
     const body = await runAfterRender(locals.data.plugins, rendered, {
       site: locals.settings,
       locale: locals.locale,
@@ -48,9 +59,14 @@ export default definePage<PublicLocals>()({
   // `browserSeconds` is left at 0 on purpose: purging the edge does not reach
   // a visitor's browser, so a long browser lifetime would serve stale pages
   // long after an edit went live (docs/ARCHITECTURE.md §6).
-  cache: (_data, { locals }) => ({
-    mode: 'public',
-    edgeSeconds: locals.settings.cacheTtl,
-    tags: ['site', `home:${locals.locale}`],
-  }),
+  // A page rendered without a plugin's data because its hook failed is not
+  // stored: the next request retries instead of serving it for a whole TTL.
+  cache: ({ pluginData }, { locals }) =>
+    pluginData.degraded
+      ? { mode: 'no-store' }
+      : {
+          mode: 'public',
+          edgeSeconds: locals.settings.cacheTtl,
+          tags: ['site', `home:${locals.locale}`],
+        },
 });

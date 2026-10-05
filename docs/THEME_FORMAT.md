@@ -317,6 +317,8 @@ from Shopify and Jekyll — one of the two camelCase exceptions in
 {{ theme.asset_base }}     {# asset prefix for this theme at this version, no trailing slash #}
 
 {{ t.read_more }}          {# a language-pack string #}
+
+{{ plugins.<plugin_id> }}  {# what an enabled plugin read for this page; §7.9 #}
 ```
 
 **`page.head` is mandatory**: the core emits `hreflang` (including
@@ -512,6 +514,32 @@ Pagination does no `COUNT(*)`; it uses `LIMIT n+1` to decide `has_next`
 (`DATA_MODEL §3`). A template therefore cannot get a total page count, only
 whether there is a next page. That is deliberate: a total would make row reads
 grow linearly with the amount of content.
+
+### 7.9 Data from plugins
+
+```liquid
+{% if plugins.shop %}
+  <p class="price">{{ plugins.shop.price }}</p>
+{% endif %}
+{% for item in list.items %}
+  {{ item.title }} — {{ plugins.shop.prices[item.id] }}
+{% endfor %}
+```
+
+`plugins` is on every page. A plugin that implements `renderData`
+(`PLUGIN_API.md §5.6`) and is switched on contributes one key: its id, with
+hyphens written as underscores — `plugins.my_shop` for the plugin `my-shop`.
+What is under that key is whatever that plugin documents; the core passes it
+through unchanged, as plain data, and values are escaped on output like any
+other.
+
+**Treat every key as optional.** It is absent when the plugin is not
+installed or is switched off, when it has nothing for this page, when its
+read failed, in `mallok build` and in the admin's preview. A missing value
+prints as nothing, so `{{ plugins.shop.price }}` is safe by itself; wrap the
+surrounding markup in `{% if %}` so that an empty price does not leave an
+empty box. A theme that requires a plugin says so in its own documentation —
+`theme.json` has no way to declare it.
 
 ## 8. The restricted Liquid
 

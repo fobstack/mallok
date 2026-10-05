@@ -197,6 +197,7 @@ GET /de/products/titanium-bar
       ├─ one D1 batch fetching { site settings, the content row (with its assets and cached fragment), bounded data for navigation and lists }
       │   (the theme templates are not among them: they ship in the artifact, see §10)
       ├─ if the cached fragment is missing or stale: generate it now (stage one, §5) and write it back to D1
+      ├─ plugin renderData hooks: each may read D1 once (at most two plugins)
       ├─ render the complete page through the theme templates (stage two, §5)
       ├─ plugin afterRender hooks
       ├─ set Cache-Control and Cache-Tag, cache.put()
@@ -220,6 +221,17 @@ round trip is a data dependency, not a shortfall to fix. Data for list pages
 and navigation comes from separate, bounded queries with `LIMIT` pagination; a
 query per content item is never acceptable. **A list page reads front matter
 and summary fields only, and never parses body Markdown.**
+
+**Plugins spend from the same four.** A plugin's `renderData` hook
+(`PLUGIN_API.md §5.6`) reads its own tables while the page is rendered, so
+that a price is in the cached HTML. The core's pages use two round trips, so
+two are left: each hook gets a database handle that allows one call and only
+reads, and at most two plugins' hooks run on a page. Both limits are enforced
+in the Worker, in production as in tests (`src/worker/render-data.ts`,
+`test/worker/render-data.test.ts`) — a rule that held only in tests would
+leave the invariant unguarded where it matters. A hook that fails costs the
+page that plugin's data and its place in the edge cache, never its
+availability.
 
 Theme templates are part of the build artifact and load as strings with the
 Worker. Once parsed they are cached in module scope in the isolate and reused,

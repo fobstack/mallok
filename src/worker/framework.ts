@@ -55,6 +55,7 @@ export type {
   PluginMigration,
   PluginPanelDeclaration,
   PluginRenderContext,
+  PluginRenderDataContext,
   PluginRequestContext,
   PluginRouteDeclaration,
   PluginRouteHandler,
