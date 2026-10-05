@@ -280,6 +280,51 @@ values ready to display** — a price already formatted for `ctx.locale` — sin
 a plugin cannot register Liquid filters (§12). Strings are HTML-escaped by the
 template engine like any other value.
 
+**Structured data.** One key of the result is not for templates:
+`structuredData`. It holds properties for the JSON-LD node the core already
+emits for the page, so that a price a plugin puts on the page is in the
+page's structured data too:
+
+```ts
+return {
+  price: '$99.00',
+  structuredData: {
+    offers: { '@type': 'Offer', price: '99.00', priceCurrency: 'USD',
+              availability: 'https://schema.org/InStock' },
+  },
+};
+```
+
+The core merges them into its own node and emits **one node**, through the
+same serialisation and the same escaping as before (`SEO_PERFORMANCE.md §5`).
+This is the supported way in. A theme that declares no `clientScripts` may
+not contain `<script` at all (`THEME_FORMAT.md §9`); one that does could
+write a JSON-LD element by hand, but template output is HTML-escaped, not
+JSON-escaped, and the result would be a second node beside the core's. The
+rules:
+
+- **An allow-list per node type decides what may be added.** Today it has one
+  entry: `offers` on a `Product` node, which is what a content page of the
+  `product` kind gets. Nothing may be added to an `Article`, `FAQPage` or the
+  home page's node, and a page with no node — a plain page, a list, a tag
+  archive — gets none from a plugin.
+- **The core's own properties are never replaced**: `@context`, `@type`,
+  `name`, `url` and whatever else the core set on that node.
+- When two plugins offer the same property, the first in the site's plugin
+  order keeps it.
+- Every property that is not used is logged:
+  `{"event":"structured_data_dropped","plugin":…,"key":…,"reason":…,"path":…}`
+  with the reason `not_allowed`, `core_key`, `already_set`, `no_node`, or
+  `not_object` when `structuredData` itself is not an object. Dropping is not
+  a failure: the page is exactly what the core alone would have produced, and
+  it is cached.
+- `structuredData` is removed before the result reaches templates; there is
+  no `plugins.<id>.structuredData`.
+- **Offer only what the page shows** — the same price, in the same currency,
+  and an availability the page prints. Search engines penalise structured
+  data that says more than the page (`SEO_PERFORMANCE.md §5`), and the
+  allow-list cannot check that for you.
+
 **What it costs, and the limits that follow.** A cold render may make four D1
 round trips (`ARCHITECTURE §4`) and the core uses two. So:
 
@@ -735,6 +780,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Public helpers: `escapeHtml`, `renderTextTemplate` | §7.6 and the `mallok/worker` exports | 20 | Done |
 | Site-level email settings used by `ctx.sendEmail` | §7.6 | 21 | Done |
 | `renderData`: plugin data read while rendering a page | §5.6, §6; `THEME_FORMAT.md §7.9` | 22 | Done |
+| `renderData` adds `offers` to the page's `Product` structured data | §5.6; `SEO_PERFORMANCE.md §5` | 41 | Done |
 | Plugin cache tags (`p:<plugin-id>:<tag>`) | §9 | 23 | Planned |
 | Multi-segment routes with parameters, a locale segment, `input.json` | §4, §7.2 | 24 | Planned |
 | Rate-limit tiers | §7.2 | 25 | Planned |

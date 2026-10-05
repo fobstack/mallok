@@ -60,6 +60,95 @@ export interface ViewContext {
   readonly languageNames?: Readonly<Record<string, string>>;
   /** Data plugins read for this page; absent wherever no plugin code runs. */
   readonly plugins?: PluginsView;
+  /** Properties plugins offer for this page's structured data, in order. */
+  readonly structuredData?: readonly StructuredDataAddition[];
+  /** Told about every offered property that was not used. */
+  readonly onStructuredDataDropped?: (drop: StructuredDataDrop) => void;
+}
+
+/** Properties one source offers for the page's own JSON-LD node. */
+export interface StructuredDataAddition {
+  /** Who offers them — a plugin id — for the log. */
+  readonly source: string;
+  readonly properties: Readonly<Record<string, unknown>>;
+}
+
+/** One offered property that did not reach the page, and why. */
+export interface StructuredDataDrop {
+  readonly source: string;
+  readonly key: string;
+  readonly reason: 'no_node' | 'not_allowed' | 'core_key' | 'already_set';
+}
+
+/**
+ * What may be added to the node the core builds, by the node's `@type`.
+ *
+ * An allow-list, not "anything the core did not set": structured data may
+ * only describe what the page shows (docs/SEO_PERFORMANCE.md §5), and a
+ * plugin free to add any property could make a page claim a rating or a
+ * review it does not display. A new entry here is a product decision.
+ */
+const STRUCTURED_DATA_ADDITIONS: ReadonlyMap<string, readonly string[]> =
+  new Map([['Product', ['offers']]]);
+
+/**
+ * Merges offered properties into the page's JSON-LD node.
+ *
+ * One node comes out, never a second one: a consumer should not have to join
+ * a `Product` and its `offers` across two script elements. The core's own
+ * properties are never replaced, and when two sources offer the same
+ * property the first keeps it.
+ */
+export function mergeStructuredData(
+  node: Readonly<Record<string, unknown>> | null,
+  additions: readonly StructuredDataAddition[],
+): {
+  readonly node: Record<string, unknown> | null;
+  readonly dropped: readonly StructuredDataDrop[];
+} {
+  const dropped: StructuredDataDrop[] = [];
+  if (node === null) {
+    for (const { source, properties } of additions) {
+      for (const key of Object.keys(properties)) {
+        dropped.push({ source, key, reason: 'no_node' });
+      }
+    }
+    return { node: null, dropped };
+  }
+  const merged: Record<string, unknown> = { ...node };
+  const type = node['@type'];
+  const allowed =
+    typeof type === 'string' ? (STRUCTURED_DATA_ADDITIONS.get(type) ?? []) : [];
+  for (const { source, properties } of additions) {
+    for (const [key, value] of Object.entries(properties)) {
+      if (Object.hasOwn(node, key)) {
+        dropped.push({ source, key, reason: 'core_key' });
+      } else if (!allowed.includes(key)) {
+        dropped.push({ source, key, reason: 'not_allowed' });
+      } else if (Object.hasOwn(merged, key)) {
+        dropped.push({ source, key, reason: 'already_set' });
+      } else {
+        merged[key] = value;
+      }
+    }
+  }
+  return { node: merged, dropped };
+}
+
+/** Applies what plugins offered to a page's node and reports the rest. */
+function withStructuredData(
+  ctx: ViewContext,
+  node: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  const additions = ctx.structuredData ?? [];
+  if (additions.length === 0) {
+    return node;
+  }
+  const merged = mergeStructuredData(node, additions);
+  for (const drop of merged.dropped) {
+    ctx.onStructuredDataDropped?.(drop);
+  }
+  return merged.node;
 }
 
 /** A content item as the view builders take it. */
@@ -265,7 +354,10 @@ export function buildContentPageView(
     ...buildRelationsView(relations),
   };
   const description = content.description || fragment.meta.excerpt;
-  const jsonLd = contentJsonLd(ctx, content, description);
+  const jsonLd = withStructuredData(
+    ctx,
+    contentJsonLd(ctx, content, description),
+  );
   return {
     site: buildSiteView(ctx),
     theme: buildThemeView(ctx),
@@ -430,12 +522,16 @@ export function buildHomePageView(
       kind: 'home',
       locale: ctx.locale,
       alternates,
-      head: buildHeadTags(ctx, alternates, {
-        '@context': 'https://schema.org',
-        '@type': 'WebSite',
-        name: ctx.settings.name,
-        url: canonical,
-      }),
+      head: buildHeadTags(
+        ctx,
+        alternates,
+        withStructuredData(ctx, {
+          '@context': 'https://schema.org',
+          '@type': 'WebSite',
+          name: ctx.settings.name,
+          url: canonical,
+        }),
+      ),
     },
     recent: recentViews,
   };
@@ -500,7 +596,7 @@ export function buildListPageView(ctx: ViewContext, list: ListInput): PageView {
       kind: 'list',
       locale: ctx.locale,
       alternates,
-      head: buildHeadTags(ctx, alternates, null),
+      head: buildHeadTags(ctx, alternates, withStructuredData(ctx, null)),
     },
     list: view,
   };

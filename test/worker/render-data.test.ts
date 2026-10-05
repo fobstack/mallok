@@ -51,6 +51,9 @@ type Mode =
   | 'cycle'
   | 'nothing';
 let mode: Mode = 'ok';
+/** What each test plugin offers for the page's structured data. */
+let offered: unknown;
+let notesOffered: unknown;
 const seen: PluginRenderDataContext[] = [];
 
 const PRICES =
@@ -127,6 +130,7 @@ const pricing = definePlugin({
         prices,
         // Never reaches a template: not JSON.
         format: () => 'dropped',
+        ...(offered === undefined ? {} : { structuredData: offered }),
       };
     },
   },
@@ -142,7 +146,10 @@ const notes = definePlugin({
     hooks: ['renderData'],
   },
   hooks: {
-    renderData: async (ctx) => ({ note: `note for ${ctx.locale}` }),
+    renderData: async (ctx) => ({
+      note: `note for ${ctx.locale}`,
+      ...(notesOffered === undefined ? {} : { structuredData: notesOffered }),
+    }),
   },
 });
 
@@ -167,13 +174,18 @@ const third = definePlugin({
 const HEAD =
   '<!doctype html><html><head><link rel="stylesheet" href="{{ theme.asset_base }}/style.css">{{ page.head }}</head><body>';
 const PLUGIN_MARKUP =
-  '<p id="price">[{{ plugins.pricing.price }}]</p><p id="note">[{{ plugins.site_notes.note }}]</p><p id="third">[{{ plugins.third.value }}]</p><p id="fn">[{{ plugins.pricing.format }}]</p>';
+  '<p id="sd">[{{ plugins.pricing.structuredData.offers.lowPrice }}{{ plugins.pricing.structured_data.offers.lowPrice }}]</p><p id="price">[{{ plugins.pricing.price }}]</p><p id="note">[{{ plugins.site_notes.note }}]</p><p id="third">[{{ plugins.third.value }}]</p><p id="fn">[{{ plugins.pricing.format }}]</p>';
 const LISTED =
   '<li>{{ item.title }}=[{{ plugins.pricing.prices[item.id] }}]</li>';
 
 function probeTheme() {
   const source = withManifest(themeSource('probe', '1.0.0'), (manifest) => {
     manifest.locales = ['en'];
+    (manifest.kinds as Record<string, unknown>).product = {
+      layout: 'layouts/article.liquid',
+      listLayout: 'layouts/list.liquid',
+      base: 'products',
+    };
   }).filter((entry) => !entry.path.startsWith('layouts/'));
   const pkg = readThemePackage(
     [
@@ -203,6 +215,8 @@ function probeTheme() {
 let token = '';
 let alpha = { id: '', path: '' };
 let beta = { id: '', path: '' };
+let widget = { id: '', path: '' };
+let about = { id: '', path: '' };
 
 async function api(method: string, path: string, body?: unknown) {
   return SELF.fetch(`${ORIGIN}${path}`, {
@@ -355,6 +369,23 @@ describe('renderData', () => {
       ).json()) as { id: string; path: string };
     alpha = await create('alpha', 'Alpha');
     beta = await create('beta', 'Beta');
+    await api('PATCH', '/_mallok/api/settings', {
+      kinds: {
+        page: { base: '' },
+        article: { base: 'news' },
+        product: { base: 'products' },
+      },
+    });
+    const createAs = async (kind: string, slug: string, title: string) =>
+      (await (
+        await api('POST', '/_mallok/api/content', {
+          kind,
+          slug,
+          markdown: `---\ntitle: ${title}\ndescription: About ${title}.\n---\n\nBody of ${title}.`,
+        })
+      ).json()) as { id: string; path: string };
+    widget = await createAs('product', 'widget', 'Widget');
+    about = await createAs('page', 'about', 'About');
 
     await env.DB.batch([
       env.DB.prepare(
@@ -373,6 +404,8 @@ describe('renderData', () => {
 
   afterEach(() => {
     mode = 'ok';
+    offered = undefined;
+    notesOffered = undefined;
     seen.length = 0;
     vi.restoreAllMocks();
   });
@@ -411,10 +444,20 @@ describe('renderData', () => {
       expect(html, path).toContain('<li>Alpha=[USD 99 &lt;net&gt;]</li>');
       expect(html, path).toContain('<li>Beta=[USD 149]</li>');
       expect(seen[0]?.content, path).toBeNull();
-      expect(seen[0]?.items.map((item) => item.id).sort(), path).toEqual(
-        [alpha.id, beta.id].sort(),
-      );
-      expect(seen[0]?.items[0]?.kind, path).toBe('article');
+      // The home page lists every kind the theme gives a list, so the hook
+      // is told about the product as well; the theme prints the articles.
+      const items = seen[0]?.items ?? [];
+      expect(
+        items
+          .filter((item) => item.kind === 'article')
+          .map((item) => item.id)
+          .sort(),
+        path,
+      ).toEqual([alpha.id, beta.id].sort());
+      expect(
+        items.some((item) => item.id === widget.id),
+        path,
+      ).toBe(path === '/');
     }
   });
 
@@ -580,6 +623,182 @@ describe('renderData', () => {
       enabled: true,
     });
     await api('POST', '/_mallok/api/plugins/third/enabled', { enabled: false });
+  });
+
+  describe('structured data', () => {
+    const offers = {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'USD',
+      lowPrice: '99.00',
+      highPrice: '149.00',
+      offerCount: 2,
+      availability: 'https://schema.org/InStock',
+    };
+
+    /** Every JSON-LD node in a document, parsed. */
+    function nodes(html: string): Record<string, unknown>[] {
+      return [
+        ...html.matchAll(
+          /<script type="application\/ld\+json">(.*?)<\/script>/gs,
+        ),
+      ].map((match) => JSON.parse(match[1] ?? '{}') as Record<string, unknown>);
+    }
+
+    it('adds offers to the one Product node, the same bytes every time', async () => {
+      offered = { offers: offers };
+      const response = await cold(widget.path);
+      const html = await response.text();
+      const found = nodes(html);
+      expect(found).toHaveLength(1);
+      expect(found[0]).toEqual({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: 'Widget',
+        description: 'About Widget.',
+        url: `${ORIGIN}${widget.path}`,
+        offers: offers,
+      });
+      // The reserved key is for the core, not for templates.
+      expect(html).toContain('<p id="sd">[]</p>');
+      expect(response.headers.get('x-mallok-cache')).toBe('MISS');
+      expect(await (await cold(widget.path)).text()).toBe(html);
+    });
+
+    it('never lets a plugin replace what the core said', async () => {
+      offered = {
+        '@context': 'https://example.com',
+        '@type': 'Thing',
+        name: 'Something else',
+        url: 'https://elsewhere.example/',
+        offers: offers,
+      };
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const response = await cold(widget.path);
+      const [node] = nodes(await response.text());
+      expect(node).toMatchObject({
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: 'Widget',
+        url: `${ORIGIN}${widget.path}`,
+        offers: offers,
+      });
+      expect(
+        logged(warn, 'structured_data_dropped').map((entry) => [
+          entry.plugin,
+          entry.key,
+          entry.reason,
+        ]),
+      ).toEqual([
+        ['pricing', '@context', 'core_key'],
+        ['pricing', '@type', 'core_key'],
+        ['pricing', 'name', 'core_key'],
+        ['pricing', 'url', 'core_key'],
+      ]);
+      // Dropping a property is not a failure: the page is cached.
+      expect(response.headers.get('x-mallok-cache')).toBe('MISS');
+    });
+
+    it('drops and logs a property outside the allow-list', async () => {
+      offered = {
+        offers: offers,
+        aggregateRating: { '@type': 'AggregateRating', ratingValue: '5' },
+      };
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const [node] = nodes(await (await cold(widget.path)).text());
+      expect(node).not.toHaveProperty('aggregateRating');
+      expect(node?.offers).toEqual(offers);
+      expect(logged(warn, 'structured_data_dropped')).toMatchObject([
+        {
+          plugin: 'pricing',
+          key: 'aggregateRating',
+          reason: 'not_allowed',
+          path: widget.path,
+        },
+      ]);
+    });
+
+    it('gives the first plugin the property when two offer it', async () => {
+      offered = { offers: offers };
+      notesOffered = { offers: { '@type': 'Offer', price: '1.00' } };
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const [node] = nodes(await (await cold(widget.path)).text());
+      expect(node?.offers).toEqual(offers);
+      expect(logged(warn, 'structured_data_dropped')).toMatchObject([
+        { plugin: 'site-notes', key: 'offers', reason: 'already_set' },
+      ]);
+    });
+
+    it('escapes what a plugin offers the way the core escapes its own', async () => {
+      offered = { offers: { '@type': 'Offer', name: '</script><b>x' } };
+      const html = await (await cold(widget.path)).text();
+      expect(html).toContain('"name":"\\u003c/script>\\u003cb>x"');
+      expect(nodes(html)[0]?.offers).toEqual({
+        '@type': 'Offer',
+        name: '</script><b>x',
+      });
+    });
+
+    it('changes nothing on a page whose node takes no additions, or has none', async () => {
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      for (const path of [alpha.path, about.path, '/news', '/']) {
+        const plain = await (await cold(path)).text();
+        offered = { offers };
+        warn.mockClear();
+        const response = await cold(path);
+        expect(await response.text(), path).toBe(plain);
+        expect(response.headers.get('x-mallok-cache'), path).toBe('MISS');
+        // An Article and the home page's node take nothing; a plain page and
+        // a list have no node at all.
+        expect(
+          logged(warn, 'structured_data_dropped').map((entry) => entry.reason),
+          path,
+        ).toEqual([
+          path === alpha.path || path === '/' ? 'not_allowed' : 'no_node',
+        ]);
+        offered = undefined;
+      }
+    });
+
+    it('leaves the product page as it was when the plugin offers nothing', async () => {
+      const withPlugin = await (await cold(widget.path)).text();
+      expect(nodes(withPlugin)[0]).not.toHaveProperty('offers');
+      await api('POST', '/_mallok/api/plugins/pricing/enabled', {
+        enabled: false,
+      });
+      const without = await (await cold(widget.path)).text();
+      await api('POST', '/_mallok/api/plugins/pricing/enabled', {
+        enabled: true,
+      });
+      expect(nodes(without)).toEqual(nodes(withPlugin));
+    });
+
+    it('leaves the node alone when the hook fails or offers a non-object', async () => {
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      mode = 'throw';
+      offered = { offers: offers };
+      expect(
+        nodes(await (await cold(widget.path)).text())[0],
+      ).not.toHaveProperty('offers');
+
+      mode = 'ok';
+      offered = ['offers'];
+      const response = await cold(widget.path);
+      expect(nodes(await response.text())[0]).not.toHaveProperty('offers');
+      expect(response.headers.get('x-mallok-cache')).toBe('MISS');
+      expect(logged(warn, 'structured_data_dropped')).toMatchObject([
+        { plugin: 'pricing', key: 'structuredData', reason: 'not_object' },
+      ]);
+    });
   });
 });
 

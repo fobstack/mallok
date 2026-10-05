@@ -95,6 +95,24 @@ Two rules:
    a rating, price or stock level that the page does not show in order to win
    a rich result — that invites a manual penalty.
 
+**A plugin may add to the core's node, within an allow-list.** A price shown
+by a plugin (`PLUGIN_API.md §5.6`) has to be able to appear in the page's
+structured data, and rule 2 cuts both ways: what the page shows may be
+described, and nothing else. So a `renderData` result may offer properties
+for the node, and the core merges only those on this list:
+
+| Node | Properties a plugin may add |
+| --- | --- |
+| `Product` | `offers` |
+| every other node, and pages with none | — |
+
+The result is still one node, serialised and escaped by `buildHeadTags` as
+before; the core's own properties cannot be replaced; anything outside the
+list is dropped and logged. The list is `STRUCTURED_DATA_ADDITIONS` in
+`src/core/view.ts`, and extending it is a product decision, not a plugin's.
+Whether an offered price really is the one on the page is the plugin's
+responsibility — the core cannot see that.
+
 ## 6. Open Graph and images
 
 - `og:title`, `og:description`, `og:url`, `og:type`, `og:locale`,

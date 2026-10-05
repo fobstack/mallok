@@ -21,6 +21,7 @@ import {
   type RelationsInput,
   renderFragment,
   renderPage,
+  type StructuredDataAddition,
   type SummaryInput,
   splitFrontmatter,
   type ThemeManifest,
@@ -157,6 +158,8 @@ export interface RenderContext {
   readonly path: string;
   /** What `renderData` hooks returned for this page; absent means none ran. */
   readonly plugins?: PluginsView;
+  /** What those hooks offered for the page's structured data. */
+  readonly structuredData?: readonly StructuredDataAddition[];
 }
 
 /**
@@ -176,6 +179,25 @@ function viewContext(ctx: RenderContext): ViewContext {
     strings: themeStrings(ctx.theme.manifest, ctx.theme.files, ctx.locale),
     languageNames: themeLanguageNames(ctx.theme.manifest, ctx.theme.files),
     ...(ctx.plugins === undefined ? {} : { plugins: ctx.plugins }),
+    ...(ctx.structuredData === undefined || ctx.structuredData.length === 0
+      ? {}
+      : {
+          structuredData: ctx.structuredData,
+          // Dropped, not failed: the page is what the core alone would have
+          // produced, so it is cached as usual. The log is how a plugin
+          // author learns the property never reached the page.
+          onStructuredDataDropped: (drop) => {
+            console.warn(
+              JSON.stringify({
+                event: 'structured_data_dropped',
+                plugin: drop.source,
+                key: drop.key,
+                reason: drop.reason,
+                path: ctx.path,
+              }),
+            );
+          },
+        }),
   };
 }
 

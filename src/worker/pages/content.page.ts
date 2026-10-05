@@ -90,9 +90,9 @@ export default definePage<PublicLocals>()({
         settings.mediaBaseUrl,
         locals.now,
       );
-      const { plugins, degraded } = await pluginData;
+      const { plugins, structuredData, degraded } = await pluginData;
       const rendered = await renderContentPage(
-        { ...locals.render, plugins },
+        { ...locals.render, plugins, structuredData },
         data.content,
         fragment,
         data.translations,
@@ -124,20 +124,22 @@ export default definePage<PublicLocals>()({
         (list.page - 1) * LIST_PAGE_SIZE,
         locals.now,
       );
-      const [covers, { plugins, degraded }] = await Promise.all([
-        resolveCovers(locals.env.DB, rows.items, settings.mediaBaseUrl),
-        runRenderData(locals.env.DB, data.plugins, {
-          site: settings,
-          locale: locals.locale,
-          path: locals.pathname,
-          content: null,
-          items: rows.items.map(renderDataItem),
-        }),
-      ]);
+      const [covers, { plugins, structuredData, degraded }] = await Promise.all(
+        [
+          resolveCovers(locals.env.DB, rows.items, settings.mediaBaseUrl),
+          runRenderData(locals.env.DB, data.plugins, {
+            site: settings,
+            locale: locals.locale,
+            path: locals.pathname,
+            content: null,
+            items: rows.items.map(renderDataItem),
+          }),
+        ],
+      );
       const prefix =
         locals.locale === settings.defaultLocale ? '' : `/${locals.locale}`;
       const rendered = await renderListPage(
-        { ...locals.render, plugins },
+        { ...locals.render, plugins, structuredData },
         list.kind,
         rows,
         list.page,

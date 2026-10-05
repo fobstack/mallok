@@ -87,7 +87,11 @@ export default definePage<PublicLocals>()({
         ? ''
         : `/${locals.locale}`;
     const rendered = await renderListPage(
-      { ...locals.render, plugins: pluginData.plugins },
+      {
+        ...locals.render,
+        plugins: pluginData.plugins,
+        structuredData: pluginData.structuredData,
+      },
       'tag',
       rows,
       page,

@@ -15,7 +15,7 @@
  *   not stored in the edge cache.
  */
 
-import type { PluginsView } from '../core/index.js';
+import type { PluginsView, StructuredDataAddition } from '../core/index.js';
 import type { PluginStateRow } from '../db/queries.js';
 import type { PluginRenderDataContext } from '../plugins/types.js';
 import { compiledPlugins } from './composition.js';
@@ -147,6 +147,12 @@ export type RenderDataPage = Omit<PluginRenderDataContext, 'db' | 'settings'>;
 export interface RenderDataResult {
   readonly plugins: PluginsView;
   /**
+   * What the hooks offered for the page's own JSON-LD node, in the order the
+   * site compiles its plugins. The core decides what is used
+   * (`mergeStructuredData`).
+   */
+  readonly structuredData: readonly StructuredDataAddition[];
+  /**
    * True when a hook failed. The page is still rendered, without that
    * plugin's data, and must not be stored in the edge cache: the next request
    * should try again rather than be served the lesser page for a whole TTL.
@@ -154,7 +160,17 @@ export interface RenderDataResult {
   readonly degraded: boolean;
 }
 
-const NOTHING: RenderDataResult = { plugins: {}, degraded: false };
+const NOTHING: RenderDataResult = {
+  plugins: {},
+  structuredData: [],
+  degraded: false,
+};
+
+/**
+ * The key of a hook's result that is not for templates: properties for the
+ * structured data the core emits (docs/PLUGIN_API.md §5.6).
+ */
+const STRUCTURED_DATA_KEY = 'structuredData';
 
 /**
  * Runs the enabled plugins' `renderData` hooks for one page, concurrently.
@@ -227,12 +243,42 @@ export async function runRenderData(
   );
 
   const plugins: Record<string, Readonly<Record<string, unknown>>> = {};
+  const structuredData: StructuredDataAddition[] = [];
   for (const outcome of outcomes) {
-    if (outcome.data !== undefined) {
-      plugins[viewKey(outcome.id)] = outcome.data;
+    if (outcome.data === undefined) {
+      continue;
     }
+    const { [STRUCTURED_DATA_KEY]: offered, ...forTemplates } = outcome.data;
+    plugins[viewKey(outcome.id)] = forTemplates;
+    if (offered === undefined) {
+      continue;
+    }
+    if (
+      offered === null ||
+      typeof offered !== 'object' ||
+      Array.isArray(offered)
+    ) {
+      console.warn(
+        JSON.stringify({
+          event: 'structured_data_dropped',
+          plugin: outcome.id,
+          key: STRUCTURED_DATA_KEY,
+          reason: 'not_object',
+          path: page.path,
+        }),
+      );
+      continue;
+    }
+    structuredData.push({
+      source: outcome.id,
+      properties: offered as Record<string, unknown>,
+    });
   }
-  return { plugins, degraded: outcomes.some((outcome) => outcome.failed) };
+  return {
+    plugins,
+    structuredData,
+    degraded: outcomes.some((outcome) => outcome.failed),
+  };
 }
 
 /**

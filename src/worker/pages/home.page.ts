@@ -43,7 +43,11 @@ export default definePage<PublicLocals>()({
 
   render: async ({ recent, covers, pluginData }, { locals }) => {
     const rendered = await renderHomePage(
-      { ...locals.render, plugins: pluginData.plugins },
+      {
+        ...locals.render,
+        plugins: pluginData.plugins,
+        structuredData: pluginData.structuredData,
+      },
       recent,
       covers,
     );
