@@ -256,30 +256,83 @@ function assertLocalesExist(
   }
 }
 
+/** Every opening `<script …>` tag, with its attributes. */
+const SCRIPT_OPEN = /<script\b([^>]*)>/gi;
+const SCRIPT_SRC = /\ssrc\s*=\s*(?:"([^"]*)"|'([^']*)')/i;
 /**
- * Refuses a theme whose templates emit script the manifest does not declare.
- * Undeclared scripts remain forbidden (docs/THEME_FORMAT.md §9).
+ * The one way a template names a script it ships:
+ * `{{ theme.asset_base }}/<path under assets/>`. The prefix carries the
+ * theme's version, which is why a literal `/theme/…` path is not accepted in
+ * its place — it would go stale at the next release.
+ */
+const ASSET_REFERENCE = /^\{\{-?\s*theme\.asset_base\s*-?\}\}\/([^\s"'{}]+)$/;
+
+/**
+ * Refuses a theme whose templates run script the manifest does not declare
+ * (docs/THEME_FORMAT.md §9).
+ *
+ * Declaring a script is not a licence for any script. With or without
+ * declarations, every template is scanned, and the only script a template
+ * may contain is a `<script src>` that names one of the declared files.
+ * Inline script — a data block included — and `on…=` attributes are refused
+ * outright: what a theme runs in a visitor's browser is exactly the list the
+ * admin shows the site's owner.
+ *
+ * This reads the templates as text. It stops a theme author's mistake and a
+ * careless paste; it is not a parser and not a sandbox, and a template that
+ * assembles a tag out of Liquid output is beyond it.
  */
 function assertNoUndeclaredScripts(
   manifest: ThemeManifest,
   files: Readonly<Record<string, string>>,
 ): void {
-  if (manifest.clientScripts.length > 0) {
-    return;
-  }
+  const declared = new Set(
+    manifest.clientScripts.map((script) =>
+      typeof script === 'string' ? script : script.path,
+    ),
+  );
   for (const [path, body] of Object.entries(files)) {
     if (!path.endsWith('.liquid')) {
       continue;
     }
-    if (SCRIPT_TAG.test(body)) {
-      throw new ThemePackageError(
-        `"${path}" contains a <script> tag but theme.json declares no clientScripts.`,
-      );
-    }
     if (EVENT_ATTRIBUTE.test(body)) {
       throw new ThemePackageError(
-        `"${path}" contains an inline event handler but theme.json declares no clientScripts.`,
+        declared.size === 0
+          ? `"${path}" contains an inline event handler but theme.json declares no clientScripts.`
+          : `"${path}" contains an inline event handler (an on…= attribute). Declared scripts attach their own listeners; attributes that run script are never allowed.`,
       );
+    }
+    if (declared.size === 0) {
+      if (SCRIPT_TAG.test(body)) {
+        throw new ThemePackageError(
+          `"${path}" contains a <script> tag but theme.json declares no clientScripts.`,
+        );
+      }
+      continue;
+    }
+    for (const tag of body.matchAll(SCRIPT_OPEN)) {
+      const attributes = tag[1] ?? '';
+      const matched = SCRIPT_SRC.exec(attributes);
+      const src = matched?.[1] ?? matched?.[2];
+      if (src === undefined) {
+        throw new ThemePackageError(
+          `"${path}" contains an inline <script>. A theme may only load the files it declares in clientScripts, with <script src="{{ theme.asset_base }}/…">.`,
+        );
+      }
+      const reference = ASSET_REFERENCE.exec(src.trim());
+      const asset = reference === null ? null : `assets/${reference[1]}`;
+      if (asset === null || !declared.has(asset)) {
+        throw new ThemePackageError(
+          `"${path}" loads the script "${src}", which is not one of the files declared in clientScripts (${[...declared].join(', ')}). Write it as {{ theme.asset_base }}/<path under assets/>.`,
+        );
+      }
+      const after = body.slice((tag.index ?? 0) + tag[0].length);
+      const close = after.search(/<\/script\s*>/i);
+      if (close === -1 || after.slice(0, close).trim() !== '') {
+        throw new ThemePackageError(
+          `"${path}" puts code inside a <script src> tag. The tag must be empty; the code belongs in the declared file.`,
+        );
+      }
     }
   }
 }

@@ -70,7 +70,9 @@ Hard rules, **all checked at build time — a failure fails the build**:
 2. Only these paths are accepted: `theme.json`, `index.ts`,
    `layouts/*.liquid`, `partials/*.liquid`, `locales/*.json`, `assets/**`.
 3. Extensions under `assets/` are limited to what can be served safely: `css`,
-   `woff2`, `woff`, `png`, `jpg`, `jpeg`, `webp`, `gif`, `ico`, `txt`.
+   `woff2`, `woff`, `png`, `jpg`, `jpeg`, `webp`, `gif`, `ico`, `txt` — and
+   `js`, **only for a file whose exact path `clientScripts` declares** (§9);
+   any other `.js` file fails the build.
    **`svg` is not accepted**, for the same reason as uploaded media
    (`SECURITY.md §6`): it can carry script.
 4. Filenames under `layouts/` and `partials/` match `[a-z0-9-]+`.
@@ -601,11 +603,43 @@ explicit product decision; its content pages remain script-free.
 ```
 
 Anything declared must be shown honestly on the theme's detail page in the
-admin: "this theme injects N scripts totalling X KB into visitor pages". **A
-theme that writes `<script>` in a template without declaring it is rejected at
-install** — the installer scans templates for `<script` and `on*=` attributes
-and errors on anything undeclared. This is the executable part of the
-zero-client-JavaScript promise.
+admin: "this theme injects N scripts totalling X KB into visitor pages".
+
+**Declaring a script permits that script, and nothing else.** Every template
+— layouts and partials — is scanned at build time whether or not the theme
+declares anything, and a failure fails the build:
+
+- A template may load a declared file, and only like this:
+
+  ```liquid
+  <script src="{{ theme.asset_base }}/gallery.js" defer></script>
+  ```
+
+  The `src` is `{{ theme.asset_base }}/` followed by the file's path under
+  `assets/`, and that file must be in `clientScripts`. Other attributes
+  (`defer`, `async`, `type="module"`) are yours. The tag is empty.
+- **Any other `src` is refused**: a file that is not declared, an absolute or
+  protocol-relative URL, a literal `/theme/…` path, a path built from a Liquid
+  value, a `data:` URL. A script from somewhere else is not something the
+  admin can list for the site's owner, so a theme cannot load one.
+- **Inline script is refused**, including `type="module"` and data blocks
+  such as `<script type="application/ld+json">`. Structured data is emitted
+  by the core in `{{ page.head }}`; a plugin adds to it through `renderData`
+  (`PLUGIN_API.md §5.6`).
+- **`on…=` attributes are refused** — `onclick`, `onload`, `onerror`. A
+  declared script attaches its own listeners.
+- With no `clientScripts`, any `<script` at all is refused, as before.
+
+This is the executable part of the zero-client-JavaScript promise: what a
+theme runs in a visitor's browser is exactly the list the admin shows. **It
+is a scan of the template text, not a sandbox.** It catches a mistake and a
+careless paste; a template that assembles a tag out of Liquid output, or a
+`javascript:` URL in a link, is not something it sees. A theme is source code
+that the site's owner chose to build (§2).
+
+Before plugin API 2's release this check was skipped entirely for a theme
+that declared any script. A theme that relied on that — an inline snippet
+beside its declared file — now fails the build, and says which template.
 
 Interactions such as mobile navigation and galleries are done in pure CSS in
 the official themes (`:target`, the checkbox hack).

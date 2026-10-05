@@ -360,11 +360,9 @@ return {
 
 The core merges them into its own node and emits **one node**, through the
 same serialisation and the same escaping as before (`SEO_PERFORMANCE.md §5`).
-This is the supported way in. A theme that declares no `clientScripts` may
-not contain `<script` at all (`THEME_FORMAT.md §9`); one that does could
-write a JSON-LD element by hand, but template output is HTML-escaped, not
-JSON-escaped, and the result would be a second node beside the core's. The
-rules:
+This is the only way in: a theme template may not contain an inline
+`<script>`, a JSON-LD data block included, whether or not it declares
+`clientScripts` (`THEME_FORMAT.md §9`). The rules:
 
 - **An allow-list per node type decides what may be added.** Today it has one
   entry: `offers` on a `Product` node, which is what a content page of the
@@ -1239,10 +1237,12 @@ inquiry cart or a booking plugin as much as a shop.
 | Action parameters and related rows | §7.5 | 32 | Planned |
 | Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`) | §5.5, §7.4 | 33 | Planned |
 
-Theme-side additions in the same phase — layouts for plugin pages, and the
-script check for themes that declare `clientScripts` (Task 30) — are
-documented in `THEME_FORMAT.md`, and remain optional: the five official themes
-pass unchanged.
+Theme-side changes in the same phase are documented in `THEME_FORMAT.md`:
+layouts for plugin pages (§16, Task 26), which are optional, and the script
+check for themes that declare `clientScripts` (§9, Task 30, done), which is a
+tightening — a theme that declared one script and also carried inline script
+or an `on…=` attribute no longer builds. The five official themes pass
+unchanged.
 
 ### 13.3 Checks that apply to every plugin
 
