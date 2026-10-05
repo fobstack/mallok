@@ -6,6 +6,7 @@
  */
 
 import { z } from 'zod';
+import { LOCALE_PATTERN } from './paths.js';
 
 /** Version of the plugin contract this build understands. */
 export const PLUGIN_API_VERSION = 2;
@@ -31,10 +32,44 @@ const HOOK_SINCE: Readonly<
 /** One declared hook name. */
 export type PluginHookName = (typeof PLUGIN_HOOKS)[number];
 
+/** A fixed route segment, and the whole of a version 1 route path. */
+const ROUTE_LITERAL = /^[a-z][a-z0-9-]*$/;
+/** A route segment that captures one path segment as a named parameter. */
+const ROUTE_PARAMETER = /^:[A-Za-z][A-Za-z0-9]*$/;
+/** How many segments a route path may have. */
+const ROUTE_SEGMENTS_MAX = 6;
+
+/**
+ * A route path: fixed segments and `:parameters`, starting with a fixed one
+ * (docs/PLUGIN_API.md §7.2). What a given plugin API version may use of this
+ * is checked on the whole manifest, below.
+ */
+function isRoutePath(path: string): boolean {
+  const segments = path.split('/');
+  return (
+    segments.length <= ROUTE_SEGMENTS_MAX &&
+    ROUTE_LITERAL.test(segments[0] ?? '') &&
+    segments.every(
+      (segment) => ROUTE_LITERAL.test(segment) || ROUTE_PARAMETER.test(segment),
+    )
+  );
+}
+
+/** A path with its parameter names removed: what a request is matched on. */
+function routeShape(path: string): string {
+  return path
+    .split('/')
+    .map((segment) => (segment.startsWith(':') ? ':' : segment))
+    .join('/');
+}
+
 const routeSchema = z
   .object({
     /** Path under `/_mallok/p/<plugin>/`. */
-    path: z.string().regex(/^[a-z][a-z0-9-]*$/),
+    path: z.string().refine(isRoutePath, {
+      message:
+        'A route path is lowercase segments separated by "/", each a name such as "orders" or a parameter such as ":orderNo", starting with a name.',
+    }),
     method: z.enum(['GET', 'POST']),
     /** Verify a Turnstile token server-side before the handler runs. */
     turnstile: z.boolean().default(false),
@@ -201,6 +236,7 @@ export const pluginManifestSchema = z
       }
     }
     const routePaths = new Set<string>();
+    const routeShapes = new Map<string, string>();
     for (const route of manifest.routes) {
       if (routePaths.has(route.path)) {
         issue.addIssue({
@@ -209,6 +245,44 @@ export const pluginManifestSchema = z
         });
       }
       routePaths.add(route.path);
+
+      const segments = route.path.split('/');
+      if (manifest.pluginApi < 2) {
+        // Version 1 routes are one fixed segment and are matched exactly as
+        // they always were, locale-shaped names included.
+        if (segments.length > 1) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Route "${route.path}" has several segments or a parameter, which needs plugin API 2; this plugin declares ${manifest.pluginApi}.`,
+          });
+        }
+        continue;
+      }
+      // A site's locales are settings, changeable after the build, and a
+      // request's first segment is read as a locale when it is one. A route
+      // that could be mistaken for a locale is refused here instead.
+      if (LOCALE_PATTERN.test(segments[0] ?? '')) {
+        issue.addIssue({
+          code: 'custom',
+          message: `Route "${route.path}" starts with "${segments[0]}", which has the shape of a locale code (two letters, optionally "-" and two to four more). A request's first segment is read as a locale, so this route could become unreachable; rename it.`,
+        });
+      }
+      const names = segments.filter((segment) => segment.startsWith(':'));
+      if (new Set(names).size !== names.length) {
+        issue.addIssue({
+          code: 'custom',
+          message: `Route "${route.path}" names the same parameter twice.`,
+        });
+      }
+      const shape = routeShape(route.path);
+      const same = routeShapes.get(shape);
+      if (same !== undefined && same !== route.path) {
+        issue.addIssue({
+          code: 'custom',
+          message: `Routes "${same}" and "${route.path}" match the same requests.`,
+        });
+      }
+      routeShapes.set(shape, route.path);
     }
     if (manifest.pluginApi > PLUGIN_API_VERSION) {
       issue.addIssue({
@@ -264,4 +338,49 @@ export function settingsValidator(manifest: {
     shape[key] = field.required === true ? type : type.optional();
   }
   return z.object(shape).strict() as z.ZodType<Record<string, unknown>>;
+}
+
+/** A declared route a request matched, with the parameters it captured. */
+export interface PluginRouteMatch<Route extends { readonly path: string }> {
+  readonly route: Route;
+  readonly params: Readonly<Record<string, string>>;
+}
+
+/**
+ * Finds the declared route for a request's path segments.
+ *
+ * A fixed segment beats a parameter in the same position, so `orders/new`
+ * is not swallowed by `orders/:orderNo`; among routes equally specific the
+ * first declared wins. Parameter values are the segments as given — the
+ * caller decodes them.
+ */
+export function matchPluginRoute<Route extends { readonly path: string }>(
+  routes: readonly Route[],
+  segments: readonly string[],
+): PluginRouteMatch<Route> | null {
+  let best: { match: PluginRouteMatch<Route>; fixed: number } | null = null;
+  for (const route of routes) {
+    const pattern = route.path.split('/');
+    if (pattern.length !== segments.length) {
+      continue;
+    }
+    const params: Record<string, string> = {};
+    let fixed = 0;
+    let matched = true;
+    for (const [index, part] of pattern.entries()) {
+      const segment = segments[index] ?? '';
+      if (part.startsWith(':')) {
+        params[part.slice(1)] = segment;
+      } else if (part === segment) {
+        fixed += 1;
+      } else {
+        matched = false;
+        break;
+      }
+    }
+    if (matched && (best === null || fixed > best.fixed)) {
+      best = { match: { route, params }, fixed };
+    }
+  }
+  return best?.match ?? null;
 }

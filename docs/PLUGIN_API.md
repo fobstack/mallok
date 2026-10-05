@@ -434,7 +434,9 @@ interface PluginRenderDataContext {
 request: it runs on the visitor path and its output is public and cached.
 
 `PluginRequestContext` adds `request`, `url`, `locale`, `country` and the
-one-way `ipHash`. `PluginRenderContext` contains `settings`, `site`, `locale`,
+one-way `ipHash`. For a route, `locale` is the request's locale segment when
+there is one and the site default otherwise (§7.2); for `onRequest` it is the
+site default. `PluginRenderContext` contains `settings`, `site`, `locale`,
 `path` and the optional `{ id, kind }` content identity. It deliberately has
 neither secrets nor database access.
 
@@ -472,6 +474,7 @@ D1 unless an operator performs a separate, deliberate migration.
 `/_mallok/p/<plugin_id>/<path>`, declared in `plugin.json`'s `routes`. The
 core handles:
 
+- matching the path, its parameters and its locale segment (below);
 - body parsing (`application/json` and `application/x-www-form-urlencoded`);
 - the server-side Turnstile `siteverify`, when `turnstile: true`;
 - rate limiting, through the `RATE_LIMITER` Workers binding.
@@ -481,6 +484,70 @@ export const routes = {
   async submit(input: SubmitInput, ctx: PluginRequestContext): Promise<Response> { … },
 };
 ```
+
+**Paths (plugin API 2).** A path is one to six segments separated by `/`.
+Each is a name (`orders`: lowercase letters, digits and hyphens, starting
+with a letter) or a parameter (`:orderNo`: letters and digits); the first is
+always a name.
+
+```json
+"routes": [
+  { "path": "cart",            "method": "GET" },
+  { "path": "orders/new",      "method": "GET" },
+  { "path": "orders/:orderNo", "method": "GET" }
+]
+```
+
+```ts
+export const routes = {
+  'orders/:orderNo': async (input: RouteInput, ctx: PluginRequestContext) => {
+    const order = await findOrder(ctx.db, input.params.orderNo);
+    …
+  },
+};
+```
+
+- A handler is keyed by the path exactly as declared.
+- `input.params` holds what each parameter captured, percent-decoded. A
+  segment that is not valid encoding, is empty, is longer than 200
+  characters, or decodes to `.`, `..` or something containing `/` matches no
+  route: the answer is 404. **A parameter is otherwise unvalidated text from
+  the visitor** — bind it, never splice it into SQL or HTML.
+- A name beats a parameter in the same position, so `orders/new` is not
+  taken for an order number; between routes equally specific, the first
+  declared wins. Two routes that would match the same requests
+  (`orders/:orderNo` and `orders/:id`) are refused at build time.
+- A doubled or trailing slash matches nothing.
+
+**The locale segment (plugin API 2).** In
+`/_mallok/p/<plugin_id>/<locale>/<path>`, a first segment that is one of the
+site's enabled locales is the request's locale: it sets `ctx.locale` and is
+not part of the path. `/_mallok/p/shop/de/cart` and `/_mallok/p/shop/cart`
+are the same route `cart`, with `ctx.locale` `de` and the site default. Any
+other first segment is part of the path, so `/_mallok/p/shop/fr/cart` on a
+site without `fr` is a 404, not `cart` in the default language. The locale
+sits after the plugin id, not before `/_mallok`, so that a plugin can scope a
+cookie to `/_mallok/p/<plugin_id>` and reach every language with it.
+
+A site's locales are settings and can change after a build. So that a route
+can never be hidden by a locale added later, **a version 2 route may not
+start with a segment shaped like a locale code** — two letters, optionally
+followed by `-` and two to four more. `de`, `go` and `my-cart` are refused at
+build time; `cart`, `checkout` and `my-orders` are fine. Only the first
+segment is affected.
+
+**A plugin declaring `"pluginApi": 1` is routed as before**: one segment,
+matched literally, with `ctx.locale` always the site default, and its route
+names are not checked against the locale shape. Declaring several segments
+or a parameter under version 1 is refused at build time.
+
+**Bodies.** `input.fields` holds form fields, or the string-valued top-level
+members of a JSON object, as in version 1. `input.json` is the body of an
+`application/json` request, whole — numbers, booleans, `null`, arrays and
+nested objects included — and `undefined` for a form or a GET. A JSON body
+must be an object or an array; anything else is answered 400 before the
+handler runs. Neither is validated beyond that: the handler checks what it
+reads.
 
 The route handler validates its own parsed fields. When `rateLimit: true`, the
 core calls the site's single binding with the fixed key
@@ -831,7 +898,7 @@ inquiry cart or a booking plugin as much as a shop.
 | `renderData`: plugin data read while rendering a page | §5.6, §6; `THEME_FORMAT.md §7.9` | 22 | Done |
 | `renderData` adds `offers` to the page's `Product` structured data | §5.6; `SEO_PERFORMANCE.md §5` | 41 | Done |
 | Plugin cache tags (`p:<plugin-id>:<tag>`) | §5.6, §9.1 | 23 | Done |
-| Multi-segment routes with parameters, a locale segment, `input.json` | §4, §7.2 | 24 | Planned |
+| Multi-segment routes with parameters, a locale segment, `input.json` | §7.2 | 24 | Done |
 | Rate-limit tiers | §7.2 | 25 | Planned |
 | Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md`, plugin page layouts | 26 | Planned |
 | `onContentSave` called on every save path; `onContentDelete` | §5.4, and a new delete-hook section | 27 | Planned |

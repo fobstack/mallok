@@ -128,7 +128,15 @@ export interface ContentDraft {
 
 /** Body already parsed and, when declared, Turnstile already verified. */
 export interface RouteInput {
+  /** Form fields, or the string-valued top-level members of a JSON body. */
   readonly fields: Readonly<Record<string, string>>;
+  /** What the route's `:parameters` captured, percent-decoded. */
+  readonly params: Readonly<Record<string, string>>;
+  /**
+   * The body of an `application/json` request, whole: numbers, booleans and
+   * nested values included. `undefined` for a form or a GET. Unvalidated.
+   */
+  readonly json: unknown;
 }
 
 /** Hook implementations accepted by {@link definePlugin}. */

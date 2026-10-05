@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  matchPluginRoute,
   PLUGIN_API_VERSION,
   parsePluginManifest,
   settingsValidator,
@@ -146,6 +147,95 @@ describe('plugin manifest schema', () => {
       parsePluginManifest({ ...BASE, pluginApi: 1, hooks: ['afterRender'] })
         .pluginApi,
     ).toBe(1);
+  });
+
+  describe('route paths', () => {
+    const routes = (pluginApi: number, ...paths: string[]) => ({
+      ...BASE,
+      pluginApi,
+      routes: paths.map((path) => ({ path, method: 'GET' })),
+    });
+
+    it('accepts segments and parameters under plugin API 2', () => {
+      const manifest = parsePluginManifest(
+        routes(2, 'cart', 'orders/:orderNo', 'items/:sku/notes/:noteId'),
+      );
+      expect(manifest.routes.map((route) => route.path)).toEqual([
+        'cart',
+        'orders/:orderNo',
+        'items/:sku/notes/:noteId',
+      ]);
+    });
+
+    it('refuses them under plugin API 1, and keeps what 1 always allowed', () => {
+      expect(() => parsePluginManifest(routes(1, 'orders/:orderNo'))).toThrow(
+        /needs plugin API 2/,
+      );
+      expect(() => parsePluginManifest(routes(1, 'orders/list'))).toThrow(
+        /needs plugin API 2/,
+      );
+      // A locale-shaped name was legal in version 1 and stays legal there.
+      expect(
+        parsePluginManifest(routes(1, 'submit', 'go', 'my-cart')).routes,
+      ).toHaveLength(3);
+    });
+
+    it('refuses a version 2 route that starts like a locale code', () => {
+      for (const path of ['de', 'go', 'zh-hant', 'my-cart', 'en/cart']) {
+        expect(() => parsePluginManifest(routes(2, path)), path).toThrow(
+          /shape of a locale code/,
+        );
+      }
+      // Only the first segment is ever read as a locale.
+      expect(
+        parsePluginManifest(routes(2, 'cart/de', 'orders/go')).routes,
+      ).toHaveLength(2);
+    });
+
+    it('refuses a path it could not match unambiguously', () => {
+      for (const path of [
+        ':id',
+        'orders//new',
+        'orders/',
+        '/orders',
+        'Orders',
+        'orders/:order-no',
+        'orders/:',
+        'orders/:1st',
+        'a/b/c/d/e/f/g',
+        '',
+      ]) {
+        expect(() => parsePluginManifest(routes(2, path)), path).toThrow();
+      }
+      expect(() => parsePluginManifest(routes(2, 'pair/:id/:id'))).toThrow(
+        /same parameter twice/,
+      );
+      expect(() =>
+        parsePluginManifest(routes(2, 'orders/:orderNo', 'orders/:id')),
+      ).toThrow(/match the same requests/);
+    });
+
+    it('matches the most specific route, then the first declared', () => {
+      const declared = [
+        { path: 'orders/:orderNo' },
+        { path: 'orders/new' },
+        { path: 'a/:x/c' },
+        { path: 'a/b/:y' },
+      ];
+      expect(matchPluginRoute(declared, ['orders', 'new'])?.route.path).toBe(
+        'orders/new',
+      );
+      expect(matchPluginRoute(declared, ['orders', '7'])).toEqual({
+        route: { path: 'orders/:orderNo' },
+        params: { orderNo: '7' },
+      });
+      expect(matchPluginRoute(declared, ['a', 'b', 'c'])?.route.path).toBe(
+        'a/:x/c',
+      );
+      expect(matchPluginRoute(declared, ['orders'])).toBeNull();
+      expect(matchPluginRoute(declared, ['orders', '7', 'x'])).toBeNull();
+      expect(matchPluginRoute(declared, [])).toBeNull();
+    });
   });
 
   it('rejects an unknown hook name and a bad route method', () => {

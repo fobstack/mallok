@@ -94,10 +94,12 @@ export {
   slugify,
 } from './paths.js';
 export {
+  matchPluginRoute,
   PLUGIN_API_VERSION,
   PLUGIN_HOOKS,
   type PluginHookName,
   type PluginManifest,
+  type PluginRouteMatch,
   parsePluginManifest,
   pluginManifestSchema,
   settingsValidator,

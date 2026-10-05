@@ -8,7 +8,12 @@
  */
 
 import type { BeforeRenderHook } from '../core/index.js';
-import { exportPathKey, exportPathProblem, sha256Hex } from '../core/index.js';
+import {
+  exportPathKey,
+  exportPathProblem,
+  matchPluginRoute,
+  sha256Hex,
+} from '../core/index.js';
 import { loadSiteRenderData, type PluginStateRow } from '../db/queries.js';
 import type {
   ContentDraft,
@@ -318,7 +323,19 @@ export function defaultSettingsJson(plugin: MallokPlugin): string {
   return JSON.stringify(out);
 }
 
-/** Serves `/_mallok/p/<plugin>/<path>` (docs/PLUGIN_API.md §7.2). */
+const PLUGIN_ROUTE_PREFIX = '/_mallok/p/';
+const PLUGIN_ID = /^[a-z][a-z0-9-]*$/;
+/** Longest path segment a route parameter may capture. */
+const ROUTE_PARAM_MAX = 200;
+
+/**
+ * Serves `/_mallok/p/<plugin>/[<locale>/]<path>` (docs/PLUGIN_API.md §7.2).
+ *
+ * For a plugin declaring API 2 the path may have several segments and
+ * parameters, and a first segment that is one of the site's locales is the
+ * request's locale rather than part of the route. A version 1 plugin's routes
+ * are matched exactly as before: one segment, the default locale.
+ */
 export async function handlePluginRoute(
   request: Request,
   env: Env,
@@ -327,25 +344,59 @@ export async function handlePluginRoute(
   rows: readonly PluginStateRow[],
   site: SiteSettings,
 ): Promise<Response> {
-  const match = /^\/_mallok\/p\/([a-z][a-z0-9-]*)\/([a-z][a-z0-9-]*)$/.exec(
-    pathname,
-  );
-  if (match === null) {
-    return enforcePluginRouteNoStore(problem(404, 'Not found.'));
+  const notFound = (): Response =>
+    enforcePluginRouteNoStore(problem(404, 'Not found.'));
+  if (!pathname.startsWith(PLUGIN_ROUTE_PREFIX)) {
+    return notFound();
   }
-  const [, pluginId = '', routePath = ''] = match;
+  const [pluginId = '', ...rest] = pathname
+    .slice(PLUGIN_ROUTE_PREFIX.length)
+    .split('/');
+  // An empty segment is a doubled or trailing slash: not a route.
+  if (!PLUGIN_ID.test(pluginId) || rest.length === 0 || rest.includes('')) {
+    return notFound();
+  }
   const active = activePlugins(rows).find(
     (candidate) => candidate.state.plugin_id === pluginId,
   );
   if (active === undefined) {
-    return enforcePluginRouteNoStore(problem(404, 'Not found.'));
+    return notFound();
   }
-  const declaration = active.plugin.manifest.routes.find(
-    (route) => route.path === routePath,
-  );
-  const handler = active.plugin.routes?.[routePath];
-  if (declaration === undefined || handler === undefined) {
-    return enforcePluginRouteNoStore(problem(404, 'Not found.'));
+  const manifest = active.plugin.manifest;
+
+  let locale = site.defaultLocale;
+  let segments: string[];
+  if (manifest.pluginApi < 2) {
+    if (rest.length !== 1) {
+      return notFound();
+    }
+    segments = rest;
+  } else {
+    segments = [];
+    for (const raw of rest) {
+      const decoded = decodeSegment(raw);
+      if (decoded === null) {
+        return notFound();
+      }
+      segments.push(decoded);
+    }
+    // The locale reading wins: no version 2 route may start with a segment
+    // shaped like a locale code, so nothing is hidden by it
+    // (`src/core/plugin.ts`).
+    const first = segments[0] ?? '';
+    if (site.locales.includes(first)) {
+      locale = first;
+      segments = segments.slice(1);
+    }
+  }
+  const matched = matchPluginRoute(manifest.routes, segments);
+  const declaration = matched?.route;
+  const handler =
+    declaration === undefined
+      ? undefined
+      : active.plugin.routes?.[declaration.path];
+  if (matched === null || declaration === undefined || handler === undefined) {
+    return notFound();
   }
   if (request.method !== declaration.method) {
     return enforcePluginRouteNoStore(problem(405, 'Method not allowed.'));
@@ -365,19 +416,21 @@ export async function handlePluginRoute(
     }
   }
 
-  const fields = await parseBody(request);
-  if (fields === null) {
+  const body = await parseBody(request);
+  if (body === null) {
     return enforcePluginRouteNoStore(
       problem(400, 'The request body could not be read.'),
     );
   }
 
+  const { fields } = body;
   const ctx = await buildRequestContext(
     env,
     executionCtx,
     site,
     active,
     request,
+    locale,
   );
 
   if (declaration.turnstile) {
@@ -391,7 +444,9 @@ export async function handlePluginRoute(
     // the honeypot-only degraded mode, not a broken form.
   }
 
-  return enforcePluginRouteNoStore(await handler({ fields }, ctx));
+  return enforcePluginRouteNoStore(
+    await handler({ fields, params: matched.params, json: body.json }, ctx),
+  );
 }
 
 /** Plugin endpoints never participate in browser or shared caching in 0.1. */
@@ -436,11 +491,41 @@ async function verifyTurnstile(
   }
 }
 
-async function parseBody(
-  request: Request,
-): Promise<Record<string, string> | null> {
+/**
+ * One path segment, percent-decoded. `null` for a segment that is not valid
+ * encoding, is longer than a parameter may be, or decodes to something that
+ * would change the path's structure.
+ */
+function decodeSegment(raw: string): string | null {
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+  if (
+    decoded === '' ||
+    decoded.length > ROUTE_PARAM_MAX ||
+    decoded.includes('/') ||
+    decoded === '.' ||
+    decoded === '..'
+  ) {
+    return null;
+  }
+  return decoded;
+}
+
+/** A request body as a route handler receives it. */
+interface ParsedBody {
+  /** Form fields, or the string-valued top-level members of a JSON object. */
+  readonly fields: Record<string, string>;
+  /** The whole JSON object of a JSON request; `undefined` for a form. */
+  readonly json: unknown;
+}
+
+async function parseBody(request: Request): Promise<ParsedBody | null> {
   if (request.method === 'GET') {
-    return {};
+    return { fields: {}, json: undefined };
   }
   const type = request.headers.get('content-type') ?? '';
   try {
@@ -455,7 +540,9 @@ async function parseBody(
           out[key] = value;
         }
       }
-      return out;
+      // Numbers, booleans and nested values are not form fields, but a
+      // handler that asked for JSON needs them: the object is passed whole.
+      return { fields: out, json: parsed };
     }
     const form = await request.formData();
     const out: Record<string, string> = {};
@@ -464,7 +551,7 @@ async function parseBody(
         out[key] = value.slice(0, 10_000);
       }
     }
-    return out;
+    return { fields: out, json: undefined };
   } catch {
     return null;
   }
@@ -502,6 +589,7 @@ async function buildRequestContext(
   site: SiteSettings,
   active: ActivePlugin,
   request: Request,
+  locale: string = site.defaultLocale,
 ): Promise<PluginRequestContext> {
   const base = await buildPluginContext(env, executionCtx, site, active);
   const url = new URL(request.url);
@@ -512,7 +600,7 @@ async function buildRequestContext(
     ...base,
     request,
     url,
-    locale: site.defaultLocale,
+    locale,
     country,
     ipHash: ip === null ? null : await sha256Hex(`${ip}${env.MALLOK_SECRET}`),
   };
