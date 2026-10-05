@@ -389,16 +389,19 @@ export function SecretControl({
   readonly id: string;
   readonly label: string;
 }): JSX.Element {
-  const [editing, setEditing] = useState(!configured);
+  // Only "the operator asked to replace it" is state. Whether a value is
+  // stored comes from the server through `configured` on every render;
+  // mirroring it here once left "Set" on screen after a removal.
+  const [replacing, setReplacing] = useState(false);
   const [draft, setDraft] = useState('');
-  if (!editing) {
+  if (configured && !replacing) {
     return (
       <div className="secret-control" id={id}>
         <span className="pill ok">Set</span>
         <button
           type="button"
           className="ghost"
-          onClick={() => setEditing(true)}
+          onClick={() => setReplacing(true)}
         >
           Replace
         </button>
@@ -424,7 +427,7 @@ export function SecretControl({
         onClick={() => {
           onSet(draft);
           setDraft('');
-          setEditing(false);
+          setReplacing(false);
         }}
         disabled={draft === ''}
       >
@@ -436,7 +439,7 @@ export function SecretControl({
           className="ghost"
           onClick={() => {
             setDraft('');
-            setEditing(false);
+            setReplacing(false);
           }}
         >
           Cancel

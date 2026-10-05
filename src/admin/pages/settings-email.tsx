@@ -150,9 +150,6 @@ export function EmailSettingsPage(): JSX.Element {
           <label htmlFor="email-resend-key">Resend API key</label>
           <div className="control">
             <SecretControl
-              // Remount when the stored state flips, so the control leaves
-              // its editing view after a save or a removal.
-              key={email.resendConfigured ? 'set' : 'unset'}
               id="email-resend-key"
               label="Resend API key"
               configured={email.resendConfigured}
