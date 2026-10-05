@@ -20,6 +20,7 @@ import { isOfficialPlugin } from '../plugins/define.js';
 import type { MallokPlugin } from '../plugins/types.js';
 import { hasScope, type Principal, type Scope } from './auth.js';
 import { purgeTags } from './cache.js';
+import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem } from './http.js';
 import {
@@ -125,6 +126,7 @@ async function listPlugins(env: Env): Promise<Response> {
   const states = new Map(
     (await listPluginState(env.DB)).map((row) => [row.plugin_id, row]),
   );
+  const themeLayouts = activeTheme().manifest.pluginLayouts;
   const plugins = registeredPlugins().map((plugin) => {
     const manifest = plugin.manifest;
     const state = states.get(manifest.id);
@@ -138,6 +140,20 @@ async function listPlugins(env: Env): Promise<Response> {
       enabled: state?.enabled === 1,
       hooks: manifest.hooks,
       routes: manifest.routes.map((route) => route.path),
+      // Which of this plugin's pages the active theme has a layout for. A
+      // page without one is shown in Mallok's plain built-in layout, and the
+      // admin has to say so rather than let it be found on the live site
+      // (docs/THEME_FORMAT.md §16).
+      pageLayouts: [
+        ...new Set(
+          manifest.routes
+            .map((route) => route.layout)
+            .filter((layout): layout is string => layout !== undefined),
+        ),
+      ].map((layout) => ({
+        layout,
+        provided: Object.hasOwn(themeLayouts, layout),
+      })),
       affectsFragmentCache: manifest.affectsFragmentCache,
       clientScripts: manifest.clientScripts,
       // The admin must warn that an onRequest plugin runs on every visitor

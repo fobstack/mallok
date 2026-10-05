@@ -11,12 +11,14 @@ import {
   buildHomePageView,
   buildImageViews,
   buildListPageView,
+  buildPluginPageView,
   type CompiledTheme,
   computeFragmentCacheKey,
   escapeHtml,
   type FragmentMeta,
   mediaUrl,
   PIPELINE_VERSION,
+  type PluginPageInput,
   type PluginsView,
   type RelationsInput,
   renderFragment,
@@ -319,6 +321,19 @@ export async function renderHomePage(
   }
   const view = buildHomePageView(viewContext(ctx), mapped);
   return renderPage(ctx.theme, ctx.theme.manifest.home, view);
+}
+
+/** Renders a plugin's view through one of the theme's plugin layouts. */
+export async function renderPluginPageHtml(
+  ctx: RenderContext,
+  layoutPath: string,
+  input: PluginPageInput,
+): Promise<string> {
+  return renderPage(
+    ctx.theme,
+    layoutPath,
+    buildPluginPageView(viewContext(ctx), input),
+  );
 }
 
 /** Renders one page of a kind's list. */

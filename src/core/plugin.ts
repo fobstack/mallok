@@ -41,6 +41,13 @@ export const RATE_LIMIT_TIERS = ['strict', 'relaxed'] as const;
 /** One rate-limit tier. */
 export type RateLimitTier = (typeof RATE_LIMIT_TIERS)[number];
 
+/**
+ * The name a plugin route gives the layout it wants, and a theme gives the
+ * layout it provides: `shop/cart`. Plugin and theme agree on it and on what
+ * the view under it contains; the core only matches the two.
+ */
+export const PLUGIN_LAYOUT_NAME = /^[a-z][a-z0-9-]*(?:\/[a-z][a-z0-9-]*)*$/;
+
 /** A fixed route segment, and the whole of a version 1 route path. */
 const ROUTE_LITERAL = /^[a-z][a-z0-9-]*$/;
 /** A route segment that captures one path segment as a named parameter. */
@@ -88,6 +95,13 @@ const routeSchema = z
      * `"strict"`; the named tiers need plugin API 2.
      */
     rateLimit: z.union([z.boolean(), z.enum(RATE_LIMIT_TIERS)]).default(false),
+    /**
+     * `"page"`: the handler returns a view and the theme's layout named by
+     * `layout` renders it as a page of the site. Plugin API 2.
+     */
+    render: z.enum(['response', 'page']).default('response'),
+    /** The plugin layout a `"page"` route is rendered with. */
+    layout: z.string().regex(PLUGIN_LAYOUT_NAME).optional(),
   })
   .strict();
 
@@ -260,6 +274,25 @@ export const pluginManifestSchema = z
       routePaths.add(route.path);
 
       const segments = route.path.split('/');
+      if (route.render === 'page') {
+        if (manifest.pluginApi < 2) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Route "${route.path}" is a page route (render: page), which needs plugin API 2; this plugin declares ${manifest.pluginApi}.`,
+          });
+        }
+        if (route.layout === undefined) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Route "${route.path}" is a page route (render: page) with no layout to render it with.`,
+          });
+        }
+      } else if (route.layout !== undefined) {
+        issue.addIssue({
+          code: 'custom',
+          message: `Route "${route.path}" names a layout but is not a page route (render: page).`,
+        });
+      }
       if (manifest.pluginApi < 2 && typeof route.rateLimit === 'string') {
         issue.addIssue({
           code: 'custom',

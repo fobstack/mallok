@@ -382,7 +382,7 @@ route or action that changes the data calls
 All of these are exported from `mallok/worker`, so a third-party plugin
 annotates its own handlers with the same types the official one uses:
 `PluginContext`, `PluginRequestContext`, `PluginRenderContext`,
-`PluginRenderDataContext`, `ContentDraft`, `RouteInput`, `EmailMessage`, `PluginSiteSettings`,
+`PluginRenderDataContext`, `ContentDraft`, `RouteInput`, `PluginPageResult`, `EmailMessage`, `PluginSiteSettings`,
 `PluginExportFile` and `PluginMigration`, plus `MallokPlugin` and
 `PluginInput`. There is no private interface (§1), and before 0.1.0-rc.5 the
 package exported only `MallokPlugin` with an opaque
@@ -585,6 +585,72 @@ rate-limit binding in the site's `wrangler.jsonc`:
   quota**; a plugin that needs an exact limit counts in its own table.
 - A refused request is answered 429 before the body is read or the handler
   runs.
+
+**Pages (plugin API 2).** A route that declares `"render": "page"` and a
+`layout` is a page of the site: its handler returns a view, and the theme's
+layout of that name renders it inside the site's own header, navigation and
+language switcher. **The plugin owns the route and the data; the theme owns
+the look.**
+
+```json
+{ "path": "cart",     "method": "GET",  "render": "page", "layout": "shop/cart" },
+{ "path": "cart/add", "method": "POST", "render": "page", "layout": "shop/cart" }
+```
+
+```ts
+export const routes = {
+  cart: async (_input: RouteInput, ctx: PluginRequestContext) => ({
+    title: 'Your cart',
+    view: { lines: await readCart(ctx), total: '$248.00' },
+  }),
+  'cart/add': async (input: RouteInput, ctx: PluginRequestContext) => {
+    const problem = await addToCart(ctx, input.fields);
+    if (problem !== null) {
+      return { status: 422, view: { error: problem } };
+    }
+    return new Response(null, { status: 303, headers: { location: '/_mallok/p/shop/cart' } });
+  },
+};
+```
+
+- The handler returns a `PluginPageResult` — `{ view, title?, description?,
+  status?, headers? }` — or a `Response`, which is passed through unchanged;
+  that is how a POST redirects. `view` must be JSON-serialisable, like a
+  `renderData` result, and reaches the layout as `plugin_page`
+  (`THEME_FORMAT.md §16`). `headers` is for `set-cookie` and the like.
+- **The page is private and unindexed, always**: `Cache-Control: private,
+  no-store` and `X-Robots-Tag: noindex`, whatever the handler sets.
+  `/_mallok/` is disallowed in `robots.txt` as well. It is one visitor's
+  cart, rendered per request; nothing about it is cacheable.
+- The layout sees the same view a content page does — `site`, `t`, `theme`,
+  `page` — with `page.kind` `plugin` and `page.alternates` pointing at the
+  same page under each of the site's locales (the locale segment above), so
+  the theme's language switcher works. `page.head` is empty and
+  `renderData` hooks do not run: the page is the plugin's own.
+- **The layout name is a contract between a plugin and a theme**, not with
+  the core: `shop/cart` means whatever the plugin's documentation says the
+  view under it contains. **A theme that does not provide it** leaves the
+  page to a plain built-in layout that names what is missing and lists the
+  view's top-level text, number and boolean values — enough to see the route
+  work, not a usable page. `{"event":"plugin_layout_missing",…}` is logged
+  per request and the admin's plugin page lists the layouts the theme lacks.
+- A page route returning something that is neither a view nor a `Response`,
+  or a plain route returning a view, is answered 500 with
+  `{"event":"plugin_route_bad_result",…}` in the log.
+- `afterRender` hooks do not run on a plugin page.
+
+**The cross-site check, for every plugin.** A `POST` to any plugin route is
+refused with 403 when the browser says another site caused it: when
+`Sec-Fetch-Site` is `cross-site`, or — for a browser that sends no such
+header — when `Origin` names a host other than the one requested.
+`same-origin`, `same-site` and `none` pass. **A request with neither header
+passes**: no current browser sends a form or a `fetch` POST without one, so
+it comes from a script or a server, which carries no visitor's cookies and
+gains nothing by forging one. A `GET` is never checked — a link from an order
+email or another site has to work — so **a handler must not change state on
+`GET`**. The check runs before rate limiting, body parsing and the handler.
+This is what lets a page route trust a session cookie scoped to
+`/_mallok/p/<plugin_id>`; it does not replace Turnstile for a public form.
 
 Every plugin-route response is rewritten to `Cache-Control: private,
 no-store`; `Cloudflare-CDN-Cache-Control`, `CDN-Cache-Control` and
@@ -931,7 +997,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Plugin cache tags (`p:<plugin-id>:<tag>`) | §5.6, §9.1 | 23 | Done |
 | Multi-segment routes with parameters, a locale segment, `input.json` | §7.2 | 24 | Done |
 | Rate-limit tiers (`rateLimit: "strict" \| "relaxed"`), counted per route | §7.2; `CLOUDFLARE_RESOURCES.md §4` | 25 | Done |
-| Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md`, plugin page layouts | 26 | Planned |
+| Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md §16` | 26 | Done |
 | `onContentSave` called on every save path; `onContentDelete` | §5.4, and a new delete-hook section | 27 | Planned |
 | Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Planned |
 | Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Planned |
@@ -950,4 +1016,4 @@ pass unchanged.
 | --- | --- | --- | --- |
 | Reading a panel's rows requires the `export` scope (§7.5) | A token without `export` gets 403 instead of the rows; the admin's own session is unaffected | 19 | Done, ships as `0.1.0-rc.8` |
 | `ctx.purgeTags` purges only the calling plugin's own tags, and `site` (§9.1) | A plugin that purged a core tag such as `c:<id>` or `home:<locale>` no longer does: the tag it names is now inside its own namespace. The official `inquiry` plugin never calls `purgeTags` | 23 | Done |
-| Cross-site submissions to page routes and state-changing POSTs are refused | A same-site form, such as the inquiry form, still submits; a request with neither `Sec-Fetch-Site` nor `Origin` is allowed | 26 | Planned |
+| A cross-site `POST` to any plugin route is refused with 403 (§7.2) | A same-site form, such as the inquiry form, still submits; a request with neither `Sec-Fetch-Site` nor `Origin` is allowed. A form on **another** site that posted to a plugin route — an inquiry form embedded on a partner's page — no longer works | 26 | Done |

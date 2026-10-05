@@ -136,7 +136,7 @@ export interface PageMetaView {
   readonly title: string;
   readonly description: string;
   readonly canonical: string;
-  readonly kind: 'home' | 'content' | 'list';
+  readonly kind: 'home' | 'content' | 'list' | 'plugin';
   readonly locale: string;
   readonly alternates: readonly AlternateView[];
   /** Core-generated tags (JSON-LD, hreflang) the theme must place in head. */
@@ -179,6 +179,12 @@ export interface PageView {
   /** Recent items per kind for the home page, keyed by kind. */
   readonly recent?: Readonly<Record<string, readonly ContentSummaryView[]>>;
   readonly plugins: PluginsView;
+  /**
+   * On a page a plugin renders (docs/THEME_FORMAT.md §16): the view its
+   * route handler returned, as plain data. What is in it is between the
+   * plugin and the layout that names it.
+   */
+  readonly plugin_page?: Readonly<Record<string, unknown>>;
 }
 
 /** Renders a full page with the given theme template. */

@@ -8,6 +8,7 @@
 
 import { z } from 'zod';
 import { LOCALE_PATTERN } from './paths.js';
+import { PLUGIN_LAYOUT_NAME } from './plugin.js';
 
 const LAYOUT_PATH = /^layouts\/[a-z0-9-]+\.liquid$/;
 
@@ -127,6 +128,14 @@ export const themeManifestSchema = z.object({
   /** Locales for which `locales/<locale>.json` exists. */
   locales: z.array(z.string().regex(LOCALE_PATTERN)).min(1),
   defaultLocale: z.string().regex(LOCALE_PATTERN),
+  /**
+   * Layouts this theme provides for pages a plugin renders
+   * (docs/THEME_FORMAT.md §16), keyed by the name the plugin's route asks
+   * for. The route and its data stay the plugin's; this is only the look.
+   */
+  pluginLayouts: z
+    .record(z.string().regex(PLUGIN_LAYOUT_NAME), z.string().regex(LAYOUT_PATH))
+    .default({}),
   /** WebP variant widths this theme wants, ascending. */
   imageWidths: z
     .array(z.number().int().positive())

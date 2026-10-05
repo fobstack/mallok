@@ -239,6 +239,39 @@ describe('plugin manifest schema', () => {
       expect(() => parsePluginManifest(tiered(2, 120))).toThrow();
     });
 
+    it('takes a page route with its layout under plugin API 2 only', () => {
+      const paged = (pluginApi: number, extra: Record<string, unknown>) => ({
+        ...BASE,
+        pluginApi,
+        routes: [{ path: 'cart', method: 'GET', ...extra }],
+      });
+      const route = parsePluginManifest(
+        paged(2, { render: 'page', layout: 'shop/cart' }),
+      ).routes[0];
+      expect(route?.render).toBe('page');
+      expect(route?.layout).toBe('shop/cart');
+      // A route that says nothing answers with its own Response, as before.
+      expect(parsePluginManifest(paged(1, {})).routes[0]?.render).toBe(
+        'response',
+      );
+      expect(() =>
+        parsePluginManifest(paged(1, { render: 'page', layout: 'shop/cart' })),
+      ).toThrow(/page route \(render: page\), which needs plugin API 2/);
+      expect(() => parsePluginManifest(paged(2, { render: 'page' }))).toThrow(
+        /with no layout to render it with/,
+      );
+      expect(() =>
+        parsePluginManifest(paged(2, { layout: 'shop/cart' })),
+      ).toThrow(/is not a page route/);
+      for (const layout of ['Shop/Cart', 'shop/', '/cart', 'shop cart', '']) {
+        expect(
+          () => parsePluginManifest(paged(2, { render: 'page', layout })),
+          layout,
+        ).toThrow();
+      }
+      expect(() => parsePluginManifest(paged(2, { render: 'html' }))).toThrow();
+    });
+
     it('matches the most specific route, then the first declared', () => {
       const declared = [
         { path: 'orders/:orderNo' },

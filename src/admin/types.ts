@@ -87,6 +87,8 @@ export interface PluginInfo {
   readonly enabled: boolean;
   readonly hooks: readonly string[];
   readonly routes: readonly string[];
+  /** The plugin's pages, and whether the active theme has a layout for each. */
+  readonly pageLayouts: readonly { layout: string; provided: boolean }[];
   readonly affectsFragmentCache: boolean;
   readonly clientScripts: readonly {
     src: string;

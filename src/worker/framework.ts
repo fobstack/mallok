@@ -53,6 +53,7 @@ export type {
   PluginManifest,
   PluginMarkdownRoot,
   PluginMigration,
+  PluginPageResult,
   PluginPanelDeclaration,
   PluginRenderContext,
   PluginRenderDataContext,

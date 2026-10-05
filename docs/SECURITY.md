@@ -253,6 +253,13 @@ the management API already uses it to reject illegal paths.
 
 The core does the following for every plugin route (`PLUGIN_API.md §7.2`):
 
+0. **a cross-site check on every `POST`**, before anything else: refused when
+   `Sec-Fetch-Site` is `cross-site`, or, without that header, when `Origin`
+   names another host. A request carrying neither is allowed — it is not a
+   browser acting for a visitor — and a `GET` is never checked, so a handler
+   must not change state on `GET`. This is the CSRF defence for plugin pages
+   that keep a visitor's state in a cookie; the admin's own writes use the
+   token of §3.3;
 1. body parsing, with a size limit;
 2. zod validation;
 3. the server-side Turnstile `siteverify`, when `turnstile: true` is declared;

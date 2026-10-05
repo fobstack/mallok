@@ -161,6 +161,10 @@ export interface PluginRouteDeclaration {
   readonly turnstile: boolean;
   /** `true` is `"strict"`; `false` is no rate limit (§7.2). */
   readonly rateLimit: boolean | 'strict' | 'relaxed';
+  /** `"page"`: the handler's view is rendered by a theme layout (§7.2). */
+  readonly render: 'response' | 'page';
+  /** The plugin layout a `"page"` route asks the theme for. */
+  readonly layout?: string | undefined;
 }
 
 export interface PluginPanelDeclaration {
@@ -344,10 +348,27 @@ export interface PluginHooks {
   ) => Promise<Readonly<Record<string, unknown>> | undefined>;
 }
 
+/**
+ * What a `"render": "page"` route returns for the theme to render (§7.2).
+ *
+ * `view` reaches the layout as `plugin_page`, as plain JSON data. A handler
+ * may still return a `Response` — a redirect after a POST, typically.
+ */
+export interface PluginPageResult {
+  readonly view: Readonly<Record<string, unknown>>;
+  /** The page's title; the site's name when absent. */
+  readonly title?: string;
+  readonly description?: string;
+  /** Defaults to 200. */
+  readonly status?: number;
+  /** Extra response headers, such as `set-cookie`. Caching is not yours to set. */
+  readonly headers?: HeadersInit;
+}
+
 export type PluginRouteHandler = (
   input: RouteInput,
   ctx: PluginRequestContext,
-) => Promise<Response>;
+) => Promise<Response | PluginPageResult>;
 
 export interface PluginMigration {
   readonly id: string;

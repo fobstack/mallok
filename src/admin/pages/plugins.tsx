@@ -225,6 +225,22 @@ function PluginCard({
         </p>
       ) : null}
 
+      {plugin.pageLayouts.some((entry) => !entry.provided) ? (
+        <p className="warning-line">
+          The current theme has no layout for{' '}
+          {plugin.pageLayouts
+            .filter((entry) => !entry.provided)
+            .map((entry, index) => (
+              <span key={entry.layout}>
+                {index === 0 ? '' : ', '}
+                <code>{entry.layout}</code>
+              </span>
+            ))}
+          . Those pages are shown in a plain built-in layout, without the site’s
+          design. Adding the layouts to the theme needs a new build and deploy.
+        </p>
+      ) : null}
+
       {plugin.clientScripts.length === 0 ? null : (
         <ul className="rows">
           {plugin.clientScripts.map((script) => (

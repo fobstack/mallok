@@ -31,7 +31,7 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 22 (the `renderData` hook; the build's plugin API version is 2 from here), Task 23 (plugin cache tags), Task 24 (plugin routes with parameters, a locale segment and JSON bodies), Task 25 (rate-limit tiers), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`, added 2026-10-05) is done too. Records in `tasks/TASK-18.md` onward |
+| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 22 (the `renderData` hook; the build's plugin API version is 2 from here), Task 23 (plugin cache tags), Task 24 (plugin routes with parameters, a locale segment and JSON bodies), Task 25 (rate-limit tiers), Task 26 (plugin pages through theme layouts, and the cross-site check on plugin routes), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`, added 2026-10-05) is done too. Records in `tasks/TASK-18.md` onward |
 
 ## 2. The two gates
 
@@ -611,6 +611,7 @@ with Task 22; added 2026-10-05]
   cross-site POST is refused; the inquiry form still submits.
 - Depends on: Task 24. Contracts: `PLUGIN_API.md §7.2`; a new "plugin page
   layouts" section in `THEME_FORMAT.md` with §15 reworded; `ARCHITECTURE.md`.
+- **Done 2026-10-05** — `tasks/TASK-26.md`.
 
 **Task 27 — content save and delete hooks** [M7]
 - Call the documented but never-called `onContentSave` on the save path; it

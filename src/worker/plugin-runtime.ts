@@ -27,6 +27,11 @@ import { compiledPlugins } from './composition.js';
 import { queueEmail } from './email.js';
 import type { Env } from './env.js';
 import { problem } from './http.js';
+import {
+  crossSiteProblem,
+  isPageResult,
+  renderPluginPage,
+} from './plugin-pages.js';
 import { decryptSecret } from './secrets.js';
 import { parseSiteSettings, type SiteSettings } from './site.js';
 
@@ -401,6 +406,13 @@ export async function handlePluginRoute(
   if (request.method !== declaration.method) {
     return enforcePluginRouteNoStore(problem(405, 'Method not allowed.'));
   }
+  // Before anything is counted, read or run: a submission another site made
+  // a visitor's browser send is refused for every plugin, whichever API
+  // version it declares (docs/PLUGIN_API.md §13.3).
+  const crossSite = crossSiteProblem(request);
+  if (crossSite !== null) {
+    return enforcePluginRouteNoStore(problem(403, crossSite));
+  }
 
   // Rate limiting is best-effort by design (docs/SECURITY.md §12.5): with no
   // binding configured the request proceeds.
@@ -448,8 +460,40 @@ export async function handlePluginRoute(
     // the honeypot-only degraded mode, not a broken form.
   }
 
+  const returned = await handler(
+    { fields, params: matched.params, json: body.json },
+    ctx,
+  );
+  if (returned instanceof Response) {
+    return enforcePluginRouteNoStore(returned);
+  }
+  // A manifest gives a route a layout exactly when it is a page route.
+  if (declaration.layout === undefined || !isPageResult(returned)) {
+    // A handler that hands back a view from a route that renders none, or
+    // something that is neither. The visitor gets a plain error; the log
+    // says which route, for whoever wrote it.
+    console.warn(
+      JSON.stringify({
+        event: 'plugin_route_bad_result',
+        plugin: pluginId,
+        route: declaration.path,
+        render: declaration.render,
+      }),
+    );
+    return enforcePluginRouteNoStore(
+      problem(500, 'This page could not be shown.'),
+    );
+  }
   return enforcePluginRouteNoStore(
-    await handler({ fields, params: matched.params, json: body.json }, ctx),
+    await renderPluginPage({
+      request,
+      site,
+      locale,
+      pluginId,
+      layout: declaration.layout,
+      segments,
+      result: returned,
+    }),
   );
 }
 

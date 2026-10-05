@@ -93,6 +93,44 @@ describe('readThemePackage', () => {
     );
   });
 
+  it('takes plugin layouts, each a template the theme really has', () => {
+    const declared = withManifest(themeSource('trade', '1.0.0'), (manifest) => {
+      manifest.pluginLayouts = { 'shop/cart': 'layouts/shop-cart.liquid' };
+    });
+    const pkg = readThemePackage(
+      [...declared, file('layouts/shop-cart.liquid', '<p>cart</p>')],
+      'trade',
+    );
+    expect(pkg.manifest.pluginLayouts).toEqual({
+      'shop/cart': 'layouts/shop-cart.liquid',
+    });
+    // A theme that declares none provides none; it is not an error.
+    expect(
+      readThemePackage(themeSource('trade', '1.0.0'), 'trade').manifest
+        .pluginLayouts,
+    ).toEqual({});
+
+    expectRejected(
+      declared,
+      /missing: layouts\/shop-cart\.liquid \(plugin layout "shop\/cart"\)/,
+    );
+    for (const [name, path] of [
+      ['Shop/Cart', 'layouts/page.liquid'],
+      ['shop cart', 'layouts/page.liquid'],
+      ['shop/cart', 'partials/cart.liquid'],
+      ['shop/cart', 'layouts/plugins/cart.liquid'],
+    ] as const) {
+      expect(() =>
+        readThemePackage(
+          withManifest(themeSource('trade', '1.0.0'), (manifest) => {
+            manifest.pluginLayouts = { [name]: path };
+          }),
+          'trade',
+        ),
+      ).toThrow();
+    }
+  });
+
   it('requires a page kind, because it is the fallback layout', () => {
     expectRejected(
       withManifest(themeSource('trade', '1.0.0'), (manifest) => {

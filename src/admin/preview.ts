@@ -40,6 +40,8 @@ function themeFor(theme: ThemeInfo): CompiledTheme {
         defaultLocale: theme.defaultLocale,
         imageWidths: [...theme.imageWidths],
         clientScripts: [...theme.clientScripts],
+        // The preview renders content, never a plugin's page.
+        pluginLayouts: {},
         ...(theme.description === '' ? {} : { description: theme.description }),
       },
       theme.files,

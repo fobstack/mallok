@@ -222,6 +222,15 @@ and navigation comes from separate, bounded queries with `LIMIT` pagination; a
 query per content item is never acceptable. **A list page reads front matter
 and summary fields only, and never parses body Markdown.**
 
+**A plugin can serve pages of the site.** A plugin route declared as a page
+returns a view, and the theme's layout of the name the route asks for
+renders it with the site's own frame (`PLUGIN_API.md §7.2`,
+`THEME_FORMAT.md §16`): the plugin owns the route and the data, the theme the
+look. Such a page is rendered per request and is never cached or indexed, so
+it takes no part in the edge cache or in the round-trip invariant above — it
+is the plugin's request, with the plugin's queries. Every `POST` to a plugin
+route passes a cross-site check first (`SECURITY.md §7`).
+
 **Plugins spend from the same four.** A plugin's `renderData` hook
 (`PLUGIN_API.md §5.6`) reads its own tables while the page is rendered, so
 that a price is in the cached HTML. The core's pages use two round trips, so

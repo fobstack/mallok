@@ -601,3 +601,51 @@ export function buildListPageView(ctx: ViewContext, list: ListInput): PageView {
     list: view,
   };
 }
+
+/** What a plugin page needs beyond the site-wide context. */
+export interface PluginPageInput {
+  readonly title: string;
+  readonly description: string;
+  /** Path of this page, as requested. */
+  readonly path: string;
+  /** The same page in each of the site's locales. */
+  readonly alternates: readonly { locale: string; path: string }[];
+  /** The plugin's view, already reduced to plain data. */
+  readonly view: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * Builds the view for a page a plugin route renders through a theme layout.
+ *
+ * Everything a content page's layout can rely on is here — site, navigation,
+ * strings, theme options, the language switcher — so a plugin layout can
+ * include the theme's own header and footer partials. `page.head` is empty:
+ * the page is private to its visitor and never indexed, so there is nothing
+ * to tell a crawler about its translations and no structured data.
+ */
+export function buildPluginPageView(
+  ctx: ViewContext,
+  input: PluginPageInput,
+): PageView {
+  const alternates: AlternateView[] = input.alternates.map((item) => ({
+    locale: item.locale,
+    href: `${ctx.origin}${item.path}`,
+    name: ctx.languageNames?.[item.locale] ?? item.locale,
+  }));
+  return {
+    site: buildSiteView(ctx),
+    theme: buildThemeView(ctx),
+    t: ctx.strings,
+    plugins: {},
+    page: {
+      title: input.title,
+      description: input.description,
+      canonical: `${ctx.origin}${input.path}`,
+      kind: 'plugin',
+      locale: ctx.locale,
+      alternates,
+      head: new SafeHtml(''),
+    },
+    plugin_page: input.view,
+  };
+}

@@ -148,7 +148,8 @@ This section explains it and the 0.1 extensions.
   "locales": ["en", "zh", "de"],        // every locales/<locale>.json must exist
   "defaultLocale": "en",                // must be one of `locales`
   "imageWidths": [480, 960, 1440, 1920],// ascending; a theme may narrow the set, never add a width the core does not generate
-  "clientScripts": []                   // see §9
+  "clientScripts": [],                  // see §9
+  "pluginLayouts": {}                   // layouts for plugin pages, see §16
 }
 ```
 
@@ -744,10 +745,70 @@ Except for Atelier’s declared homepage carousel, all ship 0 bytes of client-si
   registering filters.
 - No theme inheritance or parent/child themes.
 - No theme-owned database tables or routes — that is what plugins are for, see
-  `PLUGIN_API.md`.
+  `PLUGIN_API.md`. A theme may provide the *layout* of a page whose route and
+  data are a plugin's (§16); the route is still not the theme's.
 - No fetching remote resources at runtime.
 - No second template engine (`TECH_STACK §12`).
 - No visual theme editor; 0.1 has only the options form declared in
   `theme.json`.
 - No theme marketplace runtime. That is a 1.0 direction, and when it arrives
   it will be a marketplace of source templates, not online installation.
+
+## 16. Layouts for plugin pages
+
+A plugin can serve pages of its own — a cart, an order — and ask the theme
+to draw them (`PLUGIN_API.md §7.2`). The route, the data and what happens on
+submit are the plugin's. The page's markup is the theme's, so it carries the
+same header, navigation, footer and language switcher as every other page.
+
+Declare the layouts the theme provides in `theme.json`:
+
+```json
+"pluginLayouts": {
+  "shop/cart":  "layouts/shop-cart.liquid",
+  "shop/order": "layouts/shop-order.liquid"
+}
+```
+
+- The key is the name a plugin's route asks for. By convention it starts
+  with the plugin's id; the core only matches the two strings.
+- The value is a file in `layouts/`, flat like every other layout — there are
+  no subdirectories. A name whose file is missing fails the build (§4.1).
+- A theme with no `pluginLayouts` is unaffected; nothing here is required.
+
+The layout is rendered with the view of §7.1 — `site`, `page`, `theme`, `t`
+— and one more object:
+
+```liquid
+<h1>{{ page.title }}</h1>
+{% for line in plugin_page.lines %}
+  <li>{{ line.name }} × {{ line.quantity }}</li>
+{% endfor %}
+<form method="post" action="/_mallok/p/shop/cart/add">…</form>
+```
+
+- **`plugin_page` is whatever the plugin returned**, as plain data, escaped
+  on output like any other value. What it contains is defined by the plugin,
+  not by Mallok: a theme that provides `shop/cart` is written against that
+  plugin's documentation, and the two are versioned together by whoever ships
+  them.
+- `page.kind` is `plugin`. `page.title` and `page.description` come from the
+  plugin; the title is the site's name when it gives none.
+- `page.alternates` lists the same plugin page in each of the site's locales,
+  so the language switcher of §7.7 works unchanged. `page.locale` and `t` are
+  those of the request.
+- `page.head` is empty: the page is served `noindex` and never cached, so
+  there is no hreflang or structured data to emit. Output it anyway, so one
+  `base` partial serves every layout.
+- `content`, `list` and `recent` are absent, and `plugins` is empty.
+- Partials work as in any layout, so a plugin layout normally starts by
+  rendering the theme's own header and ends with its footer.
+
+**When a theme lacks a layout a plugin asks for**, the page is not an error:
+Mallok shows a plain built-in page that says which layout is missing. The
+admin's plugin page lists those layouts, because changing themes on a site
+with such a plugin is exactly when this happens (§12).
+
+A plugin layout is under every rule of this document: no script unless
+`clientScripts` declares it (§9), the restricted Liquid of §8, no access to
+anything outside the view.

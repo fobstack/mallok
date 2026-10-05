@@ -209,6 +209,11 @@ function assertLayoutsExist(
       missing.push(`${config.listLayout} (list of "${kind}")`);
     }
   }
+  for (const [name, layout] of Object.entries(manifest.pluginLayouts)) {
+    if (files[layout] === undefined) {
+      missing.push(`${layout} (plugin layout "${name}")`);
+    }
+  }
   if (manifest.kinds.page === undefined) {
     // Content of a kind the next theme does not know falls back to the page
     // layout, so every theme must have one (docs/THEME_FORMAT.md §5.3).
