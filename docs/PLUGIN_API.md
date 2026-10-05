@@ -155,7 +155,8 @@ schema generated from `plugin.json`.
 
 ## 5. Hooks
 
-0.1 exposes five (`ARCHITECTURE §12`); plugin API 2 adds `renderData`.
+0.1 exposes five (`ARCHITECTURE §12`); plugin API 2 adds `renderData` and
+`onContentDelete`.
 Implementations are properties of the `hooks` object passed to `definePlugin`.
 
 | Hook | When | Whose CPU it costs | Typical use |
@@ -165,6 +166,7 @@ Implementations are properties of the `hooks` object passed to `definePlugin`.
 | `afterRender` | After the complete HTML is generated | The visitor request, on a cache miss | Injecting meta, structured data, form markup |
 | `onContentSave` | When content is saved | The save request | Validation, auto-summaries, notifying something external |
 | `scheduled` | Inside the once-a-minute cron | The cron invocation | Retries, syncing, cleanup |
+| `onContentDelete` (API 2) | After content has been deleted | The delete request | Removing what the plugin kept for that content |
 | `renderData` (API 2) | While a page is rendered, **on a cache miss only** | The visitor request, on a cache miss | Data from the plugin's tables that templates print: prices, availability |
 
 ### 5.1 `onRequest`
@@ -239,6 +241,67 @@ remain owned by Mallok. Returning `void` changes nothing.
 Throwing fails the save and returns the error to the caller — **that is the
 legitimate way for a plugin to refuse a save**, and it is better than
 rewriting silently.
+
+**It is called on every save**: the admin's editor, `mallok publish` and
+`mallok import`, a starter's content at setup — they all go through
+`POST /_mallok/api/content`, and that is where the hook runs. (Until
+`0.1.0-rc.9` this hook was documented and never called.) The draft is what
+was submitted:
+
+```ts
+interface ContentDraft {
+  readonly kind: string;
+  readonly locale: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly markdown: string;                       // front matter included
+  readonly frontmatter: Readonly<Record<string, unknown>>;
+  readonly status: string;                         // draft | scheduled | published, as requested
+}
+```
+
+The order on the save path, which decides what a hook can rely on:
+
+1. The submitted Markdown is parsed; its kind, locale, slug and title are
+   settled. **A hook cannot change those**: the slug and locale are the
+   item's identity, and they are taken from what was submitted even when a
+   hook rewrites the front matter.
+2. **The hooks run**, in the order the site lists its plugins, each receiving
+   the Markdown the one before it returned.
+3. The result is parsed again. It must still be a document that can be saved
+   — front matter with a title, within the size limit — or the save fails
+   with 422 and nothing is stored.
+4. The length safety net applies **to the result**: a hook that makes a body
+   too long to render safely gets the item saved as a draft, like any other
+   over-long item (`ARCHITECTURE §5`).
+5. **The result is compared with what is stored.** If nothing would change,
+   the save answers `unchanged` and writes nothing.
+6. Stage one renders the result, and the result is what is stored.
+
+Three things follow:
+
+- **A hook must be idempotent**: given its own output, it returns it
+  unchanged; given the same input, it returns the same output. Step 5 is what
+  keeps a second `mallok publish` of the same file a no-op, and it only works
+  if the hook gives the same answer twice. A hook that stamps a timestamp
+  makes every publish a change.
+- **What is stored is what the hook returned**, so an export contains it and
+  the file in the author's repository does not. A hook that rewrites
+  Markdown is changing the author's source of truth; prefer refusing.
+- A refusal is answered **422** with `{ "error": <the message thrown>,
+  "rejectedBy": <plugin id> }`, shown as it is by the admin and by
+  `mallok publish`. Nothing is written and later hooks do not run. Write the
+  message for the person saving.
+
+**The hook's time is the save request's time.** A save already runs stage
+one, which is the most expensive thing Mallok does; a hook that makes a
+network call or a slow query can push a save past the platform's CPU limit,
+where it is killed without an error the caller can read. Validate, look
+something up in your own table, and return.
+
+A draft has no id: a new item does not have one until it is stored. To keep
+a plugin's own rows in step with content, key them by `kind`, `locale` and
+`slug`, or attach them later (§7.5, Task 29).
 
 ### 5.5 `scheduled`
 
@@ -377,12 +440,50 @@ route or action that changes the data calls
 `ctx.purgeTags(['product-…'])` with the same short name (§9). Like
 `structuredData`, `cacheTags` is removed before the result reaches templates.
 
+### 5.7 `onContentDelete`
+
+```ts
+export async function onContentDelete(
+  ref: ContentDeleteRef,
+  ctx: PluginContext,
+): Promise<void>;
+
+interface ContentDeleteRef {
+  readonly id: string;
+  readonly kind: string;
+  readonly locale: string;
+  readonly translationGroup: string;
+  readonly lastInGroup: boolean;
+}
+```
+
+Plugin API 2. Called **after** content has been deleted through
+`DELETE /_mallok/api/content/<id>`, so that a plugin can remove what it kept
+for it — a product's variants and prices, say.
+
+- **`lastInGroup`** is true when no other language of the item is left. One
+  language of a product being deleted usually means "that translation is
+  gone"; the last one means "the product is gone". Rows a plugin keys by
+  `translationGroup` belong to the second case.
+- **It cannot refuse the delete, and a failure does not undo it.** The
+  content is already gone when the hook runs. A hook that throws is logged
+  as `{"event":"content_delete_hook_failed",…}`, the other plugins' hooks
+  still run, and the response carries `"hookFailed": [<plugin ids>]` so that
+  whoever deleted the item knows a plugin's cleanup did not finish. Make the
+  cleanup safe to repeat, and let `scheduled` sweep up what was missed.
+- It is not called when content is unpublished or made a draft — that is a
+  save, and `onContentSave` sees the new `status` — nor when a plugin is
+  switched off at the time; a plugin that is later switched on finds no
+  record of deletions it missed.
+- Like a save hook, its time is the request's time. Delete rows; do not call
+  out.
+
 ## 6. The context objects
 
 All of these are exported from `mallok/worker`, so a third-party plugin
 annotates its own handlers with the same types the official one uses:
 `PluginContext`, `PluginRequestContext`, `PluginRenderContext`,
-`PluginRenderDataContext`, `ContentDraft`, `RouteInput`, `PluginPageResult`, `EmailMessage`, `PluginSiteSettings`,
+`PluginRenderDataContext`, `ContentDraft`, `ContentDeleteRef`, `RouteInput`, `PluginPageResult`, `EmailMessage`, `PluginSiteSettings`,
 `PluginExportFile` and `PluginMigration`, plus `MallokPlugin` and
 `PluginInput`. There is no private interface (§1), and before 0.1.0-rc.5 the
 package exported only `MallokPlugin` with an opaque
@@ -998,7 +1099,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Multi-segment routes with parameters, a locale segment, `input.json` | §7.2 | 24 | Done |
 | Rate-limit tiers (`rateLimit: "strict" \| "relaxed"`), counted per route | §7.2; `CLOUDFLARE_RESOURCES.md §4` | 25 | Done |
 | Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md §16` | 26 | Done |
-| `onContentSave` called on every save path; `onContentDelete` | §5.4, and a new delete-hook section | 27 | Planned |
+| `onContentSave` called on every save path; `onContentDelete` | §5.4, §5.7 | 27 | Done |
 | Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Planned |
 | Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Planned |
 | Raw-body routes (`body: "raw"`) | §7.2 | 31 | Planned |
@@ -1016,4 +1117,5 @@ pass unchanged.
 | --- | --- | --- | --- |
 | Reading a panel's rows requires the `export` scope (§7.5) | A token without `export` gets 403 instead of the rows; the admin's own session is unaffected | 19 | Done, ships as `0.1.0-rc.8` |
 | `ctx.purgeTags` purges only the calling plugin's own tags, and `site` (§9.1) | A plugin that purged a core tag such as `c:<id>` or `home:<locale>` no longer does: the tag it names is now inside its own namespace. The official `inquiry` plugin never calls `purgeTags` | 23 | Done |
+| `onContentSave` is called, as §5.4 always said (§5.4) | A version 1 plugin that declares the hook now has it run on every save: it can rewrite what is stored and refuse saves, where before it silently did nothing | 27 | Done |
 | A cross-site `POST` to any plugin route is refused with 403 (§7.2) | A same-site form, such as the inquiry form, still submits; a request with neither `Sec-Fetch-Site` nor `Origin` is allowed. A form on **another** site that posted to a plugin route — an inquiry form embedded on a partner's page — no longer works | 26 | Done |

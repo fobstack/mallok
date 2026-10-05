@@ -132,7 +132,8 @@ export type PluginHookName =
   | 'afterRender'
   | 'onContentSave'
   | 'scheduled'
-  | 'renderData';
+  | 'renderData'
+  | 'onContentDelete';
 
 export interface PluginSettingDeclaration {
   readonly type:
@@ -301,6 +302,19 @@ export interface ContentDraft {
 }
 
 /** Body already parsed and, when declared, Turnstile already verified (§7.2). */
+/** The content a delete removed, as `onContentDelete` is told (§5.7). */
+export interface ContentDeleteRef {
+  readonly id: string;
+  readonly kind: string;
+  readonly locale: string;
+  readonly translationGroup: string;
+  /**
+   * True when this was the last language of its translation group: nothing
+   * of the item is left, in any language.
+   */
+  readonly lastInGroup: boolean;
+}
+
 export interface RouteInput {
   /** Form fields, or the string-valued top-level members of a JSON body. */
   readonly fields: Readonly<Record<string, string>>;
@@ -338,6 +352,14 @@ export interface PluginHooks {
     | undefined
     | Partial<Pick<ContentDraft, 'markdown'>>
     | Promise<undefined | Partial<Pick<ContentDraft, 'markdown'>>>;
+  /**
+   * Called after content has been deleted, so a plugin can remove what it
+   * kept for it. The delete has already happened and cannot be refused.
+   */
+  readonly onContentDelete?: (
+    ref: ContentDeleteRef,
+    ctx: PluginContext,
+  ) => void | Promise<void>;
   readonly scheduled?: (ctx: PluginContext) => Promise<void>;
   /**
    * Reads what this plugin shows on the page being rendered. The result must

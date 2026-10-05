@@ -19,6 +19,7 @@ export const PLUGIN_HOOKS = [
   'onContentSave',
   'scheduled',
   'renderData',
+  'onContentDelete',
 ] as const;
 
 /**
@@ -27,7 +28,7 @@ export const PLUGIN_HOOKS = [
  */
 const HOOK_SINCE: Readonly<
   Partial<Record<(typeof PLUGIN_HOOKS)[number], number>>
-> = { renderData: 2 };
+> = { renderData: 2, onContentDelete: 2 };
 
 /** One declared hook name. */
 export type PluginHookName = (typeof PLUGIN_HOOKS)[number];

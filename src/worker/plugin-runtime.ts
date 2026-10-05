@@ -16,6 +16,7 @@ import {
 } from '../core/index.js';
 import { loadSiteRenderData, type PluginStateRow } from '../db/queries.js';
 import type {
+  ContentDeleteRef,
   ContentDraft,
   MallokPlugin,
   PluginContext,
@@ -126,9 +127,32 @@ export async function runAfterRender(
   return out;
 }
 
+/** A save a plugin's `onContentSave` hook refused, and which plugin. */
+export class ContentSaveRejected extends Error {
+  readonly pluginId: string;
+
+  constructor(pluginId: string, message: string) {
+    super(message);
+    this.name = 'ContentSaveRejected';
+    this.pluginId = pluginId;
+  }
+}
+
+/** Whether any enabled plugin implements `hook`. */
+export function anyPluginHas(
+  rows: readonly PluginStateRow[],
+  hook: 'onContentSave' | 'onContentDelete',
+): boolean {
+  return activePlugins(rows).some(
+    ({ plugin }) => plugin.hooks?.[hook] !== undefined,
+  );
+}
+
 /**
- * Runs every enabled `onContentSave` hook. A hook may throw to reject the
- * save (the message reaches the caller) or return a replacement markdown.
+ * Runs every enabled `onContentSave` hook, each seeing what the one before
+ * it returned. A hook may return a replacement markdown, or throw to refuse
+ * the save: that surfaces as {@link ContentSaveRejected}, carrying the
+ * hook's message for the caller.
  */
 export async function runOnContentSave(
   env: Env,
@@ -144,12 +168,63 @@ export async function runOnContentSave(
       continue;
     }
     const ctx = await buildPluginContext(env, executionCtx, site, active);
-    const result = await hook(current, ctx);
+    let result: Awaited<ReturnType<typeof hook>>;
+    try {
+      result = await hook(current, ctx);
+    } catch (error) {
+      throw new ContentSaveRejected(
+        active.state.plugin_id,
+        error instanceof Error ? error.message : String(error),
+      );
+    }
     if (result !== undefined && typeof result.markdown === 'string') {
       current = { ...current, markdown: result.markdown };
     }
   }
   return current;
+}
+
+/**
+ * Runs every enabled `onContentDelete` hook after a delete.
+ *
+ * The content is already gone, so a failing hook cannot undo anything: it is
+ * logged, the other plugins still run, and the ids of those that failed are
+ * returned so the caller can say the cleanup was incomplete.
+ */
+export async function runOnContentDelete(
+  env: Env,
+  executionCtx: ExecutionContext,
+  rows: readonly PluginStateRow[],
+  site: SiteSettings,
+  ref: ContentDeleteRef,
+): Promise<string[]> {
+  const failed: string[] = [];
+  for (const active of activePlugins(rows)) {
+    const hook = active.plugin.hooks?.onContentDelete;
+    if (hook === undefined) {
+      continue;
+    }
+    try {
+      await hook(
+        ref,
+        await buildPluginContext(env, executionCtx, site, active),
+      );
+    } catch (error) {
+      failed.push(active.state.plugin_id);
+      console.warn(
+        JSON.stringify({
+          event: 'content_delete_hook_failed',
+          plugin: active.state.plugin_id,
+          content: ref.id,
+          reason: (error instanceof Error
+            ? error.message
+            : String(error)
+          ).slice(0, 200),
+        }),
+      );
+    }
+  }
+  return failed;
 }
 
 /** Runs every enabled `scheduled` hook inside the cron tick. */

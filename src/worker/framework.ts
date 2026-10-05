@@ -42,6 +42,7 @@ export { definePlugin, PluginDefinitionError } from '../plugins/define.js';
  * or re-declare them by hand.
  */
 export type {
+  ContentDeleteRef,
   ContentDraft,
   EmailMessage,
   MallokPlugin,

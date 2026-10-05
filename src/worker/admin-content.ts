@@ -34,7 +34,14 @@ import {
 import { purgeTags, tagsForContent } from './cache.js';
 import type { Env } from './env.js';
 import { json, problem, readJson } from './http.js';
-import { beforeRenderHooks, fragmentPluginHash } from './plugin-runtime.js';
+import {
+  anyPluginHas,
+  beforeRenderHooks,
+  ContentSaveRejected,
+  fragmentPluginHash,
+  runOnContentDelete,
+  runOnContentSave,
+} from './plugin-runtime.js';
 import { resolveAssets } from './render.js';
 import { parseSiteSettings } from './site.js';
 
@@ -156,11 +163,13 @@ export async function saveContent(
   }
   const input = parsedBody.data;
 
-  const siteRow = await loadSite(env.DB);
-  if (siteRow === null) {
+  // The site row and the enabled plugins in one round trip: the plugins are
+  // needed twice below, for the save hooks and for stage one.
+  const siteData = await loadSiteRenderData(env.DB);
+  if (siteData.site === null) {
     return problem(503, 'Site is not initialized.');
   }
-  const settings = parseSiteSettings(siteRow);
+  const settings = parseSiteSettings(siteData.site);
   const kindConfig = settings.kinds[input.kind];
   if (kindConfig === undefined) {
     return problem(400, `Kind "${input.kind}" is not enabled on this site.`);
@@ -170,28 +179,15 @@ export async function saveContent(
     return problem(400, `Locale "${locale}" is not enabled on this site.`);
   }
 
-  let document: ReturnType<typeof splitFrontmatter>;
-  try {
-    document = splitFrontmatter(input.markdown);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid input.';
-    return problem(400, message);
-  }
-  // Past this length, rendering itself is the risk — skip it rather than
-  // attempt it (see MAX_SAFE_RENDER_BYTES). The content is still saved, as a
-  // draft, so nothing is lost; it renders normally once shortened.
-  const tooLongToRenderSafely = document.body.length > MAX_SAFE_RENDER_BYTES;
-
-  // Aliases from Astro, Hugo and common CMS exports are derived into the
-  // stored view; the Markdown itself is never rewritten
-  // (docs/CONTENT_FORMAT.md §3.3).
-  const fm = deriveFrontmatter(document.data);
-  const title = typeof fm.title === 'string' ? fm.title.trim() : '';
-  if (title === '') {
-    return problem(400, 'Front matter must include a non-empty "title".');
+  const submitted = readDocument(input.markdown);
+  if (typeof submitted === 'string') {
+    return problem(400, submitted);
   }
   const slug =
-    input.slug ?? (typeof fm.slug === 'string' ? fm.slug : slugify(title));
+    input.slug ??
+    (typeof submitted.fm.slug === 'string'
+      ? submitted.fm.slug
+      : slugify(submitted.title));
   if (slug === '') {
     return problem(400, 'Could not derive a slug; provide one explicitly.');
   }
@@ -241,7 +237,60 @@ export async function saveContent(
   }
 
   const now = new Date().toISOString();
-  const markdownSha = await sha256Hex(input.markdown);
+
+  // Plugins see the draft before anything is compared or stored, and may
+  // replace its Markdown or refuse the save (docs/PLUGIN_API.md §5.4). What
+  // they return is what is checked for length, compared with the stored item
+  // and saved — so publishing the same file twice is still "unchanged", as
+  // long as the hook gives the same answer for the same input.
+  let markdown = input.markdown;
+  let current = submitted;
+  if (anyPluginHas(siteData.plugins, 'onContentSave')) {
+    let hooked: Awaited<ReturnType<typeof runOnContentSave>>;
+    try {
+      hooked = await runOnContentSave(env, ctx, siteData.plugins, settings, {
+        kind: input.kind,
+        locale,
+        slug,
+        title: submitted.title,
+        markdown,
+        frontmatter: submitted.fm,
+        status: resolveStatus(input.status, submitted.fm, now),
+      });
+    } catch (error) {
+      if (error instanceof ContentSaveRejected) {
+        return json(
+          { error: error.message, rejectedBy: error.pluginId },
+          { status: 422 },
+        );
+      }
+      throw error;
+    }
+    if (hooked.markdown !== markdown) {
+      if (hooked.markdown.length > MAX_MARKDOWN_BYTES) {
+        return problem(
+          422,
+          'A plugin made this item larger than can be stored. Nothing was saved.',
+        );
+      }
+      const rewritten = readDocument(hooked.markdown);
+      if (typeof rewritten === 'string') {
+        return problem(
+          422,
+          `A plugin rewrote this item into something that cannot be saved: ${rewritten}`,
+        );
+      }
+      markdown = hooked.markdown;
+      current = rewritten;
+    }
+  }
+  const { document, fm, title } = current;
+  // Past this length, rendering itself is the risk — skip it rather than
+  // attempt it (see MAX_SAFE_RENDER_BYTES). The content is still saved, as a
+  // draft, so nothing is lost; it renders normally once shortened. Measured
+  // after the hooks: a plugin can make the body longer.
+  const tooLongToRenderSafely = document.body.length > MAX_SAFE_RENDER_BYTES;
+  const markdownSha = await sha256Hex(markdown);
   // Too long to render safely overrides whatever was requested: saving must
   // never publish content stage one hasn't actually rendered.
   const status = tooLongToRenderSafely
@@ -286,7 +335,6 @@ export async function saveContent(
         cacheKey: `too-long:${markdownSha}`,
       }
     : await (async () => {
-        const siteData = await loadSiteRenderData(env.DB);
         const resolved = await resolveAssets(env.DB, assetsJson);
         return renderFragment({
           body: document.body,
@@ -314,7 +362,7 @@ export async function saveContent(
     title,
     description,
     frontmatter: JSON.stringify(fm),
-    markdown: input.markdown,
+    markdown,
     markdown_sha256: markdownSha,
     assets: assetsJson,
     cover_sha256:
@@ -383,7 +431,67 @@ export async function removeContent(
   ctx.waitUntil(
     purgeTags(env, tagsForContent(existing.id, existing.kind, existing.locale)),
   );
-  return json({ ok: true, id });
+
+  // Plugins hear about it after the fact, so that what they kept for this
+  // item goes too (docs/PLUGIN_API.md §5.7). A site with no such plugin pays
+  // one read for the plugin rows and nothing more.
+  const siteData = await loadSiteRenderData(env.DB);
+  if (
+    siteData.site === null ||
+    !anyPluginHas(siteData.plugins, 'onContentDelete')
+  ) {
+    return json({ ok: true, id });
+  }
+  const remaining = await listTranslationsOf(
+    env.DB,
+    existing.translation_group,
+  );
+  const failed = await runOnContentDelete(
+    env,
+    ctx,
+    siteData.plugins,
+    parseSiteSettings(siteData.site),
+    {
+      id: existing.id,
+      kind: existing.kind,
+      locale: existing.locale,
+      translationGroup: existing.translation_group,
+      lastInGroup: remaining.length === 0,
+    },
+  );
+  return json({
+    ok: true,
+    id,
+    // The content is gone either way; this says a plugin's own cleanup is
+    // not, so whoever deleted it knows to look.
+    ...(failed.length === 0 ? {} : { hookFailed: failed }),
+  });
+}
+
+/** A Markdown source split into what the save path needs from it. */
+interface ReadDocument {
+  readonly document: ReturnType<typeof splitFrontmatter>;
+  readonly fm: ReturnType<typeof deriveFrontmatter>;
+  readonly title: string;
+}
+
+/** Parses a Markdown source, or says why it cannot be saved. */
+function readDocument(markdown: string): ReadDocument | string {
+  let document: ReturnType<typeof splitFrontmatter>;
+  try {
+    document = splitFrontmatter(markdown);
+  } catch (error) {
+    return error instanceof Error ? error.message : 'Invalid input.';
+  }
+  // Aliases from Astro, Hugo and common CMS exports are derived into the
+  // stored view; the Markdown itself is never rewritten
+  // (docs/CONTENT_FORMAT.md §3.3).
+  const fm = deriveFrontmatter(document.data);
+  const title = typeof fm.title === 'string' ? fm.title.trim() : '';
+  if (title === '') {
+    return 'Front matter must include a non-empty "title".';
+  }
+  return { document, fm, title };
 }
 
 function summary(row: {

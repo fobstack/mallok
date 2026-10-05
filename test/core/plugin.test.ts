@@ -295,6 +295,24 @@ describe('plugin manifest schema', () => {
     });
   });
 
+  it('has had onContentSave since version 1, and onContentDelete since 2', () => {
+    expect(
+      parsePluginManifest({ ...BASE, pluginApi: 1, hooks: ['onContentSave'] })
+        .hooks,
+    ).toEqual(['onContentSave']);
+    expect(
+      parsePluginManifest({ ...BASE, pluginApi: 2, hooks: ['onContentDelete'] })
+        .hooks,
+    ).toEqual(['onContentDelete']);
+    expect(() =>
+      parsePluginManifest({
+        ...BASE,
+        pluginApi: 1,
+        hooks: ['onContentDelete'],
+      }),
+    ).toThrow(/onContentDelete hook needs plugin API 2/);
+  });
+
   it('rejects an unknown hook name and a bad route method', () => {
     expect(() => parsePluginManifest({ ...BASE, hooks: ['onBoot'] })).toThrow();
     expect(() =>
