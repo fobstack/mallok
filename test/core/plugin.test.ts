@@ -215,6 +215,30 @@ describe('plugin manifest schema', () => {
       ).toThrow(/match the same requests/);
     });
 
+    it('takes a rate-limit tier by name under plugin API 2 only', () => {
+      const tiered = (pluginApi: number, rateLimit: unknown) => ({
+        ...BASE,
+        pluginApi,
+        routes: [{ path: 'cart', method: 'POST', rateLimit }],
+      });
+      expect(
+        ['strict', 'relaxed', true, false].map(
+          (value) => parsePluginManifest(tiered(2, value)).routes[0]?.rateLimit,
+        ),
+      ).toEqual(['strict', 'relaxed', true, false]);
+      expect(parsePluginManifest(routes(2, 'cart')).routes[0]?.rateLimit).toBe(
+        false,
+      );
+      expect(parsePluginManifest(tiered(1, true)).routes[0]?.rateLimit).toBe(
+        true,
+      );
+      expect(() => parsePluginManifest(tiered(1, 'relaxed'))).toThrow(
+        /rate-limit tier, which needs plugin API 2/,
+      );
+      expect(() => parsePluginManifest(tiered(2, 'generous'))).toThrow();
+      expect(() => parsePluginManifest(tiered(2, 120))).toThrow();
+    });
+
     it('matches the most specific route, then the first declared', () => {
       const declared = [
         { path: 'orders/:orderNo' },

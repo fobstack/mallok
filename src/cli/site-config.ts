@@ -67,6 +67,19 @@ export const PLACEHOLDER_DATABASE_ID = '00000000-0000-0000-0000-000000000000';
  * value in `wrangler.jsonc` keeps it — `renderConfig` only fills a
  * placeholder.
  */
+/**
+ * The namespace of the site's second rate-limit binding,
+ * `RATE_LIMITER_RELAXED`: the one after the first.
+ *
+ * Derived from the first rather than hashed separately so that one value —
+ * the one in the ledger, and the one `--rate-limit-namespace` sets — decides
+ * both. Like the first, it is unlikely to collide and not guaranteed not to.
+ */
+export function relaxedRateLimitNamespace(strict: string): string {
+  const next = Number(strict) + 1;
+  return String(next > 4_294_967_295 ? 1 : next);
+}
+
 export function rateLimitNamespace(slug: string): string {
   // FNV-1a over the slug, then mixed, so neighbouring slugs land far apart.
   let hash = 0x811c9dc5;
@@ -280,9 +293,15 @@ export function renderConfig(base: string, input: SiteConfigInput): string {
       /"bucket_name":\s*"[^"]*"/,
       `"bucket_name": "${input.names.bucket}"`,
     )
+    // The first `namespace_id` is `RATE_LIMITER`'s; the relaxed binding is
+    // found by its name, so a project file without one is left as it is.
     .replace(
       /"namespace_id":\s*"[^"]*"/,
       `"namespace_id": "${input.rateLimitNamespace}"`,
+    )
+    .replace(
+      /("name":\s*"RATE_LIMITER_RELAXED",\s*"namespace_id":\s*)"[^"]*"/,
+      `$1"${relaxedRateLimitNamespace(input.rateLimitNamespace)}"`,
     )
     .replace(/"MALLOK_SITE":\s*"[^"]*"/, `"MALLOK_SITE": "${input.slug}"`)
     // The Worker is told its own domain, so `site.domain` can be set from
@@ -344,6 +363,18 @@ export function assertUsableConfig(
   }
   if (limits?.[0]?.namespace_id !== input.rateLimitNamespace) {
     problems.push('the rate-limit namespace was not written');
+  }
+  // Optional: a project created before the relaxed tier has no such binding
+  // and its Worker falls back to the strict one. When it is there, it must
+  // have a namespace of its own, or the two tiers would share one counter.
+  const relaxed = limits?.find(
+    (limit) => limit.name === 'RATE_LIMITER_RELAXED',
+  );
+  if (
+    relaxed !== undefined &&
+    relaxed.namespace_id !== relaxedRateLimitNamespace(input.rateLimitNamespace)
+  ) {
+    problems.push('the relaxed rate-limit namespace was not written');
   }
   if (
     (config.assets as { binding?: string } | undefined)?.binding !== 'ASSETS'

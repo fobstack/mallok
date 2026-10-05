@@ -404,10 +404,14 @@ export async function handlePluginRoute(
 
   // Rate limiting is best-effort by design (docs/SECURITY.md §12.5): with no
   // binding configured the request proceeds.
-  if (declaration.rateLimit && env.RATE_LIMITER !== undefined) {
+  const limiter = rateLimiterFor(env, pluginId, declaration);
+  if (limiter !== undefined) {
     const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
-    const { success } = await env.RATE_LIMITER.limit({
-      key: `${pluginId}:${ip}`,
+    // The declared path, not the requested one: `orders/:orderNo` is one
+    // budget however many order numbers are tried, and each route has its
+    // own, so a busy cart cannot use up the checkout's.
+    const { success } = await limiter.limit({
+      key: `${pluginId}:${declaration.path}:${ip}`,
     });
     if (!success) {
       return enforcePluginRouteNoStore(
@@ -447,6 +451,41 @@ export async function handlePluginRoute(
   return enforcePluginRouteNoStore(
     await handler({ fields, params: matched.params, json: body.json }, ctx),
   );
+}
+
+/**
+ * The binding that guards a route, or `undefined` when nothing does.
+ *
+ * `true` and `"strict"` are the same tier. A `relaxed` route on a site whose
+ * `wrangler.jsonc` predates the second binding falls back to the strict one
+ * and says so: tighter than asked for, never unguarded.
+ */
+function rateLimiterFor(
+  env: Env,
+  pluginId: string,
+  declaration: { readonly path: string; readonly rateLimit: boolean | string },
+): Env['RATE_LIMITER'] {
+  if (declaration.rateLimit === false) {
+    return undefined;
+  }
+  if (declaration.rateLimit !== 'relaxed') {
+    return env.RATE_LIMITER;
+  }
+  if (env.RATE_LIMITER_RELAXED !== undefined) {
+    return env.RATE_LIMITER_RELAXED;
+  }
+  if (env.RATE_LIMITER !== undefined) {
+    console.warn(
+      JSON.stringify({
+        event: 'rate_limit_binding_missing',
+        binding: 'RATE_LIMITER_RELAXED',
+        plugin: pluginId,
+        route: declaration.path,
+        fallback: 'RATE_LIMITER',
+      }),
+    );
+  }
+  return env.RATE_LIMITER;
 }
 
 /** Plugin endpoints never participate in browser or shared caching in 0.1. */

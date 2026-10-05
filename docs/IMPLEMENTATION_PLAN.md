@@ -31,7 +31,7 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 22 (the `renderData` hook; the build's plugin API version is 2 from here), Task 23 (plugin cache tags), Task 24 (plugin routes with parameters, a locale segment and JSON bodies), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`, added 2026-10-05) is done too. Records in `tasks/TASK-18.md` onward |
+| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 22 (the `renderData` hook; the build's plugin API version is 2 from here), Task 23 (plugin cache tags), Task 24 (plugin routes with parameters, a locale segment and JSON bodies), Task 25 (rate-limit tiers), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`, added 2026-10-05) is done too. Records in `tasks/TASK-18.md` onward |
 
 ## 2. The two gates
 
@@ -580,16 +580,18 @@ with Task 22; added 2026-10-05]
 **Task 25 — rate-limit tiers** [M4, part 4]
 - **Owner decision, 2026-10-01: moved into P0**, since the cart cannot share
   one 10-per-minute budget with the rest of the plugin.
-- **[OWNER]** (a) key by route, `<plugin-id>:<route>:<ip>`, same limit; or (b)
-  a second binding with `rateLimit: "strict" | "relaxed"`, which changes the
-  binding list in `CLOUDFLARE_RESOURCES.md §4` and the template, with an
-  upgrade note. Recommended: (b), since (a) leaves the cart at ten a minute.
-- **[VERIFY]** The Rate Limiting binding's allowed limit and period values,
-  against Nundar's reference budgets (cart about 120 a minute; checkout about
-  10 per 10 minutes).
+- **Owner decision, 2026-10-05: both** — a second binding with
+  `rateLimit: "strict" | "relaxed"`, and the key by route,
+  `<plugin-id>:<route>:<ip>`. A `relaxed` route on a site that has not added
+  the second binding falls back to the strict one and logs it.
+- **Verified 2026-10-05** against Cloudflare's rate-limit binding
+  documentation: `period` is 10 or 60 seconds only, so Nundar's reference
+  "checkout about 10 per 10 minutes" cannot be configured; the strict tier
+  is 10 a minute. The cart's 120 a minute is the relaxed tier's default.
 - The path: routes with different tiers no longer share a budget.
 - Depends on: Task 24. Contracts: `PLUGIN_API.md §7.2`,
   `CLOUDFLARE_RESOURCES.md §4`.
+- **Done 2026-10-05** — `tasks/TASK-25.md`.
 
 **Task 26 — plugin pages rendered through the theme** [M5]
 - A route may declare `"render": "page"` and a `layout`; its handler returns a

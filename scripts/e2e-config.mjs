@@ -79,6 +79,11 @@ export async function writeE2eConfig(
         namespace_id: '1001',
         simple: { limit: 100, period: 60 },
       },
+      {
+        name: 'RATE_LIMITER_RELAXED',
+        namespace_id: '1002',
+        simple: { limit: 1000, period: 60 },
+      },
     ],
     vars: {
       MALLOK_SITE: 'e2e',

@@ -32,6 +32,15 @@ const HOOK_SINCE: Readonly<
 /** One declared hook name. */
 export type PluginHookName = (typeof PLUGIN_HOOKS)[number];
 
+/**
+ * The rate-limit tiers a route may ask for (docs/PLUGIN_API.md §7.2). Each
+ * is one binding in the site's `wrangler.jsonc`; the numbers live there.
+ */
+export const RATE_LIMIT_TIERS = ['strict', 'relaxed'] as const;
+
+/** One rate-limit tier. */
+export type RateLimitTier = (typeof RATE_LIMIT_TIERS)[number];
+
 /** A fixed route segment, and the whole of a version 1 route path. */
 const ROUTE_LITERAL = /^[a-z][a-z0-9-]*$/;
 /** A route segment that captures one path segment as a named parameter. */
@@ -73,8 +82,12 @@ const routeSchema = z
     method: z.enum(['GET', 'POST']),
     /** Verify a Turnstile token server-side before the handler runs. */
     turnstile: z.boolean().default(false),
-    /** Use the site's Workers rate-limit binding, keyed by plugin id + IP. */
-    rateLimit: z.boolean().default(false),
+    /**
+     * Which of the site's rate-limit bindings guards the route, keyed by
+     * plugin id, route and IP. `true` is the version 1 spelling of
+     * `"strict"`; the named tiers need plugin API 2.
+     */
+    rateLimit: z.union([z.boolean(), z.enum(RATE_LIMIT_TIERS)]).default(false),
   })
   .strict();
 
@@ -247,6 +260,12 @@ export const pluginManifestSchema = z
       routePaths.add(route.path);
 
       const segments = route.path.split('/');
+      if (manifest.pluginApi < 2 && typeof route.rateLimit === 'string') {
+        issue.addIssue({
+          code: 'custom',
+          message: `Route "${route.path}" asks for the "${route.rateLimit}" rate-limit tier, which needs plugin API 2; this plugin declares ${manifest.pluginApi}. Version 1 has "rateLimit": true.`,
+        });
+      }
       if (manifest.pluginApi < 2) {
         // Version 1 routes are one fixed segment and are matched exactly as
         // they always were, locale-shaped names included.

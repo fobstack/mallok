@@ -102,6 +102,8 @@ export {
   type PluginRouteMatch,
   parsePluginManifest,
   pluginManifestSchema,
+  RATE_LIMIT_TIERS,
+  type RateLimitTier,
   settingsValidator,
 } from './plugin.js';
 export {

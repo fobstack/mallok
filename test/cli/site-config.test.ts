@@ -10,6 +10,7 @@ import {
   parseDatabaseId,
   parseJsonc,
   rateLimitNamespace,
+  relaxedRateLimitNamespace,
   renderConfig,
   resourceNames,
   type SiteConfigInput,
@@ -53,7 +54,8 @@ const BASE = `{
   ],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "mallok-site-media" }],
   "ratelimits": [
-    { "name": "RATE_LIMITER", "namespace_id": "1000", "simple": { "limit": 10, "period": 60 } }
+    { "name": "RATE_LIMITER", "namespace_id": "1000", "simple": { "limit": 10, "period": 60 } },
+    { "name": "RATE_LIMITER_RELAXED", "namespace_id": "1001", "simple": { "limit": 120, "period": 60 } }
   ],
   "vars": {
     "MALLOK_SITE": "site",
@@ -181,6 +183,38 @@ describe('rendering the configuration', () => {
     }
   });
 
+  it('fills both rate-limit tiers of the template a new site is made from', async () => {
+    // The fixture above only has the template's shape; this is the file
+    // `mallok create` really copies.
+    const template = await readFile(
+      new URL('../../template/wrangler.jsonc', import.meta.url),
+      'utf8',
+    );
+    const config = parseJsonc(renderConfig(template, INPUT), 'w.jsonc') as {
+      ratelimits: {
+        name: string;
+        namespace_id: string;
+        simple: { limit: number; period: number };
+      }[];
+    };
+    expect(
+      config.ratelimits.map((limit) => [limit.name, limit.namespace_id]),
+    ).toEqual([
+      ['RATE_LIMITER', INPUT.rateLimitNamespace],
+      [
+        'RATE_LIMITER_RELAXED',
+        relaxedRateLimitNamespace(INPUT.rateLimitNamespace),
+      ],
+    ]);
+    // Cloudflare accepts a period of 10 or 60 seconds and nothing else.
+    for (const limit of config.ratelimits) {
+      expect([10, 60]).toContain(limit.simple.period);
+    }
+    expect(config.ratelimits[1]?.simple.limit).toBeGreaterThan(
+      config.ratelimits[0]?.simple.limit ?? 0,
+    );
+  });
+
   it('refuses a configuration that came out wrong', () => {
     // The check exists because the alternative is discovering it at the
     // deploy, after the database and the bucket exist.
@@ -191,6 +225,45 @@ describe('rendering the configuration', () => {
         INPUT,
       ),
     ).toThrow(/no R2 binding named MEDIA/);
+
+    // Both tiers get a namespace, and never the same one.
+    const rendered = parseJsonc(renderConfig(BASE, INPUT), 'w.jsonc') as {
+      ratelimits: { name: string; namespace_id: string }[];
+    };
+    expect(rendered.ratelimits.map((limit) => limit.name)).toEqual([
+      'RATE_LIMITER',
+      'RATE_LIMITER_RELAXED',
+    ]);
+    expect(rendered.ratelimits[0]?.namespace_id).toBe(INPUT.rateLimitNamespace);
+    expect(rendered.ratelimits[1]?.namespace_id).toBe(
+      relaxedRateLimitNamespace(INPUT.rateLimitNamespace),
+    );
+    expect(rendered.ratelimits[1]?.namespace_id).not.toBe(
+      rendered.ratelimits[0]?.namespace_id,
+    );
+    expect(relaxedRateLimitNamespace('4294967295')).toBe('1');
+
+    // A relaxed binding left sharing a counter is refused...
+    const shared = renderConfig(BASE, INPUT).replace(
+      `"namespace_id": "${relaxedRateLimitNamespace(INPUT.rateLimitNamespace)}"`,
+      `"namespace_id": "${INPUT.rateLimitNamespace}"`,
+    );
+    expect(() =>
+      assertUsableConfig(parseJsonc(shared, 'w.jsonc'), INPUT),
+    ).toThrow(/relaxed rate-limit namespace/);
+
+    // ...while a project file from before the relaxed tier still passes.
+    const older = BASE.replace(
+      /,\s*\{ "name": "RATE_LIMITER_RELAXED"[^\n]*\n/,
+      '\n',
+    );
+    expect(older).not.toContain('RATE_LIMITER_RELAXED');
+    expect(() =>
+      assertUsableConfig(
+        parseJsonc(renderConfig(older, INPUT), 'w.jsonc'),
+        INPUT,
+      ),
+    ).not.toThrow();
 
     const noLimiter = BASE.replace('"name": "RATE_LIMITER"', '"name": "X"');
     expect(() =>

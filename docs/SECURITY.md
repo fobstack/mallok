@@ -256,7 +256,9 @@ The core does the following for every plugin route (`PLUGIN_API.md §7.2`):
 1. body parsing, with a size limit;
 2. zod validation;
 3. the server-side Turnstile `siteverify`, when `turnstile: true` is declared;
-4. rate limiting, through the `RATE_LIMITER` binding.
+4. rate limiting, through the `RATE_LIMITER` or `RATE_LIMITER_RELAXED`
+   binding, whichever tier the route declares, counted per route and visitor
+   (`PLUGIN_API.md §7.2`).
 
 The rate-limit binding **counts per data centre and is eventually consistent**
 (`TECH_STACK §5`). It deters abuse and **must not** back anything requiring an

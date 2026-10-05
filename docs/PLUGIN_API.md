@@ -115,7 +115,7 @@ src/plugins/inquiry/
       "path": "submit",              // actually /_mallok/p/inquiry/submit
       "method": "POST",
       "turnstile": true,             // the core performs the server-side siteverify
-      "rateLimit": true              // site's binding; key is plugin id + IP
+      "rateLimit": true              // a site binding; key is plugin id + route + IP (§7.2)
     }
   ],
 
@@ -549,11 +549,42 @@ must be an object or an array; anything else is answered 400 before the
 handler runs. Neither is validated beyond that: the handler checks what it
 reads.
 
-The route handler validates its own parsed fields. When `rateLimit: true`, the
-core calls the site's single binding with the fixed key
-`<plugin-id>:<connecting-ip>`; the limit and period belong to that binding's
-`wrangler.jsonc`, not to a manifest value the runtime cannot enforce. It is
-best-effort abuse control and must not back billing or exact quotas.
+The route handler validates its own parsed fields.
+
+**Rate limiting.** A route asks for one of two tiers, each a Workers
+rate-limit binding in the site's `wrangler.jsonc`:
+
+| `rateLimit` | Binding | In the site template |
+| --- | --- | --- |
+| `"strict"`, or `true` | `RATE_LIMITER` | 10 requests per 60 seconds |
+| `"relaxed"` (plugin API 2) | `RATE_LIMITER_RELAXED` | 120 requests per 60 seconds |
+| `false`, or omitted | none | — |
+
+- **The numbers belong to the site, not to the plugin.** A manifest names a
+  tier; the limit and period are in `wrangler.jsonc`, where the site's owner
+  can change them and the runtime can enforce them. Pick `strict` for an
+  action that costs something each time it succeeds — a form that sends
+  email, a checkout — and `relaxed` for one a visitor repeats in normal use,
+  such as changing a cart.
+- **Each route has its own count per visitor.** The key is
+  `<plugin-id>:<route path as declared>:<connecting-ip>`, so two routes never
+  share a budget even on the same tier, and `orders/:orderNo` is one budget
+  whatever order number is tried. The locale segment is not part of the key.
+- **A site without `RATE_LIMITER_RELAXED`** — one created before the tier
+  existed, until its owner adds the binding (`CLOUDFLARE_RESOURCES.md §4`) —
+  guards a `relaxed` route with `RATE_LIMITER` instead and logs
+  `{"event":"rate_limit_binding_missing",…}`: tighter than asked for, never
+  unguarded. With no rate-limit binding at all, requests proceed, as before.
+- **What a binding can express** (Cloudflare's rate-limit binding
+  documentation, read 2026-10-05): the period is 10 or 60 seconds, nothing
+  longer, so "ten per ten minutes" cannot be configured. Counting is, in
+  Cloudflare's words, permissive and eventually consistent, kept per
+  Cloudflare location, and Cloudflare advises against keying on IP
+  addresses — which an anonymous form has nothing better than. **It is
+  best-effort abuse control and must not back billing, stock or any exact
+  quota**; a plugin that needs an exact limit counts in its own table.
+- A refused request is answered 429 before the body is read or the handler
+  runs.
 
 Every plugin-route response is rewritten to `Cache-Control: private,
 no-store`; `Cloudflare-CDN-Cache-Control`, `CDN-Cache-Control` and
@@ -899,7 +930,7 @@ inquiry cart or a booking plugin as much as a shop.
 | `renderData` adds `offers` to the page's `Product` structured data | §5.6; `SEO_PERFORMANCE.md §5` | 41 | Done |
 | Plugin cache tags (`p:<plugin-id>:<tag>`) | §5.6, §9.1 | 23 | Done |
 | Multi-segment routes with parameters, a locale segment, `input.json` | §7.2 | 24 | Done |
-| Rate-limit tiers | §7.2 | 25 | Planned |
+| Rate-limit tiers (`rateLimit: "strict" \| "relaxed"`), counted per route | §7.2; `CLOUDFLARE_RESOURCES.md §4` | 25 | Done |
 | Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md`, plugin page layouts | 26 | Planned |
 | `onContentSave` called on every save path; `onContentDelete` | §5.4, and a new delete-hook section | 27 | Planned |
 | Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Planned |

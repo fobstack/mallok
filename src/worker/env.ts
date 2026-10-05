@@ -43,4 +43,11 @@ export interface Env {
   readonly RATE_LIMITER?: {
     limit(options: { key: string }): Promise<{ success: boolean }>;
   };
+  /**
+   * The second rate-limit binding, for routes that declare the `relaxed`
+   * tier. Optional: without it those routes use `RATE_LIMITER`.
+   */
+  readonly RATE_LIMITER_RELAXED?: {
+    limit(options: { key: string }): Promise<{ success: boolean }>;
+  };
 }

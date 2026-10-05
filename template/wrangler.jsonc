@@ -41,14 +41,22 @@
   "triggers": {
     "crons": ["* * * * *"]
   },
-  // Best-effort protection for plugin routes such as inquiry submission. The
-  // namespace id must be unique within the account; `mallok create` derives a
-  // stable one from the site slug.
+  // Best-effort protection for plugin routes such as inquiry submission.
+  // Two tiers: a route declares "strict" (or `true`) or "relaxed", and each
+  // route has its own count per visitor. The limits are yours to change;
+  // `period` must be 10 or 60 seconds. Each namespace id must be unique
+  // within the account; `mallok create` derives stable ones from the site
+  // slug.
   "ratelimits": [
     {
       "name": "RATE_LIMITER",
       "namespace_id": "1000",
       "simple": { "limit": 10, "period": 60 }
+    },
+    {
+      "name": "RATE_LIMITER_RELAXED",
+      "namespace_id": "1001",
+      "simple": { "limit": 120, "period": 60 }
     }
   ],
   "vars": {

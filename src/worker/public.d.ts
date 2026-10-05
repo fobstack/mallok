@@ -62,6 +62,13 @@ export interface Env {
   readonly RATE_LIMITER?: {
     limit(options: { key: string }): Promise<{ success: boolean }>;
   };
+  /**
+   * The second rate-limit binding, for routes that declare the `relaxed`
+   * tier. Optional: without it those routes use `RATE_LIMITER`.
+   */
+  readonly RATE_LIMITER_RELAXED?: {
+    limit(options: { key: string }): Promise<{ success: boolean }>;
+  };
 }
 
 /**
@@ -152,7 +159,8 @@ export interface PluginRouteDeclaration {
   readonly path: string;
   readonly method: 'GET' | 'POST';
   readonly turnstile: boolean;
-  readonly rateLimit: boolean;
+  /** `true` is `"strict"`; `false` is no rate limit (§7.2). */
+  readonly rateLimit: boolean | 'strict' | 'relaxed';
 }
 
 export interface PluginPanelDeclaration {
