@@ -865,6 +865,42 @@ main {
   margin-bottom: 1rem;
 }
 
+/* Record forms of plugin panels */
+.record-editor .actions {
+  margin-top: 1rem;
+}
+.money-control {
+  display: flex;
+  gap: 0.5rem;
+}
+.money-control input {
+  flex: 1;
+}
+.money-control select {
+  width: auto;
+}
+.rows-field {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.8rem;
+  margin: 0 0 1rem;
+}
+.rows-field-row {
+  border: 0;
+  border-top: 1px solid var(--line);
+  padding: 0.8rem 0;
+  margin: 0;
+}
+.rows-table th button.sort {
+  all: unset;
+  cursor: pointer;
+  font: inherit;
+}
+.rows-table th button.sort:focus-visible {
+  outline: 2px solid currentcolor;
+  outline-offset: 2px;
+}
+
 /* Plugins */
 .plugin-head {
   display: flex;

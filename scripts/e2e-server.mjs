@@ -55,6 +55,9 @@ const SNAPSHOT_ENTRIES = [
   'tsconfig.json',
   'tsconfig.base.json',
   'text-modules.d.ts',
+  // The Worker the browser tests run, and the one test plugin it adds.
+  'test/e2e/worker',
+  'test/fixtures/catalog-plugin.ts',
 ];
 
 /** Copies the E2E build inputs and links the already locked dependencies. */
@@ -66,6 +69,7 @@ export async function createE2eSourceSnapshot(
   await rm(targetRoot, { recursive: true, force: true });
   await mkdir(targetRoot, { recursive: true });
   for (const entry of SNAPSHOT_ENTRIES) {
+    await mkdir(dirname(resolve(targetRoot, entry)), { recursive: true });
     await cp(resolve(sourceRoot, entry), resolve(targetRoot, entry), {
       recursive: true,
     });

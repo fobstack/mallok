@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { LOCALE_PATTERN } from './paths.js';
+import { recordFieldsSchema } from './records.js';
 
 /** Version of the plugin contract this build understands. */
 export const PLUGIN_API_VERSION = 2;
@@ -144,6 +145,8 @@ const panelColumnSchema = z
     field: z.string().regex(/^[a-z_][a-z0-9_]*$/),
     label: z.string(),
     type: z.enum(['text', 'email', 'datetime', 'badge']).default('text'),
+    /** The list may be ordered by this column. Plugin API 2. */
+    sortable: z.boolean().default(false),
   })
   .strict();
 
@@ -151,7 +154,15 @@ const panelSchema = z
   .object({
     id: z.string().regex(/^[a-z][a-z0-9-]*$/),
     label: z.string(),
-    type: z.literal('table'),
+    /**
+     * `table` lists rows and runs actions on them. `records` also creates
+     * and edits them, through handlers the plugin provides. Plugin API 2.
+     */
+    type: z.enum(['table', 'records']),
+    /** `records` only: the fields of the create and edit form. */
+    fields: recordFieldsSchema.optional(),
+    /** Columns a text search looks in, by substring. Plugin API 2. */
+    search: z.array(z.string().regex(/^[a-z_][a-z0-9_]*$/)).default([]),
     /** Must carry the plugin's `p_<id>_` prefix; checked below. */
     table: z.string().regex(/^[a-z_][a-z0-9_]*$/),
     columns: z.array(panelColumnSchema).min(1),
@@ -251,6 +262,35 @@ export const pluginManifestSchema = z
         issue.addIssue({
           code: 'custom',
           message: `Panel table "${panel.table}" must start with "p_${manifest.id.replace(/-/g, '_')}_".`,
+        });
+      }
+      if (panel.type === 'records') {
+        if (manifest.pluginApi < 2) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Panel "${panel.id}" is a records panel, which needs plugin API 2; this plugin declares ${manifest.pluginApi}.`,
+          });
+        }
+        if (Object.keys(panel.fields ?? {}).length === 0) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Records panel "${panel.id}" declares no fields to edit.`,
+          });
+        }
+      } else if (panel.fields !== undefined) {
+        issue.addIssue({
+          code: 'custom',
+          message: `Panel "${panel.id}" declares fields but is not a records panel.`,
+        });
+      }
+      if (
+        manifest.pluginApi < 2 &&
+        (panel.search.length > 0 ||
+          panel.columns.some((column) => column.sortable))
+      ) {
+        issue.addIssue({
+          code: 'custom',
+          message: `Panel "${panel.id}" declares sorting or search, which needs plugin API 2; this plugin declares ${manifest.pluginApi}.`,
         });
       }
       for (const action of panel.actions) {

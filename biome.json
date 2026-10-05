@@ -94,6 +94,7 @@
     {
       "includes": [
         "test/runtime/workerd/worker.ts",
+        "test/e2e/worker/index.ts",
         "test/runtime/fixtures/**",
         "src/runtime/vite/virtual.d.ts",
         "test/cli/helpers/build-package.ts"

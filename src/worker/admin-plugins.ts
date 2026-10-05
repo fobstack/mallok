@@ -7,7 +7,7 @@
  * that pretends otherwise.
  */
 
-import { settingsValidator } from '../core/index.js';
+import { settingsValidator, validateRecord } from '../core/index.js';
 import {
   findPluginState,
   listPluginState,
@@ -34,6 +34,10 @@ import { parseSiteSettings } from './site.js';
 const PANEL_PAGE = 20;
 const PANEL_PAGE_MAX = 100;
 const ACTION_IDS_MAX = 100;
+/** Longest search term a panel list accepts. */
+const SEARCH_MAX = 100;
+/** Longest record id accepted in a path. */
+const RECORD_ID_MAX = 200;
 
 /**
  * Routes a `plugins*` admin path. Returns `null` when `route` is not a
@@ -90,6 +94,22 @@ export async function routePlugins(
     // does too; reads elsewhere in the API stay unscoped.
     return withScope(principal, 'export', () =>
       getPanel(request, env, plugin, parts[2] ?? ''),
+    );
+  }
+  if (
+    (parts.length === 4 || parts.length === 5) &&
+    parts[1] === 'panels' &&
+    parts[3] === 'records'
+  ) {
+    return routeRecords(
+      request,
+      env,
+      ctx,
+      principal,
+      plugin,
+      parts[2] ?? '',
+      parts[4] ?? null,
+      method,
     );
   }
   if (
@@ -168,7 +188,12 @@ async function listPlugins(env: Env): Promise<Response> {
         configured: typeof stored[name] === 'string' && stored[name] !== '',
         checkable: plugin.checkSecrets?.[name] !== undefined,
       })),
-      panels: manifest.panels,
+      // `canRemove` is the one thing about a records panel the manifest
+      // cannot say: whether the plugin gave it a `remove` handler.
+      panels: manifest.panels.map((panel) => ({
+        ...panel,
+        canRemove: plugin.records?.[panel.id]?.remove !== undefined,
+      })),
     };
   });
   return json({ plugins });
@@ -346,11 +371,33 @@ async function getPanel(
       bindings.push(value);
     }
   }
+  // Text search: a substring match over the columns the panel declares, with
+  // the wildcards in what was typed taken literally.
+  const term = (url.searchParams.get('q') ?? '').trim().slice(0, SEARCH_MAX);
+  if (term !== '' && panel.search.length > 0) {
+    const pattern = `%${term.replace(/[\\%_]/g, '\\$&')}%`;
+    conditions.push(
+      `(${panel.search.map((field) => `${field} LIKE ? ESCAPE '\\'`).join(' OR ')})`,
+    );
+    for (const _field of panel.search) {
+      bindings.push(pattern);
+    }
+  }
+  // Sorting: only by a column the manifest marks sortable. Anything else
+  // asked for falls back to the panel's own order rather than reaching SQL.
+  const requested = url.searchParams.get('sort');
+  const sortable = panel.columns.find(
+    (column) => column.sortable && column.field === requested,
+  );
+  const order =
+    sortable === undefined
+      ? `${panel.orderBy} DESC`
+      : `${sortable.field} ${url.searchParams.get('dir') === 'desc' ? 'DESC' : 'ASC'}, id`;
   const where =
     conditions.length === 0 ? '' : ` WHERE ${conditions.join(' AND ')}`;
   const rows = await env.DB.prepare(
     `SELECT * FROM ${panel.table}${where}
-       ORDER BY ${panel.orderBy} DESC LIMIT ? OFFSET ?`,
+       ORDER BY ${order} LIMIT ? OFFSET ?`,
   )
     .bind(...bindings, limit + 1, offset)
     .all<Record<string, unknown>>();
@@ -372,6 +419,113 @@ async function getPanel(
     return out;
   });
   return json({ rows: projected, hasNext: rows.results.length > limit });
+}
+
+/**
+ * `…/panels/<panel>/records[/<id>]`: the create and edit form of a records
+ * panel (docs/PLUGIN_API.md §7.5).
+ *
+ * Reading a record needs `export`, like the list it came from; writing one
+ * needs `content:write`, like a panel's update actions. **Nothing here runs
+ * SQL of its own**: the record is loaded, saved and removed by handlers the
+ * plugin wrote, and what this does is check the shape of what was submitted
+ * against the fields the plugin declared.
+ */
+async function routeRecords(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+  principal: Principal,
+  plugin: MallokPlugin,
+  panelId: string,
+  recordId: string | null,
+  method: string,
+): Promise<Response> {
+  const panel = plugin.manifest.panels.find(
+    (entry) => entry.id === panelId && entry.type === 'records',
+  );
+  const handlers = plugin.records?.[panelId];
+  if (
+    panel === undefined ||
+    panel.fields === undefined ||
+    handlers === undefined
+  ) {
+    return problem(404, 'No such records panel.');
+  }
+  if (recordId !== null && recordId.length > RECORD_ID_MAX) {
+    return problem(404, 'No such record.');
+  }
+  const reading = method === 'GET' && recordId !== null;
+  const creating = method === 'POST' && recordId === null;
+  const updating = method === 'PUT' && recordId !== null;
+  const removing = method === 'DELETE' && recordId !== null;
+  if (!reading && !creating && !updating && !removing) {
+    return problem(405, 'Method not allowed.');
+  }
+  const scope: Scope = reading ? 'export' : 'content:write';
+  if (!hasScope(principal, scope)) {
+    return problem(403, `This operation needs the "${scope}" scope.`);
+  }
+  if (removing && handlers.remove === undefined) {
+    return problem(405, 'Records of this panel cannot be deleted here.');
+  }
+
+  const siteRow = await loadSite(env.DB);
+  if (siteRow === null) {
+    return problem(503, 'Site is not initialized.');
+  }
+  const state = await findPluginState(env.DB, plugin.manifest.id);
+  if (state === null) {
+    return problem(404, 'Plugin state row is missing.');
+  }
+  const pluginCtx = await buildPluginContext(
+    env,
+    ctx,
+    parseSiteSettings(siteRow),
+    { plugin, settings: parseJson(state.settings), state },
+  );
+
+  if (reading) {
+    const record = await handlers.load(recordId ?? '', pluginCtx);
+    return record === null
+      ? problem(404, 'No such record.')
+      : json({ id: recordId, values: record });
+  }
+  if (removing) {
+    await handlers.remove?.(recordId ?? '', pluginCtx);
+    return json({ ok: true, id: recordId });
+  }
+
+  const body = await readJson(request);
+  const submitted = body?.values;
+  if (
+    submitted === null ||
+    typeof submitted !== 'object' ||
+    Array.isArray(submitted)
+  ) {
+    return problem(400, 'Body must be {"values": { … }}.');
+  }
+  const checked = validateRecord(
+    panel.fields,
+    submitted as Record<string, unknown>,
+  );
+  if (Object.keys(checked.errors).length > 0) {
+    return json(
+      { error: 'Some fields need attention.', errors: checked.errors },
+      { status: 422 },
+    );
+  }
+  const saved = await handlers.save(
+    { id: recordId, values: checked.values },
+    pluginCtx,
+  );
+  if ('errors' in saved) {
+    return json(
+      { error: 'Some fields need attention.', errors: saved.errors },
+      { status: 422 },
+    );
+  }
+  return json({ id: saved.id }, { status: creating ? 201 : 200 });
 }
 
 async function runPanelAction(

@@ -11,11 +11,21 @@ const BASE = '/_mallok/api';
 /** A failed request, carrying the server's own message. */
 export class ApiError extends Error {
   readonly status: number;
+  /**
+   * Per-field messages, when the server sent any: a form shows each one
+   * beside the field it is about rather than as one line at the top.
+   */
+  readonly fields: Readonly<Record<string, string>>;
 
-  constructor(status: number, message: string) {
+  constructor(
+    status: number,
+    message: string,
+    fields: Readonly<Record<string, string>> = {},
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.fields = fields;
   }
 }
 
@@ -94,7 +104,17 @@ export async function api<T>(
       typeof (parsed as { error?: unknown }).error === 'string'
         ? (parsed as { error: string }).error
         : `Request failed (${response.status}).`;
-    throw new ApiError(response.status, message);
+    const errors =
+      parsed !== null && typeof parsed === 'object'
+        ? (parsed as { errors?: unknown }).errors
+        : undefined;
+    throw new ApiError(
+      response.status,
+      message,
+      errors !== null && typeof errors === 'object' && !Array.isArray(errors)
+        ? (errors as Record<string, string>)
+        : {},
+    );
   }
   return parsed as T;
 }

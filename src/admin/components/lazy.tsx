@@ -22,7 +22,10 @@ export function lazyRoute<P extends Record<string, unknown>>(
 ): (props: P) => JSX.Element {
   let cached: ComponentType<P> | null = null;
   return function LazyRoute(props: P): JSX.Element {
-    const [loaded, setLoaded] = useState<ComponentType<P> | null>(cached);
+    // The initialiser form, on purpose: a component is a function, and
+    // `useState(cached)` would have React call it — with no props, from
+    // inside `useState` — the second time a route mounts.
+    const [loaded, setLoaded] = useState<ComponentType<P> | null>(() => cached);
     const [failed, setFailed] = useState(false);
 
     useEffect(() => {

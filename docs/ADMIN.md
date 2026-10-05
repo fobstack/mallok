@@ -233,7 +233,7 @@ succeeded** (`AC-CONTENT-10`, `docs/ACCEPTANCE.md §14.2` item 7).
 
 ## 7. The schema-driven form generator
 
-This is the one admin component worth designing on its own. Four places share
+This is the one admin component worth designing on its own. Five places share
 it:
 
 | Use | Schema source |
@@ -242,6 +242,7 @@ it:
 | Theme options | `theme.json`'s `options` (`THEME_FORMAT.md §6`) |
 | Plugin settings and secrets | `plugin.json`'s `settings` and `secrets` (`PLUGIN_API.md §4`) |
 | A plugin panel's filters | `plugin.json`'s `panels[].filters` |
+| A plugin's record form | `plugin.json`'s `panels[].fields`, for a `records` panel (`PLUGIN_API.md §7.5`) |
 
 **The consequence: neither theme authors nor plugin authors write admin
 code.** The moment they can, the admin's size budget and its security boundary
@@ -307,7 +308,19 @@ See §4.1. Two additions:
   client-side JavaScript, and whether it affects the cache.
 - A plugin declaring `onRequest` carries the extra note that it runs on every
   visitor request (`PLUGIN_API.md §5.1`).
-- Panels render from `plugin.json`'s `panels` (`PLUGIN_API.md §7.5`).
+- Panels render from `plugin.json`'s `panels` (`PLUGIN_API.md §7.5`): a
+  table with the declared columns, filters and actions; a search box and
+  sortable headings where the panel declares them.
+- **A `records` panel adds New and Edit.** The form is generated from the
+  panel's `fields`. Two controls exist only there: `money` — an amount typed
+  as `99.00` beside a currency, sent as whole minor units — and `rows`, a
+  repeatable group with "Add a row" and a remove button per row. Validation
+  messages come from the server and appear beside the field they are about,
+  including ones only the plugin can produce. Delete is offered only when the
+  plugin provides it, and asks first.
+- The form's code loads when the first record is opened, on top of the
+  plugins page itself being loaded on demand; none of it is in the first
+  load.
 
 ## 11. Advanced, under Settings
 

@@ -256,8 +256,21 @@ code a deployed site runs — through the flows that only exist end to end:
 | `03-publish` | Writing a page in the admin, publishing it, editing it, and a draft staying private |
 | `04-public-pages` | List and detail pages, zero client JavaScript, the second language and hreflang, the SEO endpoints, a themed 404 |
 | `05-accessibility` | axe on eight admin screens and on all five official themes |
+| `06-tokens` | Revoking an API token, and the list showing it revoked |
+| `07-admin-reload` | Reloading an admin route |
+| `08-email-settings` | Settings → Email: the sender, the write-only Resend key |
+| `09-plugin-secret-remove` | Removing a plugin secret without a reload |
+| `10-records-panel` | A plugin's record form: create, validation, money, rows, edit, sort, search, delete |
+| `11-lazy-remount` | Opening the editor for a second item in one session |
 
 `pnpm test:a11y` runs the wizard and the axe spec alone.
+
+**The Worker it drives is the repository's own entry plus one test plugin**
+(`test/e2e/worker/index.ts`, adding `test/fixtures/catalog-plugin.ts`). The
+default composition has no plugin with an editable panel, and without one the
+record form would never be opened by a browser. The plugin is registered
+switched off, like any other; only `10-records-panel.spec.ts` switches it
+on.
 
 Three things about this run are worth knowing before changing it:
 

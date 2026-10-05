@@ -483,7 +483,8 @@ for it — a product's variants and prices, say.
 All of these are exported from `mallok/worker`, so a third-party plugin
 annotates its own handlers with the same types the official one uses:
 `PluginContext`, `PluginRequestContext`, `PluginRenderContext`,
-`PluginRenderDataContext`, `ContentDraft`, `ContentDeleteRef`, `RouteInput`, `PluginPageResult`, `EmailMessage`, `PluginSiteSettings`,
+`PluginRenderDataContext`, `ContentDraft`, `ContentDeleteRef`, `RouteInput`, `PluginPageResult`,
+`PluginRecordInput`, `PluginRecordHandlers`, `MoneyValue`, `EmailMessage`, `PluginSiteSettings`,
 `PluginExportFile` and `PluginMigration`, plus `MallokPlugin` and
 `PluginInput`. There is no private interface (§1), and before 0.1.0-rc.5 the
 package exported only `MallokPlugin` with an opaque
@@ -836,6 +837,106 @@ Scopes, for API tokens (a signed-in session holds every scope):
 | A `download` action | `export` |
 | Any other action | `content:write` |
 
+**Sorting and search (plugin API 2).** Both are declared, and both apply to
+either type of panel:
+
+```jsonc
+"columns": [
+  { "field": "name", "label": "Name", "sortable": true },
+  { "field": "code", "label": "Code", "sortable": true }
+],
+"search": ["name", "code"]
+```
+
+- A `sortable` column's heading orders the list by it, ascending then
+  descending. The list request carries `sort=<field>&dir=asc|desc`; **a field
+  the manifest does not mark sortable is ignored**, and the panel's `orderBy`
+  applies. Field names never come from the request.
+- `search` adds a search box. The request's `q` is matched as a substring
+  against each listed column, case-insensitively for ASCII (SQLite's `LIKE`),
+  with `%` and `_` taken literally. It is a scan of the table, not an index:
+  fine for hundreds of rows, not a search engine.
+
+**Editable records (plugin API 2).** A panel of `"type": "records"` is a
+list with a form: the admin can create, edit and — if the plugin allows —
+delete what it lists.
+
+```jsonc
+{
+  "id": "variants",
+  "label": "Variants",
+  "type": "records",
+  "table": "p_shop_variant",
+  "columns": [{ "field": "sku", "label": "SKU", "sortable": true }],
+  "search": ["sku"],
+  "fields": {
+    "sku":    { "type": "string", "label": "SKU", "required": true },
+    "status": { "type": "select", "label": "Status", "choices": ["active", "archived"] },
+    "price":  { "type": "money",  "label": "Price", "currencies": ["USD", "EUR"] },
+    "tiers":  {
+      "type": "rows", "label": "Quantity prices", "max": 10,
+      "fields": {
+        "from":  { "type": "number", "label": "From quantity", "min": 1, "required": true },
+        "price": { "type": "money",  "label": "Unit price", "currencies": ["USD", "EUR"] }
+      }
+    }
+  }
+}
+```
+
+```ts
+export const records = {
+  variants: {
+    load: async (id: string, ctx: PluginContext) => { … },          // the record, or null
+    save: async (record: PluginRecordInput, ctx: PluginContext) => { … },
+    remove: async (id: string, ctx: PluginContext) => { … },         // optional
+  },
+};
+```
+
+- **The admin never writes to a plugin's table.** The list is still read from
+  `table`, as for a `table` panel, and its rows need an `id` column. Opening
+  a record calls `load`; saving calls `save`; deleting calls `remove`. How a
+  record maps onto tables — one row, or a parent and its children — is the
+  plugin's business, which is why `load` is the plugin's too.
+- **Field types** are the settings vocabulary — `string`, `text`, `number`,
+  `boolean`, `date`, `select`, `string[]`, `color`, `keyvalue` — and two
+  more:
+  - **`money`**: `{ "amount": 9900, "currency": "USD" }`. `amount` is a whole
+    number of the currency's **minor units** — cents — never a decimal, so
+    nothing is lost to floating point. `currencies` lists the ISO 4217 codes
+    allowed. The form shows and takes `99.00`, and converts using the
+    currency's own number of decimal places. Negative amounts need a `min`
+    below zero.
+  - **`rows`**: an array of objects, each with the declared sub-fields —
+    variants under a product, lines under an order. `max` bounds the number
+    of rows (50 when absent). A row's fields are scalar; rows do not nest.
+- **What `save` receives is already checked** against the declaration:
+  required fields are present, a `select` holds a listed choice, a number is
+  in range, money is whole minor units in a listed currency, rows are within
+  their limit. An empty optional field arrives as `null` and an empty `rows`
+  field as `[]`. **Only declared fields arrive**: anything else in the
+  request is dropped before the handler runs, so a handler can trust the
+  keys. `record.id` is `null` for a new record.
+- **`save` answers `{ id }`, or `{ errors }`** keyed by field name, for what
+  only the plugin can judge — a SKU already in use. The admin shows each
+  message beside its field. A problem in a row is keyed
+  `<field>.<row index>.<sub-field>`.
+- `load` returns the values in the shape `save` takes, or `null` when the
+  record is gone.
+- Without `remove`, the form has no delete.
+- `definePlugin` refuses a records panel without `load` and `save`, and
+  handlers for a panel that is not one.
+
+| Request | Scope |
+| --- | --- |
+| `GET …/panels/<panel>/records/<id>` | `export`, like the list |
+| `POST …/records`, `PUT …/records/<id>`, `DELETE …/records/<id>` | `content:write` |
+
+Validation failures answer **422** with `{ "error", "errors": { <field>:
+<message> } }`. A signed-in session's writes carry the CSRF token, as every
+write does.
+
 The inquiry list, and any future order list, is a panel of this kind. **This
 mechanism exists so that a plugin never needs to write React or Preact code**
 — the moment a plugin can inject frontend code into the admin, both the
@@ -1100,7 +1201,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Rate-limit tiers (`rateLimit: "strict" \| "relaxed"`), counted per route | §7.2; `CLOUDFLARE_RESOURCES.md §4` | 25 | Done |
 | Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md §16` | 26 | Done |
 | `onContentSave` called on every save path; `onContentDelete` | §5.4, §5.7 | 27 | Done |
-| Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Planned |
+| Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Done |
 | Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Planned |
 | Raw-body routes (`body: "raw"`) | §7.2 | 31 | Planned |
 | Action parameters and related rows | §7.5 | 32 | Planned |

@@ -5,7 +5,12 @@
  */
 
 import type { Root as MdastRoot } from 'mdast';
-import type { PluginManifest as CorePluginManifest } from '../core/index.js';
+import type {
+  PluginManifest as CorePluginManifest,
+  RecordField,
+  RecordRowsField,
+  RecordScalarField,
+} from '../core/index.js';
 import type { Migration } from '../db/migrate.js';
 import type { SiteSettings } from '../worker/site.js';
 
@@ -26,6 +31,10 @@ export type PluginManifest = DeepReadonly<CorePluginManifest>;
 export type PluginSettingDeclaration = PluginManifest['settings'][string];
 export type PluginRouteDeclaration = PluginManifest['routes'][number];
 export type PluginPanelDeclaration = PluginManifest['panels'][number];
+export type PluginRecordField = DeepReadonly<RecordField>;
+export type PluginRecordScalarField = DeepReadonly<RecordScalarField>;
+export type PluginRecordRowsField = DeepReadonly<RecordRowsField>;
+export type { MoneyValue } from '../core/index.js';
 
 /** The real mdast root exposed to a pure `beforeRender` hook. */
 export type PluginMarkdownRoot = MdastRoot;
@@ -216,6 +225,41 @@ export type PluginRouteHandler = (
   ctx: PluginRequestContext,
 ) => Promise<Response | PluginPageResult>;
 
+/** A record as a records panel's `save` handler receives it (§7.5). */
+export interface PluginRecordInput {
+  /** The id of the record being edited, or `null` for a new one. */
+  readonly id: string | null;
+  /**
+   * The declared fields, already checked against their declarations: an
+   * empty optional field is `null`, a `money` field is a `MoneyValue`, a
+   * `rows` field is an array of objects.
+   */
+  readonly values: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * What `save` answers: the record's id, or messages keyed by field for what
+ * only the plugin can judge — a SKU that is already taken.
+ */
+export type PluginRecordSaved =
+  | { readonly id: string }
+  | { readonly errors: Readonly<Record<string, string>> };
+
+/** The handlers behind one `records` panel (§7.5). */
+export interface PluginRecordHandlers {
+  /** The record for the edit form, in the shape `save` takes; `null` if gone. */
+  readonly load: (
+    id: string,
+    ctx: PluginContext,
+  ) => Promise<Readonly<Record<string, unknown>> | null>;
+  readonly save: (
+    record: PluginRecordInput,
+    ctx: PluginContext,
+  ) => Promise<PluginRecordSaved>;
+  /** Without it the admin offers no delete. */
+  readonly remove?: (id: string, ctx: PluginContext) => Promise<void>;
+}
+
 export interface PluginExportFile {
   readonly path: string;
   readonly text: string;
@@ -237,6 +281,11 @@ export interface PluginImplementation {
   readonly checkSecrets?: Readonly<
     Record<string, (ctx: PluginContext) => Promise<PluginSecretVerdict>>
   >;
+  /**
+   * Handlers of the plugin's `records` panels, keyed by panel id. Every
+   * write the admin makes to a plugin's data goes through one of these.
+   */
+  readonly records?: Readonly<Record<string, PluginRecordHandlers>>;
   readonly actions?: Readonly<
     Record<
       string,

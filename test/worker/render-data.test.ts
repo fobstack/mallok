@@ -308,7 +308,13 @@ async function render(
 /** Renders with the edge cache entry dropped first and nothing stored after. */
 async function cold(path: string, db: D1Database = env.DB): Promise<Response> {
   await caches.default.delete(cacheKeyFor(new Request(`${ORIGIN}${path}`)));
-  return await render(path, db);
+  const pending: Promise<unknown>[] = [];
+  const response = await render(path, db, pending);
+  // The write to the edge cache is finished before this returns. Left
+  // running, it could land after the *next* call's delete and turn that
+  // "cold" render into a hit — which it did, now and then.
+  await Promise.all(pending);
+  return response;
 }
 
 function logged(

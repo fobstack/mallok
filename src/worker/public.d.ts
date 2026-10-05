@@ -168,15 +168,63 @@ export interface PluginRouteDeclaration {
   readonly layout?: string | undefined;
 }
 
+/** A field of a record that holds one value (§7.5). */
+export interface PluginRecordScalarField {
+  readonly type:
+    | 'string'
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'date'
+    | 'select'
+    | 'string[]'
+    | 'color'
+    | 'keyvalue'
+    | 'money';
+  readonly label?: string | undefined;
+  readonly required: boolean;
+  readonly help?: string | undefined;
+  readonly group?: string | undefined;
+  readonly default?: unknown;
+  readonly choices?: readonly string[] | undefined;
+  /** `money` only. */
+  readonly currencies?: readonly string[] | undefined;
+  readonly max?: number | undefined;
+  readonly min?: number | undefined;
+}
+
+/** A repeatable group of scalar fields (§7.5). */
+export interface PluginRecordRowsField {
+  readonly type: 'rows';
+  readonly label?: string | undefined;
+  readonly required: boolean;
+  readonly help?: string | undefined;
+  readonly group?: string | undefined;
+  readonly fields: Readonly<Record<string, PluginRecordScalarField>>;
+  readonly max?: number | undefined;
+}
+
+export type PluginRecordField = PluginRecordScalarField | PluginRecordRowsField;
+
+/** A `money` value: whole minor units and an ISO 4217 currency code. */
+export interface MoneyValue {
+  readonly amount: number;
+  readonly currency: string;
+}
+
 export interface PluginPanelDeclaration {
   readonly id: string;
   readonly label: string;
-  readonly type: 'table';
+  readonly type: 'table' | 'records';
+  /** `records` only. */
+  readonly fields?: Readonly<Record<string, PluginRecordField>> | undefined;
+  readonly search: readonly string[];
   readonly table: string;
   readonly columns: readonly {
     readonly field: string;
     readonly label: string;
     readonly type: 'text' | 'email' | 'datetime' | 'badge';
+    readonly sortable: boolean;
   }[];
   readonly filters: readonly string[];
   readonly detail: readonly string[];
@@ -397,6 +445,41 @@ export interface PluginMigration {
   readonly sql: string;
 }
 
+/** A record as a records panel's `save` handler receives it (§7.5). */
+export interface PluginRecordInput {
+  /** The id of the record being edited, or `null` for a new one. */
+  readonly id: string | null;
+  /**
+   * The declared fields, already checked against their declarations: an
+   * empty optional field is `null`, a `money` field is a `MoneyValue`, a
+   * `rows` field is an array of objects.
+   */
+  readonly values: Readonly<Record<string, unknown>>;
+}
+
+/**
+ * What `save` answers: the record's id, or messages keyed by field for what
+ * only the plugin can judge — a SKU that is already taken.
+ */
+export type PluginRecordSaved =
+  | { readonly id: string }
+  | { readonly errors: Readonly<Record<string, string>> };
+
+/** The handlers behind one `records` panel (§7.5). */
+export interface PluginRecordHandlers {
+  /** The record for the edit form, in the shape `save` takes; `null` if gone. */
+  readonly load: (
+    id: string,
+    ctx: PluginContext,
+  ) => Promise<Readonly<Record<string, unknown>> | null>;
+  readonly save: (
+    record: PluginRecordInput,
+    ctx: PluginContext,
+  ) => Promise<PluginRecordSaved>;
+  /** Without it the admin offers no delete. */
+  readonly remove?: (id: string, ctx: PluginContext) => Promise<void>;
+}
+
 export interface PluginExportFile {
   readonly path: string;
   readonly text: string;
@@ -417,6 +500,11 @@ export interface PluginImplementation {
   readonly checkSecrets?: Readonly<
     Record<string, (ctx: PluginContext) => Promise<PluginSecretVerdict>>
   >;
+  /**
+   * Handlers of the plugin's `records` panels, keyed by panel id. Every
+   * write the admin makes to a plugin's data goes through one of these.
+   */
+  readonly records?: Readonly<Record<string, PluginRecordHandlers>>;
   readonly actions?: Readonly<
     Record<
       string,

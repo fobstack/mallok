@@ -214,6 +214,52 @@ export function definePlugin(input: PluginInput): MallokPlugin {
     false,
   );
 
+  // ---- records panels: load and save, for exactly the panels declared ---
+  const recordPanels = new Set(
+    manifest.panels
+      .filter((panel) => panel.type === 'records')
+      .map((panel) => panel.id),
+  );
+  const recordHandlers = Object.entries(input.records ?? {});
+  for (const [panelId, handlers] of recordHandlers) {
+    if (!recordPanels.has(panelId)) {
+      refuse(
+        id,
+        `it has record handlers for "${panelId}", which is not a records panel in its manifest.`,
+        'Declare the panel with "type": "records" in plugin.json, or remove the handlers.',
+      );
+    }
+    const given = handlers as unknown as Partial<
+      Record<string, unknown>
+    > | null;
+    for (const name of ['load', 'save'] as const) {
+      if (typeof given?.[name] !== 'function') {
+        refuse(
+          id,
+          `the records panel "${panelId}" has no "${name}" handler.`,
+          'A records panel needs `load` and `save`; `remove` is optional.',
+        );
+      }
+    }
+    if (given?.remove !== undefined && typeof given.remove !== 'function') {
+      refuse(
+        id,
+        `the "remove" handler of the records panel "${panelId}" is not a function.`,
+        'Provide a function, or leave it out and the admin offers no delete.',
+      );
+    }
+  }
+  for (const panelId of recordPanels) {
+    if (!recordHandlers.some(([handled]) => handled === panelId)) {
+      refuse(
+        id,
+        `its manifest declares the records panel "${panelId}", but there are no handlers for it.`,
+        'The admin never writes to a plugin table itself. Add `records: { ' +
+          `"${panelId}": { load, save } }\`.`,
+      );
+    }
+  }
+
   validateMigrations(id, input.migrations);
 
   if (

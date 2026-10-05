@@ -510,3 +510,69 @@ describe('plugin export paths', () => {
     }
   });
 });
+
+describe('definePlugin holds a records panel to its handlers', () => {
+  const manifest = {
+    ...MINIMAL,
+    pluginApi: 2,
+    panels: [
+      {
+        id: 'items',
+        label: 'Items',
+        type: 'records',
+        table: 'p_acme_item',
+        columns: [{ field: 'name', label: 'Name' }],
+        fields: { name: { type: 'string' } },
+      },
+    ],
+  };
+  const load = async () => null;
+  const save = async () => ({ id: 'x' });
+
+  it('accepts load and save, with or without remove', () => {
+    expect(
+      definePlugin({ manifest, records: { items: { load, save } } }).records,
+    ).toBeDefined();
+    expect(
+      definePlugin({
+        manifest,
+        records: { items: { load, save, remove: async () => undefined } },
+      }).records?.items?.remove,
+    ).toBeTypeOf('function');
+  });
+
+  it('refuses a records panel nothing can save', () => {
+    // The admin never writes to a plugin's table itself, so a panel with no
+    // handlers would be a form whose Save button could do nothing.
+    expect(said(() => definePlugin({ manifest }))).toMatch(
+      /declares the records panel "items", but there are no handlers/,
+    );
+    expect(
+      said(() =>
+        definePlugin({
+          manifest,
+          records: { items: { load } as never },
+        }),
+      ),
+    ).toMatch(/records panel "items" has no "save" handler/);
+    expect(
+      said(() =>
+        definePlugin({
+          manifest,
+          records: { items: { load, save, remove: 'yes' } as never },
+        }),
+      ),
+    ).toMatch(/"remove" handler .* is not a function/);
+  });
+
+  it('refuses handlers for a panel the manifest does not declare as records', () => {
+    expect(
+      said(() =>
+        definePlugin({
+          manifest,
+          records: { items: { load, save }, orders: { load, save } },
+        }),
+      ),
+    ).toMatch(/record handlers for "orders", which is not a records panel/);
+  });
+});

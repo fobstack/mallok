@@ -58,7 +58,9 @@ export async function writeE2eConfig(
     // biome-ignore lint/style/useNamingConvention: Wrangler's own key, and it has to be spelled this way
     $schema: 'node_modules/wrangler/config-schema.json',
     name: 'mallok-e2e',
-    main: resolve(projectRoot, 'src/worker/index.ts'),
+    // The repository's own entry plus one test plugin with an editable
+    // panel; see the file for why.
+    main: resolve(projectRoot, 'test/e2e/worker/index.ts'),
     compatibility_date: '2026-08-01',
     compatibility_flags: ['nodejs_compat'],
     assets: {

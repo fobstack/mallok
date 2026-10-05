@@ -108,6 +108,15 @@ export {
   settingsValidator,
 } from './plugin.js';
 export {
+  type MoneyValue,
+  RECORD_ROWS_MAX,
+  type RecordField,
+  type RecordRowsField,
+  type RecordScalarField,
+  type RecordValidation,
+  validateRecord,
+} from './records.js';
+export {
   buildFeed,
   buildRobots,
   buildSitemap,

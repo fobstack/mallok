@@ -109,16 +109,59 @@ export interface PluginInfo {
   readonly panels: readonly PluginPanel[];
 }
 
-/** A declarative table panel a plugin contributes. */
+/** A field of a record that holds one value. */
+export interface RecordScalarField {
+  readonly type:
+    | 'string'
+    | 'text'
+    | 'number'
+    | 'boolean'
+    | 'date'
+    | 'select'
+    | 'string[]'
+    | 'color'
+    | 'keyvalue'
+    | 'money';
+  readonly label?: string;
+  readonly required: boolean;
+  readonly help?: string;
+  readonly group?: string;
+  readonly default?: unknown;
+  readonly choices?: readonly string[];
+  readonly currencies?: readonly string[];
+  readonly max?: number;
+  readonly min?: number;
+}
+
+/** A repeatable group of scalar fields. */
+export interface RecordRowsField {
+  readonly type: 'rows';
+  readonly label?: string;
+  readonly required: boolean;
+  readonly help?: string;
+  readonly fields: Readonly<Record<string, RecordScalarField>>;
+  readonly max?: number;
+}
+
+export type RecordField = RecordScalarField | RecordRowsField;
+
+/** A declarative panel a plugin contributes: a table, or editable records. */
 export interface PluginPanel {
   readonly id: string;
   readonly label: string;
-  readonly type: 'table';
+  readonly type: 'table' | 'records';
+  /** `records` only: the fields of the create and edit form. */
+  readonly fields?: Readonly<Record<string, RecordField>>;
+  /** Columns a text search looks in; empty means no search box. */
+  readonly search: readonly string[];
+  /** Whether the plugin can delete a record of this panel. */
+  readonly canRemove: boolean;
   readonly table: string;
   readonly columns: readonly {
     field: string;
     label: string;
     type: 'text' | 'email' | 'datetime' | 'badge';
+    sortable: boolean;
   }[];
   readonly filters: readonly string[];
   readonly detail: readonly string[];

@@ -1,10 +1,11 @@
 /**
- * A plugin's declarative table panel (docs/PLUGIN_API.md §7.5).
+ * A plugin's declarative panel (docs/PLUGIN_API.md §7.5).
  *
  * The plugin ships no UI code: this component reads `panels[]` out of its
- * manifest and builds the table, filters, detail view and actions from it.
- * That is what keeps the admin's size and security boundary intact while
- * still letting a plugin have a real interface.
+ * manifest and builds the table, filters, search, sorting, detail view and
+ * actions from it — and, for a `records` panel, the buttons that open the
+ * create and edit form. That is what keeps the admin's size and security
+ * boundary intact while still letting a plugin have a real interface.
  */
 
 import type { JSX } from 'react';
@@ -12,6 +13,18 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api, csrf } from '../api.js';
 import { notice } from '../state.js';
 import type { PluginPanel } from '../types.js';
+import { lazyRoute } from './lazy.js';
+
+/**
+ * The form arrives with the first record that is opened, not with the list:
+ * most visits to a panel only read it.
+ */
+const RecordEditor = lazyRoute<{
+  pluginId: string;
+  panel: PluginPanel;
+  recordId: string | null;
+  onClose: (changed: boolean) => void;
+}>(() => import('./record-editor.js').then((module) => module.RecordEditor));
 
 type Row = Record<string, unknown>;
 
@@ -51,10 +64,18 @@ export function PluginPanelView({
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [open, setOpen] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<{
+    field: string;
+    descending: boolean;
+  } | null>(null);
+  /** The record form: `undefined` closed, `null` a new record, else its id. */
+  const [editing, setEditing] = useState<string | null | undefined>(undefined);
+  const editable = panel.type === 'records';
 
   const base = `/plugins/${pluginId}/panels/${panel.id}`;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filters is a new object every render; its stringified form is the real "did it change" check.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filters and sort are new objects every render; their stringified form is the real "did it change" check.
   const reload = useCallback(async (): Promise<void> => {
     setLoading(true);
     const query = new URLSearchParams({
@@ -65,6 +86,13 @@ export function PluginPanelView({
       if (value !== '') {
         query.set(field, value);
       }
+    }
+    if (search.trim() !== '') {
+      query.set('q', search.trim());
+    }
+    if (sort !== null) {
+      query.set('sort', sort.field);
+      query.set('dir', sort.descending ? 'desc' : 'asc');
     }
     try {
       const result = await api<{ rows: Row[]; hasNext: boolean }>(
@@ -78,11 +106,22 @@ export function PluginPanelView({
     } finally {
       setLoading(false);
     }
-  }, [offset, base, JSON.stringify(filters)]);
+  }, [offset, base, JSON.stringify(filters), search, JSON.stringify(sort)]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // Stable, because the form's loading effect depends on it.
+  const closeEditor = useCallback(
+    (changed: boolean): void => {
+      setEditing(undefined);
+      if (changed) {
+        void reload();
+      }
+    },
+    [reload],
+  );
 
   const runAction = async (
     action: PluginPanel['actions'][number],
@@ -152,7 +191,32 @@ export function PluginPanelView({
             />
           </label>
         ))}
+        {panel.search.length === 0 ? null : (
+          <label className="filter">
+            <span>Search</span>
+            <input
+              type="search"
+              value={search}
+              placeholder={panel.search
+                .map((field) => field.replace(/_/g, ' '))
+                .join(', ')}
+              onChange={(event) => {
+                setOffset(0);
+                setSearch(event.currentTarget.value);
+              }}
+            />
+          </label>
+        )}
         <span className="grow" />
+        {editable ? (
+          <button
+            type="button"
+            className="primary"
+            onClick={() => setEditing(null)}
+          >
+            New
+          </button>
+        ) : null}
         {panel.actions.map((action) => (
           <button
             key={action.id}
@@ -176,11 +240,43 @@ export function PluginPanelView({
               <th scope="col">
                 <span className="visually-hidden">Select</span>
               </th>
-              {panel.columns.map((column) => (
-                <th scope="col" key={column.field}>
-                  {column.label}
-                </th>
-              ))}
+              {panel.columns.map((column) => {
+                const sorted = sort?.field === column.field;
+                return (
+                  <th
+                    scope="col"
+                    key={column.field}
+                    {...(sorted
+                      ? {
+                          'aria-sort': sort.descending
+                            ? ('descending' as const)
+                            : ('ascending' as const),
+                        }
+                      : {})}
+                  >
+                    {column.sortable ? (
+                      <button
+                        type="button"
+                        className="sort"
+                        onClick={() => {
+                          setOffset(0);
+                          setSort({
+                            field: column.field,
+                            descending: sorted && !sort.descending,
+                          });
+                        }}
+                      >
+                        {column.label}
+                        <span aria-hidden="true">
+                          {sorted ? (sort.descending ? ' ↓' : ' ↑') : ' ↕'}
+                        </span>
+                      </button>
+                    ) : (
+                      column.label
+                    )}
+                  </th>
+                );
+              })}
               <th scope="col">
                 <span className="visually-hidden">Details</span>
               </th>
@@ -214,9 +310,14 @@ export function PluginPanelView({
                     <button
                       type="button"
                       className="ghost"
-                      onClick={() => setOpen(row)}
+                      aria-label={
+                        editable
+                          ? `Edit ${String(row[panel.columns[0]?.field ?? 'id'] ?? id)}`
+                          : `Open ${id}`
+                      }
+                      onClick={() => (editable ? setEditing(id) : setOpen(row))}
                     >
-                      Open
+                      {editable ? 'Edit' : 'Open'}
                     </button>
                   </td>
                 </tr>
@@ -247,6 +348,17 @@ export function PluginPanelView({
 
       {open === null ? null : (
         <RowDetail panel={panel} row={open} onClose={() => setOpen(null)} />
+      )}
+      {editing === undefined ? null : (
+        <RecordEditor
+          // A different record is a different form, not the same one with
+          // new props: its typed-in state must not carry over.
+          key={editing ?? 'new'}
+          pluginId={pluginId}
+          panel={panel}
+          recordId={editing}
+          onClose={closeEditor}
+        />
       )}
     </div>
   );

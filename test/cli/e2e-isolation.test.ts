@@ -439,7 +439,7 @@ describe('the generated browser environment', () => {
       assets?: { directory?: string };
       secrets?: { required?: string[] };
     };
-    expect(config.main).toBe(join(projectRoot, 'src/worker/index.ts'));
+    expect(config.main).toBe(join(projectRoot, 'test/e2e/worker/index.ts'));
     expect(config.assets?.directory).toBe(join(projectRoot, 'dist/assets'));
     expect(config.secrets?.required).toEqual([
       'MALLOK_SECRET',
@@ -467,6 +467,17 @@ describe('the generated browser environment', () => {
     ]) {
       await writeFile(join(sourceRoot, file), `${file}\n`);
     }
+    // The Worker the browser tests run and the one test plugin it adds: the
+    // only things under `test/` that belong in the snapshot.
+    await mkdir(join(sourceRoot, 'test/e2e/worker'), { recursive: true });
+    await writeFile(join(sourceRoot, 'test/e2e/worker/index.ts'), 'entry');
+    await mkdir(join(sourceRoot, 'test/fixtures'), { recursive: true });
+    await writeFile(
+      join(sourceRoot, 'test/fixtures/catalog-plugin.ts'),
+      'plugin',
+    );
+    await writeFile(join(sourceRoot, 'test/fixtures/other.ts'), 'excluded');
+    await writeFile(join(sourceRoot, 'test/e2e/01-wizard.spec.ts'), 'excluded');
     await mkdir(join(sourceRoot, 'node_modules'), { recursive: true });
     await writeFile(join(sourceRoot, 'node_modules/dependency.txt'), 'linked');
     await mkdir(join(sourceRoot, 'dist/pkg'), { recursive: true });
@@ -485,6 +496,20 @@ describe('the generated browser environment', () => {
     expect(
       (await lstat(join(targetRoot, 'node_modules'))).isSymbolicLink(),
     ).toBe(true);
+    await expect(
+      readFile(join(targetRoot, 'test/e2e/worker/index.ts'), 'utf8'),
+    ).resolves.toBe('entry');
+    await expect(
+      readFile(join(targetRoot, 'test/fixtures/catalog-plugin.ts'), 'utf8'),
+    ).resolves.toBe('plugin');
+    for (const excluded of [
+      'test/fixtures/other.ts',
+      'test/e2e/01-wizard.spec.ts',
+    ]) {
+      await expect(stat(join(targetRoot, excluded))).rejects.toMatchObject({
+        code: 'ENOENT',
+      });
+    }
     await expect(stat(join(targetRoot, 'dist'))).rejects.toMatchObject({
       code: 'ENOENT',
     });
