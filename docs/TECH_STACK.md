@@ -93,7 +93,7 @@ with **no vendor SDK entering the Worker**:
 | --- | --- | --- |
 | The Cloudflare API | Purging by tag or URL; the wizard's DNS writes | `fetch` with `CF_API_TOKEN` (zone-level Cache Purge and DNS Edit) |
 | Turnstile | Inquiry-form abuse protection | The official widget script on the page — the inquiry plugin's only declared client JS — plus the server-side `siteverify` endpoint |
-| Resend | Inquiry notifications and auto-acknowledgements | `fetch` against Resend's HTTP API; the key is encrypted in D1 |
+| Resend | Inquiry notifications and auto-acknowledgements | `fetch` against Resend's HTTP API; the key is a site setting, encrypted in D1 |
 | The Workers rate-limit binding | Plugin-route abuse protection | A `ratelimit` binding in the wrangler configuration. It counts per data centre and is eventually consistent, so it deters abuse only |
 
 ## 6. The admin

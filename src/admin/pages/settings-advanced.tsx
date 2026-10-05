@@ -241,6 +241,20 @@ export function AdvancedPage(): JSX.Element {
             </dd>
           </div>
           <div>
+            <dt>Email (Resend)</dt>
+            <dd>
+              {settings.value?.email.resendConfigured !== true ? (
+                <span className="pill warn">No key — no email is sent</span>
+              ) : settings.value.email.fromAddress === '' ? (
+                <span className="pill warn">
+                  Key set, no site sender — only plugins with their own send
+                </span>
+              ) : (
+                <span className="pill ok">Configured</span>
+              )}
+            </dd>
+          </div>
+          <div>
             <dt>Media domain</dt>
             <dd>
               {health?.mediaBaseUrl == null ? (

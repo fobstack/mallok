@@ -292,49 +292,6 @@ export const inquiryPlugin = defineOfficialPlugin({
   },
   routes: { submit },
   checkSecrets: {
-    // Resend's domains endpoint is a read; it tells us whether the key is
-    // valid without sending anything to anyone.
-    resend_api_key: async (ctx) => {
-      const key = ctx.secrets.resend_api_key;
-      if (key === undefined || key === '') {
-        return { ok: false, message: 'No key is stored.' };
-      }
-      try {
-        const response = await fetch('https://api.resend.com/domains', {
-          headers: { authorization: `Bearer ${key}` },
-        });
-        if (response.status === 401 || response.status === 403) {
-          return { ok: false, message: 'Resend rejected this key.' };
-        }
-        if (!response.ok) {
-          return {
-            ok: false,
-            message: `Resend replied ${response.status}.`,
-          };
-        }
-        const body = (await response.json()) as {
-          data?: { name: string; status: string }[];
-        };
-        const verified = (body.data ?? []).filter(
-          (domain) => domain.status === 'verified',
-        );
-        if (verified.length === 0) {
-          return {
-            ok: false,
-            message:
-              'The key works, but no sending domain is verified yet. Verify one in Resend before inquiries can be delivered.',
-          };
-        }
-        return {
-          ok: true,
-          message: `Key works. Verified sending domains: ${verified
-            .map((domain) => domain.name)
-            .join(', ')}.`,
-        };
-      } catch {
-        return { ok: false, message: 'Could not reach Resend.' };
-      }
-    },
     turnstile_secret: async (ctx) => {
       const secret = ctx.secrets.turnstile_secret;
       if (secret === undefined || secret === '') {

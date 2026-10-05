@@ -11,6 +11,7 @@
 import initSql from './migrations/0001_init.sql';
 import setupKeySql from './migrations/0002_setup_key.sql';
 import setupClaimSql from './migrations/0003_setup_claim.sql';
+import siteEmailSql from './migrations/0004_site_email.sql';
 
 /** One migration: a stable id and the SQL text to apply. */
 export interface Migration {
@@ -18,11 +19,24 @@ export interface Migration {
   readonly sql: string;
 }
 
+/**
+ * A migration that moves existing data and so cannot be written as fixed SQL:
+ * what it writes depends on what it reads. `statements` runs under the
+ * migration lock; the statements it returns are applied in one batch together
+ * with the record that the migration ran, so the move happens exactly once or
+ * not at all. Core only — a plugin migration is always plain SQL.
+ */
+export interface DataMigration {
+  readonly id: string;
+  readonly statements: (db: D1Database) => Promise<D1PreparedStatement[]>;
+}
+
 /** Core migrations in apply order. Plugin migrations are appended at runtime. */
 export const CORE_MIGRATIONS: readonly Migration[] = [
   { id: '0001_init', sql: initSql },
   { id: '0002_setup_key', sql: setupKeySql },
   { id: '0003_setup_claim', sql: setupClaimSql },
+  { id: '0004_site_email', sql: siteEmailSql },
 ];
 
 const LOCK_TTL_MS = 60_000;
@@ -64,7 +78,7 @@ export function splitStatements(sql: string): string[] {
  */
 export async function ensureMigrated(
   db: D1Database,
-  migrations: readonly Migration[],
+  migrations: readonly (Migration | DataMigration)[],
   now: () => Date = () => new Date(),
 ): Promise<string[]> {
   await db.batch(BOOTSTRAP_SQL.map((statement) => db.prepare(statement)));
@@ -92,9 +106,12 @@ export async function ensureMigrated(
     // finished between our first check and acquiring the lock.
     pending = await pendingMigrations(db, migrations);
     for (const migration of pending) {
-      const statements = splitStatements(migration.sql).map((statement) =>
-        db.prepare(statement),
-      );
+      const statements =
+        'sql' in migration
+          ? splitStatements(migration.sql).map((statement) =>
+              db.prepare(statement),
+            )
+          : await migration.statements(db);
       statements.push(
         db
           .prepare('INSERT INTO migration (id, applied_at) VALUES (?, ?)')
@@ -116,8 +133,8 @@ export async function ensureMigrated(
 
 async function pendingMigrations(
   db: D1Database,
-  migrations: readonly Migration[],
-): Promise<Migration[]> {
+  migrations: readonly (Migration | DataMigration)[],
+): Promise<(Migration | DataMigration)[]> {
   const rows = await db
     .prepare('SELECT id FROM migration')
     .all<{ id: string }>();

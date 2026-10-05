@@ -112,7 +112,7 @@ None of this is in the repository, and none of it can be:
 | A **test** hostname on a domain on that account | §7, §12, Lighthouse | Cloudflare DNS |
 | API token: Zone→Cache Purge, Zone→DNS Edit, Account→R2 Edit | Purge and the R2 custom domain | `wrangler secret put CF_API_TOKEN` |
 | Zone id for that domain | Purge | `wrangler secret put CF_ZONE_ID` |
-| Resend account + verified sending domain | `AC-PLUGIN-02b` | Admin → Plugins → Inquiry |
+| Resend account + verified sending domain | `AC-PLUGIN-02b` | Admin → Settings → Email |
 | Turnstile site + secret key | `AC-PLUGIN-03b` | Admin → Plugins → Inquiry |
 | npm account with `mallok` publish rights | §5 | `npm login` |
 | A public GitHub repository | §15 (making the project public) | github.com/fobstack/mallok |
@@ -1707,7 +1707,8 @@ reason for §17.
 **Blocker:** Turnstile and Resend accounts. **Status:** `NOT_RUN`.
 **Rows:** `AC-PLUGIN-02b`, `AC-PLUGIN-03b`, `AC-PLUGIN-05b`.
 
-Enter both key pairs in Admin → Plugins → Inquiry. Keep the full-rate logs and
+Enter the Resend key and sender in Admin → Settings → Email, and the
+Turnstile pair in Admin → Plugins → Inquiry. Keep the full-rate logs and
 traces configured in §11; the trace is what makes the exact fetch and binding
 operations of one submission countable. Then, from a browser (not curl — the
 widget must render):

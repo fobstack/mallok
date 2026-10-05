@@ -63,6 +63,13 @@ stored   = base64(iv || payload)
 - The management API returns only "set" or "not set" and **never echoes a
   value** (`PLUGIN_API.md §7.3`).
 - Rotation is supported: writing a new value overwrites.
+- **The site's own Resend key** (`site.email_resend_key`, `DATA_MODEL §2.1`)
+  uses the same format with `@site` in place of the plugin id. A plugin id
+  must start with a letter, so no plugin can derive that key, and a plugin
+  never receives the site key in `ctx.secrets` — it only calls
+  `ctx.sendEmail`. Writing or checking it needs `settings:write`; `GET
+  /settings` reports only whether a key is stored, and no endpoint returns
+  the value.
 
 ### 2.3 Rotating `MALLOK_SECRET`
 

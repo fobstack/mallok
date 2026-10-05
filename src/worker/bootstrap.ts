@@ -15,6 +15,7 @@ import {
   pluginMigrations,
   registeredPlugins,
 } from './plugin-runtime.js';
+import { moveInquiryEmail } from './site-email.js';
 
 /** Default site settings used until the setup wizard runs. */
 export const SITE_DEFAULTS = {
@@ -40,7 +41,11 @@ export function boot(env: Env): Promise<void> {
 
 async function runBoot(env: Env): Promise<void> {
   const now = new Date().toISOString();
-  await ensureMigrated(env.DB, [...CORE_MIGRATIONS, ...pluginMigrations()]);
+  await ensureMigrated(env.DB, [
+    ...CORE_MIGRATIONS,
+    moveInquiryEmail(env),
+    ...pluginMigrations(),
+  ]);
   const site = await loadSite(env.DB);
   if (site === null) {
     await ensureSiteRow(env.DB, SITE_DEFAULTS, now);

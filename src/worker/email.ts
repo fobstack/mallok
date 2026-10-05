@@ -5,6 +5,11 @@
  * (docs/ARCHITECTURE.md §17): Resend is the one implementation, called with
  * plain `fetch`. Every send is recorded as a job first, so a failure is
  * retried by the cron with exponential backoff instead of being lost.
+ *
+ * The key and the sender are resolved when a job is attempted, not when it is
+ * queued: a plugin's own key and address win, the site's email settings fill
+ * in whatever the plugin leaves out. A job queued before the operator entered
+ * a key is therefore delivered by a later retry.
  */
 
 import {
@@ -14,10 +19,12 @@ import {
   failJob,
   findPluginState,
   type JobRow,
+  loadSite,
 } from '../db/queries.js';
 import type { EmailMessage } from '../plugins/types.js';
 import type { Env } from './env.js';
 import { decryptSecret } from './secrets.js';
+import { siteResendKey } from './site-email.js';
 
 const RESEND_URL = 'https://api.resend.com/emails';
 /** Sends attempted per cron tick, so one minute's work stays bounded. */
@@ -26,6 +33,7 @@ const SENDS_PER_TICK = 5;
 /** What an email job carries; the key is re-read at send time, never stored. */
 interface EmailJobPayload {
   readonly pluginId: string;
+  /** The plugin's own sender; empty means the site's. */
   readonly from: string;
   readonly message: EmailMessage;
 }
@@ -112,21 +120,16 @@ async function attempt(env: Env, job: JobRow, now: Date): Promise<boolean> {
     return false;
   }
 
-  const state = await findPluginState(env.DB, payload.pluginId);
-  const stored = parseSecrets(state?.secrets ?? '{}').resend_api_key;
-  const key =
-    stored === undefined
-      ? null
-      : await decryptSecret(
-          env.MALLOK_SECRET,
-          payload.pluginId,
-          'resend_api_key',
-          stored,
-        );
-  if (key === null) {
+  const sender = await resolveSender(env, payload);
+  if (sender.key === null) {
     await failJob(env.DB, job, 'No usable Resend API key is configured.', now);
     return false;
   }
+  if (sender.from === '') {
+    await failJob(env.DB, job, 'No sender address is configured.', now);
+    return false;
+  }
+  const { key, from } = sender;
 
   try {
     const response = await fetch(RESEND_URL, {
@@ -136,7 +139,7 @@ async function attempt(env: Env, job: JobRow, now: Date): Promise<boolean> {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        from: payload.from,
+        from,
         to: [payload.message.to],
         subject: payload.message.subject,
         html: payload.message.html,
@@ -159,6 +162,39 @@ async function attempt(env: Env, job: JobRow, now: Date): Promise<boolean> {
     await failJob(env.DB, job, message, now);
     return false;
   }
+}
+
+/**
+ * Picks the key and the sender for one job (docs/PLUGIN_API.md §7.6).
+ *
+ * A plugin that stores a `resend_api_key` secret of its own keeps using it,
+ * which is what a plugin written before site-level email does. Everything
+ * else comes from the site settings. The site row is read only when the
+ * plugin leaves something out.
+ */
+async function resolveSender(
+  env: Env,
+  payload: EmailJobPayload,
+): Promise<{ key: string | null; from: string }> {
+  const state = await findPluginState(env.DB, payload.pluginId);
+  const stored = parseSecrets(state?.secrets ?? '{}').resend_api_key;
+  const pluginKey =
+    stored === undefined
+      ? null
+      : await decryptSecret(
+          env.MALLOK_SECRET,
+          payload.pluginId,
+          'resend_api_key',
+          stored,
+        );
+  if (pluginKey !== null && payload.from !== '') {
+    return { key: pluginKey, from: payload.from };
+  }
+  const site = await loadSite(env.DB);
+  return {
+    key: pluginKey ?? (site === null ? null : await siteResendKey(env, site)),
+    from: payload.from !== '' ? payload.from : (site?.email_from ?? ''),
+  };
 }
 
 function parseSecrets(json: string): Record<string, string> {

@@ -205,7 +205,10 @@ export interface PluginContext {
   /** Decrypted secrets. Never logged, never returned to a client. */
   readonly secrets: Readonly<Record<string, string>>;
   readonly site: PluginSiteSettings;
-  /** Queues and sends via the configured provider; returns the job id. */
+  /**
+   * Queues a message and sends it with the site's Resend key and sender
+   * (Settings → Email, §7.6); returns the job id.
+   */
   readonly sendEmail: (message: EmailMessage) => Promise<string>;
   readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
   readonly waitUntil: (promise: Promise<unknown>) => void;

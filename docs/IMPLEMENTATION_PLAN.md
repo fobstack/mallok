@@ -31,7 +31,7 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–40) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Records in `tasks/TASK-18.md` onward |
+| Phase six, plugin API 2 (Tasks 18–40) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Records in `tasks/TASK-18.md` onward |
 
 ## 2. The two gates
 
@@ -466,6 +466,11 @@ before the rest of the phase. Every "current state" below was re-checked at
   re-encrypts with `MALLOK_SECRET` inside the Worker; a SQL migration cannot
   do it. It is idempotent and safe to interrupt. Afterwards the plugin's own
   key field says the site setting is in use rather than looking unset.
+- **Owner decision, 2026-10-03: the `inquiry` plugin drops its
+  `resend_api_key` field and keeps an optional `from_address`** whose label
+  says an empty value uses the site sender. The core still honours a
+  `resend_api_key` a plugin stores, for plugins written before this task.
+- **Done 2026-10-05** — `tasks/TASK-21.md`.
 - Resend stays the one implementation, called with `fetch`; this is a setting,
   not a provider layer (`ARCHITECTURE.md §17`).
 - `PLUGIN_API.md §7.6` documents the lookup order.

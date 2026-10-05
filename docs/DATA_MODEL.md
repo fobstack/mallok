@@ -44,10 +44,22 @@ CREATE TABLE site (
   max_image_edge   INTEGER DEFAULT 2560,          -- NULL keeps true originals
   content_rev      INTEGER NOT NULL DEFAULT 0,    -- only used by the fallback in ARCHITECTURE §6.3
   setup_completed_at TEXT,
+  email_from       TEXT,                          -- site sender, e.g. 'Acme <hello@example.com>'; NULL when unset
+  email_resend_key TEXT,                          -- the site's Resend key, encrypted as in §2.7; NULL when unset
   created_at       TEXT NOT NULL,
   updated_at       TEXT NOT NULL
 );
 ```
+
+`email_from` and `email_resend_key` were added by migration `0004_site_email`.
+They serve every plugin that calls `ctx.sendEmail` (`PLUGIN_API.md §7.6`). The
+key is encrypted under the owner `@site` (`SECURITY.md §2.2`) and no endpoint
+returns it. Migration `0005_move_inquiry_email` is not SQL: on a site set up
+before these columns existed it decrypts the key the `inquiry` plugin stored,
+re-encrypts it for the site, moves the plugin's `from_address` too, and
+removes both from `plugin_state` — in one batch with its own migration record.
+It never overwrites a value the site already has and leaves a key it cannot
+decrypt where it is.
 
 ### 2.2 `content`
 
@@ -176,7 +188,7 @@ CREATE TABLE plugin_state (
   enabled    INTEGER NOT NULL DEFAULT 0,
   version    TEXT NOT NULL,
   settings   TEXT NOT NULL DEFAULT '{}',          -- JSON, validated against plugin.json's settings schema
-  secrets    TEXT NOT NULL DEFAULT '{}',          -- JSON: {"resend_api_key":"<base64(iv||ciphertext||tag)>"}
+  secrets    TEXT NOT NULL DEFAULT '{}',          -- JSON: {"turnstile_secret":"<base64(iv||ciphertext||tag)>"}
   updated_at TEXT NOT NULL
 );
 ```

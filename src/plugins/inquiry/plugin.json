@@ -1,7 +1,7 @@
 {
   "id": "inquiry",
   "name": "Inquiry",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A zero-JavaScript inquiry form with spam protection, email notification and an admin panel.",
   "pluginApi": 1,
   "hooks": ["afterRender"],
@@ -21,8 +21,7 @@
     },
     "from_address": {
       "type": "string",
-      "label": "From address (a verified Resend sender)",
-      "required": true
+      "label": "From address for inquiry email (empty uses the sender in Settings → Email)"
     },
     "autoreply": {
       "type": "boolean",
@@ -56,10 +55,6 @@
     }
   },
   "secrets": {
-    "resend_api_key": {
-      "label": "Resend API key",
-      "required": true
-    },
     "turnstile_secret": {
       "label": "Turnstile secret key",
       "required": false

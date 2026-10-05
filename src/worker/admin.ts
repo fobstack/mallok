@@ -52,6 +52,7 @@ import {
 } from './auth.js';
 import type { Env } from './env.js';
 import { problem } from './http.js';
+import { checkSiteEmail, putSiteEmail } from './site-email.js';
 
 const PREFIX = '/_mallok/api/';
 
@@ -142,6 +143,12 @@ export async function handleAdmin(
       return withScope(principal, 'settings:write', () =>
         patchSettings(request, env, ctx),
       );
+    case 'PUT settings/email':
+      return withScope(principal, 'settings:write', () =>
+        putSiteEmail(request, env),
+      );
+    case 'POST settings/email/check':
+      return withScope(principal, 'settings:write', () => checkSiteEmail(env));
     case 'POST settings/default-locale':
       return withScope(principal, 'settings:write', () =>
         postDefaultLocale(request, env, ctx),

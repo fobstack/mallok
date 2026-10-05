@@ -27,6 +27,10 @@ export interface SiteRow {
   readonly setup_completed_at: string | null;
   /** When the one-time setup key was spent; null until the wizard runs. */
   readonly setup_key_used_at: string | null;
+  /** Sender used when a plugin sets none of its own. */
+  readonly email_from: string | null;
+  /** The site's Resend key, encrypted; never returned by any endpoint. */
+  readonly email_resend_key: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -588,6 +592,8 @@ export interface SitePatch {
   readonly max_image_edge?: number | null;
   readonly setup_completed_at?: string | null;
   readonly setup_key_used_at?: string | null;
+  readonly email_from?: string | null;
+  readonly email_resend_key?: string | null;
 }
 
 /**

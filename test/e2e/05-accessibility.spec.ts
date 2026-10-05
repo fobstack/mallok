@@ -102,6 +102,7 @@ test.describe('the admin', () => {
       ['plugins', '/_mallok/app/plugins'],
       ['settings: site', '/_mallok/app/settings'],
       ['settings: appearance', '/_mallok/app/settings/appearance'],
+      ['settings: email', '/_mallok/app/settings/email'],
       ['settings: advanced', '/_mallok/app/settings/advanced'],
       ['account', '/_mallok/app/account'],
     ] as const) {

@@ -31,6 +31,7 @@ import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem, readJson } from './http.js';
 import { parseSiteSettings } from './site.js';
+import { siteEmailView } from './site-email.js';
 
 const MIN_CACHE_TTL = 60;
 const MAX_CACHE_TTL = 31_536_000;
@@ -88,6 +89,7 @@ export async function getSettings(env: Env): Promise<Response> {
     cacheTtl: settings.cacheTtl,
     maxImageEdge: row.max_image_edge,
     setupCompletedAt: row.setup_completed_at,
+    email: siteEmailView(row),
   });
 }
 

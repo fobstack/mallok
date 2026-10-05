@@ -121,13 +121,13 @@ src/plugins/inquiry/
 
   "settings": {                      // stored in cleartext in plugin_state.settings
     "recipient":     { "type": "string",  "label": "Recipient email", "required": true },
-    "from_address":  { "type": "string",  "label": "From address",    "required": true },
+    "from_address":  { "type": "string",  "label": "From address" },  // optional; §7.6
     "autoreply":     { "type": "boolean", "label": "Send auto-reply", "default": true },
     "block_countries": { "type": "string[]", "label": "Blocked countries" }
   },
 
   "secrets": {                       // AES-GCM encrypted into plugin_state.secrets
-    "resend_api_key": { "label": "Resend API key", "required": true }
+    "turnstile_secret": { "label": "Turnstile secret key" }
   },
 
   "panels": [ /* §7.5 */ ],
@@ -348,8 +348,8 @@ by a handler is removed. Route caching is not part of the 0.1 contract.
   every write (`DATA_MODEL §2.7`).
 - A plugin may declare `checkSecrets` (added 2026-08-30): a read-only
   validation function per secret name, behind a "Test" button next to the
-  secret in the admin. **The core cannot tell a good Resend key from a bad
-  one; the plugin can.** The check must be read-only or safe to repeat, and
+  secret in the admin. **The core cannot tell a good third-party key from a
+  bad one; the plugin can.** The check must be read-only or safe to repeat, and
   **only the verdict is returned — the secret value never leaves the Worker.**
 
 **The management API returns only "set" or "not set", and never echoes a
@@ -441,6 +441,28 @@ the core's `job` table.
 `sendEmail` is **an internal function boundary, not a provider abstraction**
 (`ARCHITECTURE §17`). 0.1 builds no adapter for a mail provider it might use
 one day.
+
+**The Resend key and the sender address are site settings** (Settings →
+Email in the admin, `PUT /_mallok/api/settings/email`), entered once and used
+by every plugin. A plugin declares neither. When a message is attempted — at
+send time, not when it is queued — the core picks:
+
+| | First choice | Otherwise |
+| --- | --- | --- |
+| Key | The calling plugin's own `resend_api_key` secret, when one is stored and can be decrypted | The site's key |
+| Sender | The calling plugin's `from_address` setting, when it is a non-empty string | The site's sender |
+
+The plugin-level entries exist for two reasons: a plugin written before site
+email keeps working with the key it already stores, and a plugin may send from
+an address of its own (the official `inquiry` plugin keeps an optional
+`from_address` for that). **A new plugin should declare no `resend_api_key`
+secret.** With no usable key, or no sender, the job fails with a message that
+says which is missing and is retried on the usual schedule, so a message
+queued shortly before the operator enters the key is still delivered.
+
+`POST /_mallok/api/settings/email/check` asks Resend whether the stored key
+works and returns only the verdict. Both endpoints need `settings:write`; the
+key is never returned by any endpoint.
 
 A plugin builds its own messages, with two helpers exported from
 `mallok/worker` for that purpose:
@@ -602,7 +624,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Addition | Where it is documented | Task | Status |
 | --- | --- | --- | --- |
 | Public helpers: `escapeHtml`, `renderTextTemplate` | §7.6 and the `mallok/worker` exports | 20 | Done |
-| Site-level email settings used by `ctx.sendEmail` | §7.6 | 21 | Planned |
+| Site-level email settings used by `ctx.sendEmail` | §7.6 | 21 | Done |
 | `renderData`: plugin data read while rendering a page | §5, §6 | 22 | Planned |
 | Plugin cache tags (`p:<plugin-id>:<tag>`) | §9 | 23 | Planned |
 | Multi-segment routes with parameters, a locale segment, `input.json` | §4, §7.2 | 24 | Planned |

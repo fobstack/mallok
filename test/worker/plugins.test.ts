@@ -81,7 +81,7 @@ describe('plugin admin API', () => {
     expect(inquiry?.values.autoreply).toBe(true);
     expect(inquiry?.values.thanks_path).toBe('/thank-you');
     expect(
-      inquiry?.secrets.find((secret) => secret.name === 'resend_api_key')
+      inquiry?.secrets.find((secret) => secret.name === 'turnstile_secret')
         ?.configured,
     ).toBe(false);
   });
@@ -97,7 +97,7 @@ describe('plugin admin API', () => {
     const secrets = await api(
       'PUT',
       '/_mallok/api/plugins/inquiry/secrets',
-      { resend_api_key: 'x' },
+      { turnstile_secret: 'x' },
       readToken,
     );
     expect(secrets.status).toBe(403);
@@ -140,12 +140,12 @@ describe('plugin admin API', () => {
   it('encrypts stored secrets and never echoes their values', async () => {
     const value = 're_live_1234567890';
     const put = await api('PUT', '/_mallok/api/plugins/inquiry/secrets', {
-      resend_api_key: value,
+      turnstile_secret: value,
     });
     expect(put.status).toBe(200);
     const body = JSON.stringify(await put.json());
     expect(body).not.toContain(value);
-    expect(body).toContain('resend_api_key');
+    expect(body).toContain('turnstile_secret');
 
     const row = await env.DB.prepare(
       "SELECT secrets FROM plugin_state WHERE plugin_id = 'inquiry'",
@@ -155,8 +155,8 @@ describe('plugin admin API', () => {
     const decrypted = await decryptSecret(
       'test-secret-do-not-use',
       'inquiry',
-      'resend_api_key',
-      stored.resend_api_key ?? '',
+      'turnstile_secret',
+      stored.turnstile_secret ?? '',
     );
     expect(decrypted).toBe(value);
 

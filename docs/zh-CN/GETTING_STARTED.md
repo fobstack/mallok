@@ -59,16 +59,21 @@ CLI 会显示一次性 **setup key**，初始化前请私密保存。Cloudflare 
 
 ## 5. 配置询盘
 
-公开静态演示站不能收集询盘。在自己部署的后台进入 **Plugins → Inquiry**：
+公开静态演示站不能收集询盘。在自己部署的后台先进入 **Settings → Email**，填写全站发信都要用到的两项：
+
+| 配置 | 填写内容 |
+| --- | --- |
+| From address | Resend 账号中已验证域名下的发信地址 |
+| Resend API key | 加密保存；用 **Test** 按钮确认 Resend 接受该密钥 |
+
+然后进入 **Plugins → Inquiry**：
 
 | 配置 | 填写内容 |
 | --- | --- |
 | Recipient email | 你控制并会检查的收件邮箱 |
-| From address | Resend 账号中已验证的发信地址 |
 | Send buyers an automatic confirmation | 准备好给买家发送确认邮件后再开启 |
 | Turnstile site key | 允许当前网站域名的公开站点密钥 |
 | Thank-you page path | 已发布的感谢页路径，例如 `/thank-you` |
-| Resend API key | 填入插件专用秘密字段 |
 | Turnstile secret key | 填入配套的插件秘密字段 |
 
 保存设置和秘密字段，启用插件。不要将密钥写入文章、源码或公开 site key 字段。启用后，内容中的 `[[inquiry]]` 会渲染为询盘表单。

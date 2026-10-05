@@ -10,6 +10,7 @@ import { ContentListPage } from './pages/content-list.js';
 import { LoginPage } from './pages/login.js';
 import { AdvancedPage } from './pages/settings-advanced.js';
 import { AppearancePage } from './pages/settings-appearance.js';
+import { EmailSettingsPage } from './pages/settings-email.js';
 import { SiteSettingsPage } from './pages/settings-site.js';
 import { match, navigate, route } from './router.js';
 import { ready, session } from './state.js';
@@ -35,6 +36,7 @@ const SetupPage = lazyRoute<Record<string, never>>(() =>
 const SETTINGS_TABS = [
   { href: '/settings', label: 'Site' },
   { href: '/settings/appearance', label: 'Appearance' },
+  { href: '/settings/email', label: 'Email' },
   { href: '/settings/advanced', label: 'Advanced' },
 ] as const;
 
@@ -100,6 +102,13 @@ function resolve(path: string): JSX.Element {
     return (
       <SettingsLayout>
         <AppearancePage />
+      </SettingsLayout>
+    );
+  }
+  if (path === '/settings/email') {
+    return (
+      <SettingsLayout>
+        <EmailSettingsPage />
       </SettingsLayout>
     );
   }

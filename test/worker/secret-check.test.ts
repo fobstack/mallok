@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 /**
  * Checking a plugin's secret before it is needed for real.
  *
- * The core cannot tell a good Resend key from a bad one; the plugin declares
+ * The core cannot tell a good Turnstile secret from a bad one; the plugin declares
  * how (docs/PLUGIN_API.md §7.3). What matters here is that the stored value
  * never leaves the Worker — only the verdict does.
  */
@@ -12,14 +12,14 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const ORIGIN = 'https://secret-check.example';
 const EMAIL = 'check@example.com';
 const PASSWORD = 'a sufficiently long password';
-// Deliberately not shaped like a real Resend key: `scripts/scan-secrets.mjs`
+// Deliberately not shaped like a real credential: `scripts/scan-secrets.mjs`
 // scans the whole history for credential *shapes*, and a fixture that looks
 // like the real thing trains everyone to wave the scanner through.
 const KEY = 'fixture-not-a-credential-0123456789';
 
 let token = '';
 const realFetch = globalThis.fetch;
-let resendReply: { status: number; body: unknown } = { status: 200, body: {} };
+let turnstileReply: unknown = { success: false, 'error-codes': [] };
 
 async function api(method: string, path: string, body?: unknown) {
   return SELF.fetch(`${ORIGIN}${path}`, {
@@ -36,9 +36,8 @@ describe('checking a plugin secret', () => {
   beforeAll(async () => {
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url = input instanceof Request ? input.url : String(input);
-      if (url.startsWith('https://api.resend.com/')) {
-        return new Response(JSON.stringify(resendReply.body), {
-          status: resendReply.status,
+      if (url.startsWith('https://challenges.cloudflare.com/')) {
+        return new Response(JSON.stringify(turnstileReply), {
           headers: { 'content-type': 'application/json' },
         });
       }
@@ -73,7 +72,7 @@ describe('checking a plugin secret', () => {
       enabled: true,
     });
     await api('PUT', '/_mallok/api/plugins/inquiry/secrets', {
-      resend_api_key: KEY,
+      turnstile_secret: KEY,
     });
   });
 
@@ -81,46 +80,37 @@ describe('checking a plugin secret', () => {
     globalThis.fetch = realFetch;
   });
 
-  it('reports a working key and the verified sending domains', async () => {
-    resendReply = {
-      status: 200,
-      body: { data: [{ name: 'example.com', status: 'verified' }] },
+  it('reports a secret the provider accepts', async () => {
+    // The check sends a deliberately invalid token, so "invalid response" with
+    // no complaint about the secret is the passing answer.
+    turnstileReply = {
+      success: false,
+      'error-codes': ['invalid-input-response'],
     };
     const response = await api(
       'POST',
-      '/_mallok/api/plugins/inquiry/secrets/resend_api_key',
+      '/_mallok/api/plugins/inquiry/secrets/turnstile_secret',
     );
     const verdict = (await response.json()) as { ok: boolean; message: string };
     expect(verdict.ok).toBe(true);
-    expect(verdict.message).toContain('example.com');
+    expect(verdict.message).toContain('accepted');
   });
 
-  it('says the key works but no domain is verified', async () => {
-    // The failure a trade site would otherwise discover on its first inquiry.
-    resendReply = { status: 200, body: { data: [] } };
+  it('reports a rejected secret', async () => {
+    turnstileReply = {
+      success: false,
+      'error-codes': ['invalid-input-secret'],
+    };
     const verdict = (await (
-      await api('POST', '/_mallok/api/plugins/inquiry/secrets/resend_api_key')
-    ).json()) as { ok: boolean; message: string };
-    expect(verdict.ok).toBe(false);
-    expect(verdict.message).toContain('no sending domain is verified');
-  });
-
-  it('reports a rejected key', async () => {
-    resendReply = { status: 401, body: { message: 'invalid' } };
-    const verdict = (await (
-      await api('POST', '/_mallok/api/plugins/inquiry/secrets/resend_api_key')
+      await api('POST', '/_mallok/api/plugins/inquiry/secrets/turnstile_secret')
     ).json()) as { ok: boolean; message: string };
     expect(verdict.ok).toBe(false);
     expect(verdict.message).toContain('rejected');
   });
 
   it('never returns the stored value', async () => {
-    resendReply = {
-      status: 200,
-      body: { data: [{ name: 'example.com', status: 'verified' }] },
-    };
     const text = await (
-      await api('POST', '/_mallok/api/plugins/inquiry/secrets/resend_api_key')
+      await api('POST', '/_mallok/api/plugins/inquiry/secrets/turnstile_secret')
     ).text();
     expect(text).not.toContain(KEY);
   });
@@ -129,6 +119,15 @@ describe('checking a plugin secret', () => {
     const response = await api(
       'POST',
       '/_mallok/api/plugins/inquiry/secrets/nonexistent',
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it('no longer checks a Resend key through the plugin', async () => {
+    // The key is a site setting now (POST /settings/email/check).
+    const response = await api(
+      'POST',
+      '/_mallok/api/plugins/inquiry/secrets/resend_api_key',
     );
     expect(response.status).toBe(404);
   });

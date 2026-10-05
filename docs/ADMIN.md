@@ -93,6 +93,25 @@ The line comes from `PRODUCT_VISION §4`: content and settings belong to the
 operator; themes and plugins belong to the deployment. Making a theme switch
 into a button would be a lie.
 
+### 4.2 What Email contains
+
+The site's one Resend key and one sender address
+(`PLUGIN_API.md §7.6`). They belong to the site, not to a plugin, so a second
+plugin that sends email needs nothing entered twice.
+
+- **Sender**: a bare address or `Name <address>`. Stored on save; applies to
+  the next message.
+- **Resend API key**: write-only. The page shows "Set", and offers Replace,
+  Remove and **Test** — the test asks Resend whether the key works and whether
+  a sending domain is verified, and shows only that verdict. The value is never
+  sent back to the browser.
+- With no key the page says plainly that no email is sent. Diagnostics repeats
+  the state.
+
+A plugin may still carry a sender of its own — the `inquiry` plugin has an
+optional "From address" — and says on its own form that an empty field means
+the site sender is used.
+
 ## 5. The setup wizard
 
 At `/_mallok/setup`, and **permanently closed** once complete — a non-null

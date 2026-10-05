@@ -88,19 +88,25 @@ installed plugin code require a build and deployment; content edits do not.
 ## 5. Configure inquiries
 
 The static public demo cannot accept inquiries. On your deployed Worker,
-open **Plugins → Inquiry** and configure:
+first open **Settings → Email** and enter the two things every email from the
+site needs:
+
+| Setting | Value |
+| --- | --- |
+| From address | A sender on a domain verified in your Resend account |
+| Resend API key | Saved encrypted; use **Test** to confirm Resend accepts it |
+
+Then open **Plugins → Inquiry** and configure:
 
 | Setting | Value |
 | --- | --- |
 | Recipient email | An inbox you control and will check |
-| From address | A sender verified in your Resend account |
 | Send buyers an automatic confirmation | Enable only when ready to send buyer emails |
 | Turnstile site key | The widget's public key for your site's hostname |
 | Thank-you page path | A published page on your site, such as `/thank-you` |
-| Resend API key | Save in the plugin's secret field |
 | Turnstile secret key | Save the matching widget secret in the plugin's secret field |
 
-Save the settings and secrets, and enable the plugin. These plugin keys are
+Save the settings and secrets, and enable the plugin. These keys are
 stored through Mallok's secret configuration; do not paste them into content,
 source files or the public site-key field. A content page containing
 `[[inquiry]]` renders the form when the plugin is enabled.

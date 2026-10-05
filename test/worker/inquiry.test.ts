@@ -174,8 +174,9 @@ describe('inquiry plugin', () => {
       autoreply: true,
       thanks_path: '/thank-you',
     });
-    await api('PUT', '/_mallok/api/plugins/inquiry/secrets', {
-      resend_api_key: RESEND_KEY,
+    // The key is a site setting; the plugin only overrides the sender.
+    await api('PUT', '/_mallok/api/settings/email', {
+      resendApiKey: RESEND_KEY,
     });
 
     const created = await api('POST', '/_mallok/api/content', {

@@ -34,6 +34,13 @@ export interface Settings {
   readonly cacheTtl: number;
   readonly maxImageEdge: number | null;
   readonly setupCompletedAt: string | null;
+  readonly email: SiteEmail;
+}
+
+/** The site's email setup; the key itself is never sent to the browser. */
+export interface SiteEmail {
+  readonly fromAddress: string;
+  readonly resendConfigured: boolean;
 }
 
 /** The active theme, its manifest and its templates. */
