@@ -2,51 +2,76 @@
 
 [English](RELEASE_STATUS.md) · [简体中文](zh-CN/RELEASE_STATUS.md)
 
-Snapshot: **October 5, 2026**. Current version: **0.1.0-rc.9**.
+Snapshot: **October 6, 2026**. Current version: **0.1.0-rc.10**.
 This is a public release candidate, not stable 0.1.
 
-## Published rc.9 candidate
+## Published rc.10 candidate
 
-- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.9).
-- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.9): `0.1.0-rc.9`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
-- Source: `8772a77e812336082416bdda9f0e4f393eb4234f`.
-- Package: `mallok-0.1.0-rc.9.tgz`.
-- SHA-256: `ab2f2993d769cb8f16be30b923501507e3ae790b3a206d19626fae8715891b0a`.
-- [CI](https://github.com/fobstack/mallok/actions/runs/37125252372) and
-  [complete release gate](https://github.com/fobstack/mallok/actions/runs/37125253859) passed.
+- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.10).
+- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.10): `0.1.0-rc.10`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
+- Source: `476eb32b6042f5ae9d2045a7179fb1c32ff1a152`.
+- Package: `mallok-0.1.0-rc.10.tgz`.
+- SHA-256: `899d942af9a76ca07a90e6ebce620c8555a08bcd85731478712ddc991dec234f`.
+- [CI](https://github.com/fobstack/mallok/actions/runs/37341569691) and
+  [complete release gate](https://github.com/fobstack/mallok/actions/runs/37341595427) passed.
 - Linux CI, the local build and a clean-clone rebuild produced byte-for-byte
-  identical tarballs; 29 exact-artifact consumer checks passed.
-- The isolated test site was upgraded from rc.8 with `mallok upgrade` and the
-  exact package deployed to `rc5-gate.mallok.dev`. Pages, SEO endpoints, cache
-  MISS/HIT and HEAD hits, credential bypass and admin boundaries behaved as
-  intended.
-- **Checked on the deployed site:**
-  - The home pages in both languages show the product section with the site's
-    three published products; before rc.9 a served home page was given
-    articles only.
-  - A two-language bundle without `mallok.json`, published with the real CLI
-    and a token created for the check, landed in one translation group, with
-    hreflang on both pages; publishing it again reported both unchanged.
-  - Reloading an admin route with cache validators answered 200.
+  identical tarballs; the exact-artifact consumer checks passed against it.
+- The isolated test site was upgraded from rc.9 with `mallok upgrade`, given
+  the second rate-limit binding the upgrade notes ask for, and the exact
+  package deployed to `rc5-gate.mallok.dev`.
+- **Checked on the deployed site, without signing in:** pages in both
+  languages, SEO endpoints, cache MISS/HIT and HEAD hits, credential bypass
+  and the admin boundary; exactly one JSON-LD node on a product page; a
+  cross-site `POST` to the inquiry form answered 403 and a same-site one was
+  accepted; a two-segment path on the version 1 inquiry plugin answered 404.
+- **Reported by the maintainer from the deployed admin, signed in, after the
+  upgrade:** Settings → Email showed the sender and the Resend key already
+  set, so the move from the inquiry plugin ran on a real site; and a second
+  content item opened in the same session showed the editor, with nothing
+  marked unsaved.
 - Registry integrity matches the release artifact.
 
-rc.9 fixes defects found building a real site on rc.7 and rc.8: one
-translation group per published bundle; `recent.<kind>` on the home page for
-every kind the theme lists; text-module types and the setup key for generated
-sites; publishing from a project root; dry runs that write nothing; and two
-admin fixes. It also exports `escapeHtml` and `renderTextTemplate` for
-plugins. The changelog carries four upgrade notes.
+rc.10 ships plugin API 2 — `renderData` with structured data and cache tags,
+routes with parameters and a locale segment, rate-limit tiers, plugin pages
+rendered through theme layouts, the content save and delete hooks, editable
+records panels and panels attached to the editor — site-level email
+settings, and four fixes: the admin going blank when a second item was
+opened, an opened item marked unsaved, a removed plugin secret still shown as
+set, and themes with a declared script escaping the script check. **The
+changelog's upgrade notes list what existing sites, themes and plugins have
+to do.**
 
-Not checked on the deployed site: the type-checking of a generated site and
-publishing from a project root, which are verified by the package tests
-against the exact tarball and by the CLI tests; and the admin's display of a
-revoked token, which is verified in a real browser by the end-to-end suite.
+**Not checked on a deployed site**, and so resting on Worker and browser
+tests only:
 
-No CPU sample was taken for rc.6 through rc.9. The rc.5 performance
-measurements below are historical and must not be reported as rc.9
-benchmarks; the home page now runs one statement per listed kind, in one
-batch. The maintainer accepted the measured CPU limitation for source opening
-and RC evaluation; stable acceptance remains incomplete.
+- Plugin API 2 as a whole. It has been exercised by test plugins; no real
+  plugin on a deployed site has used `renderData`, plugin pages, records
+  panels or the content hooks.
+- That email is still delivered with the moved Resend key. The move itself
+  was seen on the deployed site; no message was sent through it.
+- A purge by plugin cache tag evicting only the pages that carry it.
+- The two rate-limit bindings counting separately. Both deployed on the test
+  account; that shows they can be declared, nothing more. Cloudflare's
+  documentation still does not say whether the Free plan includes them.
+- The removed-plugin-secret fix, which is verified in a real browser by the
+  end-to-end suite against a local Worker.
+
+No CPU sample was taken for rc.6 through rc.10. The rc.5 performance
+measurements below are historical and must not be reported as rc.10
+benchmarks; `renderData` and the save hooks add work to requests that already
+exceeded the 10 ms target there. The maintainer accepted the measured CPU
+limitation for source opening and RC evaluation; stable acceptance remains
+incomplete.
+
+## Historical rc.9 artifact
+
+- Source commit: `8772a77e812336082416bdda9f0e4f393eb4234f`.
+- Package: `mallok-0.1.0-rc.9.tgz`.
+- SHA-256: `ab2f2993d769cb8f16be30b923501507e3ae790b3a206d19626fae8715891b0a`.
+- Released October 3, 2026: defects found building a real site on rc.7 and
+  rc.8. Checked on the deployed test site: the product section on both home
+  pages, one translation group for a bundle published with the real CLI, and
+  an admin route reloaded with cache validators.
 
 ## Historical rc.8 artifact
 

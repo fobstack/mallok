@@ -2,7 +2,7 @@
 
 [简体中文](zh-CN/GETTING_STARTED.md) · [Documentation](README.md)
 
-This guide targets the published **0.1.0-rc.9** candidate. See the
+This guide targets the published **0.1.0-rc.10** candidate. See the
 [release status](RELEASE_STATUS.md) for outstanding acceptance checks.
 The [public demo](https://demo.mallok.dev/) is read-only; create your own
 site to use the admin and collect inquiries.
