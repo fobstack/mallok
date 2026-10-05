@@ -18,6 +18,7 @@
 import type { PluginsView, StructuredDataAddition } from '../core/index.js';
 import type { PluginStateRow } from '../db/queries.js';
 import type { PluginRenderDataContext } from '../plugins/types.js';
+import { pluginCacheTag } from './cache.js';
 import { compiledPlugins } from './composition.js';
 import { activePlugins } from './plugin-runtime.js';
 
@@ -153,6 +154,12 @@ export interface RenderDataResult {
    */
   readonly structuredData: readonly StructuredDataAddition[];
   /**
+   * The cache tags the hooks declared for this page, already namespaced as
+   * `p:<plugin-id>:<tag>`. Appended after the core's own, so that when the
+   * header runs out of room it is a plugin's tag that is dropped.
+   */
+  readonly cacheTags: readonly string[];
+  /**
    * True when a hook failed. The page is still rendered, without that
    * plugin's data, and must not be stored in the edge cache: the next request
    * should try again rather than be served the lesser page for a whole TTL.
@@ -163,8 +170,15 @@ export interface RenderDataResult {
 const NOTHING: RenderDataResult = {
   plugins: {},
   structuredData: [],
+  cacheTags: [],
   degraded: false,
 };
+
+/**
+ * The key of a hook's result that names what this page depends on: tags the
+ * plugin can later purge (docs/PLUGIN_API.md §9).
+ */
+const CACHE_TAGS_KEY = 'cacheTags';
 
 /**
  * The key of a hook's result that is not for templates: properties for the
@@ -244,12 +258,36 @@ export async function runRenderData(
 
   const plugins: Record<string, Readonly<Record<string, unknown>>> = {};
   const structuredData: StructuredDataAddition[] = [];
+  const cacheTags = new Set<string>();
   for (const outcome of outcomes) {
     if (outcome.data === undefined) {
       continue;
     }
-    const { [STRUCTURED_DATA_KEY]: offered, ...forTemplates } = outcome.data;
+    const {
+      [STRUCTURED_DATA_KEY]: offered,
+      [CACHE_TAGS_KEY]: declared,
+      ...forTemplates
+    } = outcome.data;
     plugins[viewKey(outcome.id)] = forTemplates;
+    if (declared !== undefined) {
+      if (
+        !Array.isArray(declared) ||
+        declared.some((tag) => typeof tag !== 'string')
+      ) {
+        console.warn(
+          JSON.stringify({
+            event: 'cache_tags_dropped',
+            plugin: outcome.id,
+            reason: 'cacheTags must be an array of strings',
+            path: page.path,
+          }),
+        );
+      } else {
+        for (const tag of declared as string[]) {
+          cacheTags.add(pluginCacheTag(outcome.id, tag));
+        }
+      }
+    }
     if (offered === undefined) {
       continue;
     }
@@ -277,6 +315,7 @@ export async function runRenderData(
   return {
     plugins,
     structuredData,
+    cacheTags: [...cacheTags],
     degraded: outcomes.some((outcome) => outcome.failed),
   };
 }

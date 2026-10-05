@@ -117,7 +117,11 @@ export default definePage<PublicLocals>()({
       ? {
           mode: 'public',
           edgeSeconds: locals.settings.cacheTtl,
-          tags: ['site', `tag:${locals.locale}`],
+          tags: [
+            'site',
+            `tag:${locals.locale}`,
+            ...archive.pluginData.cacheTags,
+          ],
         }
       : { mode: 'no-store' },
 });

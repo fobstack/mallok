@@ -17,7 +17,7 @@ import type {
   PluginRenderContext,
   PluginRequestContext,
 } from '../plugins/types.js';
-import { purgeTags } from './cache.js';
+import { pluginPurgeTags, purgeTags } from './cache.js';
 import { compiledPlugins } from './composition.js';
 import { queueEmail } from './email.js';
 import type { Env } from './env.js';
@@ -490,7 +490,8 @@ export async function buildPluginContext(
     site,
     sendEmail: (message) =>
       queueEmail(env, executionCtx, pluginId, from, message),
-    purgeTags: (tags) => purgeTags(env, tags),
+    // Own namespace only, plus `site` (docs/PLUGIN_API.md §9).
+    purgeTags: (tags) => purgeTags(env, pluginPurgeTags(pluginId, tags)),
     waitUntil: (promise) => executionCtx.waitUntil(promise),
   };
 }

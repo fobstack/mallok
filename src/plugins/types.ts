@@ -53,6 +53,11 @@ export interface PluginContext {
    * (Settings → Email, §7.6); returns the job id.
    */
   readonly sendEmail: (message: EmailMessage) => Promise<string>;
+  /**
+   * Purges this plugin's own cache tags — the names it returned as
+   * `cacheTags` from `renderData` — or `site` (§9.1). Nothing else can be
+   * named: every other tag is taken to be one of the plugin's own.
+   */
   readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }

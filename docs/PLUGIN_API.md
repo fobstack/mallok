@@ -363,8 +363,19 @@ therefore read `plugins.<id>` as optional.
 
 **Freshness.** What the hook read is cached with the page. A later change in
 the plugin's tables reaches visitors when that page's cache entry is purged or
-expires; a plugin purges with `ctx.purgeTags` from the route or action that
-made the change. Cache tags of a plugin's own arrive with Task 23 (§13.2).
+expires. So the hook says what the page depends on, in a second reserved key:
+
+```ts
+return {
+  price: '$99.00',
+  cacheTags: [`product-${ctx.content.id}`],
+};
+```
+
+Each tag is added to the page's `Cache-Tag` as `p:<plugin-id>:<tag>`, and the
+route or action that changes the data calls
+`ctx.purgeTags(['product-…'])` with the same short name (§9). Like
+`structuredData`, `cacheTags` is removed before the result reaches templates.
 
 ## 6. The context objects
 
@@ -389,7 +400,7 @@ interface PluginContext {
   readonly site: SiteSettings;
   /** Provided by the core, see §7.6. */
   readonly sendEmail: (message: EmailMessage) => Promise<string>;
-  /** Purge by tag, coalesced automatically. */
+  /** Purge this plugin's own cache tags, or `site`; coalesced. See §9. */
   readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }
@@ -681,6 +692,44 @@ the fragment, so it does not enter the `render_cache` key and a plugin using
 only that hook leaves `affectsFragmentCache` false. Its data is cached with
 the page in the edge cache and is refreshed by purging the page.
 
+### 9.1 A plugin's own cache tags
+
+Every public page carries tags the core chose — `site`, `c:<content-id>`,
+`k:<kind>:<locale>`, `home:<locale>` and so on (`ARCHITECTURE §6`). A
+plugin adds its own from `renderData` (§5.6), so that when one price changes,
+only the pages showing that price are purged.
+
+- **On the page.** A tag `t` returned in `cacheTags` by the plugin `shop`
+  appears as `p:shop:t`, after the core's tags. Home, list and tag-archive
+  pages are tagged the same way, so a plugin that prints prices on a list
+  returns the tag of every item it printed.
+- **Purging.** `ctx.purgeTags(['t'])` purges `p:shop:t`. **A plugin can purge
+  only its own namespace, and `site`.** Whatever it passes is prefixed with
+  its own id, so `ctx.purgeTags(['c:123'])` asks for `p:shop:c:123` — a tag no
+  page has — rather than the core's `c:123`, and another plugin's
+  `p:other:t` cannot be named at all. `site` is passed through, for a change
+  that can affect any page. This applies to every plugin, whichever API
+  version it declares (§13.3).
+- **What a tag may be.** Cloudflare's rules, read 2026-10-05
+  ([purge by tags](https://developers.cloudflare.com/cache/how-to/purge-cache/purge-by-tags/)):
+  printable ASCII, no spaces, no commas, compared without regard to case; the
+  whole header at most 16 KB; a tag in a purge call at most 1,024 characters,
+  prefix included. A tag that breaks a rule, or would overflow the header, is
+  left off the page and `{"event":"cache_tag_rejected","tag":…,"reason":…}` is
+  logged; the core's tags come first, so they are never the ones to go. A
+  `cacheTags` that is not an array of strings is ignored as a whole and
+  `cache_tags_dropped` is logged. Neither stops the page from being cached.
+- **What purging costs.** One purge call carries at most 100 tags; more are
+  sent as several calls. Calls within two seconds are coalesced into one. On
+  the Free plan Cloudflare allows 5 purge calls a minute with a burst of 25,
+  shared by every zone of that plan on the account
+  ([purge limits](https://developers.cloudflare.com/cache/how-to/purge-cache/),
+  read 2026-10-05). **A bulk change should purge `site` once, not a tag per
+  row.** Without `CF_API_TOKEN` and `CF_ZONE_ID` nothing is purged and pages
+  expire by their TTL, as for the core's own purges.
+- A page a failed `renderData` hook kept out of the cache carries no tags;
+  there is nothing to purge.
+
 Declaring this wrongly means changing a setting and still seeing old content.
 At install the core rejects a plugin that declares `beforeRender` alongside
 `affectsFragmentCache: false`.
@@ -781,7 +830,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Site-level email settings used by `ctx.sendEmail` | §7.6 | 21 | Done |
 | `renderData`: plugin data read while rendering a page | §5.6, §6; `THEME_FORMAT.md §7.9` | 22 | Done |
 | `renderData` adds `offers` to the page's `Product` structured data | §5.6; `SEO_PERFORMANCE.md §5` | 41 | Done |
-| Plugin cache tags (`p:<plugin-id>:<tag>`) | §9 | 23 | Planned |
+| Plugin cache tags (`p:<plugin-id>:<tag>`) | §5.6, §9.1 | 23 | Done |
 | Multi-segment routes with parameters, a locale segment, `input.json` | §4, §7.2 | 24 | Planned |
 | Rate-limit tiers | §7.2 | 25 | Planned |
 | Plugin pages rendered through theme layouts (`render: "page"`) | §7.2; `THEME_FORMAT.md`, plugin page layouts | 26 | Planned |
@@ -802,4 +851,5 @@ pass unchanged.
 | Check | Effect on a version 1 plugin | Task | Status |
 | --- | --- | --- | --- |
 | Reading a panel's rows requires the `export` scope (§7.5) | A token without `export` gets 403 instead of the rows; the admin's own session is unaffected | 19 | Done, ships as `0.1.0-rc.8` |
+| `ctx.purgeTags` purges only the calling plugin's own tags, and `site` (§9.1) | A plugin that purged a core tag such as `c:<id>` or `home:<locale>` no longer does: the tag it names is now inside its own namespace. The official `inquiry` plugin never calls `purgeTags` | 23 | Done |
 | Cross-site submissions to page routes and state-changing POSTs are refused | A same-site form, such as the inquiry form, still submits; a request with neither `Sec-Fetch-Site` nor `Origin` is allowed | 26 | Planned |

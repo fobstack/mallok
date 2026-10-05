@@ -75,6 +75,41 @@ export function tagsForContent(
   ];
 }
 
+/** The tag every public page carries; purging it purges the site. */
+const SITE_TAG = 'site';
+
+/**
+ * A plugin's tag as it appears in `Cache-Tag` and in a purge call
+ * (docs/PLUGIN_API.md §9). The prefix is what keeps one plugin's tags apart
+ * from another's and from the core's own.
+ */
+export function pluginCacheTag(pluginId: string, tag: string): string {
+  return `p:${pluginId}:${tag}`;
+}
+
+/**
+ * The tags a plugin's `ctx.purgeTags` call may purge.
+ *
+ * Everything lands in the plugin's own namespace, so a plugin cannot name
+ * another plugin's tag or one of the core's, whatever it passes. The one
+ * exception is `site`, which every page carries: a plugin whose change can
+ * touch any page needs a way to say so.
+ */
+export function pluginPurgeTags(
+  pluginId: string,
+  tags: readonly string[],
+): string[] {
+  return tags.map((tag) =>
+    tag === SITE_TAG ? SITE_TAG : pluginCacheTag(pluginId, tag),
+  );
+}
+
+/**
+ * How many tags one purge call may carry. Cloudflare's limit for every plan
+ * (developers.cloudflare.com/cache/how-to/purge-cache/, read 2026-10-05).
+ */
+const PURGE_TAGS_PER_CALL = 100;
+
 let pendingTags = new Set<string>();
 let pendingFlush: Promise<PurgeResult> | undefined;
 
@@ -132,13 +167,35 @@ export async function purgeNow(
       detail: 'purge not configured',
     };
   }
+  // More tags than one call may carry are sent as several calls. Each one
+  // counts against the plan's purge rate, so the first failure stops the rest
+  // and is what the caller is told about.
+  let last: PurgeResult = { attempted: true, ok: true, tags };
+  for (let start = 0; start < tags.length; start += PURGE_TAGS_PER_CALL) {
+    last = await purgeCall(
+      env.CF_ZONE_ID,
+      env.CF_API_TOKEN,
+      tags.slice(start, start + PURGE_TAGS_PER_CALL),
+    );
+    if (!last.ok) {
+      break;
+    }
+  }
+  return { ...last, tags };
+}
+
+async function purgeCall(
+  zoneId: string,
+  token: string,
+  tags: readonly string[],
+): Promise<PurgeResult> {
   try {
     const response = await fetch(
-      `https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/purge_cache`,
+      `https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`,
       {
         method: 'POST',
         headers: {
-          authorization: `Bearer ${env.CF_API_TOKEN}`,
+          authorization: `Bearer ${token}`,
           'content-type': 'application/json',
         },
         body: JSON.stringify({ tags }),

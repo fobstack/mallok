@@ -41,12 +41,15 @@ type Resolved =
       readonly fragmentStatus: 'REGENERATED' | 'CACHED';
       /** A `renderData` hook failed; the page lacks that plugin's data. */
       readonly degraded: boolean;
+      /** Tags the plugins declared for this page, already namespaced. */
+      readonly pluginTags: readonly string[];
     }
   | {
       readonly kind: 'list';
       readonly html: string;
       readonly listKind: string;
       readonly degraded: boolean;
+      readonly pluginTags: readonly string[];
     }
   | { readonly kind: 'missing'; readonly html: string };
 
@@ -90,7 +93,7 @@ export default definePage<PublicLocals>()({
         settings.mediaBaseUrl,
         locals.now,
       );
-      const { plugins, structuredData, degraded } = await pluginData;
+      const { plugins, structuredData, cacheTags, degraded } = await pluginData;
       const rendered = await renderContentPage(
         { ...locals.render, plugins, structuredData },
         data.content,
@@ -110,6 +113,7 @@ export default definePage<PublicLocals>()({
         row: data.content,
         fragmentStatus: fragment.regenerated ? 'REGENERATED' : 'CACHED',
         degraded,
+        pluginTags: cacheTags,
       };
     }
 
@@ -124,8 +128,8 @@ export default definePage<PublicLocals>()({
         (list.page - 1) * LIST_PAGE_SIZE,
         locals.now,
       );
-      const [covers, { plugins, structuredData, degraded }] = await Promise.all(
-        [
+      const [covers, { plugins, structuredData, cacheTags, degraded }] =
+        await Promise.all([
           resolveCovers(locals.env.DB, rows.items, settings.mediaBaseUrl),
           runRenderData(locals.env.DB, data.plugins, {
             site: settings,
@@ -134,8 +138,7 @@ export default definePage<PublicLocals>()({
             content: null,
             items: rows.items.map(renderDataItem),
           }),
-        ],
-      );
+        ]);
       const prefix =
         locals.locale === settings.defaultLocale ? '' : `/${locals.locale}`;
       const rendered = await renderListPage(
@@ -153,7 +156,13 @@ export default definePage<PublicLocals>()({
         path: locals.pathname,
         content: null,
       });
-      return { kind: 'list', html, listKind: list.kind, degraded };
+      return {
+        kind: 'list',
+        html,
+        listKind: list.kind,
+        degraded,
+        pluginTags: cacheTags,
+      };
     }
 
     // 3. A slug that moved. Returning a response stops the lifecycle.
@@ -196,17 +205,24 @@ export default definePage<PublicLocals>()({
       return {
         mode: 'public',
         edgeSeconds: locals.settings.cacheTtl,
-        tags: tagsForContent(
-          resolved.row.id,
-          resolved.row.kind,
-          resolved.row.locale,
-        ),
+        tags: [
+          ...tagsForContent(
+            resolved.row.id,
+            resolved.row.kind,
+            resolved.row.locale,
+          ),
+          ...resolved.pluginTags,
+        ],
       };
     }
     return {
       mode: 'public',
       edgeSeconds: locals.settings.cacheTtl,
-      tags: ['site', `k:${resolved.listKind}:${locals.locale}`],
+      tags: [
+        'site',
+        `k:${resolved.listKind}:${locals.locale}`,
+        ...resolved.pluginTags,
+      ],
     };
   },
 });

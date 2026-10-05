@@ -354,6 +354,12 @@ the home page also carry the `c:<id>` tag of every item they display.
   2026-09-03) — the debounce is worth keeping regardless of where the real
   ceiling turns out to be, but no specific number should be asserted without
   measuring it again.
+  **Plugins add tags of their own**, namespaced `p:<plugin-id>:<tag>`, from
+  the `renderData` hook, and may purge only that namespace and `site`
+  (`PLUGIN_API.md §9.1`). They are appended after the core's tags, so the
+  16 KB header limit can only ever cost a plugin's tag. A purge of more than
+  100 tags is sent as several calls — 100 is Cloudflare's per-call limit on
+  every plan, read 2026-10-05 — and each call counts against the purge rate.
 - **Plan B: purge by URL.** The cache key must then be the raw request URL
   with no customisation, and the management API computes the affected URLs —
   the item, each page of its lists, the home page, the sitemap, the feed;

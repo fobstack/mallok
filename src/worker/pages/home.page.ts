@@ -71,6 +71,6 @@ export default definePage<PublicLocals>()({
       : {
           mode: 'public',
           edgeSeconds: locals.settings.cacheTtl,
-          tags: ['site', `home:${locals.locale}`],
+          tags: ['site', `home:${locals.locale}`, ...pluginData.cacheTags],
         },
 });

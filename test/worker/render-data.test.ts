@@ -13,13 +13,14 @@ import { definePlugin } from '../../src/plugins/define.js';
 import { inquiryPlugin } from '../../src/plugins/inquiry/index.js';
 import type { PluginRenderDataContext } from '../../src/plugins/types.js';
 import { resetBootForTests } from '../../src/worker/bootstrap.js';
-import { cacheKeyFor } from '../../src/worker/cache.js';
+import { cacheKeyFor, purgeNow, purgeTags } from '../../src/worker/cache.js';
 import {
   activeTheme,
   compiledPlugins,
   configure,
 } from '../../src/worker/composition.js';
 import { handlePublicPage } from '../../src/worker/pages/runtime.js';
+import { buildPluginContext } from '../../src/worker/plugin-runtime.js';
 import {
   guardRenderDataDb,
   readOnlyProblem,
@@ -54,6 +55,9 @@ let mode: Mode = 'ok';
 /** What each test plugin offers for the page's structured data. */
 let offered: unknown;
 let notesOffered: unknown;
+/** The cache tags each test plugin declares for the page. */
+let declaredTags: unknown;
+let notesTags: unknown;
 const seen: PluginRenderDataContext[] = [];
 
 const PRICES =
@@ -131,6 +135,7 @@ const pricing = definePlugin({
         // Never reaches a template: not JSON.
         format: () => 'dropped',
         ...(offered === undefined ? {} : { structuredData: offered }),
+        ...(declaredTags === undefined ? {} : { cacheTags: declaredTags }),
       };
     },
   },
@@ -149,6 +154,7 @@ const notes = definePlugin({
     renderData: async (ctx) => ({
       note: `note for ${ctx.locale}`,
       ...(notesOffered === undefined ? {} : { structuredData: notesOffered }),
+      ...(notesTags === undefined ? {} : { cacheTags: notesTags }),
     }),
   },
 });
@@ -174,7 +180,7 @@ const third = definePlugin({
 const HEAD =
   '<!doctype html><html><head><link rel="stylesheet" href="{{ theme.asset_base }}/style.css">{{ page.head }}</head><body>';
 const PLUGIN_MARKUP =
-  '<p id="sd">[{{ plugins.pricing.structuredData.offers.lowPrice }}{{ plugins.pricing.structured_data.offers.lowPrice }}]</p><p id="price">[{{ plugins.pricing.price }}]</p><p id="note">[{{ plugins.site_notes.note }}]</p><p id="third">[{{ plugins.third.value }}]</p><p id="fn">[{{ plugins.pricing.format }}]</p>';
+  '<p id="ct">[{{ plugins.pricing.cacheTags | join: "," }}{{ plugins.pricing.cache_tags | join: "," }}]</p><p id="sd">[{{ plugins.pricing.structuredData.offers.lowPrice }}{{ plugins.pricing.structured_data.offers.lowPrice }}]</p><p id="price">[{{ plugins.pricing.price }}]</p><p id="note">[{{ plugins.site_notes.note }}]</p><p id="third">[{{ plugins.third.value }}]</p><p id="fn">[{{ plugins.pricing.format }}]</p>';
 const LISTED =
   '<li>{{ item.title }}=[{{ plugins.pricing.prices[item.id] }}]</li>';
 
@@ -406,6 +412,8 @@ describe('renderData', () => {
     mode = 'ok';
     offered = undefined;
     notesOffered = undefined;
+    declaredTags = undefined;
+    notesTags = undefined;
     seen.length = 0;
     vi.restoreAllMocks();
   });
@@ -798,6 +806,198 @@ describe('renderData', () => {
       expect(logged(warn, 'structured_data_dropped')).toMatchObject([
         { plugin: 'pricing', key: 'structuredData', reason: 'not_object' },
       ]);
+    });
+  });
+
+  describe('cache tags', () => {
+    const tagsOf = (response: Response): string[] =>
+      (response.headers.get('cache-tag') ?? '').split(',');
+
+    it("adds what a plugin declares, namespaced, after the page's own tags", async () => {
+      declaredTags = ['price-alpha', 'catalogue', 'price-alpha'];
+      notesTags = ['notes'];
+      const response = await cold(alpha.path);
+      expect(tagsOf(response)).toEqual([
+        'site',
+        `c:${alpha.id}`,
+        'k:article:en',
+        'home:en',
+        'feed:en',
+        'tag:en',
+        'sitemap',
+        'p:pricing:price-alpha',
+        'p:pricing:catalogue',
+        'p:site-notes:notes',
+      ]);
+      // The reserved key is for the core, not for templates.
+      expect(await response.text()).toContain('<p id="ct">[]</p>');
+    });
+
+    it('tags a list, a tag archive and the home page the same way', async () => {
+      declaredTags = ['catalogue'];
+      expect(tagsOf(await cold('/news'))).toEqual([
+        'site',
+        'k:article:en',
+        'p:pricing:catalogue',
+      ]);
+      expect(tagsOf(await cold('/tags/metal'))).toEqual([
+        'site',
+        'tag:en',
+        'p:pricing:catalogue',
+      ]);
+      expect(tagsOf(await cold('/'))).toEqual([
+        'site',
+        'home:en',
+        'p:pricing:catalogue',
+      ]);
+    });
+
+    it('drops a tag Cloudflare would not accept, says so, and keeps the rest', async () => {
+      declaredTags = ['good', 'has space', 'a,b', 'x'.repeat(1100)];
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      const response = await cold(alpha.path);
+      expect(tagsOf(response).filter((tag) => tag.startsWith('p:'))).toEqual([
+        'p:pricing:good',
+      ]);
+      expect(response.headers.get('x-mallok-cache')).toBe('MISS');
+      expect(
+        logged(warn, 'cache_tag_rejected').map((entry) =>
+          String(entry.tag).slice(0, 19),
+        ),
+      ).toEqual([
+        'p:pricing:has space',
+        'p:pricing:a,b',
+        'p:pricing:xxxxxxxxx',
+      ]);
+    });
+
+    it('ignores cacheTags that is not a list of strings, and still caches', async () => {
+      const warn = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => undefined);
+      for (const bad of ['catalogue', ['ok', 7], { tag: 'x' }]) {
+        declaredTags = bad;
+        warn.mockClear();
+        const response = await cold(alpha.path);
+        expect(tagsOf(response).some((tag) => tag.startsWith('p:'))).toBe(
+          false,
+        );
+        expect(response.headers.get('x-mallok-cache')).toBe('MISS');
+        expect(logged(warn, 'cache_tags_dropped')).toMatchObject([
+          { plugin: 'pricing', path: alpha.path },
+        ]);
+      }
+    });
+
+    it('carries no tags on a page a failed hook kept out of the cache', async () => {
+      vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      mode = 'throw';
+      notesTags = ['notes'];
+      const response = await cold(alpha.path);
+      expect(response.headers.get('x-mallok-cache')).toBe('BYPASS');
+      expect(response.headers.get('cache-tag')).toBeNull();
+    });
+
+    it('lets a plugin purge its own tags and the site, and nothing else', async () => {
+      // Purges are coalesced per isolate and flushed with the environment of
+      // the first caller. Let whatever earlier tests queued go out first.
+      await purgeTags(env, []);
+      const bodies: { tags: string[] }[] = [];
+      const realFetch = globalThis.fetch;
+      globalThis.fetch = (async (
+        input: RequestInfo | URL,
+        init?: RequestInit,
+      ) => {
+        const url = input instanceof Request ? input.url : String(input);
+        if (!url.startsWith('https://api.cloudflare.com/')) {
+          throw new Error(`Unexpected outbound fetch: ${url}`);
+        }
+        bodies.push(JSON.parse(String(init?.body)) as { tags: string[] });
+        return new Response('{"success":true}', { status: 200 });
+      }) as typeof fetch;
+      try {
+        const ctx = await buildPluginContext(
+          { ...env, CF_API_TOKEN: 'fixture-token', CF_ZONE_ID: 'zone' },
+          {
+            waitUntil: () => undefined,
+            passThroughOnException: () => undefined,
+            props: {},
+          } as unknown as ExecutionContext,
+          {} as never,
+          {
+            plugin: pricing,
+            settings: {},
+            state: {
+              plugin_id: 'pricing',
+              enabled: 1,
+              version: '1.0.0',
+              settings: '{}',
+              secrets: '{}',
+              updated_at: '',
+            },
+          },
+        );
+        await ctx.purgeTags([
+          'price-alpha',
+          'site',
+          // Another plugin's tag and the core's, spelled in full: neither
+          // can be reached, both land in this plugin's own namespace.
+          'p:site-notes:notes',
+          `c:${alpha.id}`,
+          'home:en',
+        ]);
+      } finally {
+        globalThis.fetch = realFetch;
+      }
+      expect(bodies).toEqual([
+        {
+          tags: [
+            'p:pricing:price-alpha',
+            'site',
+            'p:pricing:p:site-notes:notes',
+            `p:pricing:c:${alpha.id}`,
+            'p:pricing:home:en',
+          ],
+        },
+      ]);
+    });
+
+    it('sends more than a hundred tags as several calls and stops at a failure', async () => {
+      const sizes: number[] = [];
+      let failAt = -1;
+      const realFetch = globalThis.fetch;
+      globalThis.fetch = (async (
+        _input: RequestInfo | URL,
+        init?: RequestInit,
+      ) => {
+        const { tags } = JSON.parse(String(init?.body)) as { tags: string[] };
+        sizes.push(tags.length);
+        return sizes.length === failAt
+          ? new Response('rate limited', { status: 429 })
+          : new Response('{"success":true}', { status: 200 });
+      }) as typeof fetch;
+      const configured = {
+        ...env,
+        CF_API_TOKEN: 'fixture-token',
+        CF_ZONE_ID: 'zone',
+      };
+      const tags = Array.from({ length: 250 }, (_, index) => `t${index}`);
+      try {
+        const all = await purgeNow(configured, tags);
+        expect(sizes).toEqual([100, 100, 50]);
+        expect(all).toMatchObject({ ok: true, status: 200 });
+        expect(all.tags).toHaveLength(250);
+
+        sizes.length = 0;
+        failAt = 2;
+        const stopped = await purgeNow(configured, tags);
+        expect(sizes).toEqual([100, 100]);
+        expect(stopped).toMatchObject({ ok: false, status: 429 });
+      } finally {
+        globalThis.fetch = realFetch;
+      }
     });
   });
 });
