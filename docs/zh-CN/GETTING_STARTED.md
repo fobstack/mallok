@@ -2,7 +2,7 @@
 
 [English](../GETTING_STARTED.md) · [中文文档](README.md)
 
-本指南适用于已发布的 **0.1.0-rc.8** 候选版，未完成的验收见[发布状态](RELEASE_STATUS.md)。[公开演示站](https://demo.mallok.dev/)只读；后台和询盘需要部署到自己的账号。
+本指南适用于已发布的 **0.1.0-rc.9** 候选版，未完成的验收见[发布状态](RELEASE_STATUS.md)。[公开演示站](https://demo.mallok.dev/)只读；后台和询盘需要部署到自己的账号。
 
 ## 1. 生成本地项目
 

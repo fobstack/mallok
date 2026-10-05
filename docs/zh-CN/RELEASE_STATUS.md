@@ -2,24 +2,36 @@
 
 [English](../RELEASE_STATUS.md) · [简体中文](RELEASE_STATUS.md)
 
-更新日期：**2026-10-02**。当前版本：**0.1.0-rc.8**，是公开候选版，不是 0.1 稳定版。
+更新日期：**2026-10-05**。当前版本：**0.1.0-rc.9**，是公开候选版，不是 0.1 稳定版。
 
-## 已发布的 rc.8
+## 已发布的 rc.9
 
-- [公开源码与发布页](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.8)。
-- [npm 包](https://www.npmjs.com/package/mallok/v/0.1.0-rc.8)已发布。`next` 和 `latest` 均指向本候选版，不代表 0.1 稳定版。
-- 源码：`ee063e9ffdd9914f1e8560d71fbf11807d1953a6`。
-- 包：`mallok-0.1.0-rc.8.tgz`。
-- SHA-256：`a1350de000a4776146d1f60b008bf55e3084cc02c6cd1070f777173e50996003`。
-- [CI](https://github.com/fobstack/mallok/actions/runs/36894290342) 与[完整发行检查](https://github.com/fobstack/mallok/actions/runs/36894296545)通过。
-- Linux CI、本机构建与全新克隆重建的 tarball 逐字节一致；针对该确切包的 27 项安装消费者检查通过。
-- 隔离测试站用 `mallok upgrade` 从 rc.7 升级，并部署同一个包到 `rc5-gate.mallok.dev`。页面、SEO 端点、Atelier 2.5.1 资源、缓存 MISS/HIT 与 HEAD 命中、凭证请求绕过及后台边界均符合预期。
-- **修复已在线上验证：**一个只有 `content:write` 权限的真实 API 令牌请求询盘面板，被拒绝并返回 403，提示需要 `export` 权限。该令牌专为此次验证创建，验证后已吊销。
+- [公开源码与发布页](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.9)。
+- [npm 包](https://www.npmjs.com/package/mallok/v/0.1.0-rc.9)已发布。`next` 和 `latest` 均指向本候选版，不代表 0.1 稳定版。
+- 源码：`8772a77e812336082416bdda9f0e4f393eb4234f`。
+- 包：`mallok-0.1.0-rc.9.tgz`。
+- SHA-256：`ab2f2993d769cb8f16be30b923501507e3ae790b3a206d19626fae8715891b0a`。
+- [CI](https://github.com/fobstack/mallok/actions/runs/37125252372) 与[完整发行检查](https://github.com/fobstack/mallok/actions/runs/37125253859)通过。
+- Linux CI、本机构建与全新克隆重建的 tarball 逐字节一致；针对该确切包的 29 项安装消费者检查通过。
+- 隔离测试站用 `mallok upgrade` 从 rc.8 升级，并部署同一个包到 `rc5-gate.mallok.dev`。页面、SEO 端点、缓存 MISS/HIT 与 HEAD 命中、凭证请求绕过及后台边界均符合预期。
+- **已在线上验证：**
+  - 中英文首页都显示产品区块，列出站点已发布的三个产品；rc.9 之前，Worker 渲染的首页只拿到文章。
+  - 一个没有 `mallok.json` 的双语文章包，用真实 CLI 和专为此次验证创建的令牌发布后，落在同一个翻译组里，两个页面都带有 hreflang；再次发布时两种语言都报告无变化。
+  - 带缓存校验头刷新后台子页面，返回 200。
 - npm 完整性校验与发行包一致。
 
-rc.8 是安全修复版本。读取插件面板数据现在需要 `export` 权限；此前任何 API 令牌都能通过面板接口读取全部询盘，绕过站点导出中保护同一批数据的权限。没有 `export` 的 API 令牌现在会收到 403，管理员登录会话不受影响。rc.8 不包含插件 API 2 的任何功能。
+rc.9 修复在 rc.7、rc.8 上搭建真实站点时发现的问题：发布的文章包各语言归入同一个翻译组；首页为主题列出的每种内容类型提供 `recent.<kind>`；生成的站点带文本模块类型声明和 setup key；可以从项目根目录发布；dry run 不再写入任何东西；以及两个后台修复。同时为插件导出了 `escapeHtml` 和 `renderTextTemplate`。更新日志里有四条升级说明。
 
-rc.6、rc.7 与 rc.8 均未重新采集 CPU 样本。下文 rc.5 性能数据仅为历史证据，不能作为 rc.8 跑分。维护者接受已测 CPU 限制用于开源及 RC 试用；稳定版验收仍未完成。
+未在线上验证的部分：生成站点的类型检查和从项目根目录发布，由针对该确切包的包测试和 CLI 测试验证；后台对已撤销令牌的显示，由端到端测试在真实浏览器里验证。
+
+rc.6 至 rc.9 均未重新采集 CPU 样本。下文 rc.5 性能数据仅为历史证据，不能作为 rc.9 跑分；首页现在为每个列出的内容类型执行一条语句，合在一次批量查询里。维护者接受已测 CPU 限制用于开源及 RC 试用；稳定版验收仍未完成。
+
+## rc.8 历史产物
+
+- 源码提交：`ee063e9ffdd9914f1e8560d71fbf11807d1953a6`。
+- 包：`mallok-0.1.0-rc.8.tgz`。
+- SHA-256：`a1350de000a4776146d1f60b008bf55e3084cc02c6cd1070f777173e50996003`。
+- 2026-10-02 发布：读取插件面板数据需要 `export` 权限。已在线上测试站用只有 `content:write` 的真实令牌验证，被拒绝。
 
 ## rc.7 历史产物
 

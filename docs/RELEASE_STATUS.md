@@ -2,40 +2,60 @@
 
 [English](RELEASE_STATUS.md) · [简体中文](zh-CN/RELEASE_STATUS.md)
 
-Snapshot: **October 2, 2026**. Current version: **0.1.0-rc.8**.
+Snapshot: **October 5, 2026**. Current version: **0.1.0-rc.9**.
 This is a public release candidate, not stable 0.1.
 
-## Published rc.8 candidate
+## Published rc.9 candidate
 
-- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.8).
-- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.8): `0.1.0-rc.8`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
-- Source: `ee063e9ffdd9914f1e8560d71fbf11807d1953a6`.
-- Package: `mallok-0.1.0-rc.8.tgz`.
-- SHA-256: `a1350de000a4776146d1f60b008bf55e3084cc02c6cd1070f777173e50996003`.
-- [CI](https://github.com/fobstack/mallok/actions/runs/36894290342) and
-  [complete release gate](https://github.com/fobstack/mallok/actions/runs/36894296545) passed.
+- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.9).
+- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.9): `0.1.0-rc.9`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
+- Source: `8772a77e812336082416bdda9f0e4f393eb4234f`.
+- Package: `mallok-0.1.0-rc.9.tgz`.
+- SHA-256: `ab2f2993d769cb8f16be30b923501507e3ae790b3a206d19626fae8715891b0a`.
+- [CI](https://github.com/fobstack/mallok/actions/runs/37125252372) and
+  [complete release gate](https://github.com/fobstack/mallok/actions/runs/37125253859) passed.
 - Linux CI, the local build and a clean-clone rebuild produced byte-for-byte
-  identical tarballs; 27 exact-artifact consumer checks passed.
-- The isolated test site was upgraded from rc.7 with `mallok upgrade` and the
-  exact package deployed to `rc5-gate.mallok.dev`. Pages, SEO endpoints,
-  Atelier 2.5.1 assets, cache MISS/HIT and HEAD hits, credential bypass and
-  admin boundaries behaved as intended.
-- **The fix was checked on the deployed site:** a real API token holding only
-  `content:write` asked for the inquiry panel and was refused with 403, naming
-  the `export` scope. The token was created for the check and revoked
-  afterwards.
+  identical tarballs; 29 exact-artifact consumer checks passed.
+- The isolated test site was upgraded from rc.8 with `mallok upgrade` and the
+  exact package deployed to `rc5-gate.mallok.dev`. Pages, SEO endpoints, cache
+  MISS/HIT and HEAD hits, credential bypass and admin boundaries behaved as
+  intended.
+- **Checked on the deployed site:**
+  - The home pages in both languages show the product section with the site's
+    three published products; before rc.9 a served home page was given
+    articles only.
+  - A two-language bundle without `mallok.json`, published with the real CLI
+    and a token created for the check, landed in one translation group, with
+    hreflang on both pages; publishing it again reported both unchanged.
+  - Reloading an admin route with cache validators answered 200.
 - Registry integrity matches the release artifact.
 
-rc.8 is a security release. Reading a plugin panel's rows now requires the
-`export` scope; before it, any API token could read every inquiry through the
-panel route, bypassing the scope that guards the same rows in the site
-export. An API token without `export` now receives 403; admin sessions are
-unaffected. No plugin API 2 feature ships in rc.8.
+rc.9 fixes defects found building a real site on rc.7 and rc.8: one
+translation group per published bundle; `recent.<kind>` on the home page for
+every kind the theme lists; text-module types and the setup key for generated
+sites; publishing from a project root; dry runs that write nothing; and two
+admin fixes. It also exports `escapeHtml` and `renderTextTemplate` for
+plugins. The changelog carries four upgrade notes.
 
-No CPU sample was taken for rc.6, rc.7 or rc.8. The rc.5 performance
-measurements below are historical and must not be reported as rc.8
-benchmarks. The maintainer accepted the measured CPU limitation for source
-opening and RC evaluation; stable acceptance remains incomplete.
+Not checked on the deployed site: the type-checking of a generated site and
+publishing from a project root, which are verified by the package tests
+against the exact tarball and by the CLI tests; and the admin's display of a
+revoked token, which is verified in a real browser by the end-to-end suite.
+
+No CPU sample was taken for rc.6 through rc.9. The rc.5 performance
+measurements below are historical and must not be reported as rc.9
+benchmarks; the home page now runs one statement per listed kind, in one
+batch. The maintainer accepted the measured CPU limitation for source opening
+and RC evaluation; stable acceptance remains incomplete.
+
+## Historical rc.8 artifact
+
+- Source commit: `ee063e9ffdd9914f1e8560d71fbf11807d1953a6`.
+- Package: `mallok-0.1.0-rc.8.tgz`.
+- SHA-256: `a1350de000a4776146d1f60b008bf55e3084cc02c6cd1070f777173e50996003`.
+- Released October 2, 2026: reading a plugin panel's rows requires the
+  `export` scope. Checked on the deployed test site with a real
+  `content:write`-only token, which was refused.
 
 ## Historical rc.7 artifact
 
