@@ -4,6 +4,91 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-rc.10] — 2026-10-06
+
+Plugin API 2 — what a plugin that ships inside a site needs to render its own
+data, serve its own pages and be edited in the admin — and three admin
+defects. **Read the upgrade notes: several things existing sites, themes and
+plugins relied on have changed.**
+
+### Fixed
+
+- **The admin no longer goes blank when a second content item is opened in
+  one session.** Any part of the admin that loads on demand crashed the second
+  time it was shown; a reload was the only way back.
+- **Opening an item no longer marks it "Unsaved".** The Markdown pane reported
+  the document being loaded into it as an edit. For a document with Windows
+  line endings, publishing it untouched rewrote every line ending.
+- **A plugin secret that has been removed is shown as not set** without a
+  reload.
+- **A theme that declares `clientScripts` is checked like any other.**
+  Declaring one script used to switch the script check off for the whole
+  theme. See the upgrade notes.
+
+### Added
+
+- **Settings → Email.** The Resend key and the sender address are site
+  settings, used by every plugin that sends email. `PUT
+  /_mallok/api/settings/email`, `POST /_mallok/api/settings/email/check`.
+- **Plugin API 2** (`docs/PLUGIN_API.md §13`). A plugin declares
+  `"pluginApi": 2` to use it; a plugin declaring 1 keeps the behaviour it had,
+  except where the upgrade notes say otherwise.
+  - `renderData`: a hook that reads the plugin's own tables while a page is
+    rendered, so a theme prints `plugins.<plugin_id>` in the cached HTML. One
+    database call per hook, read-only, at most two plugins per page; a failing
+    hook costs the page that data and its place in the cache, never the page.
+  - `renderData` may add `offers` to the page's `Product` structured data, and
+    declare cache tags of its own (`p:<plugin-id>:<tag>`).
+  - Routes with several segments and `:parameters`, a locale segment after the
+    plugin id, and JSON bodies passed whole as `input.json`.
+  - Rate-limit tiers: `"rateLimit": "strict" | "relaxed"`, each a binding in
+    `wrangler.jsonc`, counted per route.
+  - Pages: a route with `"render": "page"` returns a view and a theme layout
+    declared in `pluginLayouts` renders it, private and unindexed.
+  - `onContentDelete`, and editable `records` panels with `money` and `rows`
+    fields, sorting and search, optionally attached to the editor of one
+    content kind.
+- Themes may declare `pluginLayouts`, and read `plugins` on every page.
+
+### Upgrade notes
+
+**Every site**
+
+- **The Resend key and sender move from Plugins → Inquiry to Settings →
+  Email** on the first request after deploying. Nothing needs re-entering. A
+  script that wrote the key with `PUT /plugins/inquiry/secrets
+  {"resend_api_key": …}` gets 400; use `PUT /settings/email`. Rolling back to
+  an earlier release after the move leaves the inquiry plugin without its
+  key: re-enter it there.
+- **Add the second rate-limit binding.** `mallok upgrade` does not edit
+  `wrangler.jsonc`. Add `RATE_LIMITER_RELAXED` to `ratelimits` with a
+  `namespace_id` of its own and deploy (`docs/CLOUDFLARE_RESOURCES.md §4`).
+  Until then a route asking for the relaxed tier is held to the strict one.
+- **A `POST` to a plugin route from another site is refused (403).** An
+  inquiry form embedded on a different domain stops working; a form on the
+  site itself is unaffected.
+- Rate-limited plugin routes are counted per route, no longer per plugin.
+
+**Sites with their own theme**
+
+- **A theme that declares `clientScripts` may contain only `<script
+  src="{{ theme.asset_base }}/…">` tags naming a declared file.** Inline
+  script, a JSON-LD block included, `on…=` attributes and scripts from
+  anywhere else fail the build, naming the template.
+
+**Sites with their own plugins**
+
+- **`onContentSave` is now called.** It was documented and never run. A plugin
+  that declares it starts rewriting or refusing saves; it must give the same
+  answer for the same input, or every `mallok publish` becomes a change.
+- **`ctx.purgeTags` purges only the calling plugin's own tags, and `site`.**
+  A plugin that purged a core tag such as `c:<id>` declares its own tag from
+  `renderData` and purges that.
+- **A plugin that omits `pluginApi` is now taken as version 2**, and a version
+  2 route may not start with a segment shaped like a locale code (`de`, `go`,
+  `my-cart`). Declare `"pluginApi": 1` or rename the route.
+- The inquiry plugin's `from_address` is optional; empty uses the site sender.
+
 ## [0.1.0-rc.9] — 2026-10-03
 
 Defects found building a real site on rc.7 and rc.8, fixed.

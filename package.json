@@ -1,6 +1,6 @@
 {
   "name": "mallok",
-  "version": "0.1.0-rc.9",
+  "version": "0.1.0-rc.10",
   "private": true,
   "description": "The Cloudflare-native CMS and website builder for multilingual B2B websites. A WordPress alternative: Markdown in D1, web admin, Liquid themes, plugins, inquiry forms. Runs on Cloudflare's free tier.",
   "license": "Apache-2.0",

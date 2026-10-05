@@ -19,6 +19,8 @@
   rc.5 measurements remain historical evidence, not rc.8 measurements.
 - The runbook is updated for the 0.1.0-rc.9 candidate on 2026-10-03;
   rc.5 measurements remain historical evidence, not rc.9 measurements.
+- The runbook is updated for the 0.1.0-rc.10 candidate on 2026-10-06;
+  rc.5 measurements remain historical evidence, not rc.10 measurements.
 - Scope: everything between "all local work is done" and "0.1.0 is released".
 
 Every step below **except §4** needs something this repository cannot provide:
