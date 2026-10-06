@@ -76,6 +76,16 @@ const rowsFieldSchema = z
     message: 'A "rows" field must declare the fields of a row.',
   });
 
+/**
+ * Scalar fields keyed by name: what an action asks the person running it
+ * for (docs/PLUGIN_API.md §7.5). The same vocabulary as a record's fields,
+ * without `rows` — a prompt is a few values, not a table.
+ */
+export const scalarFieldsSchema = z.record(
+  z.string().regex(FIELD_NAME),
+  scalarFieldSchema,
+);
+
 /** One field of a record, as `plugin.json` declares it. */
 export const recordFieldSchema = z.union([rowsFieldSchema, scalarFieldSchema]);
 

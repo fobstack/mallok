@@ -280,4 +280,70 @@ describe('a records panel in plugin.json', () => {
       ).toThrow();
     }
   });
+
+  it('takes action parameters and related tables under plugin API 2', () => {
+    const extra = {
+      type: 'table',
+      actions: [
+        {
+          id: 'ship',
+          label: 'Ship',
+          params: { tracking_no: { type: 'string', required: true } },
+        },
+      ],
+      related: [
+        {
+          id: 'lines',
+          label: 'Lines',
+          table: 'p_shop_order_line',
+          foreignKey: 'order_id',
+          columns: [{ field: 'sku', label: 'SKU' }],
+        },
+      ],
+    };
+    const parsed = parsePluginManifest(manifest(2, extra)).panels[0];
+    expect(parsed?.actions[0]?.params?.tracking_no?.type).toBe('string');
+    expect(parsed?.related[0]?.foreignKey).toBe('order_id');
+    expect(
+      parsePluginManifest(manifest(1, { type: 'table' })).panels[0],
+    ).toMatchObject({ related: [] });
+
+    expect(() => parsePluginManifest(manifest(1, extra))).toThrow(
+      /action parameters or related rows, which need plugin API 2/,
+    );
+    for (const bad of [
+      // A child table outside the plugin's own prefix.
+      { related: [{ ...extra.related[0], table: 'content' }] },
+      { related: [{ ...extra.related[0], foreignKey: 'id; DROP' }] },
+      { related: [extra.related[0], extra.related[0]] },
+      { related: [{ ...extra.related[0], columns: [] }] },
+      // A prompt is a few values, not a table; and a download has no form.
+      {
+        actions: [
+          {
+            id: 'ship',
+            label: 'Ship',
+            params: {
+              lines: { type: 'rows', fields: { a: { type: 'string' } } },
+            },
+          },
+        ],
+      },
+      {
+        actions: [
+          {
+            id: 'csv',
+            label: 'CSV',
+            type: 'download',
+            params: { a: { type: 'string' } },
+          },
+        ],
+      },
+    ]) {
+      expect(
+        () => parsePluginManifest(manifest(2, { type: 'table', ...bad })),
+        JSON.stringify(bad),
+      ).toThrow();
+    }
+  });
 });

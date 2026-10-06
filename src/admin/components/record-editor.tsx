@@ -23,6 +23,7 @@ import type {
   RecordRowsField,
   RecordScalarField,
 } from '../types.js';
+import { RelatedRows } from './related-rows.js';
 
 type Values = Record<string, unknown>;
 
@@ -457,6 +458,13 @@ export function RecordEditor({
               />
             ),
           )}
+          {recordId === null ? null : (
+            <RelatedRows
+              pluginId={pluginId}
+              panel={panel}
+              parentId={recordId}
+            />
+          )}
           {failure === '' ? null : (
             <p className="error" role="alert">
               {failure}
@@ -496,6 +504,105 @@ export function RecordEditor({
           </div>
         </form>
       )}
+    </dialog>
+  );
+}
+
+/**
+ * Asks for the values an action declares before running it
+ * (docs/PLUGIN_API.md §7.5): a tracking number, a refund amount. The same
+ * controls as a record's fields, checked by the same code on the server.
+ */
+export function ActionParamsDialog({
+  pluginId,
+  panel,
+  action,
+  ids,
+  onClose,
+}: {
+  readonly pluginId: string;
+  readonly panel: PluginPanel;
+  readonly action: PluginPanel['actions'][number];
+  readonly ids: readonly string[];
+  /** `done` is true when the action ran. */
+  readonly onClose: (done: boolean) => void;
+}): JSX.Element {
+  const fields = action.params ?? {};
+  const [values, setValues] = useState<Values>(() =>
+    Object.fromEntries(
+      Object.entries(fields)
+        .filter(([, field]) => field.default !== undefined)
+        .map(([name, field]) => [name, field.default]),
+    ),
+  );
+  const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
+  const [failure, setFailure] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const run = async (event: { preventDefault(): void }): Promise<void> => {
+    event.preventDefault();
+    setBusy(true);
+    setFailure('');
+    try {
+      await api(
+        `/plugins/${pluginId}/panels/${panel.id}/actions/${action.id}`,
+        { method: 'POST', body: { ids, params: values } },
+      );
+      onClose(true);
+    } catch (caught) {
+      setErrors(caught instanceof ApiError ? caught.fields : {});
+      setFailure(
+        caught instanceof ApiError ? caught.message : 'The action failed.',
+      );
+      setBusy(false);
+    }
+  };
+
+  const count = ids.length;
+  return (
+    <dialog
+      className="modal record-editor"
+      aria-label={action.label}
+      ref={(element) => {
+        if (element !== null && !element.open) {
+          element.showModal();
+        }
+      }}
+      onClose={() => onClose(false)}
+      onCancel={() => onClose(false)}
+    >
+      <header className="modal-head">
+        <h2>{action.label}</h2>
+        <button type="button" className="ghost" onClick={() => onClose(false)}>
+          Close
+        </button>
+      </header>
+      <form onSubmit={(event) => void run(event)}>
+        <p className="help">
+          Applies to {count} selected row{count === 1 ? '' : 's'}.
+        </p>
+        {Object.entries(fields).map(([name, field]) => (
+          <ScalarField
+            key={name}
+            idPrefix={`action-${pluginId}-${action.id}`}
+            name={name}
+            field={field}
+            value={values[name]}
+            error={errors[name]}
+            onChange={(next) => setValues({ ...values, [name]: next })}
+          />
+        ))}
+        {failure === '' ? null : (
+          <p className="error" role="alert">
+            {failure}
+          </p>
+        )}
+        <div className="actions">
+          <button type="submit" className="primary" disabled={busy}>
+            {busy ? 'Working…' : action.label}
+          </button>
+        </div>
+      </form>
     </dialog>
   );
 }

@@ -693,6 +693,7 @@ with Task 22; added 2026-10-05]
 - A detail view shows related rows from a declared child table.
 - The path: parameters reach the handler; related rows are shown.
 - Depends on: Task 28. Contracts: `PLUGIN_API.md §7.5`, `ADMIN.md`.
+- **Done 2026-10-06** — `tasks/TASK-32.md`.
 
 **Task 33 — isolated scheduled hooks and a job API** [M9]
 - A `try/catch` per plugin in the cron tick, logging the plugin id.

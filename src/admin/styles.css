@@ -873,6 +873,12 @@ main {
 }
 
 /* Record forms of plugin panels */
+.related-rows {
+  margin-top: 1.2rem;
+}
+.related-rows h3 {
+  margin: 0 0 0.4rem;
+}
 .record-editor .actions {
   margin-top: 1rem;
 }

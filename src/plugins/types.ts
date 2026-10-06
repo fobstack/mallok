@@ -301,6 +301,11 @@ export interface PluginImplementation {
       (
         ids: readonly string[],
         ctx: PluginContext,
+        /**
+         * The values of the action's declared `params`, already checked
+         * against them; `{}` for an action that declares none.
+         */
+        params: Readonly<Record<string, unknown>>,
       ) => Promise<Response | undefined>
     >
   >;

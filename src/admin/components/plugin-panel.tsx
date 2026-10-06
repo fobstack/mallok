@@ -14,6 +14,7 @@ import { ApiError, api, csrf } from '../api.js';
 import { notice } from '../state.js';
 import type { PluginPanel } from '../types.js';
 import { lazyRoute } from './lazy.js';
+import { cell, RelatedRows } from './related-rows.js';
 
 /**
  * The form arrives with the first record that is opened, not with the list:
@@ -27,29 +28,20 @@ const RecordEditor = lazyRoute<{
   attachedTo?: string;
 }>(() => import('./record-editor.js').then((module) => module.RecordEditor));
 
+/** Asks for an action's parameters; shares the form's code, and its chunk. */
+const ActionParams = lazyRoute<{
+  pluginId: string;
+  panel: PluginPanel;
+  action: PluginPanel['actions'][number];
+  ids: readonly string[];
+  onClose: (done: boolean) => void;
+}>(() =>
+  import('./record-editor.js').then((module) => module.ActionParamsDialog),
+);
+
 type Row = Record<string, unknown>;
 
 const PAGE = 20;
-
-function cell(
-  value: unknown,
-  type: PluginPanel['columns'][number]['type'],
-): JSX.Element | string {
-  if (value === null || value === undefined || value === '') {
-    return '—';
-  }
-  const text = String(value);
-  if (type === 'email') {
-    return <a href={`mailto:${text}`}>{text}</a>;
-  }
-  if (type === 'datetime') {
-    return text.slice(0, 16).replace('T', ' ');
-  }
-  if (type === 'badge') {
-    return <span className={`pill ${text}`}>{text}</span>;
-  }
-  return text;
-}
 
 export function PluginPanelView({
   pluginId,
@@ -80,6 +72,10 @@ export function PluginPanelView({
   /** The record form: `undefined` closed, `null` a new record, else its id. */
   const [editing, setEditing] = useState<string | null | undefined>(undefined);
   const editable = panel.type === 'records';
+  /** The action whose parameters are being asked for, if any. */
+  const [asking, setAsking] = useState<PluginPanel['actions'][number] | null>(
+    null,
+  );
 
   const base = `/plugins/${pluginId}/panels/${panel.id}`;
 
@@ -174,6 +170,11 @@ export function PluginPanelView({
 
     if (selected.length === 0) {
       notice.value = 'Select at least one row first.';
+      return;
+    }
+    if (action.params !== undefined) {
+      // The action needs something from whoever runs it; ask first.
+      setAsking(action);
       return;
     }
     try {
@@ -365,7 +366,28 @@ export function PluginPanelView({
       </nav>
 
       {open === null ? null : (
-        <RowDetail panel={panel} row={open} onClose={() => setOpen(null)} />
+        <RowDetail
+          pluginId={pluginId}
+          panel={panel}
+          row={open}
+          onClose={() => setOpen(null)}
+        />
+      )}
+      {asking === null ? null : (
+        <ActionParams
+          key={asking.id}
+          pluginId={pluginId}
+          panel={panel}
+          action={asking}
+          ids={selected}
+          onClose={(done) => {
+            setAsking(null);
+            if (done) {
+              setSelected([]);
+              void reload();
+            }
+          }}
+        />
       )}
       {editing === undefined ? null : (
         <RecordEditor
@@ -384,10 +406,12 @@ export function PluginPanelView({
 }
 
 function RowDetail({
+  pluginId,
   panel,
   row,
   onClose,
 }: {
+  readonly pluginId: string;
   readonly panel: PluginPanel;
   readonly row: Row;
   readonly onClose: () => void;
@@ -418,6 +442,11 @@ function RowDetail({
           </div>
         ))}
       </dl>
+      <RelatedRows
+        pluginId={pluginId}
+        panel={panel}
+        parentId={String(row.id ?? '')}
+      />
     </dialog>
   );
 }

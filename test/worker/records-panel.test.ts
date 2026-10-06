@@ -616,4 +616,167 @@ describe('records panels', () => {
       expect(id).not.toBe('');
     });
   });
+
+  describe('action parameters and related rows', () => {
+    const Actions = `${BASE}/actions`;
+    let subject = '';
+
+    async function lastLog(prefix: string): Promise<string> {
+      const row = await env.DB.prepare(
+        'SELECT note FROM p_catalog_log WHERE note LIKE ? ORDER BY created_at DESC, rowid DESC LIMIT 1',
+      )
+        .bind(`${prefix}%`)
+        .first<{ note: string }>();
+      return row?.note ?? '';
+    }
+
+    beforeAll(async () => {
+      subject = await create(
+        item({
+          code: 'TI-ACT',
+          name: 'Actionable',
+          variants: [
+            { sku: 'ACT-2', stock: 2, price: { amount: 500, currency: 'USD' } },
+            { sku: 'ACT-1', stock: null, price: null },
+          ],
+        }),
+      );
+    });
+
+    it('hands the handler the parameters, checked against their declaration', async () => {
+      const response = await api('POST', `${Actions}/set_status`, {
+        ids: [subject],
+        params: { status: 'archived', reason: 'discontinued', extra: 'x' },
+      });
+      expect(response.status).toBe(200);
+      const row = await env.DB.prepare(
+        'SELECT status FROM p_catalog_item WHERE id = ?',
+      )
+        .bind(subject)
+        .first<{ status: string }>();
+      expect(row?.status).toBe('archived');
+      // Declared parameters only, in declared order; the stray key is gone.
+      expect(await lastLog('set_status:')).toBe(
+        'set_status:{"status":"archived","reason":"discontinued"}',
+      );
+    });
+
+    it('refuses parameters the declaration does not allow, before the plugin runs', async () => {
+      for (const [params, errors] of [
+        [{}, { status: 'This field is required.' }],
+        [undefined, { status: 'This field is required.' }],
+        [{ status: 'gone' }, { status: 'Choose one of the listed values.' }],
+        [
+          { status: 'active', reason: 'x'.repeat(21) },
+          { reason: 'Must be at most 20 characters.' },
+        ],
+      ] as const) {
+        const response = await api('POST', `${Actions}/set_status`, {
+          ids: [subject],
+          ...(params === undefined ? {} : { params }),
+        });
+        expect(response.status).toBe(422);
+        expect(((await response.json()) as { errors: unknown }).errors).toEqual(
+          errors,
+        );
+      }
+      const row = await env.DB.prepare(
+        'SELECT status FROM p_catalog_item WHERE id = ?',
+      )
+        .bind(subject)
+        .first<{ status: string }>();
+      expect(row?.status).toBe('archived');
+    });
+
+    it('gives an action that declares none an empty set, whatever was sent', async () => {
+      const response = await api('POST', `${Actions}/touch`, {
+        ids: [subject],
+        params: { status: 'forged' },
+      });
+      expect(response.status).toBe(200);
+      expect(await lastLog('touch:')).toBe('touch:1:{}');
+    });
+
+    it('tells the admin which actions ask for something, and what is related', async () => {
+      const { plugins } = (await (
+        await api('GET', '/_mallok/api/plugins')
+      ).json()) as {
+        plugins: {
+          id: string;
+          panels: {
+            id: string;
+            actions: {
+              id: string;
+              params?: Record<string, { type: string }>;
+            }[];
+            related: { id: string; label: string }[];
+          }[];
+        }[];
+      };
+      const panel = plugins
+        .find((plugin) => plugin.id === 'catalog')
+        ?.panels.find((entry) => entry.id === 'items');
+      expect(panel?.actions.map((action) => action.id)).toEqual([
+        'set_status',
+        'touch',
+      ]);
+      expect(Object.keys(panel?.actions[0]?.params ?? {})).toEqual([
+        'status',
+        'reason',
+      ]);
+      expect(panel?.actions[1]?.params).toBeUndefined();
+      expect(panel?.related).toMatchObject([
+        { id: 'variants', label: 'Variants' },
+      ]);
+      // The inquiry panel declares neither and is unchanged.
+      const inquiry = plugins.find((plugin) => plugin.id === 'inquiry')
+        ?.panels[0];
+      expect(inquiry?.related).toEqual([]);
+      expect(
+        inquiry?.actions.every((action) => action.params === undefined),
+      ).toBe(true);
+    });
+
+    it("lists a row's related rows: its own, in order, declared columns only", async () => {
+      const response = await api(
+        'GET',
+        `${BASE}/related/variants?parent=${subject}`,
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        rows: [
+          { sku: 'ACT-2', stock: 2 },
+          { sku: 'ACT-1', stock: null },
+        ],
+        hasMore: false,
+      });
+      const none = await api(
+        'GET',
+        `${BASE}/related/variants?parent=no-such-row`,
+      );
+      expect(await none.json()).toEqual({ rows: [], hasMore: false });
+    });
+
+    it('guards related rows like the rows they belong to', async () => {
+      const path = `${BASE}/related/variants?parent=${subject}`;
+      expect((await api('GET', path, undefined, tokens.writer)).status).toBe(
+        403,
+      );
+      expect((await api('GET', path, undefined, tokens.reader)).status).toBe(
+        200,
+      );
+      expect((await api('GET', `${BASE}/related/variants`)).status).toBe(400);
+      expect(
+        (await api('GET', `${BASE}/related/p_catalog_log?parent=x`)).status,
+      ).toBe(404);
+      expect(
+        (
+          await api(
+            'GET',
+            '/_mallok/api/plugins/inquiry/panels/inquiries/related/variants?parent=x',
+          )
+        ).status,
+      ).toBe(404);
+    });
+  });
 });

@@ -35,6 +35,8 @@ import { parseSiteSettings } from './site.js';
 const PANEL_PAGE = 20;
 const PANEL_PAGE_MAX = 100;
 const ACTION_IDS_MAX = 100;
+/** Most rows of a related table shown with one parent row. */
+const RELATED_MAX = 100;
 /** Longest search term a panel list accepts. */
 const SEARCH_MAX = 100;
 /** Longest record id accepted in a path. */
@@ -111,6 +113,17 @@ export async function routePlugins(
       parts[2] ?? '',
       parts[4] ?? null,
       method,
+    );
+  }
+  if (
+    parts.length === 5 &&
+    parts[1] === 'panels' &&
+    parts[3] === 'related' &&
+    method === 'GET'
+  ) {
+    // The same business data as the panel's own rows, under the same scope.
+    return withScope(principal, 'export', () =>
+      getRelated(request, env, plugin, parts[2] ?? '', parts[4] ?? ''),
     );
   }
   if (
@@ -604,9 +617,74 @@ async function runPanelAction(
     settings: parseJson(state.settings),
     state,
   };
+  // What the action asks for, checked against its declaration before the
+  // plugin sees it, exactly as a record's values are.
+  let params: Record<string, unknown> = {};
+  if (action.params !== undefined) {
+    const submitted = body?.params;
+    const checked = validateRecord(
+      action.params,
+      submitted !== null &&
+        typeof submitted === 'object' &&
+        !Array.isArray(submitted)
+        ? (submitted as Record<string, unknown>)
+        : {},
+    );
+    if (Object.keys(checked.errors).length > 0) {
+      return json(
+        { error: 'Some fields need attention.', errors: checked.errors },
+        { status: 422 },
+      );
+    }
+    params = checked.values;
+  }
+
   const pluginCtx = await buildPluginContext(env, ctx, site, active);
-  const response = await handler(ids, pluginCtx);
+  const response = await handler(ids, pluginCtx, params);
   return response ?? json({ ok: true, ids });
+}
+
+/**
+ * `…/panels/<panel>/related/<id>?parent=<row id>`: the rows of a declared
+ * child table that belong to one row of the panel. Read-only, and read by
+ * the core the way a panel's own list is: table and column names come from
+ * the manifest, never from the request.
+ */
+async function getRelated(
+  request: Request,
+  env: Env,
+  plugin: MallokPlugin,
+  panelId: string,
+  relatedId: string,
+): Promise<Response> {
+  const panel = plugin.manifest.panels.find((entry) => entry.id === panelId);
+  const related = panel?.related.find((entry) => entry.id === relatedId);
+  if (panel === undefined || related === undefined) {
+    return problem(404, 'No such related table.');
+  }
+  const parent = new URL(request.url).searchParams.get('parent');
+  if (parent === null || parent === '') {
+    return problem(400, 'Name the row with ?parent=<id>.');
+  }
+  const rows = await env.DB.prepare(
+    `SELECT * FROM ${related.table} WHERE ${related.foreignKey} = ?
+       ORDER BY ${related.orderBy ?? 'rowid'} LIMIT ?`,
+  )
+    .bind(parent, RELATED_MAX + 1)
+    .all<Record<string, unknown>>();
+  const fields = related.columns.map((column) => column.field);
+  return json({
+    rows: rows.results.slice(0, RELATED_MAX).map((row) => {
+      const out: Record<string, unknown> = {};
+      for (const field of fields) {
+        if (field in row) {
+          out[field] = row[field];
+        }
+      }
+      return out;
+    }),
+    hasMore: rows.results.length > RELATED_MAX,
+  });
 }
 
 async function readJson(

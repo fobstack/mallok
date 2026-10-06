@@ -66,6 +66,36 @@ export const catalogPlugin = definePlugin({
         table: 'p_catalog_item',
         orderBy: 'created_at',
         search: ['name', 'code'],
+        actions: [
+          {
+            id: 'set_status',
+            label: 'Set status',
+            params: {
+              status: {
+                type: 'select',
+                label: 'New status',
+                required: true,
+                choices: ['active', 'archived'],
+              },
+              reason: { type: 'string', label: 'Reason', max: 20 },
+            },
+          },
+          { id: 'touch', label: 'Touch' },
+        ],
+        // The variants of the row that is open, read-only.
+        related: [
+          {
+            id: 'variants',
+            label: 'Variants',
+            table: 'p_catalog_variant',
+            foreignKey: 'item_id',
+            orderBy: 'position',
+            columns: [
+              { field: 'sku', label: 'SKU' },
+              { field: 'stock', label: 'Stock' },
+            ],
+          },
+        ],
         columns: [
           { field: 'name', label: 'Name', sortable: true },
           { field: 'code', label: 'Code', sortable: true },
@@ -168,6 +198,43 @@ export const catalogPlugin = definePlugin({
           .bind(ref.translationGroup)
           .run();
       }
+    },
+  },
+  actions: {
+    set_status: async (ids, ctx, params) => {
+      for (const id of ids) {
+        await ctx.db
+          .prepare('UPDATE p_catalog_item SET status = ? WHERE id = ?')
+          .bind(String(params.status), id)
+          .run();
+      }
+      // What the handler was handed, kept where a test can read it.
+      await ctx.db
+        .prepare(
+          'INSERT INTO p_catalog_log (id, note, seen_keys, created_at) VALUES (?, ?, ?, ?)',
+        )
+        .bind(
+          crypto.randomUUID(),
+          `set_status:${JSON.stringify(params)}`,
+          Object.keys(params).sort().join(','),
+          new Date().toISOString(),
+        )
+        .run();
+      return undefined;
+    },
+    touch: async (ids, ctx, params) => {
+      await ctx.db
+        .prepare(
+          'INSERT INTO p_catalog_log (id, note, seen_keys, created_at) VALUES (?, ?, ?, ?)',
+        )
+        .bind(
+          crypto.randomUUID(),
+          `touch:${ids.length}:${JSON.stringify(params)}`,
+          '',
+          new Date().toISOString(),
+        )
+        .run();
+      return undefined;
     },
   },
   records: {

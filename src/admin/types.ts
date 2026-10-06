@@ -175,6 +175,16 @@ export interface PluginPanel {
     id: string;
     label: string;
     type: 'update' | 'download';
+    /** Values to ask for before the action runs. */
+    params?: Readonly<Record<string, RecordScalarField>>;
+  }[];
+  /** Child tables shown read-only with one row of the panel. */
+  readonly related: readonly {
+    id: string;
+    label: string;
+    table: string;
+    foreignKey: string;
+    columns: PluginPanel['columns'];
   }[];
 }
 

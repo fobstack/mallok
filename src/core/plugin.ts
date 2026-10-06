@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { LOCALE_PATTERN } from './paths.js';
-import { recordFieldsSchema } from './records.js';
+import { recordFieldsSchema, scalarFieldsSchema } from './records.js';
 
 /** Version of the plugin contract this build understands. */
 export const PLUGIN_API_VERSION = 2;
@@ -211,6 +211,34 @@ const panelSchema = z
             id: z.string().regex(/^[a-z_][a-z0-9_]*$/),
             label: z.string(),
             type: z.enum(['update', 'download']).default('update'),
+            /**
+             * Values the admin asks for before running the action — a
+             * tracking number, a refund amount. Plugin API 2.
+             */
+            params: scalarFieldsSchema.optional(),
+          })
+          .strict(),
+      )
+      .default([]),
+    /**
+     * Child tables shown read-only with one row of the panel: the lines of
+     * an order. Plugin API 2.
+     */
+    related: z
+      .array(
+        z
+          .object({
+            id: z.string().regex(/^[a-z][a-z0-9-]*$/),
+            label: z.string(),
+            /** Must carry the plugin's `p_<id>_` prefix; checked below. */
+            table: z.string().regex(/^[a-z_][a-z0-9_]*$/),
+            /** The child table's column holding the parent row's id. */
+            foreignKey: z.string().regex(/^[a-z_][a-z0-9_]*$/),
+            columns: z.array(panelColumnSchema).min(1),
+            orderBy: z
+              .string()
+              .regex(/^[a-z_][a-z0-9_]*$/)
+              .optional(),
           })
           .strict(),
       )
@@ -328,7 +356,40 @@ export const pluginManifestSchema = z
           message: `Panel "${panel.id}" declares sorting or search, which needs plugin API 2; this plugin declares ${manifest.pluginApi}.`,
         });
       }
+      const prefix = `p_${manifest.id.replace(/-/g, '_')}_`;
+      const relatedIds = new Set<string>();
+      for (const related of panel.related) {
+        if (!related.table.startsWith(prefix)) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Related table "${related.table}" must start with "${prefix}".`,
+          });
+        }
+        if (relatedIds.has(related.id)) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Panel "${panel.id}" declares the related table "${related.id}" more than once.`,
+          });
+        }
+        relatedIds.add(related.id);
+      }
+      if (
+        manifest.pluginApi < 2 &&
+        (panel.related.length > 0 ||
+          panel.actions.some((action) => action.params !== undefined))
+      ) {
+        issue.addIssue({
+          code: 'custom',
+          message: `Panel "${panel.id}" declares action parameters or related rows, which need plugin API 2; this plugin declares ${manifest.pluginApi}.`,
+        });
+      }
       for (const action of panel.actions) {
+        if (action.type === 'download' && action.params !== undefined) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Action "${action.id}" is a download and cannot take parameters.`,
+          });
+        }
         if (actionIds.has(action.id)) {
           issue.addIssue({
             code: 'custom',

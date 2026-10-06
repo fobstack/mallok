@@ -318,6 +318,9 @@ See §4.1. Two additions:
   messages come from the server and appear beside the field they are about,
   including ones only the plugin can produce. Delete is offered only when the
   plugin provides it, and asks first.
+- An action that declares parameters opens a small form first, with the same
+  controls and the same server-side messages as a record; a row's detail
+  view and a record's edit form list the related rows the panel declares.
 - **A panel attached to a content kind is in that kind's editor**, below the
   three panes, for the item that is open; the editor bar links down to it.
   It is not inside the panes — the editor fills the window, and a panel

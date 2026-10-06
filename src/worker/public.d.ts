@@ -241,6 +241,24 @@ export interface PluginPanelDeclaration {
     readonly id: string;
     readonly label: string;
     readonly type: 'update' | 'download';
+    /** Values the admin asks for before running the action (§7.5). */
+    readonly params?:
+      | Readonly<Record<string, PluginRecordScalarField>>
+      | undefined;
+  }[];
+  /** Child tables shown read-only with one row of the panel (§7.5). */
+  readonly related: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly table: string;
+    readonly foreignKey: string;
+    readonly columns: readonly {
+      readonly field: string;
+      readonly label: string;
+      readonly type: 'text' | 'email' | 'datetime' | 'badge';
+      readonly sortable: boolean;
+    }[];
+    readonly orderBy?: string | undefined;
   }[];
 }
 
@@ -528,6 +546,11 @@ export interface PluginImplementation {
       (
         ids: readonly string[],
         ctx: PluginContext,
+        /**
+         * The values of the action's declared `params`, already checked
+         * against them; `{}` for an action that declares none.
+         */
+        params: Readonly<Record<string, unknown>>,
       ) => Promise<Response | undefined>
     >
   >;

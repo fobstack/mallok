@@ -115,6 +115,36 @@ test('records are created, edited, sorted, searched and deleted from the declare
   await panel.getByLabel('Search').fill('');
   await expect.poll(names).toEqual(['Zulu plate', 'Alpha bar']);
 
+  // --- an action that asks for something first ----------------------------
+  const alpha = panel.locator('tbody tr', { hasText: 'Alpha bar' });
+  await alpha.getByRole('checkbox').check();
+  await panel.getByRole('button', { name: 'Set status' }).click();
+  const ask = page.getByRole('dialog', { name: 'Set status' });
+  await expect(ask).toContainText('Applies to 1 selected row.');
+  // Nothing chosen yet: the server checks the declaration and the message
+  // lands on the field.
+  await ask.getByLabel('Reason').fill('discontinued');
+  await ask.getByRole('button', { name: 'Set status' }).click();
+  await expect(
+    ask.locator('.field', { hasText: 'New status' }).getByRole('alert'),
+  ).toHaveText('This field is required.');
+  await ask.getByLabel('New status').selectOption('archived');
+  await ask.getByRole('button', { name: 'Set status' }).click();
+  await expect(ask).toHaveCount(0);
+  await expect(alpha.locator('.pill')).toHaveText('archived');
+
+  // --- related rows: the variants of the record that is open --------------
+  await alpha.getByRole('button', { name: 'Edit Alpha bar' }).click();
+  const related = page
+    .getByRole('dialog', { name: 'Edit: Catalog items' })
+    .getByRole('region', { name: 'Variants' });
+  await expect(related.locator('tbody tr')).toHaveCount(1);
+  await expect(related.locator('tbody tr')).toContainText('TI-BAR-20');
+  await page
+    .getByRole('dialog', { name: 'Edit: Catalog items' })
+    .getByRole('button', { name: 'Close' })
+    .click();
+
   // --- delete, which asks first -------------------------------------------
   await panel.getByRole('button', { name: 'Edit Zulu plate' }).click();
   const doomed = page.getByRole('dialog', { name: 'Edit: Catalog items' });
@@ -129,7 +159,8 @@ test('records are created, edited, sorted, searched and deleted from the declare
   const note = page.getByRole('dialog', { name: 'New: Catalog log' });
   await note.getByLabel('Note').fill('first entry');
   await note.getByRole('button', { name: 'Save' }).click();
-  await log.getByRole('button', { name: /^Edit/ }).click();
+  // The action above left a line of its own in this log; open ours.
+  await log.getByRole('button', { name: 'Edit first entry' }).click();
   const opened = page.getByRole('dialog', { name: 'Edit: Catalog log' });
   await expect(opened.getByLabel('Note')).toHaveValue('first entry');
   await expect(opened.getByRole('button', { name: 'Delete…' })).toHaveCount(0);

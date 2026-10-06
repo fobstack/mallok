@@ -875,6 +875,54 @@ Scopes, for API tokens (a signed-in session holds every scope):
 | A `download` action | `export` |
 | Any other action | `content:write` |
 
+**Action parameters (plugin API 2).** An action may ask whoever runs it for
+a few values first — a tracking number, a refund amount:
+
+```jsonc
+"actions": [
+  { "id": "mark_shipped", "label": "Mark shipped",
+    "params": {
+      "tracking_no": { "type": "string", "label": "Tracking number", "required": true },
+      "carrier":     { "type": "select", "label": "Carrier", "choices": ["DHL", "FedEx"] }
+    } }
+]
+```
+
+```ts
+export const actions = {
+  async mark_shipped(ids, ctx, params) { … params.tracking_no … },
+};
+```
+
+- `params` uses the scalar field types of a record (below), `money`
+  included; `rows` is not available.
+- The admin shows a form with those fields before running the action, and
+  the core checks what was submitted against the declaration exactly as it
+  checks a record: a failure is a 422 with messages by field, and the handler
+  is not called.
+- **The handler receives them as its third argument**: `(ids, ctx, params)`.
+  Only declared parameters arrive; an action that declares none receives
+  `{}`. A version 1 handler written as `(ids, ctx)` is unaffected.
+- A `download` action cannot take parameters.
+
+**Related rows (plugin API 2).** A panel may show, read-only, the rows of a
+child table that belong to the row being looked at — the lines of an order:
+
+```jsonc
+"related": [
+  { "id": "lines", "label": "Order lines",
+    "table": "p_shop_order_line", "foreignKey": "order_id", "orderBy": "position",
+    "columns": [ { "field": "sku", "label": "SKU" }, { "field": "quantity", "label": "Qty" } ] }
+]
+```
+
+- They appear in a row's detail view, and in a record's edit form.
+- The core reads them as it reads the panel's list: from `table`, where
+  `foreignKey` equals the row's `id`, the declared columns only, at most 100
+  rows. The table must carry the plugin's `p_<id>_` prefix.
+- `GET …/panels/<panel>/related/<id>?parent=<row id>` needs the `export`
+  scope, like the rows they belong to.
+
 **Sorting and search (plugin API 2).** Both are declared, and both apply to
 either type of panel:
 
@@ -1274,7 +1322,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Done |
 | Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Done |
 | Raw-body routes (`body: "raw"`) | §7.2 | 31 | Done |
-| Action parameters and related rows | §7.5 | 32 | Planned |
+| Action parameters and related rows | §7.5 | 32 | Done |
 | Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`) | §5.5, §7.4 | 33 | Planned |
 
 Theme-side changes in the same phase are documented in `THEME_FORMAT.md`:
