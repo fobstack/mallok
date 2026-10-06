@@ -685,6 +685,7 @@ with Task 22; added 2026-10-05]
 - **Owner decision, 2026-10-05: the order stays** — after Task 26, in P1.
   Nundar's first phase needs no payment.
 - Depends on: Task 26. Contract: `PLUGIN_API.md §7.2`.
+- **Done 2026-10-06** — `tasks/TASK-31.md`.
 
 **Task 32 — action parameters and related rows** [M6, parts C and D]
 - Actions declare `params`, the admin prompts for them, and the handler

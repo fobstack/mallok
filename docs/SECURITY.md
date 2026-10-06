@@ -259,7 +259,9 @@ The core does the following for every plugin route (`PLUGIN_API.md §7.2`):
    browser acting for a visitor — and a `GET` is never checked, so a handler
    must not change state on `GET`. This is the CSRF defence for plugin pages
    that keep a visitor's state in a cookie; the admin's own writes use the
-   token of §3.3;
+   token of §3.3. **A raw-body route is exempt**: it is called by
+   another server and authenticates the call itself, by verifying a
+   signature over the body's bytes, and it is capped in size;
 1. body parsing, with a size limit;
 2. zod validation;
 3. the server-side Turnstile `siteverify`, when `turnstile: true` is declared;
