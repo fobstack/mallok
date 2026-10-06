@@ -118,8 +118,14 @@ export default definePage<PublicLocals>()({
     }
 
     // 2. A kind's list page, whose base path comes from the site settings.
+    //    A kind the theme gives no list layout has no list page: its items
+    //    are served under the base, and the base itself names nothing
+    //    (docs/THEME_FORMAT.md §7.4).
     const list = matchList(locals.rest, settings.kinds);
-    if (list !== null) {
+    if (
+      list !== null &&
+      locals.render.theme.manifest.kinds[list.kind]?.listLayout !== undefined
+    ) {
       const rows = await listPublished(
         locals.env.DB,
         list.kind,

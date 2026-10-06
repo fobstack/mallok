@@ -33,6 +33,13 @@ The rest of plugin API 2, lists of references, and starters a site brings.
   `records` panel handler. `defineStarter` checks one where it is written.
 - The wizard's last screen lists what a starter could not import, and why.
 
+### Fixed
+
+- **The base address of a kind with no list layout answers 404, not 500.** A
+  theme kind declared with a layout and no `listLayout` serves its items
+  under the kind's base; a request for the base itself failed with "Internal
+  error" instead of the theme's not-found page.
+
 ### Changed
 
 - Plugin jobs run last in a cron tick, after clean-up and scheduled
