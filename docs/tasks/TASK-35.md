@@ -10,8 +10,8 @@
 | Part | State | What it needs |
 | --- | --- | --- |
 | Re-measure cold-render CPU and D1 round trips on a real account with `renderData` active | **`NOT_RUN`** | A deployment on a real account that carries a plugin with `renderData`, made by the maintainer (`docs/RELEASE_GATE.md §9`); the samples come from Workers Logs, not from this repository |
-| Choose the version | **Open, the owner's** | `0.1.0-rc.11`, or `0.2.0` given the plugin contract change |
-| Release through `docs/RELEASE_GATE.md` | **Not started** | The version; then the gate, whose deploy and publish steps are the maintainer's |
+| Choose the version | **Decided 2026-10-06: `0.1.0-rc.11`** | — |
+| Release through `docs/RELEASE_GATE.md` | **In progress** | The gate's deploy and publish steps are the maintainer's; `docs/RELEASE_STATUS.md` records the outcome |
 | Report to Nundar | **Drafted**, §3 below | The published version and the measured numbers, once they exist |
 
 Nothing in this task was done by assumption: no number below was measured,
@@ -21,10 +21,12 @@ and none is claimed.
 
 - **`0.1.0-rc.10`** (public, `latest` and `next`) carries Tasks 18–30, 36–38,
   40 and 41: all of P0.
-- **Unreleased**, on the branch `feature/plugin-api-p1`: Task 31 (raw-body
-  routes), Task 32 (action parameters, related rows), Task 33 (isolated
-  `scheduled`, jobs), Task 39 (`reference[]`), Task 34 (site starters).
-  `CHANGELOG.md` has them under "Unreleased".
+- **`0.1.0-rc.11`**, being released: Task 31 (raw-body routes), Task 32
+  (action parameters, related rows), Task 33 (isolated `scheduled`, jobs),
+  Task 39 (`reference[]`), Task 34 (site starters), and Nundar's later items
+  as Tasks 42–46 (form labels from the theme, a tagline per language, 404 at
+  a list-less kind's base, `site.kinds`, nothing stored for an unclaimed
+  site).
 
 What local tests measure in place of the real account, and what that is
 worth: `test/worker/budget.test.ts` counts D1 round trips of a cold render —

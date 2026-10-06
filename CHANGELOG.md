@@ -4,10 +4,11 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0-rc.11] — 2026-10-06
 
-Written and passing locally; not released, and not run on a real account.
-The rest of plugin API 2, lists of references, and starters a site brings.
+The rest of plugin API 2 — raw-body routes, action parameters, jobs — lists
+of references, starters a site brings, a tagline per language, and three
+fixes. Two schema migrations run on the first request after deploying.
 
 ### Added
 

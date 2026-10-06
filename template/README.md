@@ -41,7 +41,7 @@ administrator exists are never cached.
 ## Upgrading Mallok
 
 ```sh
-npx mallok upgrade --to 0.1.0-rc.10
+npx mallok upgrade --to 0.1.0-rc.11
 ```
 
 It sets the exact version, installs it, and re-runs this project's own
