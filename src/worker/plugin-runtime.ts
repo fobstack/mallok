@@ -14,6 +14,7 @@ import {
   matchPluginRoute,
   RAW_BODY_BYTES_DEFAULT,
   sha256Hex,
+  themeStrings,
 } from '../core/index.js';
 import {
   completeJob,
@@ -33,7 +34,7 @@ import type {
   PluginRequestContext,
 } from '../plugins/types.js';
 import { pluginPurgeTags, purgeTags } from './cache.js';
-import { compiledPlugins } from './composition.js';
+import { activeTheme, compiledPlugins } from './composition.js';
 import { queueEmail, STUCK_CLAIM_MS } from './email.js';
 import type { Env } from './env.js';
 import { problem } from './http.js';
@@ -124,13 +125,19 @@ export function beforeRenderHooks(
 export async function runAfterRender(
   rows: readonly PluginStateRow[],
   html: string,
-  ctx: Omit<PluginRenderContext, 'settings'>,
+  ctx: Omit<PluginRenderContext, 'settings' | 't'>,
 ): Promise<string> {
   let out = html;
+  // Read once, and only when a hook is there to use it.
+  let strings: Readonly<Record<string, string>> | undefined;
   for (const { plugin, settings } of activePlugins(rows)) {
     const hook = plugin.hooks?.afterRender;
     if (hook !== undefined) {
-      out = await hook(out, { ...ctx, settings });
+      if (strings === undefined) {
+        const theme = activeTheme();
+        strings = themeStrings(theme.manifest, theme.files, ctx.locale);
+      }
+      out = await hook(out, { ...ctx, settings, t: strings });
     }
   }
   return out;

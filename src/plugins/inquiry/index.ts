@@ -286,6 +286,7 @@ export const inquiryPlugin = defineOfficialPlugin({
         path: ctx.path,
         contentId: ctx.content?.id ?? null,
         sitekey,
+        t: ctx.t,
       });
       return html.replaceAll(INQUIRY_MARKER, form);
     },

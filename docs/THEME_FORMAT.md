@@ -697,6 +697,26 @@ Two keys are read by the core rather than by a template:
 | `not_found_title` | `Page not found` |
 | `not_found_body` | `The page you asked for is not here. It may have moved, or the link may be wrong.` |
 
+Six more are read by the official `inquiry` plugin, for the labels of the
+form it puts where an author writes `[[inquiry]]`. All are optional:
+
+| Key | The plugin's own text when the key is absent or blank |
+| --- | --- |
+| `inquiry_name` | `Your name` |
+| `inquiry_email` | `Email` |
+| `inquiry_company` | `Company` |
+| `inquiry_phone` | `Phone / WhatsApp` |
+| `inquiry_message` | `Message` |
+| `inquiry_submit` | `Send inquiry` |
+
+The plugin has its own text in English and Chinese and uses English for any
+other language, so **a theme with packs in further languages should define
+these six in each**, or the form on a German page reads in English. Because
+of the fallback rule above, a key defined only in the default pack is used
+on every language's pages — including Chinese ones, in place of the plugin's
+Chinese. Define them per language or not at all. Any plugin can read the
+pack the same way (`PLUGIN_API.md §5.3`).
+
 A missing page is rendered through the theme's own `page` layout, so a visitor
 who mistypes a URL still gets the site's header, navigation and footer. No
 theme needs a `404` layout, and none of the official themes has one.

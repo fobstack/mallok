@@ -48,14 +48,35 @@ export interface InquiryFormInput {
   readonly contentId: string | null;
   /** Turnstile site key; empty renders the form without the widget. */
   readonly sitekey: string;
+  /**
+   * The active theme's language pack for the page. A label it defines —
+   * `inquiry_name`, `inquiry_email`, `inquiry_company`, `inquiry_phone`,
+   * `inquiry_message`, `inquiry_submit` — is used; each one it does not falls
+   * back to this plugin's own text.
+   */
+  readonly t?: Readonly<Record<string, string>>;
 }
 
 /** Builds the form HTML. Pure; safe to cache with the page. */
 export function buildInquiryForm(input: InquiryFormInput): string {
-  const strings = STRINGS[input.locale.split('-')[0] ?? ''] ?? STRINGS.en;
-  if (strings === undefined) {
+  const own = STRINGS[input.locale.split('-')[0] ?? ''] ?? STRINGS.en;
+  if (own === undefined) {
     return '';
   }
+  // The theme carries a pack per language and this plugin carries two: with
+  // the theme's labels the form speaks every language the theme does.
+  const label = (key: keyof FormStrings): string => {
+    const themed = input.t?.[`inquiry_${key}`];
+    return themed !== undefined && themed.trim() !== '' ? themed : own[key];
+  };
+  const strings: FormStrings = {
+    name: label('name'),
+    email: label('email'),
+    company: label('company'),
+    phone: label('phone'),
+    message: label('message'),
+    submit: label('submit'),
+  };
   const turnstile =
     input.sitekey === ''
       ? ''

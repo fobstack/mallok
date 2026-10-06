@@ -761,11 +761,15 @@ rc.10.
 - The path: a page in a language the theme has a pack for shows the labels in
   that language; a missing key falls back without an error.
 - Contracts: `PLUGIN_API.md §9`, `THEME_FORMAT.md` (language packs).
+- **Owner decision, 2026-10-06: the theme's language pack**, not more
+  languages in the plugin's table.
+- **Done 2026-10-06** — `tasks/TASK-42.md`.
 
 **Task 43 — a tagline, and a home page description, per language** [M18]
 - `tagline` is accepted as a string or as a map of locale to string, the way
   `nav` is keyed; `site.tagline` and the home page's `page.description`
   resolve for the page's locale, falling back to the default locale's.
+- **Owner decision, 2026-10-06: as suggested** — a string or a map.
 - The path: a site with a tagline per language serves each home page with its
   own description; a plain string behaves as now.
 - Touches the `site` row's `tagline` column, the settings API, the admin's
@@ -781,15 +785,19 @@ rc.10.
 - **Done 2026-10-06** — `tasks/TASK-44.md`.
 
 **Task 45 — let a template link to a kind's list page** [M20]
-- **[OWNER]** `content.list_path` on a content page, or `site.kinds.<kind>`
-  with `path` and `label` on every page.
+- **Owner decision, 2026-10-06: `site.kinds.<kind>`** with `path` and
+  `label`, on every page; not `content.list_path`.
 - The path: a template renders a link to the list page of the current
   content's kind, in the page's language, and it follows a change of `base`.
 - Contracts: `THEME_FORMAT.md §7`.
 
 **Task 46 — switching a plugin, changing settings, and a first run should not
 leave stale pages** [M21]
-- **[VERIFY]** first, on a deployed site with a purge token: whether enabling
+- **Owner decision, 2026-10-06: fix now what can be established locally**
+  — purge on a plugin's switch, and no stored home page before setup
+  completes — and confirm on the deployed gate site when the release is
+  deployed there, recording what is found.
+- **[VERIFY]** on a deployed site with a purge token: whether enabling
   or disabling a plugin, and `PATCH /settings`, purge what they change. Nundar
   observed the stale pages locally, with no token bound.
 - Then, as the finding requires: purge on a plugin's switch; and for a first

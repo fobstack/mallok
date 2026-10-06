@@ -106,6 +106,12 @@ export interface PluginRenderContext {
   readonly settings: Readonly<Record<string, unknown>>;
   readonly site: SiteSettings;
   readonly locale: string;
+  /**
+   * The active theme's language pack for this page — what its templates read
+   * as `t` — so that markup a plugin injects can speak the page's language.
+   * A key the theme does not define is absent; fall back to your own text.
+   */
+  readonly t: Readonly<Record<string, string>>;
   readonly path: string;
   /** Kind and id of the content being rendered; null on home/list pages. */
   readonly content: { readonly id: string; readonly kind: string } | null;

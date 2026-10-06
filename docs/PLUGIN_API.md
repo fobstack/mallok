@@ -227,6 +227,34 @@ responsible for escaping what it injects** — the core's sanitisation happened
 in stage one and is already past. A plugin is trusted code, so this is its
 job, but the documentation has to say so plainly.
 
+```ts
+interface PluginRenderContext {
+  readonly settings: Readonly<Record<string, unknown>>;
+  readonly site: SiteSettings;
+  readonly locale: string;
+  /** The active theme's language pack for this page: what templates read as `t`. */
+  readonly t: Readonly<Record<string, string>>;
+  readonly path: string;
+  /** Kind and id of the content being rendered; null on home and list pages. */
+  readonly content: { readonly id: string; readonly kind: string } | null;
+}
+```
+
+**`ctx.t` is how injected markup speaks the page's language.** It is the
+theme's language pack as its templates see it (`THEME_FORMAT.md §10`): the
+page's locale laid over the theme's default one. A plugin picks its own
+keys, prefixed with its id, reads them from `ctx.t`, and falls back to text
+of its own for a key the theme does not define — a theme is not obliged to
+know about any plugin. The values are the theme's text, not markup: escape
+them like anything else. Available to every plugin, whichever API version it
+declares.
+
+The official `inquiry` plugin reads `inquiry_name`, `inquiry_email`,
+`inquiry_company`, `inquiry_phone`, `inquiry_message` and `inquiry_submit`
+this way. Its own text covers English and Chinese; a theme that defines
+those six keys in its packs gives the form every language the theme has. A
+key that is absent or blank falls back, one key at a time.
+
 ### 5.4 `onContentSave`
 
 ```ts
@@ -1416,6 +1444,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Done |
 | Raw-body routes (`body: "raw"`) | §7.2 | 31 | Done |
 | Action parameters and related rows | §7.5 | 32 | Done |
+| `ctx.t` in `afterRender`: the theme's language pack for the page (any API version) | §5.3; `THEME_FORMAT.md §10` | 42 | Done |
 | Sample data for a plugin from a site's starter, through a records panel's `save` | §7.5; `ARCHITECTURE.md §11.1` | 34 | Done |
 | Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`, `ctx.enqueueStatement`, `jobs`) | §5.5, §7.4 | 33 | Done |
 

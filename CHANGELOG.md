@@ -32,6 +32,12 @@ The rest of plugin API 2, lists of references, and starters a site brings.
   `records` — sample data for its plugins, saved through each plugin's own
   `records` panel handler. `defineStarter` checks one where it is written.
 - The wizard's last screen lists what a starter could not import, and why.
+- **The inquiry form's labels can follow the page's language.** A theme that
+  defines `inquiry_name`, `inquiry_email`, `inquiry_company`,
+  `inquiry_phone`, `inquiry_message` and `inquiry_submit` in its language
+  packs has them used, key by key; the plugin's own English and Chinese
+  remain the fallback. Every `afterRender` hook now receives the page's
+  language pack as `ctx.t`.
 
 ### Fixed
 
