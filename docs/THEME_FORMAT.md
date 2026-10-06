@@ -308,6 +308,7 @@ from Shopify and Jekyll — one of the two camelCase exceptions in
 {{ site.base_url }}        {# https://example.com, no trailing slash #}
 {{ site.home_path }}       {# / or /de/ #}
 {% for item in site.nav %}{{ item.label }} {{ item.href }} {{ item.active }}{% endfor %}
+{{ site.kinds.product.path }}  {{ site.kinds.product.label }}   {# the list page of a kind #}
 
 {{ page.title }}           {{ page.description }}
 {{ page.canonical }}       {{ page.kind }}        {# home | content | list #}
@@ -323,6 +324,27 @@ from Shopify and Jekyll — one of the two camelCase exceptions in
 
 {{ plugins.<plugin_id> }}  {# what an enabled plugin read for this page; §7.9 #}
 ```
+
+`site.kinds` links to list pages. It has an entry for each kind **whose list
+page exists** — the site enables the kind under a base and the theme gives it
+a `listLayout` — and none for any other, so the entry itself is the test:
+
+```liquid
+{% assign own = site.kinds[content.kind] %}
+<a href="{{ site.home_path }}">{{ t.home }}</a>
+{% if own %} / <a href="{{ own.path }}">{{ own.label }}</a>{% endif %}
+ / {{ content.title }}
+
+{% if site.kinds.case %}<a href="{{ site.kinds.case.path }}">{{ t.all_cases }}</a>{% endif %}
+```
+
+- `path` is in the page's language (`/products`, `/de/products`) and follows
+  the `base` the site's owner sets, so a theme never writes a list address or
+  asks for it in an option.
+- `label` is what the list page is titled: `t[kind]`, then the kind's `label`
+  in `theme.json`, then the kind's name.
+- It is on every page: content, home, list, the not-found page and a plugin's
+  page.
 
 `site.tagline` is the tagline of the page's language. A site sets one
 tagline, or one per language; a language without its own gets the default

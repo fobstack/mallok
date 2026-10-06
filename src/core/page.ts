@@ -30,6 +30,22 @@ export interface SiteView {
   /** Home path of the current locale (`/` or `/<locale>/`). */
   readonly home_path: string;
   readonly nav: readonly NavItemView[];
+  /**
+   * The list page of each kind that has one, keyed by kind:
+   * `site.kinds.product.path`, `site.kinds.product.label`. A kind is here
+   * exactly when its list page exists — the site enables it under a base
+   * and the theme gives it a list layout — so `{% if site.kinds.case %}` is
+   * the test for "is there a page to link to".
+   */
+  readonly kinds: Readonly<Record<string, KindLinkView>>;
+}
+
+/** A link to a kind's list page, in the language of the page being rendered. */
+export interface KindLinkView {
+  /** `/products`, or `/de/products` on a German page. Follows the site's `base`. */
+  readonly path: string;
+  /** What the list page is titled: the language pack's name for the kind. */
+  readonly label: string;
 }
 
 /** A link to the same content in another locale. */

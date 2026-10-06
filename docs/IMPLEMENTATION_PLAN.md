@@ -791,6 +791,7 @@ rc.10.
 - The path: a template renders a link to the list page of the current
   content's kind, in the page's language, and it follows a change of `base`.
 - Contracts: `THEME_FORMAT.md §7`.
+- **Done 2026-10-06** — `tasks/TASK-45.md`.
 
 **Task 46 — switching a plugin, changing settings, and a first run should not
 leave stale pages** [M21]

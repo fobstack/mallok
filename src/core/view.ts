@@ -16,6 +16,7 @@ import type {
   AlternateView,
   ContentSummaryView,
   ContentView,
+  KindLinkView,
   ListView,
   NavItemView,
   PageView,
@@ -250,6 +251,22 @@ export function buildSiteView(ctx: ViewContext): SiteView {
     href: entry.href,
     active: entry.href === ctx.path,
   }));
+  const prefix =
+    ctx.locale === ctx.settings.defaultLocale ? '' : `/${ctx.locale}`;
+  const kinds: Record<string, KindLinkView> = {};
+  for (const [kind, config] of Object.entries(ctx.settings.kinds)) {
+    // The same two conditions that make the list page exist.
+    if (
+      config.base === '' ||
+      ctx.manifest.kinds[kind]?.listLayout === undefined
+    ) {
+      continue;
+    }
+    kinds[kind] = {
+      path: `${prefix}/${config.base}`,
+      label: kindLabel(ctx, kind),
+    };
+  }
   return {
     name: ctx.settings.name,
     tagline: taglineFor(ctx.settings, ctx.locale),
@@ -259,7 +276,17 @@ export function buildSiteView(ctx: ViewContext): SiteView {
     base_url: ctx.origin,
     home_path: buildHomePath(ctx.locale, ctx.settings.defaultLocale),
     nav,
+    kinds,
   };
+}
+
+/**
+ * What a kind is called on the page being rendered: the language pack's
+ * entry for it, then the manifest's label, then the kind's own name. A list
+ * page's title and a link to it are the same words.
+ */
+function kindLabel(ctx: ViewContext, kind: string): string {
+  return ctx.strings[kind] ?? ctx.manifest.kinds[kind]?.label ?? kind;
 }
 
 /**
@@ -657,9 +684,7 @@ export function buildListPageView(ctx: ViewContext, list: ListInput): PageView {
   const title =
     list.tag !== undefined && list.tag !== ''
       ? list.tag
-      : (ctx.strings[list.kind] ??
-        ctx.manifest.kinds[list.kind]?.label ??
-        list.kind);
+      : kindLabel(ctx, list.kind);
   return {
     site: buildSiteView(ctx),
     theme: buildThemeView(ctx),

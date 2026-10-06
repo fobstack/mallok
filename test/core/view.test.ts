@@ -353,3 +353,80 @@ describe('a tagline per language', () => {
     });
   });
 });
+
+describe('site.kinds, links to list pages', () => {
+  const listing = parseThemeManifest({
+    id: 'test',
+    name: 'Test',
+    version: '1.0.0',
+    home: 'layouts/home.liquid',
+    kinds: {
+      page: { layout: 'layouts/page.liquid' },
+      product: {
+        layout: 'layouts/page.liquid',
+        listLayout: 'layouts/list.liquid',
+        label: 'Products',
+      },
+      case: {
+        layout: 'layouts/page.liquid',
+        listLayout: 'layouts/list.liquid',
+      },
+      // An address of its own and no list page.
+      tool: { layout: 'layouts/page.liquid' },
+      // A list layout, and the site gives the kind no base.
+      article: {
+        layout: 'layouts/page.liquid',
+        listLayout: 'layouts/list.liquid',
+      },
+      // A list layout the site has not enabled at all.
+      faq: { layout: 'layouts/page.liquid', listLayout: 'layouts/list.liquid' },
+    },
+    defaultLocale: 'en',
+    locales: ['en'],
+  });
+  const settings = {
+    ...ctx.settings,
+    locales: ['en', 'de'],
+    kinds: {
+      page: { base: '' },
+      product: { base: 'products' },
+      case: { base: 'work' },
+      tool: { base: 'tools' },
+      article: { base: '' },
+    },
+  };
+
+  it('holds exactly the kinds whose list page exists, at their base', () => {
+    const site = buildSiteView({ ...ctx, settings, manifest: listing });
+    expect(site.kinds).toEqual({
+      product: { path: '/products', label: 'Products' },
+      // No pack entry and no manifest label: the kind's own name.
+      case: { path: '/work', label: 'case' },
+    });
+  });
+
+  it("is in the page's language: the prefix, and the pack's name for the kind", () => {
+    const site = buildSiteView({
+      ...ctx,
+      settings,
+      manifest: listing,
+      locale: 'de',
+      strings: { product: 'Produkte', case: 'Referenzen' },
+    });
+    expect(site.kinds).toEqual({
+      product: { path: '/de/products', label: 'Produkte' },
+      case: { path: '/de/work', label: 'Referenzen' },
+    });
+  });
+
+  it('follows a change of base', () => {
+    const site = buildSiteView({
+      ...ctx,
+      manifest: listing,
+      settings: { ...settings, kinds: { product: { base: 'catalogue' } } },
+    });
+    expect(site.kinds).toEqual({
+      product: { path: '/catalogue', label: 'Products' },
+    });
+  });
+});

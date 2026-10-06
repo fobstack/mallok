@@ -37,6 +37,10 @@ The rest of plugin API 2, lists of references, and starters a site brings.
   `site.tagline` in a template, the home page's description and each
   language's feed description are the page's language's, falling back to the
   default language's.
+- **`site.kinds.<kind>` in templates**: the `path` and `label` of each kind's
+  list page, in the page's language, present exactly when that list page
+  exists. A breadcrumb or an "all case studies" link no longer needs the
+  address repeated in a theme option.
 - The wizard's last screen lists what a starter could not import, and why.
 - **The inquiry form's labels can follow the page's language.** A theme that
   defines `inquiry_name`, `inquiry_email`, `inquiry_company`,

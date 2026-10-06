@@ -74,6 +74,7 @@ export {
   type ContentSummaryView,
   type ContentView,
   type FaqPairView,
+  type KindLinkView,
   type ListView,
   type NavItemView,
   type PageMetaView,
