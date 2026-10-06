@@ -65,8 +65,9 @@ export default definePage<PublicLocals>()({
   // long after an edit went live (docs/ARCHITECTURE.md §6).
   // A page rendered without a plugin's data because its hook failed is not
   // stored: the next request retries instead of serving it for a whole TTL.
+  // Nor is anything an unclaimed site serves (`PublicLocals.unclaimed`).
   cache: ({ pluginData }, { locals }) =>
-    pluginData.degraded
+    pluginData.degraded || locals.unclaimed
       ? { mode: 'no-store' }
       : {
           mode: 'public',

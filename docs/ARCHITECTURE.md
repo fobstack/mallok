@@ -401,6 +401,17 @@ default. **A 404 is rendered but never stored**, so the page a visitor asked
 for is served as soon as it exists rather than after a TTL; it also carries
 `x-robots-tag: noindex`.
 
+**Nothing an unclaimed site serves is stored.** Until its first administrator
+exists, a site's pages, sitemap, feed and `robots.txt` are a fresh
+deployment's placeholders. They are rendered and sent with
+`Cache-Control: private, no-store`. The first thing anyone does with a new
+deployment is open its address; stored, that page would go on being served
+for the default cache lifetime after the owner had set the site up — and
+where no purge token is bound, which is every local run, nothing would
+remove it. The fact is `site.claimed_at`, written in the same batch that
+creates the administrator, so the render path decides it from the row it
+already reads. From that moment pages are cached as usual.
+
 Two more rules are enforced by the runtime adapter rather than by Mallok, and
 matter enough to state here (`src/runtime/cloudflare`, 2026-09-07):
 

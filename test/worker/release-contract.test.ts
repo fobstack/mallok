@@ -1,5 +1,5 @@
 import { SELF } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import worker from '../../src/worker/index.js';
 
 /**
@@ -20,6 +20,22 @@ function get(path: string, headers: HeadersInit = {}): Promise<Response> {
 }
 
 describe('the public cache boundary', () => {
+  beforeAll(async () => {
+    // A site somebody owns: an unclaimed one stores nothing at all
+    // (`test/worker/unclaimed-site.test.ts`), which would make every rule
+    // below pass for the wrong reason.
+    await get('/');
+    const claimed = await SELF.fetch(`${ORIGIN}/_mallok/api/auth/bootstrap`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        email: 'contract@example.com',
+        password: 'a sufficiently long password',
+      }),
+    });
+    expect([200, 201]).toContain(claimed.status);
+  });
+
   it('never serves a page from the shared cache to a credentialed request', async () => {
     // Mallok declares no `ignoredCookies`, so the runtime's default applies:
     // any cookie, and any `Authorization`, bypasses.

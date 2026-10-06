@@ -46,6 +46,16 @@ export interface PublicLocals {
    * cached, and safe to cache because the cache key includes the origin.
    */
   readonly noindex: boolean;
+  /**
+   * True until the site's first administrator exists.
+   *
+   * What an unclaimed site serves is the placeholder a fresh deployment
+   * starts with. It is rendered and never stored: otherwise whoever opens the
+   * address before setting the site up — the first thing anyone does — keeps
+   * being served that placeholder afterwards, for a whole cache lifetime,
+   * with nothing to purge it when no purge token is bound.
+   */
+  readonly unclaimed: boolean;
 }
 
 /** The response headers every public page carries, plus anything it adds. */
@@ -113,6 +123,7 @@ export async function buildLocals(
     pathname,
     now,
     noindex: settings.domain === null || url.host !== settings.domain,
+    unclaimed: data.site.claimed_at === null,
     render: {
       settings,
       theme,

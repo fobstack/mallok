@@ -13,6 +13,7 @@ import setupKeySql from './migrations/0002_setup_key.sql';
 import setupClaimSql from './migrations/0003_setup_claim.sql';
 import siteEmailSql from './migrations/0004_site_email.sql';
 import siteTaglinesSql from './migrations/0006_site_taglines.sql';
+import siteClaimedSql from './migrations/0007_site_claimed.sql';
 
 /** One migration: a stable id and the SQL text to apply. */
 export interface Migration {
@@ -41,6 +42,7 @@ export const CORE_MIGRATIONS: readonly Migration[] = [
   // 0005 is a data migration, declared where its code lives
   // (`site-email.ts`) and applied after these by `bootstrap.ts`.
   { id: '0006_site_taglines', sql: siteTaglinesSql },
+  { id: '0007_site_claimed', sql: siteClaimedSql },
 ];
 
 const LOCK_TTL_MS = 60_000;

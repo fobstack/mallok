@@ -45,6 +45,7 @@ CREATE TABLE site (
   max_image_edge   INTEGER DEFAULT 2560,          -- NULL keeps true originals
   content_rev      INTEGER NOT NULL DEFAULT 0,    -- only used by the fallback in ARCHITECTURE §6.3
   setup_completed_at TEXT,
+  claimed_at       TEXT,                          -- when the first administrator was created; NULL until then, and pages are not cached (ARCHITECTURE §6.4; migration 0007)
   email_from       TEXT,                          -- site sender, e.g. 'Acme <hello@example.com>'; NULL when unset
   email_resend_key TEXT,                          -- the site's Resend key, encrypted as in §2.7; NULL when unset
   created_at       TEXT NOT NULL,

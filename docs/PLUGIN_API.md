@@ -30,6 +30,19 @@ The switch decides only whether the code runs; it does not change what code is
 in the artifact. That is why it can be immediate, and it is what separates it
 from installing.
 
+**"Immediate" is about the setting, and reaches visitors through the cache
+like any other change.** Switching a plugin on or off, and saving its
+settings, purge every cached page (the `site` tag) — when the site has a
+purge token (`CLOUDFLARE_RESOURCES.md §6`). Without one, which includes every
+local `wrangler dev`, nothing is purged: a page cached while the plugin was
+off keeps its `[[inquiry]]` marker, and one cached while it was on keeps a
+form whose route is gone, until the page's cache lifetime runs out. That is
+the same honest degradation as for content and settings, not a separate
+defect; the wizard shortens the lifetime to 60 seconds on a site without a
+token for this reason. Locally, Wrangler keeps the cache on disk under
+`.wrangler/state/v3/cache`; deleting that folder with the server stopped
+empties it.
+
 **The interface must not make installing a plugin look like a single click** —
 it cannot be, and pretending otherwise is exposed the first time a user tries.
 The correct interface tells the user that source must change and a build must

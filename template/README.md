@@ -31,6 +31,13 @@ Open the address Wrangler prints. The first-run wizard asks for the
 `MALLOK_SETUP_KEY` you put in `.dev.vars` before it creates the
 administrator. `.dev.vars` is ignored by Git; keep it that way.
 
+A local run has no purge token, so a change you save — content, settings, a
+plugin's switch — shows on a page already in the cache only when that page's
+cache lifetime (60 seconds after the wizard) has run out. Wrangler keeps the
+cache on disk across restarts, under `.wrangler/state/v3/cache`; stop the
+server and delete that folder to empty it. Pages opened before the
+administrator exists are never cached.
+
 ## Upgrading Mallok
 
 ```sh

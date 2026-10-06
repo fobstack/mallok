@@ -202,6 +202,10 @@ export default definePage<PublicLocals>()({
     if (resolved.kind === 'missing') {
       return { mode: 'no-store' };
     }
+    // Nor is anything an unclaimed site serves (`PublicLocals.unclaimed`).
+    if (locals.unclaimed) {
+      return { mode: 'no-store' };
+    }
     // Rendered without a plugin's data because its hook failed. Storing that
     // would serve the lesser page for a whole TTL; the next request retries.
     if (resolved.degraded) {

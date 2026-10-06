@@ -51,6 +51,10 @@ The rest of plugin API 2, lists of references, and starters a site brings.
 
 ### Fixed
 
+- **A fresh site no longer keeps serving its placeholder after setup.** Pages
+  opened before the administrator existed were cached for the default hour,
+  so the owner set the site up and still saw "My Mallok site". Nothing an
+  unclaimed site serves is stored now.
 - **The base address of a kind with no list layout answers 404, not 500.** A
   theme kind declared with a layout and no `listLayout` serves its items
   under the kind's base; a request for the base itself failed with "Internal
@@ -74,9 +78,10 @@ The rest of plugin API 2, lists of references, and starters a site brings.
 
 **Every site**
 
-- One schema migration runs on the first request after deploying: a
-  `taglines` column on `site`. A site with one tagline keeps it and behaves
-  as before.
+- Two schema migrations run on the first request after deploying: a
+  `taglines` column on `site`, and `claimed_at`, set for every site that
+  already has an administrator. A site with one tagline keeps it and behaves
+  as before, and an existing site is cached as before.
 - `GET /_mallok/api/settings` and an export's `site.json` return `tagline` as
   a map once a language other than the default has one of its own, and as
   the string it always was until then.

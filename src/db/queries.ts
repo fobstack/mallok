@@ -27,6 +27,8 @@ export interface SiteRow {
   readonly max_image_edge: number | null;
   readonly content_rev: number;
   readonly setup_completed_at: string | null;
+  /** When the first administrator claimed the site; null until one has. */
+  readonly claimed_at: string | null;
   /** When the one-time setup key was spent; null until the wizard runs. */
   readonly setup_key_used_at: string | null;
   /** Sender used when a plugin sets none of its own. */

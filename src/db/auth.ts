@@ -105,6 +105,16 @@ export async function claimSite(
         user.now,
       ),
   ];
+  // The site row says it is claimed, because the render path reads that row
+  // and not this table: an unclaimed site's pages are not stored in the edge
+  // cache (docs/ARCHITECTURE.md §6).
+  statements.push(
+    db
+      .prepare(
+        'UPDATE site SET claimed_at = ?, updated_at = ? WHERE claimed_at IS NULL',
+      )
+      .bind(user.now, user.now),
+  );
   if (keyUsed) {
     statements.push(
       db

@@ -113,7 +113,7 @@ export default definePage<PublicLocals>()({
   // time the next request asks. Nor is an archive a failed `renderData` hook
   // left without its plugin's data: the next request retries.
   cache: (archive, { locals }) =>
-    archive.found && !archive.pluginData.degraded
+    archive.found && !archive.pluginData.degraded && !locals.unclaimed
       ? {
           mode: 'public',
           edgeSeconds: locals.settings.cacheTtl,

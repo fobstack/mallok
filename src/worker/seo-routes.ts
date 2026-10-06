@@ -17,7 +17,12 @@ import {
   type SitemapEntry,
   taglineFor,
 } from '../core/index.js';
-import { listForSitemap, listPublished, loadSite } from '../db/queries.js';
+import {
+  listForSitemap,
+  listPublished,
+  loadSite,
+  type SiteRow,
+} from '../db/queries.js';
 import { matchCached, storeCached } from './cache.js';
 import type { Env } from './env.js';
 import { problem } from './http.js';
@@ -69,14 +74,14 @@ export async function handleSeo(
       indexable,
       sitemapUrl: `${origin}/sitemap.xml`,
     });
-    return finish(request, ctx, text(body), settings, ['site']);
+    return finish(request, ctx, text(body), settings, ['site'], row);
   }
 
   const sitemapMatch = SITEMAP_PATTERN.exec(pathname);
   if (sitemapMatch !== null) {
     const page = sitemapMatch[1] === undefined ? null : Number(sitemapMatch[1]);
     const response = await sitemap(env, settings, origin, page);
-    return finish(request, ctx, response, settings, ['sitemap']);
+    return finish(request, ctx, response, settings, ['sitemap'], row);
   }
 
   const feedMatch = FEED_PATTERN.exec(pathname);
@@ -86,7 +91,7 @@ export async function handleSeo(
       return problem(404, 'Not found.');
     }
     const response = await feed(env, settings, origin, locale);
-    return finish(request, ctx, response, settings, [`feed:${locale}`]);
+    return finish(request, ctx, response, settings, [`feed:${locale}`], row);
   }
 
   return problem(404, 'Not found.');
@@ -226,6 +231,12 @@ function finish(
   response: Response,
   settings: SiteSettings,
   tags: string[],
+  site: SiteRow,
 ): Response {
+  // An unclaimed site's answers are a fresh deployment's placeholders, and
+  // are not stored (`PublicLocals.unclaimed`).
+  if (site.claimed_at === null) {
+    return response;
+  }
   return storeCached(ctx, request, response, settings.cacheTtl, { tags });
 }
