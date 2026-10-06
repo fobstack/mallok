@@ -247,11 +247,26 @@ CREATE TABLE job (
 CREATE INDEX job_due ON job (status, run_at);
 ```
 
-Each minute, cron takes the first N rows with `status = 'pending' AND run_at
-<= now` — N decided by the 10 ms budget, to be measured in the spike — and
-runs them one at a time. A failure rewrites `run_at` with exponential backoff;
-past `max_attempts` the row becomes `failed` and is shown in the admin. `done`
-rows are cleaned up after seven days.
+Two kinds of row exist today: `email`, and `plugin:<id>:<name>` for a job a
+plugin queued (`PLUGIN_API.md §7.4`). The other types in the comment above
+are not written by anything.
+
+Each minute, cron takes the first rows with `status = 'pending' AND run_at
+<= now` — at most 5 emails and at most 5 plugin jobs — claims each with an
+`UPDATE … WHERE status = 'pending'` so that two overlapping ticks cannot both
+run it, and runs them one at a time. A failure rewrites `run_at` with
+exponential backoff (2, 4, 8, 16 minutes); at `max_attempts` the row becomes
+`failed` and is listed in the admin's diagnostics. `done` rows are cleaned up
+after seven days; `failed` rows are kept.
+
+A row left `running` for ten minutes was claimed by a Worker that stopped. An
+`email` row goes back to `pending` as it was. A plugin's row goes back with
+the attempt counted and the backoff applied, because the job itself may be
+what stopped the Worker.
+
+Plugin jobs are selected by type prefix, which `job_due` does not cover: the
+index narrows to due pending rows and the prefix is checked on those. The
+table holds only unfinished work and a week of finished work.
 
 ### 2.10 `migration` and `migration_lock`
 

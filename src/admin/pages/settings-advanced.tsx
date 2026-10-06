@@ -25,6 +25,11 @@ interface Health {
 interface Diagnostics {
   readonly counts: Readonly<Record<string, number>>;
   readonly migrations: readonly string[];
+  readonly failedJobs: readonly {
+    type: string;
+    lastError: string | null;
+    updatedAt: string;
+  }[];
   readonly pipeline: string;
   readonly quotaUsage: null;
   readonly quotaUsageNote: string;
@@ -282,6 +287,26 @@ export function AdvancedPage(): JSX.Element {
           </div>
         </dl>
       </section>
+
+      {diagnostics === null || diagnostics.failedJobs.length === 0 ? null : (
+        <section className="card">
+          <h2>Failed background jobs</h2>
+          <p className="help">
+            Work that was retried and gave up — an email that could not be sent,
+            a plugin's job that kept failing. Nothing here is retried again by
+            itself.
+          </p>
+          <ul className="rows">
+            {diagnostics.failedJobs.map((job) => (
+              <li key={`${job.type}-${job.updatedAt}`}>
+                <span className="code">{job.type}</span>
+                <span>{job.lastError ?? 'No error was recorded.'}</span>
+                <span>{job.updatedAt.slice(0, 16).replace('T', ' ')}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="card">
         <h2>Storage</h2>

@@ -69,6 +69,24 @@ export interface PluginContext {
    */
   readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
   readonly waitUntil: (promise: Promise<unknown>) => void;
+  /**
+   * Queues one of this plugin's jobs (§7.4) and returns its id. The job runs
+   * in a later cron tick, at least once, with retries.
+   */
+  readonly enqueue: (
+    name: string,
+    payload: unknown,
+    options?: { readonly runAt?: Date },
+  ) => Promise<string>;
+  /**
+   * The same, as a statement for the plugin's own `db.batch`: the job is
+   * queued if and only if the batch commits.
+   */
+  readonly enqueueStatement: (
+    name: string,
+    payload: unknown,
+    options?: { readonly runAt?: Date },
+  ) => D1PreparedStatement;
 }
 
 /** Context for a plugin route call. */
@@ -289,6 +307,14 @@ export interface PluginImplementation {
   ) => Promise<readonly PluginExportFile[]>;
   readonly checkSecrets?: Readonly<
     Record<string, (ctx: PluginContext) => Promise<PluginSecretVerdict>>
+  >;
+  /**
+   * Background jobs this plugin can queue with `ctx.enqueue`, keyed by name
+   * (§7.4). A handler may run more than once for one job and must be safe to
+   * repeat; throwing makes the core try again later.
+   */
+  readonly jobs?: Readonly<
+    Record<string, (payload: unknown, ctx: PluginContext) => Promise<void>>
   >;
   /**
    * Handlers of the plugin's `records` panels, keyed by panel id. Every

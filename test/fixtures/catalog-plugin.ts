@@ -81,6 +81,7 @@ export const catalogPlugin = definePlugin({
             },
           },
           { id: 'touch', label: 'Touch' },
+          { id: 'ship', label: 'Ship' },
         ],
         // The variants of the row that is open, read-only.
         related: [
@@ -222,6 +223,18 @@ export const catalogPlugin = definePlugin({
         .run();
       return undefined;
     },
+    ship: async (ids, ctx) => {
+      const jobId = await ctx.enqueue('ship', { ids });
+      // Stands in for five attempts and the half hour of backoff between
+      // them: the browser test is about what the admin shows afterwards.
+      await ctx.db
+        .prepare(
+          "UPDATE job SET status = 'failed', attempts = 5, last_error = ? WHERE id = ?",
+        )
+        .bind('The carrier refused the parcel.', jobId)
+        .run();
+      return undefined;
+    },
     touch: async (ids, ctx, params) => {
       await ctx.db
         .prepare(
@@ -235,6 +248,11 @@ export const catalogPlugin = definePlugin({
         )
         .run();
       return undefined;
+    },
+  },
+  jobs: {
+    ship: async () => {
+      throw new Error('The carrier refused the parcel.');
     },
   },
   records: {

@@ -15,7 +15,15 @@ import {
   RAW_BODY_BYTES_DEFAULT,
   sha256Hex,
 } from '../core/index.js';
-import { loadSiteRenderData, type PluginStateRow } from '../db/queries.js';
+import {
+  completeJob,
+  dueJobsByPrefix,
+  enqueueJobStatement,
+  failJob,
+  loadSiteRenderData,
+  type PluginStateRow,
+  stuckJobsByPrefix,
+} from '../db/queries.js';
 import type {
   ContentDeleteRef,
   ContentDraft,
@@ -26,7 +34,7 @@ import type {
 } from '../plugins/types.js';
 import { pluginPurgeTags, purgeTags } from './cache.js';
 import { compiledPlugins } from './composition.js';
-import { queueEmail } from './email.js';
+import { queueEmail, STUCK_CLAIM_MS } from './email.js';
 import type { Env } from './env.js';
 import { problem } from './http.js';
 import {
@@ -228,7 +236,13 @@ export async function runOnContentDelete(
   return failed;
 }
 
-/** Runs every enabled `scheduled` hook inside the cron tick. */
+/**
+ * Runs every enabled `scheduled` hook inside the cron tick.
+ *
+ * Each plugin on its own: one whose hook throws is logged with its id and
+ * the rest still run. Before plugin API 2 the first failure ended the tick
+ * for every plugin after it.
+ */
 export async function runScheduledHooks(
   env: Env,
   executionCtx: ExecutionContext,
@@ -240,8 +254,20 @@ export async function runScheduledHooks(
     if (hook === undefined) {
       continue;
     }
-    const ctx = await buildPluginContext(env, executionCtx, site, active);
-    await hook(ctx);
+    try {
+      await hook(await buildPluginContext(env, executionCtx, site, active));
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: 'plugin_scheduled_error',
+          plugin: active.state.plugin_id,
+          message: (error instanceof Error
+            ? error.message
+            : String(error)
+          ).slice(0, 200),
+        }),
+      );
+    }
   }
 }
 
@@ -831,7 +857,176 @@ export async function buildPluginContext(
     // Own namespace only, plus `site` (docs/PLUGIN_API.md §9).
     purgeTags: (tags) => purgeTags(env, pluginPurgeTags(pluginId, tags)),
     waitUntil: (promise) => executionCtx.waitUntil(promise),
+    enqueue: async (name, payload, options) => {
+      const job = describeJob(active, name, payload, options);
+      await enqueueJobStatement(
+        env.DB,
+        job.id,
+        job.type,
+        job.payload,
+        job.runAt,
+        job.now,
+      ).run();
+      return job.id;
+    },
+    enqueueStatement: (name, payload, options) => {
+      const job = describeJob(active, name, payload, options);
+      return enqueueJobStatement(
+        env.DB,
+        job.id,
+        job.type,
+        job.payload,
+        job.runAt,
+        job.now,
+      );
+    },
   };
+}
+
+/** Largest job payload, serialised. A job carries ids, not documents. */
+const JOB_PAYLOAD_MAX = 16 * 1024;
+/** Plugin jobs attempted per cron tick, across all plugins. */
+export const PLUGIN_JOBS_PER_TICK = 5;
+
+/** What a job is told happened when its Worker never came back. */
+const STOPPED = 'The Worker stopped while this job was running.';
+
+/** The `job.type` of one plugin's job (docs/DATA_MODEL.md §2.9). */
+function jobType(pluginId: string, name: string): string {
+  return `plugin:${pluginId}:${name}`;
+}
+
+/**
+ * Checks a job a plugin wants queued and works out its row. Refused here,
+ * where the plugin author sees it, rather than failing five times in a cron
+ * tick nobody is watching.
+ */
+function describeJob(
+  active: ActivePlugin,
+  name: string,
+  payload: unknown,
+  options: { readonly runAt?: Date } | undefined,
+): { id: string; type: string; payload: string; runAt: string; now: string } {
+  const pluginId = active.state.plugin_id;
+  if (active.plugin.jobs?.[name] === undefined) {
+    throw new Error(
+      `Plugin "${pluginId}" has no job named "${name}". Add it to \`jobs\`.`,
+    );
+  }
+  const serialised = JSON.stringify(payload ?? null);
+  if (serialised === undefined || serialised.length > JOB_PAYLOAD_MAX) {
+    throw new Error(
+      `The payload of job "${name}" must be JSON of at most ${JOB_PAYLOAD_MAX} bytes. Queue ids and look the rest up when the job runs.`,
+    );
+  }
+  const now = new Date();
+  return {
+    id: crypto.randomUUID(),
+    type: jobType(pluginId, name),
+    payload: serialised,
+    runAt: (options?.runAt ?? now).toISOString(),
+    now: now.toISOString(),
+  };
+}
+
+/**
+ * Runs a bounded number of due plugin jobs. Cron entry point.
+ *
+ * At least once: a job is claimed, run, and marked done. A handler that
+ * throws is retried on the schedule email uses — five attempts, 2, 4, 8 and
+ * 16 minutes apart — and then marked failed, where the admin's diagnostics
+ * show it. Jobs of a plugin that is switched off wait.
+ *
+ * A Worker that stops while a job runs leaves it claimed. Such a claim is
+ * released after {@link STUCK_CLAIM_MS} and **counts as a failed attempt**:
+ * the job may simply have been unlucky, or it may be what stopped the Worker,
+ * and a job that does that every time must run out of attempts like any
+ * other rather than come back for ever.
+ */
+export async function processPluginJobs(
+  env: Env,
+  executionCtx: ExecutionContext,
+  rows: readonly PluginStateRow[],
+  site: SiteSettings,
+): Promise<{ done: number; failed: number }> {
+  const withJobs = activePlugins(rows).filter(
+    ({ plugin }) => Object.keys(plugin.jobs ?? {}).length > 0,
+  );
+  if (withJobs.length === 0) {
+    return { done: 0, failed: 0 };
+  }
+  const now = new Date();
+  const prefixes = withJobs.map(({ state }) => `plugin:${state.plugin_id}:`);
+  const stuck = await stuckJobsByPrefix(
+    env.DB,
+    prefixes,
+    new Date(now.getTime() - STUCK_CLAIM_MS).toISOString(),
+    PLUGIN_JOBS_PER_TICK,
+  );
+  for (const job of stuck) {
+    await failJob(env.DB, job, STOPPED, now);
+    const [, pluginId = '', name = ''] = job.type.split(':');
+    console.warn(
+      JSON.stringify({
+        event: 'plugin_job_failed',
+        plugin: pluginId,
+        job: name,
+        attempt: job.attempts + 1,
+        final: job.attempts + 1 >= job.max_attempts,
+        reason: STOPPED,
+      }),
+    );
+  }
+  const due = await dueJobsByPrefix(
+    env.DB,
+    prefixes,
+    now.toISOString(),
+    PLUGIN_JOBS_PER_TICK,
+  );
+  let done = 0;
+  let failed = 0;
+  for (const job of due) {
+    // Claimed atomically, so two ticks that overlap cannot both run it.
+    const claim = await env.DB.prepare(
+      "UPDATE job SET status = 'running', updated_at = ? WHERE id = ? AND status = 'pending'",
+    )
+      .bind(now.toISOString(), job.id)
+      .run();
+    if (claim.meta.changes !== 1) {
+      continue;
+    }
+    const [, pluginId = '', name = ''] = job.type.split(':');
+    const active = withJobs.find(
+      (candidate) => candidate.state.plugin_id === pluginId,
+    );
+    const handler = active?.plugin.jobs?.[name];
+    try {
+      if (active === undefined || handler === undefined) {
+        throw new Error(`No handler for the job "${name}".`);
+      }
+      await handler(
+        JSON.parse(job.payload) as unknown,
+        await buildPluginContext(env, executionCtx, site, active),
+      );
+      await completeJob(env.DB, job.id, new Date().toISOString());
+      done += 1;
+    } catch (error) {
+      failed += 1;
+      const message = error instanceof Error ? error.message : String(error);
+      await failJob(env.DB, job, message, new Date());
+      console.warn(
+        JSON.stringify({
+          event: 'plugin_job_failed',
+          plugin: pluginId,
+          job: name,
+          attempt: job.attempts + 1,
+          final: job.attempts + 1 >= job.max_attempts,
+          reason: message.slice(0, 200),
+        }),
+      );
+    }
+  }
+  return { done, failed };
 }
 
 async function buildRequestContext(

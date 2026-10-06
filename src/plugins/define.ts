@@ -214,6 +214,31 @@ export function definePlugin(input: PluginInput): MallokPlugin {
     false,
   );
 
+  // ---- jobs: named handlers, under plugin API 2 -------------------------
+  for (const [name, handler] of Object.entries(input.jobs ?? {})) {
+    if (!/^[a-z][a-z0-9_]*$/.test(name)) {
+      refuse(
+        id,
+        `the job name "${name}" is not valid.`,
+        'A job name is lowercase letters, digits and underscores, starting with a letter.',
+      );
+    }
+    if (typeof handler !== 'function') {
+      refuse(
+        id,
+        `the job "${name}" is not a function.`,
+        'Every job needs a handler: async (payload, ctx) => { … }.',
+      );
+    }
+  }
+  if (Object.keys(input.jobs ?? {}).length > 0 && manifest.pluginApi < 2) {
+    refuse(
+      id,
+      `it defines jobs, which need plugin API 2; it declares ${manifest.pluginApi}.`,
+      'Set "pluginApi": 2 in plugin.json.',
+    );
+  }
+
   // ---- records panels: load and save, for exactly the panels declared ---
   const recordPanels = new Set(
     manifest.panels

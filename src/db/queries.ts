@@ -843,6 +843,94 @@ export async function enqueueJob(
   return id;
 }
 
+/**
+ * The statement that queues a job, for a caller that wants it inside a batch
+ * of its own: a change and the work it owes then commit together or not at
+ * all (docs/PLUGIN_API.md §7.4).
+ */
+export function enqueueJobStatement(
+  db: D1Database,
+  id: string,
+  type: string,
+  payloadJson: string,
+  runAt: string,
+  now: string,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `INSERT INTO job (id, type, payload, run_at, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'pending', ?, ?)`,
+    )
+    .bind(id, type, payloadJson, runAt, now, now);
+}
+
+/** Due jobs whose type starts with one of `prefixes`, oldest first, bounded. */
+export async function dueJobsByPrefix(
+  db: D1Database,
+  prefixes: readonly string[],
+  now: string,
+  limit: number,
+): Promise<JobRow[]> {
+  if (prefixes.length === 0) {
+    return [];
+  }
+  // `substr` rather than LIKE: a plugin id is not a pattern.
+  const matches = prefixes.map(() => 'substr(type, 1, ?) = ?').join(' OR ');
+  const rows = await db
+    .prepare(
+      `SELECT * FROM job
+       WHERE status = 'pending' AND run_at <= ? AND (${matches})
+       ORDER BY run_at LIMIT ?`,
+    )
+    .bind(now, ...prefixes.flatMap((prefix) => [prefix.length, prefix]), limit)
+    .all<JobRow>();
+  return rows.results;
+}
+
+/**
+ * Jobs of the given type prefixes that were claimed before `before` and never
+ * finished: their Worker stopped while they ran.
+ */
+export async function stuckJobsByPrefix(
+  db: D1Database,
+  prefixes: readonly string[],
+  before: string,
+  limit: number,
+): Promise<JobRow[]> {
+  if (prefixes.length === 0) {
+    return [];
+  }
+  const matches = prefixes.map(() => 'substr(type, 1, ?) = ?').join(' OR ');
+  const rows = await db
+    .prepare(
+      `SELECT * FROM job
+       WHERE status = 'running' AND updated_at < ? AND (${matches})
+       ORDER BY updated_at LIMIT ?`,
+    )
+    .bind(
+      before,
+      ...prefixes.flatMap((prefix) => [prefix.length, prefix]),
+      limit,
+    )
+    .all<JobRow>();
+  return rows.results;
+}
+
+/** The most recent jobs that ran out of attempts, for the admin. */
+export async function failedJobs(
+  db: D1Database,
+  limit: number,
+): Promise<{ type: string; last_error: string | null; updated_at: string }[]> {
+  const rows = await db
+    .prepare(
+      `SELECT type, last_error, updated_at FROM job
+       WHERE status = 'failed' ORDER BY updated_at DESC LIMIT ?`,
+    )
+    .bind(limit)
+    .all<{ type: string; last_error: string | null; updated_at: string }>();
+  return rows.results;
+}
+
 /** Due jobs of one type, oldest first, bounded. */
 export async function dueJobs(
   db: D1Database,

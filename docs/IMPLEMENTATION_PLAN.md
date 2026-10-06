@@ -712,6 +712,7 @@ with Task 22; added 2026-10-05]
   and fail at the limit; a tick stays within its bound.
 - Depends on: Task 18. Contracts: `PLUGIN_API.md §5.5`, `§7.4`;
   `DATA_MODEL.md §2.9`.
+- **Done 2026-10-06** — `tasks/TASK-33.md`.
 
 **Task 39 — resolve `reference[]` fields** [M14]
 - Added 2026-10-03 (owner's item M14). Current: `loadRelations` in

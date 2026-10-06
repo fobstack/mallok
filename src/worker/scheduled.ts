@@ -22,7 +22,7 @@ import { boot } from './bootstrap.js';
 import { purgeNow, tagsForContent } from './cache.js';
 import { processEmailJobs } from './email.js';
 import type { Env } from './env.js';
-import { runScheduledHooks } from './plugin-runtime.js';
+import { processPluginJobs, runScheduledHooks } from './plugin-runtime.js';
 import { parseSiteSettings } from './site.js';
 
 /** How long an unreferenced object is kept before collection. */
@@ -52,23 +52,10 @@ export async function handleScheduled(
   );
 
   const siteData = await loadSiteRenderData(env.DB);
-  if (siteData.site !== null) {
-    try {
-      await runScheduledHooks(
-        env,
-        ctx,
-        siteData.plugins,
-        parseSiteSettings(siteData.site),
-      );
-    } catch (error) {
-      // A broken plugin hook must not starve publishing and collection.
-      console.error(
-        JSON.stringify({
-          event: 'plugin_scheduled_error',
-          message: error instanceof Error ? error.message : String(error),
-        }),
-      );
-    }
+  const site = siteData.site === null ? null : parseSiteSettings(siteData.site);
+  if (site !== null) {
+    // Each plugin's hook is isolated inside; this only guards the loop.
+    await runScheduledHooks(env, ctx, siteData.plugins, site);
   }
   const expiredSessions = await deleteExpiredSessions(env.DB, now);
   if (expiredSessions > 0) {
@@ -89,23 +76,41 @@ export async function handleScheduled(
   }
 
   const published = await publishDue(env.DB, now);
-  if (published.length === 0) {
-    return;
+  if (published.length > 0) {
+    const tags = new Set<string>();
+    for (const row of published) {
+      for (const tag of tagsForContent(row.id, row.kind, row.locale)) {
+        tags.add(tag);
+      }
+    }
+    const result = await purgeNow(env, [...tags]);
+    console.log(
+      JSON.stringify({
+        event: 'scheduled_publish',
+        count: published.length,
+        purge: result,
+      }),
+    );
   }
-  const tags = new Set<string>();
-  for (const row of published) {
-    for (const tag of tagsForContent(row.id, row.kind, row.locale)) {
-      tags.add(tag);
+
+  // Plugin jobs go last: they are the part of a tick the core did not write,
+  // and whatever one of them costs, the site's own housekeeping and scheduled
+  // publishing have already happened.
+  if (site !== null) {
+    try {
+      const jobs = await processPluginJobs(env, ctx, siteData.plugins, site);
+      if (jobs.done + jobs.failed > 0) {
+        console.log(JSON.stringify({ event: 'plugin_jobs', ...jobs }));
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          event: 'plugin_jobs_error',
+          message: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
-  const result = await purgeNow(env, [...tags]);
-  console.log(
-    JSON.stringify({
-      event: 'scheduled_publish',
-      count: published.length,
-      purge: result,
-    }),
-  );
 }
 
 /**

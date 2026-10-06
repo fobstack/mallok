@@ -353,7 +353,11 @@ This is the only place lower-level vocabulary is allowed:
   (`CLI.md §7`).
 - **Diagnostics**: whether a custom domain is bound, whether caching is in
   effect, whether `CF_API_TOKEN` is configured, whether Resend is configured,
-  and the schema version.
+  and the schema version. Below them, **Failed background jobs**: the latest
+  twenty jobs that ran out of attempts — email or a plugin's
+  (`PLUGIN_API.md §7.4`) — with what each was, when it gave up and its last
+  error. The list is absent when there are none. It is read-only: there is no
+  retry button.
 
 **"Needs a deployment" and "does not" must be stated in one place**
 (`ARCHITECTURE §15`). Diagnostics carries the table: content, settings, theme

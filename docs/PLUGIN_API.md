@@ -314,6 +314,15 @@ Runs inside the site's single cron (`* * * * *`). Every plugin's `scheduled`
 therefore batch its own work: do a little, leave the rest for the next minute,
 and do not try to finish everything at once.
 
+Each plugin's hook runs inside its own `try`/`catch`. One that throws is
+logged as `plugin_scheduled_error` with the plugin's id and the others still
+run. That contains an exception, not a budget: a hook that uses up the
+invocation's CPU takes the rest of the tick with it, which no `catch` can
+prevent.
+
+For work that must happen and may fail, queue a job (§7.4) instead of doing it
+here.
+
 ### 5.6 `renderData`
 
 ```ts
@@ -502,6 +511,18 @@ interface PluginContext {
   readonly sendEmail: (message: EmailMessage) => Promise<string>;
   /** Purge this plugin's own cache tags, or `site`; coalesced. See §9. */
   readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
+  /** Queues one of the plugin's own jobs; resolves to the job's id (§7.4). */
+  readonly enqueue: (
+    name: string,
+    payload: unknown,
+    options?: { readonly runAt?: Date },
+  ) => Promise<string>;
+  /** The same job as a statement for the plugin's own `db.batch` (§7.4). */
+  readonly enqueueStatement: (
+    name: string,
+    payload: unknown,
+    options?: { readonly runAt?: Date },
+  ) => D1PreparedStatement;
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }
 ```
@@ -816,10 +837,74 @@ secret value.** Rotation is supported: writing a new value overwrites.
 
 ### 7.4 Scheduled work
 
-The `scheduled` hook runs from Mallok's single once-a-minute trigger. 0.1 does
-not expose a generic `enqueue` capability: there is no public consumer and
-retry protocol for arbitrary plugin jobs. A plugin needing durable state owns
-its own `p_<id>_` table and advances a bounded batch from `scheduled`.
+The `scheduled` hook (§5.5) runs from Mallok's single once-a-minute trigger,
+and suits work that is simply repeated. Work that is owed — an email after an
+order, a stock count to push somewhere — is a **job**. Plugin API 2.
+
+```ts
+export default definePlugin({
+  manifest: { /* … */ pluginApi: 2 },
+  jobs: {
+    // (payload, ctx) => Promise<void>
+    sync_stock: async (payload, ctx) => {
+      const { variantId } = payload as { variantId: string };
+      /* … */
+    },
+  },
+});
+```
+
+A job name is lower-case letters, digits and underscores. A plugin queues its
+own jobs only:
+
+```ts
+// By itself: one write.
+const jobId = await ctx.enqueue('sync_stock', { variantId }, { runAt });
+
+// Or as part of the change that owes it:
+await ctx.db.batch([
+  ctx.db.prepare('UPDATE p_shop_order SET status = ? WHERE id = ?').bind('paid', id),
+  ctx.enqueueStatement('send_receipt', { orderId: id }),
+]);
+```
+
+`enqueueStatement` returns a prepared statement and does nothing until it is
+run. In a `batch` with the plugin's own statements, the change and the job
+are committed together or not at all — an order is never marked paid without
+its receipt being owed, and no receipt is owed for an order that was not
+saved. The core builds the statement, so a plugin never depends on the `job`
+table's columns; writing that table directly is not part of this contract.
+
+Both refuse, by throwing, a name that is not in the plugin's `jobs`, and a
+payload that is not JSON or is longer than 16 KB as JSON. Queue ids, and read
+the rest when the job runs.
+
+What the core promises about a queued job:
+
+- **It runs in a later tick of the cron**, not in the request that queued it:
+  expect up to a minute, more when jobs are waiting. `runAt` is the earliest
+  time, not an appointment.
+- **At most five plugin jobs run per tick**, across all plugins, oldest
+  `runAt` first, after the site's own housekeeping and scheduled publishing.
+  They share that invocation's CPU budget with each other and with every
+  `scheduled` hook (§5.5), so a job should do one small thing.
+- **At least once.** A handler can run more than once for the same job — its
+  Worker may stop after the work and before the job is marked done — so it
+  must be safe to repeat. Check what was already done, or key the effect on
+  something stable such as the order's id.
+- **Retries.** A handler that throws is tried again after 2, 4, 8 and 16
+  minutes: five attempts, the same rule email jobs follow. Each failure is
+  logged as `plugin_job_failed`. After the fifth the job is `failed`, stays in
+  the table, is not run again, and is listed under Settings → Advanced →
+  Diagnostics with its last error.
+- **A job whose Worker stopped while it ran** is released ten minutes later,
+  and that counts as one of its five attempts: a job that stops the Worker
+  every time runs out of attempts like any other.
+- **Jobs of a plugin that is switched off wait.** They run once it is
+  enabled again. Jobs whose handler no longer exists in the build fail.
+
+There is no interface for retrying a failed job by hand, and none for
+cancelling a queued one.
 
 ### 7.5 Declarative admin panels
 
@@ -1323,7 +1408,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Done |
 | Raw-body routes (`body: "raw"`) | §7.2 | 31 | Done |
 | Action parameters and related rows | §7.5 | 32 | Done |
-| Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`) | §5.5, §7.4 | 33 | Planned |
+| Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`, `ctx.enqueueStatement`, `jobs`) | §5.5, §7.4 | 33 | Done |
 
 Theme-side changes in the same phase are documented in `THEME_FORMAT.md`:
 layouts for plugin pages (§16, Task 26), which are optional, and the script

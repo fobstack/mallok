@@ -16,6 +16,7 @@ import {
 import {
   appliedMigrations,
   countStorage,
+  failedJobs,
   listContentLocations,
   loadSite,
   loadSiteRenderData,
@@ -33,6 +34,8 @@ import { json, problem, readJson } from './http.js';
 import { parseSiteSettings } from './site.js';
 import { siteEmailView } from './site-email.js';
 
+/** Failed background jobs listed in diagnostics, newest first. */
+const FAILED_JOBS_SHOWN = 20;
 const MIN_CACHE_TTL = 60;
 const MAX_CACHE_TTL = 31_536_000;
 
@@ -302,13 +305,22 @@ export function getTheme(): Response {
  * cannot report them and does not pretend to (docs/ADMIN.md §11).
  */
 export async function getDiagnostics(env: Env): Promise<Response> {
-  const [counts, migrations] = await Promise.all([
+  const [counts, migrations, failed] = await Promise.all([
     countStorage(env.DB),
     appliedMigrations(env.DB),
+    failedJobs(env.DB, FAILED_JOBS_SHOWN),
   ]);
   return json({
     counts,
     migrations,
+    // Background work that ran out of attempts: an email that could not be
+    // sent, a plugin's job that kept throwing. Shown so that it is found by
+    // looking, not by a customer asking where their confirmation went.
+    failedJobs: failed.map((job) => ({
+      type: job.type,
+      lastError: job.last_error,
+      updatedAt: job.updated_at,
+    })),
     pipeline: PIPELINE_VERSION,
     quotaUsage: null,
     quotaUsageNote:

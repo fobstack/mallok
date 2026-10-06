@@ -719,6 +719,7 @@ describe('records panels', () => {
       expect(panel?.actions.map((action) => action.id)).toEqual([
         'set_status',
         'touch',
+        'ship',
       ]);
       expect(Object.keys(panel?.actions[0]?.params ?? {})).toEqual([
         'status',

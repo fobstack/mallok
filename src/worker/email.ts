@@ -74,14 +74,15 @@ async function attemptJob(env: Env, jobId: string): Promise<void> {
 }
 
 /** How long a claimed job may sit before the cron rescues it. */
-const STUCK_CLAIM_MS = 10 * 60 * 1000;
+export const STUCK_CLAIM_MS = 10 * 60 * 1000;
 
 /** Cron entry point: retries every due email job, bounded per tick. */
 export async function processEmailJobs(env: Env): Promise<number> {
   const now = new Date();
-  // Rescue jobs whose claiming isolate died mid-send.
+  // Rescue jobs whose claiming isolate died mid-send. Email's own only: a
+  // plugin's stale claim is counted as a failed attempt (`processPluginJobs`).
   await env.DB.prepare(
-    "UPDATE job SET status = 'pending' WHERE status = 'running' AND updated_at < ?",
+    "UPDATE job SET status = 'pending' WHERE type = 'email' AND status = 'running' AND updated_at < ?",
   )
     .bind(new Date(now.getTime() - STUCK_CLAIM_MS).toISOString())
     .run();
