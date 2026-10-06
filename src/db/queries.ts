@@ -1144,6 +1144,71 @@ export function listByReference(
     .bind(kind, locale, now, slug, limit);
 }
 
+/**
+ * Published items of a kind by a bounded list of slugs, in no particular
+ * order: the targets of a `reference[]` field (docs/THEME_FORMAT.md §7.5).
+ * Each slug is a lookup on the unique `(kind, locale, slug)` index.
+ *
+ * The `+` on the last two terms is what makes that true. Without it SQLite
+ * prefers `content_list` for an `IN` — it sees an equality on `status` and a
+ * range on `published_at` — and reads every published item of the kind to
+ * find two. `+column` keeps a term out of index selection and changes
+ * nothing else. `test/worker/relations.test.ts` asserts the plan.
+ */
+export function summariesBySlugs(
+  db: D1Database,
+  kind: string,
+  locale: string,
+  slugs: readonly string[],
+  now: string,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      `SELECT ${SUMMARY_COLUMNS} FROM content
+       WHERE kind = ? AND locale = ? AND slug IN (${slugs.map(() => '?').join(', ')})
+         AND +status = 'published' AND +published_at <= ?`,
+    )
+    .bind(kind, locale, ...slugs, now);
+}
+
+/**
+ * Published items of `kind` whose front-matter `field` — a `reference[]`, a
+ * JSON array of slugs — contains `slug`: the reverse of a list of references,
+ * e.g. the products in a collection.
+ *
+ * `json_each` expands the array and the match is on the expanded rows, as
+ * the tag archive does (`listByTag`). There is no index on the contents of
+ * the array: rows read are bounded by the kind-and-locale index prefix, the
+ * same bound `listByReference` has (docs/DATA_MODEL.md §3). `field` is
+ * checked for the same reason as there.
+ */
+export function listByReferenceList(
+  db: D1Database,
+  kind: string,
+  locale: string,
+  field: string,
+  slug: string,
+  limit: number,
+  now: string,
+): D1PreparedStatement {
+  if (!/^[a-z][a-z0-9_]*$/.test(field)) {
+    throw new Error(`Refusing to query by unsafe field name "${field}".`);
+  }
+  return db
+    .prepare(
+      `SELECT ${SUMMARY_COLUMNS} FROM content
+       WHERE kind = ? AND locale = ? AND status = 'published' AND published_at <= ?
+         AND json_type(frontmatter, '$.${field}') = 'array'
+         AND EXISTS (
+           SELECT 1 FROM json_each(frontmatter, '$.${field}')
+           WHERE json_each.value = ?
+         )
+       ORDER BY published_at DESC, id
+       LIMIT ?`,
+    )
+    .bind(kind, locale, now, slug, limit);
+}
+
 /** Recent published items of the same kind, excluding one id. */
 export function listSiblings(
   db: D1Database,

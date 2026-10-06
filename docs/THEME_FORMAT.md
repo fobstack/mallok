@@ -244,7 +244,7 @@ Supported types:
 | `file` | **relative path** string | File picker | Must be under `files/`; `accept` limits extensions |
 | `keyvalue` | `{k: v}` object | Key-value table | Values are always treated as strings |
 | `reference` | the target's **slug** | Content picker | `kind` is required. A slug rather than an id, so the export stays readable |
-| `reference[]` | array of slugs | Multi-select content | |
+| `reference[]` | array of slugs | A list of slugs, typed (there is no content picker for a list yet) | `kind` is required. Resolved for templates like `reference`, as a list (§7.5); at most 24 are resolved |
 
 Optional keys on any field: `label`, `required` (default `false`), `help`,
 `default`, `group` (the admin form's grouping).
@@ -412,20 +412,43 @@ knows no concrete kind:
 
 ```liquid
 {{ content.refs.category.title }}                {# the category this item points at #}
+{% for item in content.refs.collections %}…{% endfor %}   {# every collection a `reference[]` names #}
 {% for item in content.backrefs.product %}…{% endfor %}   {# products pointing at this item #}
 {% for item in content.siblings %}…{% endfor %}  {# recent content of the same kind, excluding this one #}
 ```
 
 | Group | Source | Limit |
 | --- | --- | --- |
-| `content.refs.<field>` | A `reference` field this kind declares, resolved to the target item | 1 per field |
-| `content.backrefs.<kind>` | **Another** kind declaring a `reference` at this kind, resolved backwards | 24 |
+| `content.refs.<field>`, for a `reference` | The field's target item | 1 per field |
+| `content.refs.<field>`, for a `reference[]` | The field's target items, **as a list, in the order the slugs are written** | 24 per field |
+| `content.backrefs.<kind>` | **Another** kind declaring a `reference` or a `reference[]` at this kind, resolved backwards: the items whose field is, or contains, this item's slug | 24 per kind |
 | `content.siblings` | Recent content of this kind, excluding this item; only when the kind has a `listLayout` | 6 |
 
-All three always exist — empty when there is nothing — so a template need not
+The groups always exist — empty when there is nothing — so a template need not
 check first. Only published content in the same locale whose publication time
-has arrived is included. When a reference points at something missing or
-unpublished, that `ref` key is absent.
+has arrived is included.
+
+- When a `reference` points at something missing or unpublished, that key is
+  absent.
+- A `reference[]` leaves out the slugs that name nothing published and keeps
+  the rest in order; a slug written twice counts once. A field that is set
+  but resolves to nothing is an empty list; a field that is not set, or whose
+  value is not a list, is absent. Either way `{% for %}` over it prints
+  nothing. Beyond 24 slugs the rest are not resolved, and the Worker logs
+  `reference_list_truncated`.
+- `content.frontmatter.<field>` still holds the slugs as written.
+- An item that points at the same target through two fields — its `category`
+  and its `also_in` list, say — appears once in that target's `backrefs`.
+- Back-references are between kinds. A `reference[]` from a kind to itself
+  ("goes with these products") resolves forward only: the products named do
+  not list this one back.
+- `mallok build` resolves all of this the same way, and reports each slug of
+  a list that names nothing (`CLI.md §6.7`).
+
+A relation is one statement in a single batch, at most eight per page plus
+the siblings, whatever the lists hold: a list of references costs no extra
+round trip (`DATA_MODEL §3`). A theme declaring more than eight has the rest
+dropped and logged as `relations_truncated`.
 
 > Put differently: "the family this product belongs to" on a product page and
 > "the products in this family" on a family page are the two directions of

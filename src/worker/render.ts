@@ -36,11 +36,13 @@ import {
   type ContentRow,
   type ContentSummaryRow,
   listByReference,
+  listByReferenceList,
   listSiblings,
   loadMediaBySha,
   type PluginStateRow,
   putFragment,
   type RenderCacheRow,
+  summariesBySlugs,
   summaryBySlug,
   type TranslationRow,
 } from '../db/queries.js';
@@ -387,15 +389,36 @@ function parseJson(text: string): Record<string, unknown> {
  * cold-render read budget in docs/DATA_MODEL.md §3.
  */
 const BACKREF_LIMIT = 24;
+/** How many targets of one `reference[]` field are resolved. */
+const REF_LIST_LIMIT = 24;
 const SIBLING_LIMIT = 6;
 /** Upper bound on relation statements, so the batch stays constant-sized. */
 const RELATION_STATEMENTS_MAX = 8;
 
+/**
+ * The slugs a `reference[]` field holds: non-empty strings, each once, in the
+ * order written. Anything else in the array is not a reference.
+ */
+function referenceSlugs(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return [
+    ...new Set(
+      value.filter(
+        (entry): entry is string => typeof entry === 'string' && entry !== '',
+      ),
+    ),
+  ];
+}
+
 /** One relation statement and where its result belongs. */
 interface RelationSlot {
-  readonly group: 'ref' | 'backref';
+  readonly group: 'ref' | 'refs' | 'backref';
   readonly key: string;
   readonly statement: D1PreparedStatement;
+  /** `refs` only: the slugs as the author listed them, which is the order. */
+  readonly slugs?: readonly string[];
 }
 
 /**
@@ -403,10 +426,15 @@ interface RelationSlot {
  *
  * The rules are read off the manifest, never hardcoded: a `reference` field
  * on this kind resolves forward to its target (`content.refs.<field>`), a
- * `reference` field on another kind that points at this kind resolves
- * backward to the items pointing here (`content.backrefs.<kind>`), and a kind
- * with its own list gets recent siblings. That is why the core knows nothing
- * about "category" or "product" (docs/ARCHITECTURE.md §11).
+ * `reference[]` field to its targets in the order they are listed, a
+ * `reference` or `reference[]` field on another kind that points at this
+ * kind resolves backward to the items pointing here
+ * (`content.backrefs.<kind>`), and a kind with its own list gets recent
+ * siblings. That is why the core knows nothing about "category" or "product"
+ * (docs/ARCHITECTURE.md §11).
+ *
+ * Every relation is one statement of the same batch, so a list of references
+ * costs what a single one does in round trips.
  */
 export async function loadRelations(
   db: D1Database,
@@ -424,6 +452,31 @@ export async function loadRelations(
 
   // Forward: this kind's `reference` fields.
   for (const [field, decl] of Object.entries(kind.fields ?? {})) {
+    if (decl.type === 'reference[]' && decl.kind !== undefined) {
+      const listed = referenceSlugs(frontmatter[field]);
+      if (listed.length === 0) {
+        continue;
+      }
+      const slugs = listed.slice(0, REF_LIST_LIMIT);
+      if (listed.length > slugs.length) {
+        console.warn(
+          JSON.stringify({
+            event: 'reference_list_truncated',
+            kind: content.kind,
+            field,
+            kept: slugs.length,
+            listed: listed.length,
+          }),
+        );
+      }
+      slots.push({
+        group: 'refs',
+        key: field,
+        slugs,
+        statement: summariesBySlugs(db, decl.kind, content.locale, slugs, now),
+      });
+      continue;
+    }
     if (decl.type !== 'reference' || decl.kind === undefined) {
       continue;
     }
@@ -438,13 +491,33 @@ export async function loadRelations(
     });
   }
 
-  // Backward: other kinds whose `reference` field points at this kind.
+  // Backward: other kinds whose `reference` or `reference[]` field points at
+  // this kind.
   for (const [otherKind, decl] of Object.entries(manifest.kinds)) {
     if (otherKind === content.kind) {
       continue;
     }
     for (const [field, fieldDecl] of Object.entries(decl.fields ?? {})) {
-      if (fieldDecl.type !== 'reference' || fieldDecl.kind !== content.kind) {
+      if (fieldDecl.kind !== content.kind) {
+        continue;
+      }
+      if (fieldDecl.type === 'reference[]') {
+        slots.push({
+          group: 'backref',
+          key: otherKind,
+          statement: listByReferenceList(
+            db,
+            otherKind,
+            content.locale,
+            field,
+            content.slug,
+            BACKREF_LIMIT,
+            now,
+          ),
+        });
+        continue;
+      }
+      if (fieldDecl.type !== 'reference') {
         continue;
       }
       slots.push({
@@ -498,8 +571,10 @@ export async function loadRelations(
   const allRows = results.flatMap((result) => result.results ?? []);
   const covers = await resolveCovers(db, allRows, mediaBaseUrl);
 
-  const refs: Record<string, SummaryInput> = {};
+  const refs: Record<string, SummaryInput | SummaryInput[]> = {};
   const backrefs: Record<string, SummaryInput[]> = {};
+  /** Ids already in a kind's back-references: two fields may name one item. */
+  const seen: Record<string, Set<string>> = {};
   bounded.forEach((slot, index) => {
     const rows = results[index]?.results ?? [];
     if (slot.group === 'ref') {
@@ -509,8 +584,25 @@ export async function loadRelations(
       }
       return;
     }
+    if (slot.group === 'refs') {
+      // The author's order, not the database's; a slug that names nothing
+      // published is skipped.
+      const bySlug = new Map(rows.map((row) => [row.slug, row]));
+      refs[slot.key] = (slot.slugs ?? []).flatMap((slug) => {
+        const row = bySlug.get(slug);
+        return row === undefined ? [] : [toSummary(row, covers)];
+      });
+      return;
+    }
     const existing = backrefs[slot.key] ?? [];
-    existing.push(...rows.map((row) => toSummary(row, covers)));
+    const ids = seen[slot.key] ?? new Set<string>();
+    for (const row of rows) {
+      if (existing.length < BACKREF_LIMIT && !ids.has(row.id)) {
+        ids.add(row.id);
+        existing.push(toSummary(row, covers));
+      }
+    }
+    seen[slot.key] = ids;
     backrefs[slot.key] = existing;
   });
   const siblings = wantsSiblings

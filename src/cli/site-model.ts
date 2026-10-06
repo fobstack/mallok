@@ -171,7 +171,8 @@ export function translationsOf(model: SiteModel, item: SiteItem): SiteItem[] {
 
 /** What a `reference` field points at, and what points back (§7.5). */
 export interface Relations {
-  readonly refs: Record<string, SiteItem>;
+  /** One item for a `reference` field, a list for a `reference[]`. */
+  readonly refs: Record<string, SiteItem | SiteItem[]>;
   readonly backrefs: Record<string, SiteItem[]>;
   readonly siblings: SiteItem[];
   /**
@@ -185,6 +186,7 @@ export interface Relations {
 }
 
 const BACKREF_LIMIT = 24;
+const REF_LIST_LIMIT = 24;
 const SIBLING_LIMIT = 6;
 
 /**
@@ -198,26 +200,57 @@ export function relationsFor(
   manifest: ThemeManifest,
 ): Relations {
   const kind = manifest.kinds[item.kind];
-  const refs: Record<string, SiteItem> = {};
+  const refs: Record<string, SiteItem | SiteItem[]> = {};
   const backrefs: Record<string, SiteItem[]> = {};
   const dangling: { field: string; value: string }[] = [];
-
-  for (const [field, decl] of Object.entries(kind?.fields ?? {})) {
-    if (decl.type !== 'reference' || decl.kind === undefined) {
-      continue;
-    }
-    const slug = item.frontmatter[field];
-    if (typeof slug !== 'string' || slug === '') {
-      continue;
-    }
-    const target = model.published.find(
+  const find = (targetKind: string, slug: string): SiteItem | undefined =>
+    model.published.find(
       (entry) =>
-        entry.kind === decl.kind &&
+        entry.kind === targetKind &&
         entry.locale === item.locale &&
         entry.slug === slug,
     );
+
+  for (const [field, decl] of Object.entries(kind?.fields ?? {})) {
+    if (decl.kind === undefined) {
+      continue;
+    }
+    const value = item.frontmatter[field];
+    if (decl.type === 'reference[]') {
+      const slugs = Array.isArray(value)
+        ? [
+            ...new Set(
+              value.filter(
+                (entry): entry is string =>
+                  typeof entry === 'string' && entry !== '',
+              ),
+            ),
+          ].slice(0, REF_LIST_LIMIT)
+        : [];
+      if (slugs.length === 0) {
+        continue;
+      }
+      const targets: SiteItem[] = [];
+      for (const slug of slugs) {
+        const target = find(decl.kind, slug);
+        if (target === undefined) {
+          dangling.push({ field, value: slug });
+        } else {
+          targets.push(target);
+        }
+      }
+      refs[field] = targets;
+      continue;
+    }
+    if (decl.type !== 'reference') {
+      continue;
+    }
+    if (typeof value !== 'string' || value === '') {
+      continue;
+    }
+    const target = find(decl.kind, value);
     if (target === undefined) {
-      dangling.push({ field, value: slug });
+      dangling.push({ field, value });
       continue;
     }
     refs[field] = target;
@@ -228,16 +261,29 @@ export function relationsFor(
       continue;
     }
     for (const [field, fieldDecl] of Object.entries(decl.fields ?? {})) {
-      if (fieldDecl.type !== 'reference' || fieldDecl.kind !== item.kind) {
+      if (fieldDecl.kind !== item.kind) {
         continue;
       }
-      backrefs[otherKind] = model.published
-        .filter(
-          (entry) =>
-            entry.kind === otherKind &&
-            entry.locale === item.locale &&
-            entry.frontmatter[field] === item.slug,
-        )
+      const list = fieldDecl.type === 'reference[]';
+      if (!list && fieldDecl.type !== 'reference') {
+        continue;
+      }
+      const already = backrefs[otherKind] ?? [];
+      const pointing = model.published.filter((entry) => {
+        if (
+          entry.kind !== otherKind ||
+          entry.locale !== item.locale ||
+          already.includes(entry)
+        ) {
+          return false;
+        }
+        const value = entry.frontmatter[field];
+        return list
+          ? Array.isArray(value) && value.includes(item.slug)
+          : value === item.slug;
+      });
+      // Two fields of one kind may point here; together they are one list.
+      backrefs[otherKind] = [...already, ...pointing]
         .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
         .slice(0, BACKREF_LIMIT);
     }

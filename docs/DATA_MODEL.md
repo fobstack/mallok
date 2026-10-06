@@ -326,7 +326,7 @@ bounded number of rows:
 | Request | Queries | Row-read ceiling |
 | --- | --- | --- |
 | A single-page cold render | `site`, `content` by path, `render_cache` by key, all of `plugin_state` | ≈ 1 + 1 + 1 + the number of plugins |
-| Related content (any content page) | one row per `reference` field, `LIMIT 24` per back-reference, `LIMIT 6` for siblings; one batch, at most 8 + 1 statements | Bounded; a product page is 1 + 6 in practice |
+| Related content (any content page) | one row per `reference` field, at most 24 rows per `reference[]` field (each a lookup by slug), `LIMIT 24` per back-reference, `LIMIT 6` for siblings; one batch, at most 8 + 1 statements | Bounded for the forward direction and siblings; a back-reference reads as described below |
 | Resolving covers | `media` by `sha256 IN (…)`, one query | ≤ the number of items on the page |
 | A list page | `content` through the `content_list` index, `LIMIT n+1` | n+1 (21 by default) |
 | A home page | One list per kind the theme lists, each `LIMIT 10`, all in one batch; covers in one more query | 10 per listed kind (Atelier lists five: ≤ 50) |
@@ -335,16 +335,29 @@ bounded number of rows:
 | Saving content | Read the old row (1), write `content` (1), write `render_cache` (1), update `media.ref_count` (≤ the reference count), write `job` (≤ 3) | A small constant |
 | One cron pass | N `job` rows plus each one's work | N × a small constant |
 
-Back-references (`json_extract(frontmatter, '$.<field>') = ?`) use the
-`kind + locale + status` prefix of the `content_list` index, so **the scan
-covers the published items of that kind in that language**, not the whole
-table, and the returned rows are bounded by `LIMIT`. For a trade catalogue of
+Back-references use the `kind + locale + status` prefix of the `content_list`
+index, so **the scan covers the published items of that kind in that
+language**, not the whole table, and the returned rows are bounded by `LIMIT`.
+That holds for both forms: a `reference` field is matched with
+`json_extract(frontmatter, '$.<field>') = ?`, and a `reference[]` field with
+`EXISTS (SELECT 1 FROM json_each(frontmatter, '$.<field>') WHERE value = ?)`,
+the way the tag archive matches `tags`. Neither has an index on the value
+itself. For a trade catalogue of
 tens to hundreds of items that is acceptable, and it only happens on a cold
 render. **If one kind on a site ever exceeded roughly two thousand items, this
 would need an expression index on that field** — which 0.1 does not build,
 because the index would have to be generated from a field name the theme
 declares, making it a runtime index creation, which contradicts themes being a
 build-time concern.
+An expression index would serve a `reference` field only; the contents of a
+`reference[]` array cannot be indexed that way at all, and would need a table
+of their own.
+
+The forward direction of a `reference[]` is `slug IN (…)`, and is a lookup per
+slug on the unique `(kind, locale, slug)` index only because its other two
+terms are written `+status` and `+published_at`: left alone, SQLite chooses
+`content_list` for that statement and reads every published item of the kind.
+`test/worker/relations.test.ts` asserts both plans with `EXPLAIN QUERY PLAN`.
 
 Two hard rules: **pagination never does `COUNT(*)`** — `LIMIT n+1` decides
 whether there is a next page, so row reads do not grow with the amount of

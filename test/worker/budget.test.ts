@@ -1,7 +1,14 @@
 import { env, SELF } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { resetBootForTests } from '../../src/worker/bootstrap.js';
 import { cacheKeyFor } from '../../src/worker/cache.js';
+import {
+  activeTheme,
+  compiledPlugins,
+  configure,
+} from '../../src/worker/composition.js';
 import { handlePublicPage } from '../../src/worker/pages/runtime.js';
+import { resetThemeCacheForTests } from '../../src/worker/theme-cache.js';
 
 /**
  * Measures the D1 call budget of a cold page render
@@ -233,5 +240,99 @@ describe('cold render D1 budget', () => {
     expect(response.status).toBe(200);
     expect(await response.text()).toContain('Heavy');
     expect(calls).toEqual(['batch(5)', 'batch(3)']);
+  });
+
+  it('resolves a list of references in the same two round trips', async () => {
+    // Atelier with one more field: the families a product is also sold
+    // under. A `reference[]` adds a statement to the relations batch in each
+    // direction, and no round trip (docs/DATA_MODEL.md §3).
+    const original = { theme: activeTheme(), plugins: compiledPlugins() };
+    const product = original.theme.manifest.kinds.product;
+    if (product === undefined) {
+      throw new Error('the theme under test declares a product kind');
+    }
+    configure({
+      plugins: original.plugins,
+      theme: {
+        ...original.theme,
+        manifest: {
+          ...original.theme.manifest,
+          kinds: {
+            ...original.theme.manifest.kinds,
+            product: {
+              ...product,
+              fields: {
+                ...product.fields,
+                also_in: {
+                  type: 'reference[]',
+                  kind: 'category',
+                  required: false,
+                },
+              },
+            },
+          },
+        },
+        files: {
+          ...original.theme.files,
+          // Inside the layout's block: what follows it is not rendered.
+          'layouts/product.liquid': (
+            original.theme.files['layouts/product.liquid'] ?? ''
+          ).replace(
+            '</article>',
+            '{% for family in content.refs.also_in %}<a class="also-in" href="{{ family.path }}">{{ family.title }}</a>{% endfor %}</article>',
+          ),
+        },
+      },
+    });
+    resetThemeCacheForTests();
+    resetBootForTests();
+    try {
+      const second = await api('POST', '/_mallok/api/content', {
+        kind: 'category',
+        slug: 'second',
+        markdown: '---\ntitle: Second family\n---\n\nAnother family.',
+      });
+      const secondPath = ((await second.json()) as { path: string }).path;
+      const created = await api('POST', '/_mallok/api/content', {
+        kind: 'product',
+        slug: 'in-two',
+        markdown:
+          '---\ntitle: In two families\ncategory: family\nalso_in:\n  - second\n  - family\n---\n\n![a](images/a.png)',
+      });
+      expect(created.status).toBe(201);
+      const productPath = ((await created.json()) as { path: string }).path;
+
+      // The product page: the heaviest case above, plus the list.
+      const page = countingDb(env.DB);
+      const response = await coldRender(productPath, page.db);
+      expect(response.status).toBe(200);
+      expect(page.calls).toEqual(['batch(5)', 'batch(4)']);
+      // Both families, in the order the author wrote them.
+      expect(
+        [
+          ...(await response.text()).matchAll(
+            /class="also-in" href="([^"]+)"/g,
+          ),
+        ].map((match) => match[1]),
+      ).toEqual([secondPath, '/families/family']);
+
+      // Each family's page lists the product: one named by the list alone,
+      // the other by the single field and the list.
+      for (const familyPath of [secondPath, '/families/family']) {
+        const family = countingDb(env.DB);
+        const listed = await coldRender(familyPath, family.db);
+        expect(listed.status).toBe(200);
+        const html = await listed.text();
+        expect(html.split('In two families').length - 1).toBeGreaterThan(0);
+        expect(html.split(`href="${productPath}"`).length - 1).toBe(1);
+        expect(family.calls).toHaveLength(2);
+        expect(family.calls[0]).toBe('batch(5)');
+        expect(family.calls[1]).toMatch(/^batch\(\d\)$/);
+      }
+    } finally {
+      configure(original);
+      resetThemeCacheForTests();
+      resetBootForTests();
+    }
   });
 });

@@ -81,11 +81,18 @@ export interface RelationsView {
    * The target of each `reference` field, keyed by field name — e.g.
    * `content.refs.category` on a product page. A field pointing at nothing
    * (missing or unpublished) is simply absent.
+   *
+   * A `reference[]` field is a list instead, in the order its slugs are
+   * written, without the ones that name nothing published — e.g.
+   * `content.refs.collections`.
    */
-  readonly refs: Readonly<Record<string, ContentSummaryView>>;
+  readonly refs: Readonly<
+    Record<string, ContentSummaryView | readonly ContentSummaryView[]>
+  >;
   /**
    * Items that point back at this one, keyed by their kind — e.g.
-   * `content.backrefs.product` on a category page.
+   * `content.backrefs.product` on a category page. An item counts whether
+   * its field is a `reference` to this item or a `reference[]` containing it.
    */
   readonly backrefs: Readonly<Record<string, readonly ContentSummaryView[]>>;
   /** Recent items of the same kind, this one excluded. */

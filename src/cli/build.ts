@@ -278,7 +278,7 @@ export async function buildStatic(
         refs: Object.fromEntries(
           Object.entries(relations.refs).map(([field, target]) => [
             field,
-            toSummary(target),
+            Array.isArray(target) ? target.map(toSummary) : toSummary(target),
           ]),
         ),
         backrefs: Object.fromEntries(

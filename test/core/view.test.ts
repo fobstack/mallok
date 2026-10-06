@@ -185,7 +185,7 @@ describe('relations', () => {
       backrefs: { product: [item] },
       siblings: [item],
     });
-    expect(view.refs.category?.path).toBe('/products/bar');
+    expect(view.refs.category).toMatchObject({ path: '/products/bar' });
     expect(view.backrefs.product?.[0]?.title).toBe('Bar');
     expect(view.siblings[0]?.id).toBe('p1');
   });
@@ -194,8 +194,27 @@ describe('relations', () => {
     const view = buildContentPageView(ctx, content('product'), fragment, [], {
       refs: { category: item },
     });
-    expect(view.content?.refs.category?.title).toBe('Bar');
+    expect(view.content?.refs.category).toMatchObject({ title: 'Bar' });
     expect(view.content?.siblings).toEqual([]);
+  });
+
+  it('maps a list of references to a list of summary views, in order', () => {
+    const second = {
+      ...item,
+      id: 'p2',
+      title: 'Plate',
+      path: '/products/plate',
+    };
+    const view = buildRelationsView({
+      refs: { category: item, collections: [second, item], none: [] },
+    });
+    expect(view.refs.collections).toMatchObject([
+      { title: 'Plate', path: '/products/plate' },
+      { title: 'Bar', path: '/products/bar' },
+    ]);
+    expect(view.refs.none).toEqual([]);
+    // The single reference beside it is still one summary, not a list of one.
+    expect(Array.isArray(view.refs.category)).toBe(false);
   });
 });
 

@@ -733,6 +733,7 @@ with Task 22; added 2026-10-05]
   pages, and the product page lists both; the new budget case passes.
 - Depends on: nothing. Contracts: `THEME_FORMAT.md §5.2`, `§7.5`;
   `DATA_MODEL.md §3`.
+- **Done 2026-10-06** — `tasks/TASK-39.md`.
 
 #### P2 — Nundar phase 3
 

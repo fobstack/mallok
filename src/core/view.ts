@@ -304,18 +304,30 @@ export interface FragmentInputView {
  * wherever they read content; the shapes are the same everywhere.
  */
 export interface RelationsInput {
-  readonly refs?: Readonly<Record<string, SummaryInput>>;
+  /** One summary for a `reference` field, a list for a `reference[]`. */
+  readonly refs?: Readonly<
+    Record<string, SummaryInput | readonly SummaryInput[]>
+  >;
   readonly backrefs?: Readonly<Record<string, readonly SummaryInput[]>>;
   readonly siblings?: readonly SummaryInput[];
+}
+
+function isSummaryList(
+  target: SummaryInput | readonly SummaryInput[],
+): target is readonly SummaryInput[] {
+  return Array.isArray(target);
 }
 
 /** Turns relation inputs into the view groups templates iterate over. */
 export function buildRelationsView(
   relations: RelationsInput = {},
 ): RelationsView {
-  const refs: Record<string, ReturnType<typeof buildSummaryView>> = {};
-  for (const [field, item] of Object.entries(relations.refs ?? {})) {
-    refs[field] = buildSummaryView(item);
+  type Summary = ReturnType<typeof buildSummaryView>;
+  const refs: Record<string, Summary | Summary[]> = {};
+  for (const [field, target] of Object.entries(relations.refs ?? {})) {
+    refs[field] = isSummaryList(target)
+      ? target.map(buildSummaryView)
+      : buildSummaryView(target);
   }
   const backrefs: Record<string, ReturnType<typeof buildSummaryView>[]> = {};
   for (const [kind, items] of Object.entries(relations.backrefs ?? {})) {
