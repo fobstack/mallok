@@ -65,7 +65,8 @@ export interface StarterSettings {
     Record<string, readonly { label: string; href: string }[]>
   >;
   readonly themeOptions: Readonly<Record<string, unknown>>;
-  readonly tagline: string;
+  /** One tagline, or one per language keyed by locale. */
+  readonly tagline: string | Readonly<Record<string, string>>;
 }
 
 /** A starter, as the wizard consumes it. */

@@ -164,6 +164,7 @@ export {
   faqPairs,
   HOME_RECENT,
   homeKinds,
+  joinTagline,
   type ListInput,
   mergeStructuredData,
   type NavEntry,
@@ -173,6 +174,8 @@ export {
   type StructuredDataAddition,
   type StructuredDataDrop,
   type SummaryInput,
+  splitTagline,
+  taglineFor,
   themeAssetBase,
   type ViewContext,
 } from './view.js';

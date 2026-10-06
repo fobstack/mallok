@@ -9,8 +9,10 @@
 import { z } from 'zod';
 import {
   buildPublicPath,
+  joinTagline,
   LOCALE_PATTERN,
   PIPELINE_VERSION,
+  splitTagline,
   themeAssetBase,
 } from '../core/index.js';
 import {
@@ -53,7 +55,11 @@ const navEntrySchema = z.object({
 const settingsSchema = z
   .object({
     name: z.string().min(1).max(120),
-    tagline: z.string().max(300).nullable(),
+    // One tagline, or one per language keyed by locale, the way `nav` is.
+    tagline: z.union([
+      z.string().max(300).nullable(),
+      z.record(z.string().regex(LOCALE_PATTERN), z.string().max(300)),
+    ]),
     locales: z.array(z.string().regex(LOCALE_PATTERN)).min(1),
     kinds: z.record(
       z.string().regex(/^[a-z][a-z0-9_]*$/),
@@ -71,6 +77,24 @@ const settingsSchema = z
   })
   .partial();
 
+/**
+ * The columns a submitted tagline becomes. A string replaces the tagline for
+ * every language; a map sets each language's own.
+ */
+function taglinePatch(
+  value: string | Readonly<Record<string, string>> | null | undefined,
+  defaultLocale: string,
+): Pick<SitePatch, 'tagline' | 'taglines'> {
+  if (value === undefined) {
+    return {};
+  }
+  const stored = splitTagline(value, defaultLocale);
+  return {
+    tagline: value === null || stored.tagline === '' ? null : stored.tagline,
+    taglines: JSON.stringify(stored.taglines),
+  };
+}
+
 /** Returns the site settings the admin may edit. */
 export async function getSettings(env: Env): Promise<Response> {
   const row = await loadSite(env.DB);
@@ -80,7 +104,7 @@ export async function getSettings(env: Env): Promise<Response> {
   const settings = parseSiteSettings(row);
   return json({
     name: settings.name,
-    tagline: settings.tagline,
+    tagline: joinTagline(settings, settings.defaultLocale),
     defaultLocale: settings.defaultLocale,
     locales: settings.locales,
     kinds: settings.kinds,
@@ -151,7 +175,7 @@ export async function patchSettings(
 
   const patch: SitePatch = {
     ...pick('name', input.name),
-    ...pick('tagline', input.tagline),
+    ...taglinePatch(input.tagline, row.default_locale),
     ...pick('locales', jsonOrUndefined(input.locales)),
     ...pick('kinds', jsonOrUndefined(input.kinds)),
     ...pick('theme_options', jsonOrUndefined(input.themeOptions)),

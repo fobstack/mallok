@@ -51,14 +51,36 @@ const SITE_FIELDS: readonly FieldSpec[] = [
   },
 ];
 
+/** The form field holding one language's own tagline. */
+function taglineField(locale: string): string {
+  return `tagline_${locale}`;
+}
+
 export function SiteSettingsPage(): JSX.Element {
   const current = settings.value;
-  const [draft, setDraft] = useState<Record<string, unknown>>(() => ({
-    name: current?.name ?? '',
-    tagline: current?.tagline ?? '',
-    domain: current?.domain ?? '',
-    mediaBaseUrl: current?.mediaBaseUrl ?? '',
-  }));
+  /** The languages that can have a tagline of their own. */
+  const otherLocales = (current?.locales ?? []).filter(
+    (locale) => locale !== current?.defaultLocale,
+  );
+  const [draft, setDraft] = useState<Record<string, unknown>>(() => {
+    // One string, or one per language keyed by locale.
+    const stored = current?.tagline ?? '';
+    const byLocale = typeof stored === 'string' ? {} : stored;
+    return {
+      name: current?.name ?? '',
+      tagline:
+        typeof stored === 'string'
+          ? stored
+          : (stored[current?.defaultLocale ?? ''] ?? ''),
+      ...Object.fromEntries(
+        Object.entries(byLocale)
+          .filter(([locale]) => locale !== current?.defaultLocale)
+          .map(([locale, text]) => [taglineField(locale), text]),
+      ),
+      domain: current?.domain ?? '',
+      mediaBaseUrl: current?.mediaBaseUrl ?? '',
+    };
+  });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -67,9 +89,44 @@ export function SiteSettingsPage(): JSX.Element {
     return <p>Loading…</p>;
   }
 
+  // A tagline field per further language, right under the tagline itself.
+  const fields: readonly FieldSpec[] = SITE_FIELDS.flatMap((spec) =>
+    spec.name === 'tagline'
+      ? [
+          spec,
+          ...otherLocales.map(
+            (locale): FieldSpec => ({
+              name: taglineField(locale),
+              field: {
+                type: 'text',
+                label: `Tagline (${locale})`,
+                required: false,
+                max: 300,
+                help: `Shown on pages in ${locale}. Empty uses the tagline above.`,
+              },
+            }),
+          ),
+        ]
+      : [spec],
+  );
+
+  /** One string when no language has its own tagline, otherwise the map. */
+  const taglineValue = (): string | Record<string, string> | null => {
+    const own = String(draft.tagline ?? '');
+    const others = Object.fromEntries(
+      otherLocales
+        .map((locale) => [locale, String(draft[taglineField(locale)] ?? '')])
+        .filter(([, text]) => (text ?? '').trim() !== ''),
+    ) as Record<string, string>;
+    if (Object.keys(others).length === 0) {
+      return own === '' ? null : own;
+    }
+    return { [current.defaultLocale]: own, ...others };
+  };
+
   const submit = async (event: { preventDefault(): void }): Promise<void> => {
     event.preventDefault();
-    const found = validateAll(SITE_FIELDS, draft);
+    const found = validateAll(fields, draft);
     setErrors(found);
     if (Object.keys(found).length > 0) {
       return;
@@ -79,7 +136,7 @@ export function SiteSettingsPage(): JSX.Element {
     try {
       await saveSettings({
         name: String(draft.name ?? ''),
-        tagline: draft.tagline === '' ? null : String(draft.tagline ?? ''),
+        tagline: taglineValue(),
         domain: draft.domain === '' ? null : String(draft.domain ?? ''),
         mediaBaseUrl:
           draft.mediaBaseUrl === '' ? null : String(draft.mediaBaseUrl ?? ''),
@@ -103,7 +160,7 @@ export function SiteSettingsPage(): JSX.Element {
       </header>
       <form className="card" onSubmit={(event) => void submit(event)}>
         <SchemaForm
-          specs={SITE_FIELDS}
+          specs={fields}
           values={draft}
           errors={errors}
           idPrefix="site"

@@ -15,6 +15,7 @@ import {
   renderFragment,
   renderPage,
   splitFrontmatter,
+  splitTagline,
   themeLanguageNames,
   themeStrings,
 } from '../core/index.js';
@@ -110,7 +111,7 @@ export async function renderPreview(
     {
       settings: {
         name: input.settings.name,
-        tagline: input.settings.tagline ?? '',
+        ...splitTagline(input.settings.tagline, input.settings.defaultLocale),
         defaultLocale: input.settings.defaultLocale,
         locales: input.settings.locales,
         kinds: input.settings.kinds,

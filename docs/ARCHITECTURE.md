@@ -686,6 +686,8 @@ export default createMallok({ theme: atelier, plugins: [shop], starters: [sample
 - Running the starter step a second time, before setup is completed, imports
   the documents that are missing and submits every record again. Whether a
   record is then stored twice is up to the plugin's `save`.
+- `settings.tagline` is one string or a map of locale to string, as in
+  `site.json` (`CONTENT_FORMAT.md §5`).
 - A starter's Markdown and records are part of the Worker bundle, like the
   official starter's.
 

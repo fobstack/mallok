@@ -17,7 +17,10 @@ const navSchema = z.record(
 /** Parsed site settings used by the render path. */
 export interface SiteSettings {
   readonly name: string;
+  /** The tagline in the default language, and wherever a language has none. */
   readonly tagline: string;
+  /** Taglines of other languages, by locale. */
+  readonly taglines: Readonly<Record<string, string>>;
   readonly defaultLocale: string;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
@@ -35,6 +38,7 @@ export function parseSiteSettings(row: SiteRow): SiteSettings {
   return {
     name: row.name,
     tagline: row.tagline ?? '',
+    taglines: parseWith(z.record(z.string(), z.string()), row.taglines, {}),
     defaultLocale: row.default_locale,
     locales: parseWith(z.array(z.string()), row.locales, [row.default_locale]),
     kinds: parseWith(kindsSchema, row.kinds, {}),

@@ -151,6 +151,12 @@ export-2026-08-28/
 one translation group. `site.json` and `redirects.csv` use generic structures
 and carry no Worker, D1 or R2 identifiers.
 
+In `site.json`, `tagline` is one string or, for a site with a tagline per
+language, a map of locale to string keyed the way `nav` is —
+`{ "en": "…", "de": "…" }`. An export writes the string unless some language
+other than the default has a tagline of its own. A language absent from the
+map uses the default language's.
+
 **An export contains no theme directory** (corrected 2026-08-29): a theme is
 source code that travels with the deployment, not site data. `site.json`
 records only the theme id and version in use, and whoever imports it makes

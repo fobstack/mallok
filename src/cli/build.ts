@@ -35,8 +35,10 @@ import {
   renderPage,
   type SitemapEntry,
   type SummaryInput,
+  splitTagline,
   type ThemeFiles,
   type ThemeManifest,
+  taglineFor,
   themeLanguageNames,
   themeStrings,
   type ViewContext,
@@ -132,7 +134,7 @@ function contextFor(
   return {
     settings: {
       name: config.name,
-      tagline: config.tagline ?? '',
+      ...splitTagline(config.tagline, config.defaultLocale),
       defaultLocale: config.defaultLocale,
       locales: config.locales,
       kinds: config.kinds,
@@ -431,7 +433,10 @@ export async function buildStatic(
         siteName: config.name,
         siteUrl: `${options.origin}${homePath}`,
         feedUrl: `${options.origin}${feedPath}`,
-        description: config.tagline ?? '',
+        description: taglineFor(
+          splitTagline(config.tagline, config.defaultLocale),
+          locale,
+        ),
         locale,
         items: articles.map((item) => ({
           title: item.title,

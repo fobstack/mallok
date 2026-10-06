@@ -38,7 +38,12 @@ const starterSchema = z.object({
     kinds: z.record(z.string(), z.object({ base: z.string() })),
     nav: z.record(z.string(), z.array(linkSchema)).default({}),
     themeOptions: z.record(z.string(), z.unknown()).default({}),
-    tagline: z.string().default(''),
+    tagline: z
+      .union([
+        z.string(),
+        z.record(z.string().regex(LOCALE_PATTERN), z.string()),
+      ])
+      .default(''),
   }),
   documents: z
     .array(

@@ -15,6 +15,7 @@ import {
   buildSitemap,
   buildSitemapIndex,
   type SitemapEntry,
+  taglineFor,
 } from '../core/index.js';
 import { listForSitemap, listPublished, loadSite } from '../db/queries.js';
 import { matchCached, storeCached } from './cache.js';
@@ -196,7 +197,7 @@ async function feed(
       siteName: settings.name,
       siteUrl: `${origin}${prefix}`,
       feedUrl: `${origin}${feedPath}`,
-      description: settings.tagline,
+      description: taglineFor(settings, locale),
       locale,
       items: recent.items.map((item) => ({
         title: item.title,

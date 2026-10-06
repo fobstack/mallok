@@ -775,6 +775,7 @@ rc.10.
 - Touches the `site` row's `tagline` column, the settings API, the admin's
   site settings, `site.json` and `mallok build`. Contracts: `DATA_MODEL.md
   §2.2`, `THEME_FORMAT.md §7`, `ADMIN.md`.
+- **Done 2026-10-06** — `tasks/TASK-43.md`.
 
 **Task 44 — a kind with an address and no list layout answers 404** [M19]
 - Current: a theme kind with a `base` and no `listLayout` renders its items,

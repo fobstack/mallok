@@ -20,7 +20,8 @@ export interface Session {
 /** Site settings the admin may edit. */
 export interface Settings {
   readonly name: string;
-  readonly tagline: string | null;
+  /** One tagline, or one per language keyed by locale. */
+  readonly tagline: string | Readonly<Record<string, string>> | null;
   readonly defaultLocale: string;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;

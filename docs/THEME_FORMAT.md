@@ -302,7 +302,7 @@ from Shopify and Jekyll — one of the two camelCase exceptions in
 ### 7.1 On every page
 
 ```liquid
-{{ site.name }}            {{ site.tagline }}
+{{ site.name }}            {{ site.tagline }}   {# the tagline in this page's language #}
 {{ site.locale }}          {{ site.default_locale }}
 {{ site.locales }}         {# array #}
 {{ site.base_url }}        {# https://example.com, no trailing slash #}
@@ -323,6 +323,12 @@ from Shopify and Jekyll — one of the two camelCase exceptions in
 
 {{ plugins.<plugin_id> }}  {# what an enabled plugin read for this page; §7.9 #}
 ```
+
+`site.tagline` is the tagline of the page's language. A site sets one
+tagline, or one per language; a language without its own gets the default
+language's. On the home page `page.description` is the same text, so each
+language's home page is described in its own language. A theme does not
+need an option of its own for either.
 
 **`page.head` is mandatory**: the core emits `hreflang` (including
 `x-default`) and JSON-LD there. A `base.liquid` that omits it leaves the

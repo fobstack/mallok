@@ -64,7 +64,7 @@ const shop: Starter = {
   theme: 'atelier',
   plugins: ['catalog', 'fragile'],
   settings: {
-    tagline: 'Metal, cut to length',
+    tagline: { en: 'Metal, cut to length', zh: '按长度切割的金属' },
     locales: ['en', 'zh'],
     kinds: {
       page: { base: '' },
@@ -343,9 +343,13 @@ describe('a starter the site brings', () => {
     );
     expect(enabled).toMatchObject({ catalog: 1, fragile: 1, inquiry: 0 });
     const site = await env.DB.prepare(
-      'SELECT tagline, locales FROM site WHERE id = 1',
-    ).first<{ tagline: string; locales: string }>();
+      'SELECT tagline, taglines, locales FROM site WHERE id = 1',
+    ).first<{ tagline: string; taglines: string; locales: string }>();
     expect(site?.tagline).toBe('Metal, cut to length');
+    // A starter may bring a tagline per language.
+    expect(JSON.parse(site?.taglines ?? '{}')).toEqual({
+      zh: '按长度切割的金属',
+    });
     expect(JSON.parse(site?.locales ?? '[]')).toEqual(['en', 'zh']);
     const page = await SELF.fetch(`${ORIGIN}/products/ti-bar`);
     expect(page.status).toBe(200);

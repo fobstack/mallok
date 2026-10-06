@@ -3,10 +3,14 @@ import {
   buildContentPageView,
   buildImageViews,
   buildRelationsView,
+  buildSiteView,
   faqPairs,
   homeKinds,
+  joinTagline,
   parseThemeManifest,
   type SummaryInput,
+  splitTagline,
+  taglineFor,
   type ViewContext,
 } from '../../src/core/index.js';
 
@@ -296,5 +300,56 @@ describe('homeKinds', () => {
 
   it('is not fooled by a kind named like an Object member', () => {
     expect(homeKinds({ constructor: { base: 'c' } }, theme)).toEqual([]);
+  });
+});
+
+describe('a tagline per language', () => {
+  it("resolves to the language's own, else the default language's", () => {
+    const settings = { tagline: 'Parts', taglines: { de: 'Teile', fr: '  ' } };
+    expect(taglineFor(settings, 'de')).toBe('Teile');
+    expect(taglineFor(settings, 'en')).toBe('Parts');
+    // Blank is not a tagline, however it came to be stored.
+    expect(taglineFor(settings, 'fr')).toBe('Parts');
+    expect(taglineFor({ tagline: 'Parts' }, 'de')).toBe('Parts');
+  });
+
+  it("gives templates the page's language's tagline as site.tagline", () => {
+    const settings = {
+      ...ctx.settings,
+      tagline: 'Parts',
+      taglines: { de: 'Teile' },
+    };
+    expect(buildSiteView({ ...ctx, settings, locale: 'de' }).tagline).toBe(
+      'Teile',
+    );
+    expect(buildSiteView({ ...ctx, settings, locale: 'en' }).tagline).toBe(
+      'Parts',
+    );
+  });
+
+  it('splits what a site declares into what is stored, and back', () => {
+    expect(splitTagline('One line', 'en')).toEqual({
+      tagline: 'One line',
+      taglines: {},
+    });
+    const stored = splitTagline(
+      { de: 'Teile', en: 'Parts', fr: ' ', zh: 7 },
+      'en',
+    );
+    expect(stored).toEqual({ tagline: 'Parts', taglines: { de: 'Teile' } });
+    // Default language first, whatever order it was written in.
+    expect(Object.keys(joinTagline(stored, 'en'))).toEqual(['en', 'de']);
+    expect(joinTagline(splitTagline('One line', 'en'), 'en')).toBe('One line');
+    for (const nothing of [null, undefined, 3, ['a']]) {
+      expect(splitTagline(nothing, 'en')).toEqual({
+        tagline: '',
+        taglines: {},
+      });
+    }
+    // A map with no default-language entry: the others keep theirs.
+    expect(splitTagline({ de: 'Teile' }, 'en')).toEqual({
+      tagline: '',
+      taglines: { de: 'Teile' },
+    });
   });
 });

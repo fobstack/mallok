@@ -113,7 +113,10 @@ export interface EmailMessage {
  */
 export interface PluginSiteSettings {
   readonly name: string;
+  /** The tagline in the default language, and wherever a language has none. */
   readonly tagline: string;
+  /** Taglines of other languages, by locale. */
+  readonly taglines: Readonly<Record<string, string>>;
   readonly defaultLocale: string;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
@@ -721,7 +724,8 @@ export interface StarterSettings {
     Record<string, readonly { label: string; href: string }[]>
   >;
   readonly themeOptions: Readonly<Record<string, unknown>>;
-  readonly tagline: string;
+  /** One tagline, or one per language keyed by locale. */
+  readonly tagline: string | Readonly<Record<string, string>>;
 }
 
 /** A starter, as the first-run wizard consumes it (docs/ARCHITECTURE.md §11). */

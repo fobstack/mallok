@@ -327,6 +327,7 @@ describe('plugin route cache policy', () => {
         {
           name: 'Example',
           tagline: '',
+          taglines: {},
           defaultLocale: 'en',
           locales: ['en'],
           kinds: {},
@@ -356,6 +357,7 @@ describe('plugin export paths', () => {
   const site = {
     name: 'Example',
     tagline: '',
+    taglines: {},
     defaultLocale: 'en',
     locales: ['en'],
     kinds: {},

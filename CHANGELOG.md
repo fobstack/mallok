@@ -31,6 +31,12 @@ The rest of plugin API 2, lists of references, and starters a site brings.
   first-run wizard offers it before the official one. A starter may carry
   `records` — sample data for its plugins, saved through each plugin's own
   `records` panel handler. `defineStarter` checks one where it is written.
+- **A tagline per language.** `tagline` is one string or a map of locale to
+  string, in `PATCH /_mallok/api/settings`, `site.json` and a starter's
+  settings; Settings → Site has a field for each language beyond the default.
+  `site.tagline` in a template, the home page's description and each
+  language's feed description are the page's language's, falling back to the
+  default language's.
 - The wizard's last screen lists what a starter could not import, and why.
 - **The inquiry form's labels can follow the page's language.** A theme that
   defines `inquiry_name`, `inquiry_email`, `inquiry_company`,
@@ -62,7 +68,19 @@ The rest of plugin API 2, lists of references, and starters a site brings.
   `content.frontmatter.<field>` still gets the slugs there. `content.refs.<field>`,
   absent until now for such a field, is a list.
 
+**Every site**
+
+- One schema migration runs on the first request after deploying: a
+  `taglines` column on `site`. A site with one tagline keeps it and behaves
+  as before.
+- `GET /_mallok/api/settings` and an export's `site.json` return `tagline` as
+  a map once a language other than the default has one of its own, and as
+  the string it always was until then.
+
 **Sites with plugins of their own**
+
+- `ctx.site.tagline` is the default language's tagline, as it was;
+  `ctx.site.taglines` holds the others.
 
 - Nothing a version 1 or version 2 plugin relied on is removed. A panel
   action handler's new third argument, `params`, is `{}` for an action that

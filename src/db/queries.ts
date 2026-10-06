@@ -11,6 +11,8 @@ export interface SiteRow {
   readonly id: number;
   readonly name: string;
   readonly tagline: string | null;
+  /** JSON map of locale to tagline, for languages other than the default. */
+  readonly taglines: string;
   readonly default_locale: string;
   /** JSON array of enabled locales. */
   readonly locales: string;
@@ -581,6 +583,7 @@ export async function deleteContent(
 export interface SitePatch {
   readonly name?: string;
   readonly tagline?: string | null;
+  readonly taglines?: string;
   readonly locales?: string;
   readonly kinds?: string;
   readonly theme_options?: string;

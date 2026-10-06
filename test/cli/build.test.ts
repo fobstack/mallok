@@ -280,4 +280,57 @@ describe("mallok build's home page", () => {
     expect(home).toContain('articles:10');
     expect(home).not.toContain('pages-listed');
   });
+
+  it("describes each language's home page with that language's tagline", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'mallok-tagline-'));
+    const dir = await mkdtemp(join(tmpdir(), 'mallok-tagline-out-'));
+    await put(
+      root,
+      'site.json',
+      JSON.stringify({
+        name: 'Taglines',
+        // One per language, keyed by locale the way `nav` is.
+        tagline: { en: 'Parts, cut to length', zh: '按长度切割的零件' },
+        defaultLocale: 'en',
+        locales: ['en', 'zh'],
+        kinds: { page: { base: '' }, article: { base: 'news' } },
+        nav: {},
+        themeOptions: {},
+      }),
+    );
+    await put(
+      root,
+      'content/article/note/index.md',
+      '---\ntitle: Note\ndate: 2026-01-01T00:00:00Z\n---\n\nBody.',
+    );
+    await put(
+      root,
+      'content/article/note/index.zh.md',
+      '---\ntitle: 笔记\ndate: 2026-01-01T00:00:00Z\n---\n\n正文。',
+    );
+    await buildStatic(
+      {
+        root,
+        themeDir: 'src/themes/atelier',
+        outDir: dir,
+        origin: 'https://example.com',
+        now: new Date('2026-06-01T00:00:00Z'),
+      },
+      makeReporter(false, true),
+    );
+    const meta = (html: string): string =>
+      /<meta name="description" content="([^"]*)"/.exec(html)?.[1] ?? '';
+    expect(meta(await readFile(join(dir, 'index.html'), 'utf8'))).toBe(
+      'Parts, cut to length',
+    );
+    expect(meta(await readFile(join(dir, 'zh', 'index.html'), 'utf8'))).toBe(
+      '按长度切割的零件',
+    );
+    expect(await readFile(join(dir, 'zh', 'feed.xml'), 'utf8')).toContain(
+      '按长度切割的零件',
+    );
+    expect(await readFile(join(dir, 'feed.xml'), 'utf8')).toContain(
+      'Parts, cut to length',
+    );
+  });
 });

@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import { LOCALE_PATTERN } from '../core/index.js';
+import { LOCALE_PATTERN, splitTagline } from '../core/index.js';
 import { countAdminUsers } from '../db/auth.js';
 import {
   findContentById,
@@ -245,7 +245,7 @@ async function applyStarter(
   await updateSite(
     env.DB,
     {
-      tagline: starter.settings.tagline,
+      ...starterTagline(starter.settings.tagline, settings.defaultLocale),
       locales: JSON.stringify(locales),
       kinds: JSON.stringify(starter.settings.kinds),
       nav: JSON.stringify(starter.settings.nav),
@@ -452,6 +452,15 @@ async function importRecords(
     }
   }
   return { created, failed };
+}
+
+/** A starter's tagline — one string or one per language — as columns. */
+function starterTagline(
+  value: Starter['settings']['tagline'],
+  defaultLocale: string,
+): { tagline: string; taglines: string } {
+  const stored = splitTagline(value, defaultLocale);
+  return { tagline: stored.tagline, taglines: JSON.stringify(stored.taglines) };
 }
 
 /** A plugin's stored settings; an unreadable value is no settings. */

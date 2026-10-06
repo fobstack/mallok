@@ -60,7 +60,7 @@ Content     ├ All content (filter by kind, filter by language, search)
             ├ The editor (source + field form + preview)
             └ The media library
 
-Settings    ├ Site details (name, tagline, SEO defaults)
+Settings    ├ Site details (name, tagline — one per language —, SEO defaults)
             ├ Languages (which are enabled, which is default)
             ├ Navigation (one per language)
             ├ Appearance (what the current theme is, and its options form)

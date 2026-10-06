@@ -36,13 +36,77 @@ export interface NavEntry {
 /** Site settings as the renderer needs them, free of storage details. */
 export interface SiteConfig {
   readonly name: string;
+  /** The tagline in the default language, and wherever a language has none. */
   readonly tagline: string;
+  /** Taglines of other languages, by locale. */
+  readonly taglines?: Readonly<Record<string, string>>;
   readonly defaultLocale: string;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
   readonly nav: Readonly<Record<string, readonly NavEntry[]>>;
   readonly themeOptions: Readonly<Record<string, unknown>>;
   readonly mediaBaseUrl: string;
+}
+
+/**
+ * The site's tagline for a page in `locale`: that language's own when it has
+ * one, otherwise the default language's.
+ */
+export function taglineFor(
+  settings: Pick<SiteConfig, 'tagline' | 'taglines'>,
+  locale: string,
+): string {
+  const own = settings.taglines?.[locale];
+  return own !== undefined && own.trim() !== '' ? own : settings.tagline;
+}
+
+/** A tagline as it is stored: the default language's, and the others. */
+export interface StoredTagline {
+  readonly tagline: string;
+  readonly taglines: Readonly<Record<string, string>>;
+}
+
+/**
+ * Splits a tagline as a site declares it — one string, or a map of locale to
+ * string — into what is stored. Blank entries are dropped; the default
+ * locale's entry becomes `tagline`. Anything else is no tagline.
+ */
+export function splitTagline(
+  value: unknown,
+  defaultLocale: string,
+): StoredTagline {
+  if (typeof value === 'string') {
+    return { tagline: value, taglines: {} };
+  }
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return { tagline: '', taglines: {} };
+  }
+  const taglines: Record<string, string> = {};
+  let tagline = '';
+  for (const [locale, text] of Object.entries(value)) {
+    if (typeof text !== 'string' || text.trim() === '') {
+      continue;
+    }
+    if (locale === defaultLocale) {
+      tagline = text;
+    } else {
+      taglines[locale] = text;
+    }
+  }
+  return { tagline, taglines };
+}
+
+/**
+ * The reverse of {@link splitTagline}: one string when no other language has
+ * a tagline of its own, otherwise the map, default language first.
+ */
+export function joinTagline(
+  stored: StoredTagline,
+  defaultLocale: string,
+): string | Readonly<Record<string, string>> {
+  return Object.keys(stored.taglines).length === 0
+    ? stored.tagline
+    : { [defaultLocale]: stored.tagline, ...stored.taglines };
 }
 
 /** What every render needs to know about where it is. */
@@ -188,7 +252,7 @@ export function buildSiteView(ctx: ViewContext): SiteView {
   }));
   return {
     name: ctx.settings.name,
-    tagline: ctx.settings.tagline,
+    tagline: taglineFor(ctx.settings, ctx.locale),
     locale: ctx.locale,
     default_locale: ctx.settings.defaultLocale,
     locales: ctx.settings.locales,
@@ -529,7 +593,7 @@ export function buildHomePageView(
     plugins: ctx.plugins ?? {},
     page: {
       title: ctx.settings.name,
-      description: ctx.settings.tagline,
+      description: taglineFor(ctx.settings, ctx.locale),
       canonical,
       kind: 'home',
       locale: ctx.locale,

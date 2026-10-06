@@ -18,6 +18,7 @@ import {
   exportPathKey,
   exportPathProblem,
   formatBundleIdentity,
+  joinTagline,
   slugify,
 } from '../core/index.js';
 import {
@@ -244,7 +245,7 @@ export async function getExport(
     text: `${JSON.stringify(
       {
         name: settings.name,
-        tagline: settings.tagline,
+        tagline: joinTagline(settings, settings.defaultLocale),
         defaultLocale: settings.defaultLocale,
         locales: settings.locales,
         kinds: settings.kinds,

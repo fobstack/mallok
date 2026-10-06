@@ -31,7 +31,8 @@
 CREATE TABLE site (
   id               INTEGER PRIMARY KEY CHECK (id = 1),
   name             TEXT NOT NULL,
-  tagline          TEXT,
+  tagline          TEXT,                          -- in the default language; used wherever a language has none of its own
+  taglines         TEXT NOT NULL DEFAULT '{}',    -- JSON: {"de":"…","zh":"…"}, other languages' taglines (migration 0006)
   default_locale   TEXT NOT NULL,                 -- 'en'
   locales          TEXT NOT NULL,                 -- JSON: ["en","de","zh"]
   kinds            TEXT NOT NULL,                 -- JSON: {"product":{"base":"products"},"article":{"base":"news"},...}
