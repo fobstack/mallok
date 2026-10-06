@@ -166,6 +166,10 @@ export interface PluginRouteDeclaration {
   readonly render: 'response' | 'page';
   /** The plugin layout a `"page"` route asks the theme for. */
   readonly layout?: string | undefined;
+  /** `"raw"`: the handler reads the untouched body from `ctx.request` (§7.2). */
+  readonly body: 'parsed' | 'raw';
+  /** `"raw"` only: the largest body accepted, in bytes. */
+  readonly maxBytes?: number | undefined;
 }
 
 /** A field of a record that holds one value (§7.5). */

@@ -104,6 +104,8 @@ export {
   parsePluginManifest,
   pluginManifestSchema,
   RATE_LIMIT_TIERS,
+  RAW_BODY_BYTES_DEFAULT,
+  RAW_BODY_BYTES_LIMIT,
   type RateLimitTier,
   settingsValidator,
 } from './plugin.js';

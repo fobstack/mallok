@@ -42,6 +42,50 @@ function echo(route: string) {
     });
 }
 
+const HOOK_KEY = 'fixture-signing-key';
+
+async function hmacHex(key: string, bytes: ArrayBuffer): Promise<string> {
+  const imported = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(key),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const signature = await crypto.subtle.sign('HMAC', imported, bytes);
+  return [...new Uint8Array(signature)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
+ * A webhook as a payment provider's is handled: the signature is over the
+ * bytes of the body, and the status code tells the sender what to do next.
+ */
+async function signedHook(
+  input: RouteInput,
+  ctx: PluginRequestContext,
+): Promise<Response> {
+  const bytes = await ctx.request.arrayBuffer();
+  const expected = await hmacHex(HOOK_KEY, bytes);
+  if (ctx.request.headers.get('x-signature') !== expected) {
+    return new Response('bad signature', { status: 400 });
+  }
+  const text = new TextDecoder().decode(bytes);
+  if (text.includes('"fail"')) {
+    return new Response('try again', { status: 500 });
+  }
+  return Response.json(
+    {
+      bytes: bytes.byteLength,
+      text,
+      fields: input.fields,
+      json: input.json === undefined ? 'undefined' : input.json,
+    },
+    { status: text.includes('"later"') ? 202 : 200 },
+  );
+}
+
 const shop = definePlugin({
   manifest: {
     id: 'shop',
@@ -58,6 +102,8 @@ const shop = definePlugin({
       { path: 'cart/remove', method: 'POST', rateLimit: 'relaxed' },
       { path: 'checkout', method: 'POST', rateLimit: 'strict' },
       { path: 'quote/:id', method: 'POST', rateLimit: true },
+      { path: 'webhook', method: 'POST', body: 'raw' },
+      { path: 'tiny-hook', method: 'POST', body: 'raw', maxBytes: 16 },
     ],
   },
   routes: {
@@ -70,6 +116,8 @@ const shop = definePlugin({
     'cart/remove': echo('cart/remove'),
     checkout: echo('checkout'),
     'quote/:id': echo('quote/:id'),
+    webhook: signedHook,
+    'tiny-hook': signedHook,
   },
 });
 
@@ -449,6 +497,128 @@ describe('plugin routes', () => {
       // event per request.
       expect(warn).not.toHaveBeenCalled();
       warn.mockRestore();
+    });
+  });
+
+  describe('a raw-body route', () => {
+    async function send(
+      path: string,
+      body: string | Uint8Array,
+      headers: Record<string, string> = {},
+      signed = true,
+    ): Promise<Response> {
+      const bytes =
+        typeof body === 'string' ? new TextEncoder().encode(body) : body;
+      return SELF.fetch(`${ORIGIN}/_mallok/p/${path}`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(signed
+            ? {
+                'x-signature': await hmacHex(
+                  HOOK_KEY,
+                  bytes.buffer.slice(
+                    bytes.byteOffset,
+                    bytes.byteOffset + bytes.byteLength,
+                  ) as ArrayBuffer,
+                ),
+              }
+            : {}),
+          ...headers,
+        },
+        body: bytes,
+      });
+    }
+
+    it('hands the handler the exact bytes that were sent, so a signature over them verifies', async () => {
+      // Everything a parser would normalise away: key order, spacing, CRLF,
+      // a trailing newline, non-ASCII, a number written with an exponent.
+      const payload = '{ "b":1,\r\n  "a" : "Grüße — 你好",   "n": 1e3 }\r\n\n';
+      const response = await send('shop/webhook', payload);
+      expect(response.status).toBe(200);
+      const seen = (await response.json()) as {
+        bytes: number;
+        text: string;
+        fields: unknown;
+        json: unknown;
+      };
+      expect(seen.text).toBe(payload);
+      expect(seen.bytes).toBe(new TextEncoder().encode(payload).byteLength);
+      // Nothing was parsed on the way.
+      expect(seen.fields).toEqual({});
+      expect(seen.json).toBe('undefined');
+
+      // Bytes that are not text at all, and a body that is not JSON.
+      const binary = new Uint8Array([0, 255, 13, 10, 128, 0]);
+      expect(
+        (
+          (await (await send('shop/webhook', binary)).json()) as {
+            bytes: number;
+          }
+        ).bytes,
+      ).toBe(6);
+      expect((await send('shop/webhook', '{not json')).status).toBe(200);
+      expect((await send('shop/webhook', '')).status).toBe(200);
+    });
+
+    it("passes the handler's status code through unchanged", async () => {
+      // The sender decides what to do next from it.
+      expect((await send('shop/webhook', '{"ok":1}', {}, false)).status).toBe(
+        400,
+      );
+      expect((await send('shop/webhook', '{"x":"fail"}')).status).toBe(500);
+      expect((await send('shop/webhook', '{"x":"later"}')).status).toBe(202);
+      const response = await send('shop/webhook', '{"ok":1}');
+      expect(response.status).toBe(200);
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+    });
+
+    it("is not held to a browser's cross-site rules", async () => {
+      // Another server calls it; the signature is what authenticates it.
+      const response = await send('shop/webhook', '{"ok":1}', {
+        'sec-fetch-site': 'cross-site',
+        origin: 'https://payments.example',
+      });
+      expect(response.status).toBe(200);
+      // A parsed route with the same headers is still refused.
+      expect((await post('shop/echo', '{}', 'application/json')).status).toBe(
+        200,
+      );
+      const refused = await SELF.fetch(`${ORIGIN}/_mallok/p/shop/echo`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'sec-fetch-site': 'cross-site',
+        },
+        body: '{}',
+      });
+      expect(refused.status).toBe(403);
+    });
+
+    it('refuses a body over its cap before the handler runs', async () => {
+      const big = 'x'.repeat(256 * 1024 + 1);
+      expect((await send('shop/webhook', big)).status).toBe(413);
+      expect((await send('shop/webhook', 'x'.repeat(256 * 1024))).status).toBe(
+        200,
+      );
+      // A route's own, smaller cap.
+      expect((await send('shop/tiny-hook', 'x'.repeat(16))).status).toBe(200);
+      expect((await send('shop/tiny-hook', 'x'.repeat(17))).status).toBe(413);
+
+      // A stream with no declared length is cut off as it is read.
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('x'.repeat(10)));
+          controller.enqueue(new TextEncoder().encode('x'.repeat(10)));
+          controller.close();
+        },
+      });
+      const streamed = await SELF.fetch(`${ORIGIN}/_mallok/p/shop/tiny-hook`, {
+        method: 'POST',
+        body: stream,
+        duplex: 'half',
+      } as RequestInit);
+      expect(streamed.status).toBe(413);
     });
   });
 });

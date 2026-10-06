@@ -272,6 +272,41 @@ describe('plugin manifest schema', () => {
       expect(() => parsePluginManifest(paged(2, { render: 'html' }))).toThrow();
     });
 
+    it('takes a raw body under plugin API 2, without Turnstile or a page', () => {
+      const hook = (pluginApi: number, extra: Record<string, unknown>) => ({
+        ...BASE,
+        pluginApi,
+        routes: [{ path: 'webhook', method: 'POST', ...extra }],
+      });
+      const route = parsePluginManifest(
+        hook(2, { body: 'raw', maxBytes: 65536 }),
+      ).routes[0];
+      expect(route?.body).toBe('raw');
+      expect(route?.maxBytes).toBe(65536);
+      expect(parsePluginManifest(hook(1, {})).routes[0]?.body).toBe('parsed');
+      expect(() => parsePluginManifest(hook(1, { body: 'raw' }))).toThrow(
+        /raw body, which needs plugin API 2/,
+      );
+      expect(() =>
+        parsePluginManifest(hook(2, { body: 'raw', turnstile: true })),
+      ).toThrow(/cannot use Turnstile/);
+      expect(() =>
+        parsePluginManifest(
+          hook(2, { body: 'raw', render: 'page', layout: 'shop/cart' }),
+        ),
+      ).toThrow(/cannot be a page route/);
+      expect(() => parsePluginManifest(hook(2, { maxBytes: 100 }))).toThrow(
+        /does not take a raw body/,
+      );
+      for (const maxBytes of [0, -1, 1.5, 1024 * 1024 + 1]) {
+        expect(
+          () => parsePluginManifest(hook(2, { body: 'raw', maxBytes })),
+          String(maxBytes),
+        ).toThrow();
+      }
+      expect(() => parsePluginManifest(hook(2, { body: 'stream' }))).toThrow();
+    });
+
     it('matches the most specific route, then the first declared', () => {
       const declared = [
         { path: 'orders/:orderNo' },

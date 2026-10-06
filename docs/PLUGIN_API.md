@@ -752,6 +752,46 @@ email or another site has to work — so **a handler must not change state on
 This is what lets a page route trust a session cookie scoped to
 `/_mallok/p/<plugin_id>`; it does not replace Turnstile for a public form.
 
+**Raw bodies (plugin API 2).** A route that declares `"body": "raw"` is for a
+webhook: another server calls it and proves who it is with a signature over
+the bytes of the body. Parsing those bytes first would destroy what the
+signature is over.
+
+```json
+{ "path": "stripe-webhook", "method": "POST", "body": "raw" }
+```
+
+```ts
+'stripe-webhook': async (_input, ctx) => {
+  const payload = await ctx.request.text();          // exactly what was sent
+  if (!(await verify(payload, ctx.request.headers.get('stripe-signature'), ctx.secrets.signing_secret))) {
+    return new Response('bad signature', { status: 400 });
+  }
+  ctx.waitUntil(followUp(ctx, payload));
+  return new Response(null, { status: 200 });
+},
+```
+
+- **`ctx.request` carries the bytes as they arrived**, readable once, as text
+  or as a buffer. `input.fields` is empty and `input.json` is `undefined`:
+  the core parsed nothing.
+- **The handler's status code is passed through unchanged.** A sender such as
+  Stripe decides from it whether to deliver again — 2xx is delivered, anything
+  else is retried — so answer 400 for a signature that does not verify and
+  5xx for a failure worth retrying. A handler that throws answers 500.
+- **No cross-site check.** It is not a browser calling. **The signature is
+  the only authentication**: a raw route that does not verify one is open to
+  anyone.
+- **A size cap.** 256 KiB unless the route declares `maxBytes`, up to 1 MiB;
+  a larger body is answered 413 before the handler runs, and a stream of
+  unknown length is cut off as it is read. Stripe's documentation states no
+  maximum event size (read 2026-10-06), so the default is a judgement, not a
+  figure from the sender; raise it for a route that receives large events.
+- It cannot use Turnstile or be a page route, and both are refused at build
+  time. `rateLimit` is as declared: leave it out for a sender that delivers
+  from a few addresses.
+- Secrets, `ctx.db` and `ctx.waitUntil` are as for any route.
+
 Every plugin-route response is rewritten to `Cache-Control: private,
 no-store`; `Cloudflare-CDN-Cache-Control`, `CDN-Cache-Control` and
 `Surrogate-Control` are all forced to `no-store`, and any `Cache-Tag` supplied
@@ -1233,7 +1273,7 @@ inquiry cart or a booking plugin as much as a shop.
 | `onContentSave` called on every save path; `onContentDelete` | §5.4, §5.7 | 27 | Done |
 | Editable `records` panels with `money` and `rows` fields, sorting, search | §7.5 | 28 | Done |
 | Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Done |
-| Raw-body routes (`body: "raw"`) | §7.2 | 31 | Planned |
+| Raw-body routes (`body: "raw"`) | §7.2 | 31 | Done |
 | Action parameters and related rows | §7.5 | 32 | Planned |
 | Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`) | §5.5, §7.4 | 33 | Planned |
 

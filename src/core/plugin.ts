@@ -34,6 +34,11 @@ const HOOK_SINCE: Readonly<
 /** One declared hook name. */
 export type PluginHookName = (typeof PLUGIN_HOOKS)[number];
 
+/** The largest raw body a route may accept unless it declares its own cap. */
+export const RAW_BODY_BYTES_DEFAULT = 256 * 1024;
+/** The largest cap a route may declare. */
+export const RAW_BODY_BYTES_LIMIT = 1024 * 1024;
+
 /**
  * The rate-limit tiers a route may ask for (docs/PLUGIN_API.md §7.2). Each
  * is one binding in the site's `wrangler.jsonc`; the numbers live there.
@@ -104,6 +109,14 @@ const routeSchema = z
     render: z.enum(['response', 'page']).default('response'),
     /** The plugin layout a `"page"` route is rendered with. */
     layout: z.string().regex(PLUGIN_LAYOUT_NAME).optional(),
+    /**
+     * `"raw"`: the core does not parse the body; the handler reads the bytes
+     * exactly as they were sent from `ctx.request`. For a webhook whose
+     * signature is computed over those bytes. Plugin API 2.
+     */
+    body: z.enum(['parsed', 'raw']).default('parsed'),
+    /** `"raw"` only: the largest body accepted, in bytes. */
+    maxBytes: z.number().int().positive().max(RAW_BODY_BYTES_LIMIT).optional(),
   })
   .strict();
 
@@ -354,6 +367,33 @@ export const pluginManifestSchema = z
         issue.addIssue({
           code: 'custom',
           message: `Route "${route.path}" names a layout but is not a page route (render: page).`,
+        });
+      }
+      if (route.body === 'raw') {
+        if (manifest.pluginApi < 2) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Route "${route.path}" takes a raw body, which needs plugin API 2; this plugin declares ${manifest.pluginApi}.`,
+          });
+        }
+        // Turnstile reads a token out of the parsed fields, and a page is a
+        // visitor's form: neither goes with a body nobody parsed.
+        if (route.turnstile) {
+          issue.addIssue({
+            code: 'custom',
+            message: `Route "${route.path}" takes a raw body and so cannot use Turnstile.`,
+          });
+        }
+        if (route.render === 'page') {
+          issue.addIssue({
+            code: 'custom',
+            message: `Route "${route.path}" takes a raw body and so cannot be a page route.`,
+          });
+        }
+      } else if (route.maxBytes !== undefined) {
+        issue.addIssue({
+          code: 'custom',
+          message: `Route "${route.path}" declares maxBytes but does not take a raw body.`,
         });
       }
       if (manifest.pluginApi < 2 && typeof route.rateLimit === 'string') {

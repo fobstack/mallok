@@ -698,9 +698,14 @@ with Task 22; added 2026-10-05]
 - `ctx.enqueue(name, payload, { runAt? })` writes a `job` row; plugins declare
   `jobs`; each tick runs a bounded number, with retries and backoff, and marks
   exhausted jobs failed in the admin. At-least-once: handlers are idempotent.
-- **[OWNER]** Retry count and backoff schedule. Recommended: the email jobs'
-  existing rule, five attempts at 2, 4, 8 and 16 minutes
-  (`src/db/queries.ts`, `failJob`).
+- **Owner decision, 2026-10-06: the email jobs' existing rule** — five
+  attempts, waiting 2, 4, 8 and 16 minutes between them (`src/db/queries.ts`,
+  `failJob`). One rule for every job in the system.
+- **Owner decision, 2026-10-06: `ctx.enqueueStatement` is offered** as well as
+  `ctx.enqueue` (the task list's note of 2026-10-05). It returns a prepared
+  statement the plugin puts in its own `db.batch`, so that a change and the
+  work it owes commit together or not at all. The core builds the statement;
+  a plugin still cannot write the `job` table freely.
 - The path: one throwing plugin no longer stops the others; jobs run, retry
   and fail at the limit; a tick stays within its bound.
 - Depends on: Task 18. Contracts: `PLUGIN_API.md §5.5`, `§7.4`;
@@ -729,9 +734,8 @@ with Task 22; added 2026-10-05]
 #### P2 — Nundar phase 3
 
 **Task 34 — site-provided starter content** [M11]
-- **[OWNER]** `createMallok({ theme, plugins, starters })`, or a documented
-  "ship `content/` and import it with `mallok publish`" flow with a separate
-  path for plugin data.
+- **Owner decision, 2026-10-06: `createMallok({ theme, plugins, starters })`.**
+  A site registers its own starter and the first-run wizard offers it.
 - The path: a fresh deployment ends up as a shop with sample products and
   variants.
 - Depends on: Task 18; sample plugin data (variants) is written through

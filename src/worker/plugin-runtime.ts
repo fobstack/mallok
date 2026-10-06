@@ -12,6 +12,7 @@ import {
   exportPathKey,
   exportPathProblem,
   matchPluginRoute,
+  RAW_BODY_BYTES_DEFAULT,
   sha256Hex,
 } from '../core/index.js';
 import { loadSiteRenderData, type PluginStateRow } from '../db/queries.js';
@@ -484,7 +485,11 @@ export async function handlePluginRoute(
   // Before anything is counted, read or run: a submission another site made
   // a visitor's browser send is refused for every plugin, whichever API
   // version it declares (docs/PLUGIN_API.md §13.3).
-  const crossSite = crossSiteProblem(request);
+  // A raw-body route is called by another server, which proves who it is
+  // with a signature over the body; a browser's cross-site rules say nothing
+  // about it, and its handler is where the request is authenticated.
+  const raw = declaration.body === 'raw';
+  const crossSite = raw ? null : crossSiteProblem(request);
   if (crossSite !== null) {
     return enforcePluginRouteNoStore(problem(403, crossSite));
   }
@@ -505,6 +510,53 @@ export async function handlePluginRoute(
         problem(429, 'Too many requests. Try again in a minute.'),
       );
     }
+  }
+
+  if (raw) {
+    const bytes = await readCapped(
+      request,
+      declaration.maxBytes ?? RAW_BODY_BYTES_DEFAULT,
+    );
+    if (bytes === null) {
+      return enforcePluginRouteNoStore(
+        problem(413, 'The request body is too large.'),
+      );
+    }
+    // The same request with the same bytes, readable once by the handler as
+    // text or as a buffer. Nothing was decoded, trimmed or re-serialised.
+    const untouched = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body: bytes,
+    });
+    const rawCtx = await buildRequestContext(
+      env,
+      executionCtx,
+      site,
+      active,
+      untouched,
+      locale,
+    );
+    const answered = await handler(
+      { fields: {}, params: matched.params, json: undefined },
+      rawCtx,
+    );
+    if (!(answered instanceof Response)) {
+      console.warn(
+        JSON.stringify({
+          event: 'plugin_route_bad_result',
+          plugin: pluginId,
+          route: declaration.path,
+          render: declaration.render,
+        }),
+      );
+      return enforcePluginRouteNoStore(
+        problem(500, 'This request could not be handled.'),
+      );
+    }
+    // The status is the handler's, untouched: the caller decides whether to
+    // deliver again from it.
+    return enforcePluginRouteNoStore(answered);
   }
 
   const body = await parseBody(request);
@@ -647,6 +699,47 @@ async function verifyTurnstile(
   } catch {
     return 'rejected';
   }
+}
+
+/**
+ * Reads a request body, giving up as soon as it is longer than `limit`.
+ *
+ * Reading it all and measuring afterwards would let a caller make the Worker
+ * hold whatever it chose to send.
+ */
+async function readCapped(
+  request: Request,
+  limit: number,
+): Promise<Uint8Array | null> {
+  const declared = Number(request.headers.get('content-length') ?? '');
+  if (Number.isFinite(declared) && declared > limit) {
+    return null;
+  }
+  if (request.body === null) {
+    return new Uint8Array(0);
+  }
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
 }
 
 /**
