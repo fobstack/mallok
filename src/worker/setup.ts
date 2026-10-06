@@ -19,19 +19,23 @@ import { LOCALE_PATTERN } from '../core/index.js';
 import { countAdminUsers } from '../db/auth.js';
 import {
   findContentById,
+  findPluginState,
   loadSite,
   setDefaultLocale,
   setPluginEnabled,
   updateSite,
 } from '../db/queries.js';
-import { findStarter, STARTERS } from '../starters/index.js';
+import { STARTERS } from '../starters/index.js';
+import type { Starter, StarterRecord } from '../starters/types.js';
 import { bootstrapAdmin } from './admin-auth.js';
 import { saveContent } from './admin-content.js';
+import { savePluginRecord } from './admin-plugins.js';
 import { authenticate } from './auth.js';
 import { purgeTags } from './cache.js';
-import { activeTheme } from './composition.js';
+import { activeTheme, compiledPlugins, siteStarters } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem } from './http.js';
+import { buildPluginContext } from './plugin-runtime.js';
 import { parseSiteSettings } from './site.js';
 
 /** Cache lifetime used while no purge token is configured. */
@@ -46,6 +50,17 @@ const siteStepSchema = z.object({
 const starterStepSchema = z.object({
   starter: z.string().min(1),
 });
+
+/**
+ * The starters the wizard offers: the site's own first, in the order it
+ * listed them, then the ones Mallok ships (docs/ARCHITECTURE.md §11).
+ *
+ * The site's come first because the wizard preselects the first one, and a
+ * site that brought a starter brought it to be used.
+ */
+function offeredStarters(): readonly Starter[] {
+  return [...siteStarters(), ...STARTERS];
+}
 
 /** Reports where setup stands and what the deployment can actually do. */
 export async function getSetupStatus(env: Env): Promise<Response> {
@@ -89,12 +104,14 @@ export async function getSetupStatus(env: Env): Promise<Response> {
       name: activeTheme().manifest.name,
       version: activeTheme().manifest.version,
     },
-    starters: STARTERS.map((starter) => ({
+    starters: offeredStarters().map((starter) => ({
       id: starter.id,
       name: starter.name,
       description: starter.description,
       theme: starter.theme,
       documents: starter.documents.length,
+      // Sample data for the starter's plugins, such as product variants.
+      records: starter.records?.length ?? 0,
       // Said plainly: a starter written for another theme still imports, but
       // its content types fall back to the page layout
       // (docs/THEME_FORMAT.md §5.3).
@@ -200,7 +217,9 @@ async function applyStarter(
   if (!parsed.success) {
     return problem(400, 'Name a starter to install.');
   }
-  const starter = findStarter(parsed.data.starter);
+  const starter = offeredStarters().find(
+    (candidate) => candidate.id === parsed.data.starter,
+  );
   if (starter === undefined) {
     return problem(404, `No starter named "${parsed.data.starter}".`);
   }
@@ -244,6 +263,8 @@ async function applyStarter(
   // (docs/ARCHITECTURE.md §11).
   const created: string[] = [];
   const failed: { slug: string; error: string }[] = [];
+  /** Where each default-locale document landed, for records attached to it. */
+  const documentIds = new Map<string, string>();
 
   const save = async (
     body: Record<string, unknown>,
@@ -282,6 +303,7 @@ async function applyStarter(
       continue;
     }
     created.push(document.slug);
+    documentIds.set(`${document.kind}/${document.slug}`, id);
 
     // Translations join the item's own group, so hreflang is correct on a
     // brand-new site rather than being left to the owner
@@ -311,13 +333,137 @@ async function applyStarter(
     }
   }
 
+  const records = await importRecords(
+    env,
+    ctx,
+    starter.records ?? [],
+    documentIds,
+  );
+
   ctx.waitUntil(purgeTags(env, ['site']));
   return json({
     starter: starter.id,
     created: created.length,
     failed,
     plugins: starter.plugins,
+    records: records.created,
+    failedRecords: records.failed,
   });
+}
+
+/**
+ * Imports a starter's sample plugin data, one record at a time, through the
+ * path the admin's own form takes (`savePluginRecord`): the values are
+ * checked against the fields the panel declares and the plugin's `save`
+ * handler does the writing. The wizard never touches a plugin's tables.
+ *
+ * A record that is refused, or whose handler throws, is reported and the
+ * rest go on: sample data that is partly there is more use than a wizard
+ * that stops halfway through a site.
+ */
+async function importRecords(
+  env: Env,
+  ctx: ExecutionContext,
+  records: readonly StarterRecord[],
+  documentIds: ReadonlyMap<string, string>,
+): Promise<{
+  created: number;
+  failed: { record: string; error: string }[];
+}> {
+  const failed: { record: string; error: string }[] = [];
+  let created = 0;
+  if (records.length === 0) {
+    return { created, failed };
+  }
+  // Read again: the starter's settings were written a moment ago, and a
+  // plugin's context carries the site as it now is.
+  const row = await loadSite(env.DB);
+  if (row === null) {
+    return { created, failed };
+  }
+  const site = parseSiteSettings(row);
+  const groups = new Map<string, string | null>();
+
+  for (const [index, record] of records.entries()) {
+    const label = `${record.plugin}/${record.panel} #${index + 1}`;
+    try {
+      const plugin = compiledPlugins().find(
+        (candidate) => candidate.manifest.id === record.plugin,
+      );
+      const state =
+        plugin === undefined
+          ? null
+          : await findPluginState(env.DB, record.plugin);
+      if (plugin === undefined || state === null) {
+        failed.push({ record: label, error: 'The plugin is not installed.' });
+        continue;
+      }
+
+      let attachedTo: string | undefined;
+      if (record.attachedTo !== undefined) {
+        const key = `${record.attachedTo.kind}/${record.attachedTo.slug}`;
+        if (!groups.has(key)) {
+          const id = documentIds.get(key);
+          const owner =
+            id === undefined ? null : await findContentById(env.DB, id);
+          groups.set(key, owner?.translation_group ?? null);
+        }
+        const group = groups.get(key) ?? null;
+        if (group === null) {
+          failed.push({
+            record: label,
+            error: `The ${key} it belongs to was not imported.`,
+          });
+          continue;
+        }
+        attachedTo = group;
+      }
+
+      const outcome = await savePluginRecord(
+        env,
+        plugin,
+        record.panel,
+        await buildPluginContext(env, ctx, site, {
+          plugin,
+          settings: parseSettings(state.settings),
+          state,
+        }),
+        { id: null, values: record.values, attachedTo },
+      );
+      if ('problem' in outcome) {
+        const fields = Object.entries(outcome.errors ?? {})
+          .map(([field, message]) => `${field}: ${message}`)
+          .join('; ');
+        failed.push({
+          record: label,
+          error: fields === '' ? outcome.problem : fields,
+        });
+        continue;
+      }
+      created += 1;
+    } catch (error) {
+      failed.push({
+        record: label,
+        error: (error instanceof Error ? error.message : String(error)).slice(
+          0,
+          200,
+        ),
+      });
+    }
+  }
+  return { created, failed };
+}
+
+/** A plugin's stored settings; an unreadable value is no settings. */
+function parseSettings(text: string): Record<string, unknown> {
+  try {
+    const value: unknown = JSON.parse(text);
+    return value !== null && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 async function complete(env: Env, ctx: ExecutionContext): Promise<Response> {

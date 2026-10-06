@@ -29,6 +29,29 @@ export interface StarterDocument {
   >;
 }
 
+/**
+ * One sample record for a plugin that keeps data of its own — a product's
+ * variants, say (docs/PLUGIN_API.md §7.5).
+ *
+ * The wizard does not write the plugin's tables. It hands `values` to the
+ * `save` handler of the plugin's `records` panel, after checking them
+ * against the fields the panel declares: exactly what happens when someone
+ * fills in that form in the admin.
+ */
+export interface StarterRecord {
+  /** The plugin's id. It must be one of the starter's `plugins`. */
+  readonly plugin: string;
+  /** The id of one of that plugin's `records` panels. */
+  readonly panel: string;
+  /** The panel's fields, as its form would submit them. */
+  readonly values: Readonly<Record<string, unknown>>;
+  /**
+   * For a panel attached to content (`attachTo`): the starter document the
+   * record belongs to, by its kind and its default-locale slug.
+   */
+  readonly attachedTo?: { readonly kind: string; readonly slug: string };
+}
+
 /** Settings a starter proposes for a fresh site. */
 export interface StarterSettings {
   /**
@@ -56,4 +79,9 @@ export interface Starter {
   readonly plugins: readonly string[];
   readonly settings: StarterSettings;
   readonly documents: readonly StarterDocument[];
+  /**
+   * Sample data for the starter's plugins, imported after the documents and
+   * in this order.
+   */
+  readonly records?: readonly StarterRecord[];
 }

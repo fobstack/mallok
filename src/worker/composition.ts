@@ -15,12 +15,15 @@
  */
 
 import type { MallokPlugin } from '../plugins/types.js';
+import type { Starter } from '../starters/types.js';
 import type { BundledTheme } from '../themes/index.js';
 
 /** The composition an entry module declares. */
 export interface MallokComposition {
   readonly theme: BundledTheme;
   readonly plugins: readonly MallokPlugin[];
+  /** Starters the site provides, offered by the first-run wizard. */
+  readonly starters?: readonly Starter[];
 }
 
 let current: MallokComposition | null = null;
@@ -57,6 +60,14 @@ function resolved(): MallokComposition {
 /** The theme this deployment renders with. */
 export function activeTheme(): BundledTheme {
   return resolved().theme;
+}
+
+/**
+ * The starters this site brought with it, in the order it listed them
+ * (docs/ARCHITECTURE.md §11). Empty for a site that brought none.
+ */
+export function siteStarters(): readonly Starter[] {
+  return resolved().starters ?? [];
 }
 
 /**

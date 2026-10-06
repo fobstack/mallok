@@ -18,7 +18,7 @@ import {
   setPluginSettings,
 } from '../db/queries.js';
 import { isOfficialPlugin } from '../plugins/define.js';
-import type { MallokPlugin } from '../plugins/types.js';
+import type { MallokPlugin, PluginContext } from '../plugins/types.js';
 import { hasScope, type Principal, type Scope } from './auth.js';
 import { purgeTags } from './cache.js';
 import { activeTheme } from './composition.js';
@@ -518,13 +518,71 @@ async function routeRecords(
   }
 
   const body = await readJson(request);
-  const submitted = body?.values;
+  const outcome = await savePluginRecord(env, plugin, panelId, pluginCtx, {
+    id: recordId,
+    values: body?.values,
+    attachedTo: body?.attachedTo,
+  });
+  if ('problem' in outcome) {
+    return outcome.errors === undefined
+      ? problem(outcome.status, outcome.problem)
+      : json(
+          { error: outcome.problem, errors: outcome.errors },
+          { status: outcome.status },
+        );
+  }
+  return json({ id: outcome.id }, { status: creating ? 201 : 200 });
+}
+
+/** What saving a record came to: its id, or why it was not saved. */
+export type RecordSaveOutcome =
+  | { readonly id: string }
+  | {
+      readonly status: number;
+      readonly problem: string;
+      /** Messages by field, when the values were the problem. */
+      readonly errors?: Readonly<Record<string, string>>;
+    };
+
+/**
+ * Saves one record of a records panel through the plugin's own handler.
+ *
+ * The one path a record takes to a plugin, whoever submitted it: the admin's
+ * form, a token, or a starter's sample data (`setup.ts`). The values are
+ * checked against the fields the panel declares, an attached record's owner
+ * is checked to exist, and only then is the plugin's `save` called.
+ */
+export async function savePluginRecord(
+  env: Env,
+  plugin: MallokPlugin,
+  panelId: string,
+  pluginCtx: PluginContext,
+  input: {
+    readonly id: string | null;
+    readonly values: unknown;
+    /** The owner's translation group, for a panel attached to content. */
+    readonly attachedTo: unknown;
+  },
+): Promise<RecordSaveOutcome> {
+  const panel = plugin.manifest.panels.find(
+    (entry) => entry.id === panelId && entry.type === 'records',
+  );
+  const handlers = plugin.records?.[panelId];
+  if (
+    panel === undefined ||
+    panel.fields === undefined ||
+    handlers === undefined
+  ) {
+    return { status: 404, problem: 'No such records panel.' };
+  }
+  const submitted = input.values;
   if (
     submitted === null ||
+    submitted === undefined ||
     typeof submitted !== 'object' ||
     Array.isArray(submitted)
   ) {
-    return problem(400, 'Body must be {"values": { … }}.');
+    return { status: 400, problem: 'Body must be {"values": { … }}.' };
   }
   // An attached panel's record belongs to a content item, and the plugin is
   // told which — after the core has made sure it is a real one of the kind
@@ -532,21 +590,22 @@ async function routeRecords(
   // checking that a caller did not make it up.
   let attachedTo: { translationGroup: string; kind: string } | null = null;
   if (panel.attachTo !== undefined) {
-    const group = body?.attachedTo;
+    const group = input.attachedTo;
     if (typeof group !== 'string' || group === '') {
-      return problem(
-        400,
-        'This panel belongs to a content item: send its translation group as "attachedTo".',
-      );
+      return {
+        status: 400,
+        problem:
+          'This panel belongs to a content item: send its translation group as "attachedTo".',
+      };
     }
     const owner = (await listTranslationsOf(env.DB, group)).find(
       (item) => item.kind === panel.attachTo?.kind,
     );
     if (owner === undefined) {
-      return problem(
-        404,
-        `No ${panel.attachTo.kind} with that translation group exists.`,
-      );
+      return {
+        status: 404,
+        problem: `No ${panel.attachTo.kind} with that translation group exists.`,
+      };
     }
     attachedTo = { translationGroup: group, kind: panel.attachTo.kind };
   }
@@ -555,22 +614,24 @@ async function routeRecords(
     submitted as Record<string, unknown>,
   );
   if (Object.keys(checked.errors).length > 0) {
-    return json(
-      { error: 'Some fields need attention.', errors: checked.errors },
-      { status: 422 },
-    );
+    return {
+      status: 422,
+      problem: 'Some fields need attention.',
+      errors: checked.errors,
+    };
   }
   const saved = await handlers.save(
-    { id: recordId, values: checked.values, attachedTo },
+    { id: input.id, values: checked.values, attachedTo },
     pluginCtx,
   );
   if ('errors' in saved) {
-    return json(
-      { error: 'Some fields need attention.', errors: saved.errors },
-      { status: 422 },
-    );
+    return {
+      status: 422,
+      problem: 'Some fields need attention.',
+      errors: saved.errors,
+    };
   }
-  return json({ id: saved.id }, { status: creating ? 201 : 200 });
+  return { id: saved.id };
 }
 
 async function runPanelAction(

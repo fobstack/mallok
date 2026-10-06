@@ -1099,6 +1099,14 @@ export const records = {
 - `definePlugin` refuses a records panel without `load` and `save`, and
   handlers for a panel that is not one.
 
+**Sample data from a starter.** A site's starter can carry records for a
+records panel (`ARCHITECTURE.md §11.1`). The first-run wizard submits each to
+the panel's `save` exactly as the form would — `id` is `null`, `values` are
+checked against `fields` first, `attachedTo` is the owning document's
+translation group — so a handler needs nothing extra to support it, and
+cannot tell the difference. An `{ errors }` result or a thrown error is
+reported to the operator and the import carries on.
+
 **Attached to content (plugin API 2).** A records panel can belong to
 content of one kind, and is then edited where that content is edited:
 
@@ -1408,6 +1416,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Panels attached to the content editor (`attachTo`) | §7.5 | 29 | Done |
 | Raw-body routes (`body: "raw"`) | §7.2 | 31 | Done |
 | Action parameters and related rows | §7.5 | 32 | Done |
+| Sample data for a plugin from a site's starter, through a records panel's `save` | §7.5; `ARCHITECTURE.md §11.1` | 34 | Done |
 | Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`, `ctx.enqueueStatement`, `jobs`) | §5.5, §7.4 | 33 | Done |
 
 Theme-side changes in the same phase are documented in `THEME_FORMAT.md`:

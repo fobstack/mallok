@@ -620,6 +620,75 @@ After the import, the example content is ordinary content, indistinguishable
 from anything typed by hand. Importing again overwrites, and requires explicit
 confirmation.
 
+### 11.1 A starter the site brings
+
+A site can register starters of its own, next to its theme and plugins:
+
+```ts
+import { atelier, createMallok, defineStarter } from 'mallok/worker';
+import bar from './content/product/sample-bar/index.md';
+import { shop } from './plugins/shop/index.js';
+
+const sample = defineStarter({
+  id: 'sample-shop',
+  name: 'A sample shop',
+  description: 'Three products with variants.',
+  theme: 'atelier',
+  plugins: ['shop'],
+  settings: {
+    kinds: { page: { base: '' }, product: { base: 'products' } },
+    nav: {},
+    themeOptions: {},
+    tagline: '',
+  },
+  documents: [{ kind: 'product', slug: 'sample-bar', markdown: bar }],
+  records: [
+    {
+      plugin: 'shop',
+      panel: 'variants',
+      attachedTo: { kind: 'product', slug: 'sample-bar' },
+      values: { sku: 'BAR-10', price: { amount: 9900, currency: 'USD' } },
+    },
+  ],
+});
+
+export default createMallok({ theme: atelier, plugins: [shop], starters: [sample] });
+```
+
+- **The wizard offers the site's starters first**, in the order listed, then
+  the one Mallok ships, and preselects the first. The official starter is not
+  removed by registering another.
+- **`documents`** are imported as the official starter's are: each through the
+  ordinary save path, published, in the site's default language, with
+  `translations` joining the same translation group.
+- **`records` are sample data for the starter's plugins** — what a plugin
+  keeps in its own tables, which no document can carry. The wizard does not
+  write those tables. Each record goes to the `save` handler of one of the
+  plugin's `records` panels (`PLUGIN_API.md §7.5`), after its `values` have
+  been checked against the fields that panel declares: the path the admin's
+  own form takes, with the same refusals. A record for a panel attached to
+  content names its owner by kind and default-locale slug, and the plugin
+  receives that document's translation group.
+- Records are imported after the documents, in order, once the starter's
+  plugins have been switched on.
+- **A starter is checked when the Worker module loads**, by `createMallok`
+  (and by `defineStarter`, where the mistake then points at the starter's own
+  file): its shape, an id that is unique and not an official starter's, that
+  its plugins are compiled into the site, that each record names a `records`
+  panel of a plugin the starter lists, and that an attached record's owner is
+  one of the starter's documents and of the kind the panel belongs to. A
+  starter that fails does not deploy.
+- **What cannot be checked until it runs is reported, not fatal.** A document
+  the save path refuses, a record whose values the panel's fields refuse, one
+  the plugin's handler refuses or throws on, one whose owner was not imported:
+  each is listed on the wizard's last screen with the reason, and the rest are
+  imported.
+- Running the starter step a second time, before setup is completed, imports
+  the documents that are missing and submits every record again. Whether a
+  record is then stored twice is up to the plugin's `save`.
+- A starter's Markdown and records are part of the Worker bundle, like the
+  official starter's.
+
 ## 12. Plugins
 
 A plugin is real JavaScript or TypeScript, and **official and third-party

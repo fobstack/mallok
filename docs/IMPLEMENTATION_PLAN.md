@@ -744,6 +744,7 @@ with Task 22; added 2026-10-05]
   variants.
 - Depends on: Task 18; sample plugin data (variants) is written through
   Task 28's declared write handlers.
+- **Done 2026-10-06** — `tasks/TASK-34.md`.
 
 #### Close-out
 

@@ -18,6 +18,9 @@ import { parseThemeManifest, type ThemeFiles } from '../core/index.js';
 import { normalizePlugins } from '../plugins/define.js';
 import { inquiryPlugin } from '../plugins/inquiry/index.js';
 import type { MallokPlugin, PluginInput } from '../plugins/types.js';
+import { normalizeStarters } from '../starters/define.js';
+import { STARTERS } from '../starters/index.js';
+import type { Starter } from '../starters/types.js';
 import type { BundledTheme } from '../themes/index.js';
 import { THEMES } from '../themes/index.js';
 import { configure } from './composition.js';
@@ -73,6 +76,13 @@ export type {
   PluginSiteSettings,
   RouteInput,
 } from '../plugins/types.js';
+export { defineStarter, StarterDefinitionError } from '../starters/define.js';
+export type {
+  Starter,
+  StarterDocument,
+  StarterRecord,
+  StarterSettings,
+} from '../starters/types.js';
 export type { BundledTheme } from '../themes/index.js';
 export type { Env } from './env.js';
 
@@ -108,12 +118,24 @@ export function defineTheme(
   };
 }
 
+/**
+ * A starter as a site passes it: the object itself, or what `defineStarter`
+ * returned. Either is checked again by `createMallok`.
+ */
+export type StarterInput = Starter;
+
 /** What a site declares about itself at build time. */
 export interface MallokOptions {
   /** The theme this deployment renders with. */
   readonly theme: BundledTheme;
   /** Plugins compiled into this deployment. Defaults to none. */
   readonly plugins?: readonly PluginInput[];
+  /**
+   * Starters this site brings: example content, and sample data for its
+   * plugins, that the first-run wizard offers before the one Mallok ships
+   * (docs/ARCHITECTURE.md §11). Defaults to none.
+   */
+  readonly starters?: readonly StarterInput[];
 }
 
 /**
@@ -125,6 +147,11 @@ export interface MallokOptions {
  */
 export function createMallok(options: MallokOptions): ExportedHandler<Env> {
   const plugins = normalizePlugins(options.plugins ?? []);
-  configure({ theme: options.theme, plugins });
+  const starters = normalizeStarters(
+    options.starters ?? [],
+    plugins,
+    STARTERS.map((starter) => starter.id),
+  );
+  configure({ theme: options.theme, plugins, starters });
   return mallokHandler;
 }

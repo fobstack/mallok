@@ -22,12 +22,33 @@ interface SetupStatus {
     description: string;
     theme: string;
     documents: number;
+    /** Sample records for the starter's plugins. */
+    records?: number;
     matchesActiveTheme: boolean;
   }[];
   readonly purgeConfigured: boolean;
   readonly customDomain: string | null;
   /** Whether this deployment has a one-time setup key to check. */
   readonly requiresSetupKey: boolean;
+}
+
+/** One line per item a starter failed to import, pages then records. */
+function importFailures(result: Record<string, unknown>): string[] {
+  const lines: string[] = [];
+  const list = (value: unknown): Record<string, unknown>[] =>
+    Array.isArray(value)
+      ? value.filter(
+          (entry): entry is Record<string, unknown> =>
+            entry !== null && typeof entry === 'object',
+        )
+      : [];
+  for (const entry of list(result.failed)) {
+    lines.push(`${String(entry.slug ?? '')}: ${String(entry.error ?? '')}`);
+  }
+  for (const entry of list(result.failedRecords)) {
+    lines.push(`${String(entry.record ?? '')}: ${String(entry.error ?? '')}`);
+  }
+  return lines;
 }
 
 type Step = 'admin' | 'site' | 'starter' | 'domain' | 'done';
@@ -56,6 +77,10 @@ export function SetupPage(): JSX.Element {
   const [starter, setStarter] = useState('');
   const [ttlLowered, setTtlLowered] = useState(false);
   const [installed, setInstalled] = useState(0);
+  /** Sample plugin records the starter imported. */
+  const [installedRecords, setInstalledRecords] = useState(0);
+  /** What the starter could not import, said rather than swallowed. */
+  const [notInstalled, setNotInstalled] = useState<readonly string[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -106,6 +131,8 @@ export function SetupPage(): JSX.Element {
       }
       if (path === 'starter') {
         setInstalled(Number(result.created ?? 0));
+        setInstalledRecords(Number(result.records ?? 0));
+        setNotInstalled(importFailures(result));
       }
       setStep(next);
     } catch (caught) {
@@ -321,6 +348,9 @@ export function SetupPage(): JSX.Element {
                 <span className="help">{entry.description}</span>
                 <span className="help">
                   {entry.documents} pages
+                  {(entry.records ?? 0) > 0
+                    ? ` · ${entry.records} sample records`
+                    : ''}
                   {entry.matchesActiveTheme
                     ? ''
                     : ` · written for the "${entry.theme}" theme, but this build runs "${status.theme.id}", so some pages will use the plain page layout`}
@@ -403,8 +433,24 @@ export function SetupPage(): JSX.Element {
             {installed > 0
               ? `${installed} pages were installed. `
               : 'The site is empty and waiting for its first page. '}
+            {installedRecords > 0
+              ? `${installedRecords} sample records were added. `
+              : ''}
             Everything the wizard set can be changed later in Settings.
           </p>
+          {notInstalled.length === 0 ? null : (
+            <div role="alert">
+              <p>
+                {notInstalled.length} of the starter's items could not be
+                imported:
+              </p>
+              <ul>
+                {notInstalled.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="actions">
             <a className="button-link" href="/_mallok/app/">
               Open the admin

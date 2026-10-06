@@ -48,7 +48,17 @@ test('creates the administrator, the site and the starter content', async ({
   await expect(
     page.getByRole('heading', { name: 'Start with example content?' }),
   ).toBeVisible();
-  await page.locator('input[name="starter"]').first().check();
+  // The site's own starter is offered first and is the one preselected,
+  // with what it brings said next to it.
+  const options = page.locator('.starter-option');
+  await expect(options).toHaveCount(2);
+  await expect(options.first()).toContainText('A shop this site brought');
+  await expect(options.first()).toContainText('1 pages · 1 sample records');
+  await expect(options.first().getByRole('radio')).toBeChecked();
+  // The official one is what the rest of the suite expects to find.
+  const official = options.filter({ hasText: 'Foreign-trade company site' });
+  await expect(official).not.toContainText('sample records');
+  await official.getByRole('radio').check();
   await page.getByRole('button', { name: 'Install' }).click();
 
   // ---- Step 4: the domain, and what it honestly cannot do ----------------

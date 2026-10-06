@@ -670,12 +670,97 @@ export declare function defineTheme(
   files: Readonly<Record<string, string>>,
 ): BundledTheme;
 
+/** One example document a starter ships, with its translations. */
+export interface StarterDocument {
+  readonly kind: string;
+  /** Slug in the site's default locale. */
+  readonly slug: string;
+  /** Full `index.md` text, stored verbatim like any other content. */
+  readonly markdown: string;
+  /**
+   * Other locales of the same item, keyed by locale. They join the
+   * default-locale item's translation group.
+   */
+  readonly translations?: Readonly<
+    Record<string, { readonly slug: string; readonly markdown: string }>
+  >;
+}
+
+/**
+ * One sample record for a plugin that keeps data of its own
+ * (docs/PLUGIN_API.md §7.5). The wizard hands `values` to the `save` handler
+ * of the plugin's `records` panel, after checking them against the panel's
+ * fields — what happens when someone fills in that form in the admin.
+ */
+export interface StarterRecord {
+  /** The plugin's id. It must be one of the starter's `plugins`. */
+  readonly plugin: string;
+  /** The id of one of that plugin's `records` panels. */
+  readonly panel: string;
+  /** The panel's fields, as its form would submit them. */
+  readonly values: Readonly<Record<string, unknown>>;
+  /**
+   * For a panel attached to content (`attachTo`): the starter document the
+   * record belongs to, by its kind and its default-locale slug.
+   */
+  readonly attachedTo?: { readonly kind: string; readonly slug: string };
+}
+
+/** Settings a starter proposes for a fresh site. */
+export interface StarterSettings {
+  /** Languages the starter's content covers; added to the operator's own. */
+  readonly locales?: readonly string[];
+  readonly kinds: Readonly<Record<string, { readonly base: string }>>;
+  readonly nav: Readonly<
+    Record<string, readonly { label: string; href: string }[]>
+  >;
+  readonly themeOptions: Readonly<Record<string, unknown>>;
+  readonly tagline: string;
+}
+
+/** A starter, as the first-run wizard consumes it (docs/ARCHITECTURE.md §11). */
+export interface Starter {
+  /** Lower-case letters, digits and hyphens; unique in the site. */
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  /** The id of the theme this starter's content and settings assume. */
+  readonly theme: string;
+  /** Ids of the plugins the wizard switches on. */
+  readonly plugins: readonly string[];
+  readonly settings: StarterSettings;
+  readonly documents: readonly StarterDocument[];
+  /** Sample plugin data, imported after the documents and in this order. */
+  readonly records?: readonly StarterRecord[];
+}
+
+/** A starter as a site passes it to {@link createMallok}. */
+export type StarterInput = Starter;
+
+/** A refusal from {@link defineStarter} or from `createMallok({ starters })`. */
+export declare class StarterDefinitionError extends Error {
+  constructor(message: string);
+}
+
+/**
+ * Checks a starter and returns it. Optional — `createMallok` checks every
+ * starter it is given — but calling it where the starter is written puts the
+ * error next to the mistake.
+ */
+export declare function defineStarter(input: Starter): Starter;
+
 /** What a site declares about itself at build time. */
 export interface MallokOptions {
   /** The theme this deployment renders with. */
   readonly theme: BundledTheme;
   /** Plugins compiled into this deployment. Defaults to none. */
   readonly plugins?: readonly PluginInput[];
+  /**
+   * Starters this site brings: example content, and sample data for its
+   * plugins, that the first-run wizard offers before the one Mallok ships
+   * (docs/ARCHITECTURE.md §11). Defaults to none.
+   */
+  readonly starters?: readonly StarterInput[];
 }
 
 /**

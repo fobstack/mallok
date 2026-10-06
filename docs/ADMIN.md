@@ -123,16 +123,20 @@ At `/_mallok/setup`, and **permanently closed** once complete — a non-null
 | --- | --- | --- |
 | 1 | Administrator email and password | No |
 | 2 | Site name, default language, enabled languages | No |
-| 3 | Choose a starter | Yes; skipping gives an empty site |
+| 3 | Choose a starter: the site's own, if it brought any (`ARCHITECTURE §11.1`), listed first, then the official one. Each says how many pages and how many sample plugin records it brings | Yes; skipping gives an empty site |
 | 4 | Domain: detect whether a custom domain is bound, then done | Yes |
 
 **Media domain (`media.<domain>`) and email (the Resend key, the sending
 domain, the DNS records) are not wizard steps in 0.1** — deliberately: both
 need an account-scoped Cloudflare API token, a different credential from the
 one the wizard runs under. Configure them afterward in Settings; nothing is
-unreachable, they are simply not part of the guided first run. Two things
+unreachable, they are simply not part of the guided first run. Three things
 **must be stated honestly**:
 
+- **Step 3**: a starter is imported item by item, and one item failing does
+  not stop the rest. Whatever it could not import — a page the save path refused, a sample record its plugin
+  refused — is listed on the last screen with the reason, next to how many
+  pages and records were added.
 - **Step 4**: with no custom domain bound, say plainly that caching is not in
   effect and `.workers.dev` is preview only (`ARCHITECTURE §2`). This is not
   an optional soft hint — it determines the site's performance.
