@@ -4,6 +4,57 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Written and passing locally; not released, and not run on a real account.
+The rest of plugin API 2, lists of references, and starters a site brings.
+
+### Added
+
+- **Plugin API 2, continued** (`docs/PLUGIN_API.md §13.2`).
+  - Raw-body routes: `"body": "raw"` hands the handler the request exactly as
+    it arrived, for a webhook whose signature covers the bytes. Capped at 256
+    KiB by default, 1 MiB at most (`maxBytes`); no cross-site check.
+  - Panel actions may declare `params`, which the admin asks for before
+    running them; a panel may declare `related` child tables shown with a row.
+  - Jobs: a plugin declares `jobs` and queues them with `ctx.enqueue`, or with
+    `ctx.enqueueStatement` inside its own `db.batch`, so a change and the work
+    it owes commit together. Five per cron tick; five attempts, 2, 4, 8 and 16
+    minutes apart; jobs that give up are listed under Settings → Advanced.
+  - Each plugin's `scheduled` hook is isolated: one that throws is logged with
+    its plugin id and the others run.
+- **`reference[]` fields are resolved for templates.** `content.refs.<field>`
+  is the list of items the field names, in the order written, and an item
+  appears in `content.backrefs.<kind>` of every item its list names. Same
+  batch and round trips as a single `reference`. `mallok build` does the same.
+- **`createMallok({ starters })`.** A site registers its own starter; the
+  first-run wizard offers it before the official one. A starter may carry
+  `records` — sample data for its plugins, saved through each plugin's own
+  `records` panel handler. `defineStarter` checks one where it is written.
+- The wizard's last screen lists what a starter could not import, and why.
+
+### Changed
+
+- Plugin jobs run last in a cron tick, after clean-up and scheduled
+  publishing.
+- `content.backrefs.<kind>` holds each item once and 24 items in all. A theme
+  with two `reference` fields from one kind to another could see an item
+  twice, and 24 per field.
+
+### Upgrade notes
+
+**Sites with a theme of their own**
+
+- A theme that declared a `reference[]` field and printed
+  `content.frontmatter.<field>` still gets the slugs there. `content.refs.<field>`,
+  absent until now for such a field, is a list.
+
+**Sites with plugins of their own**
+
+- Nothing a version 1 or version 2 plugin relied on is removed. A panel
+  action handler's new third argument, `params`, is `{}` for an action that
+  declares none.
+
 ## [0.1.0-rc.10] — 2026-10-06
 
 Plugin API 2 — what a plugin that ships inside a site needs to render its own

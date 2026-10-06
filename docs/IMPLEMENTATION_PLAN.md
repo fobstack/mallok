@@ -31,7 +31,7 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 22 (the `renderData` hook; the build's plugin API version is 2 from here), Task 23 (plugin cache tags), Task 24 (plugin routes with parameters, a locale segment and JSON bodies), Task 25 (rate-limit tiers), Task 26 (plugin pages through theme layouts, and the cross-site check on plugin routes), Task 27 (`onContentSave` called at last, and `onContentDelete`), Task 28 (editable records panels, sorting and search), Task 29 (records panels attached to the content editor), Task 30 (theme script validation with declared scripts — **P0 complete**), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`, added 2026-10-05) is done too. Records in `tasks/TASK-18.md` onward |
+| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 22 (the `renderData` hook; the build's plugin API version is 2 from here), Task 23 (plugin cache tags), Task 24 (plugin routes with parameters, a locale segment and JSON bodies), Task 25 (rate-limit tiers), Task 26 (plugin pages through theme layouts, and the cross-site check on plugin routes), Task 27 (`onContentSave` called at last, and `onContentDelete`), Task 28 (editable records panels, sorting and search), Task 29 (records panels attached to the content editor), Task 30 (theme script validation with declared scripts — **P0 complete**), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`, added 2026-10-05) is done too. Everything through Task 30 and Task 41 is released as `0.1.0-rc.10`. Done since, unreleased: Task 31 (raw-body routes), Task 32 (action parameters and related rows), Task 33 (isolated scheduled hooks and plugin jobs — **P1 complete** with Task 39, lists of references), Task 34 (starters a site brings — **P2 complete**). **Open: Task 35**, the close-out — the re-measurement on a real account, the version decision and the release are the owner's; the report to Nundar is drafted (`tasks/TASK-35.md`). Records in `tasks/TASK-18.md` onward |
 
 ## 2. The two gates
 
@@ -745,6 +745,56 @@ with Task 22; added 2026-10-05]
 - Depends on: Task 18; sample plugin data (variants) is written through
   Task 28's declared write handlers.
 - **Done 2026-10-06** — `tasks/TASK-34.md`.
+
+#### Received 2026-10-06 — Nundar's items M17–M21
+
+Added to the owner's task list on 2026-10-06, after P0–P2 above were fixed.
+None is part of plugin API 2; each is a gap Nundar met building on rc.9 and
+rc.10.
+
+**Task 42 — inquiry form labels in the page's language** [M17]
+- Current: `src/plugins/inquiry/form.ts` holds labels for `en` and `zh` and
+  falls back to English, so a German page carries an English form.
+- The form reads `t.inquiry_name`, `t.inquiry_email`, `t.inquiry_company`,
+  `t.inquiry_phone`, `t.inquiry_message`, `t.inquiry_submit` from the active
+  theme's language pack and falls back to its own table per missing key.
+- The path: a page in a language the theme has a pack for shows the labels in
+  that language; a missing key falls back without an error.
+- Contracts: `PLUGIN_API.md §9`, `THEME_FORMAT.md` (language packs).
+
+**Task 43 — a tagline, and a home page description, per language** [M18]
+- `tagline` is accepted as a string or as a map of locale to string, the way
+  `nav` is keyed; `site.tagline` and the home page's `page.description`
+  resolve for the page's locale, falling back to the default locale's.
+- The path: a site with a tagline per language serves each home page with its
+  own description; a plain string behaves as now.
+- Touches the `site` row's `tagline` column, the settings API, the admin's
+  site settings, `site.json` and `mallok build`. Contracts: `DATA_MODEL.md
+  §2.2`, `THEME_FORMAT.md §7`, `ADMIN.md`.
+
+**Task 44 — a kind with an address and no list layout answers 404** [M19]
+- Current: a theme kind with a `base` and no `listLayout` renders its items,
+  and `GET /<base>` answers 500 ("Theme has no list layout for kind …").
+- The path: that request answers 404 through the theme's not-found page, in
+  the page's language.
+- Contracts: `THEME_FORMAT.md §7.4`.
+
+**Task 45 — let a template link to a kind's list page** [M20]
+- **[OWNER]** `content.list_path` on a content page, or `site.kinds.<kind>`
+  with `path` and `label` on every page.
+- The path: a template renders a link to the list page of the current
+  content's kind, in the page's language, and it follows a change of `base`.
+- Contracts: `THEME_FORMAT.md §7`.
+
+**Task 46 — switching a plugin, changing settings, and a first run should not
+leave stale pages** [M21]
+- **[VERIFY]** first, on a deployed site with a purge token: whether enabling
+  or disabling a plugin, and `PATCH /settings`, purge what they change. Nundar
+  observed the stale pages locally, with no token bound.
+- Then, as the finding requires: purge on a plugin's switch; and for a first
+  run, a home page requested before setup completes must not be stored — or
+  the docs and the CLI say what to clear.
+- Contracts: `PLUGIN_API.md`, `ARCHITECTURE.md §6`, `GETTING_STARTED.md`.
 
 #### Close-out
 
