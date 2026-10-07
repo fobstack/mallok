@@ -181,6 +181,19 @@ export async function purgeNow(
       break;
     }
   }
+  if (!last.ok) {
+    // A purge that fails leaves every page it named stale for a whole cache
+    // lifetime, and most callers run it in the background where nobody is
+    // told. It has to be findable afterwards.
+    console.error(
+      JSON.stringify({
+        event: 'purge_failed',
+        ...(last.status === undefined ? {} : { status: last.status }),
+        tags: tags.length,
+        detail: (last.detail ?? '').slice(0, 300),
+      }),
+    );
+  }
   return { ...last, tags };
 }
 
@@ -201,10 +214,14 @@ async function purgeCall(
         body: JSON.stringify({ tags }),
       },
     );
-    const detail = response.ok ? undefined : await response.text();
+    const text = await response.text();
+    // Cloudflare's envelope carries its own verdict. A 200 whose body says
+    // `"success": false` is a refusal, and is treated as one.
+    const ok = response.ok && !/"success"\s*:\s*false/.test(text);
+    const detail = ok ? undefined : text;
     return {
       attempted: true,
-      ok: response.ok,
+      ok,
       status: response.status,
       tags,
       ...(detail === undefined ? {} : { detail: detail.slice(0, 500) }),
