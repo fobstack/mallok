@@ -11,7 +11,7 @@
 | --- | --- | --- |
 | Re-measure cold-render CPU and D1 round trips on a real account with `renderData` active | **`NOT_RUN`** | A deployment on a real account that carries a plugin with `renderData`, made by the maintainer (`docs/RELEASE_GATE.md §9`); the samples come from Workers Logs, not from this repository |
 | Choose the version | **Decided 2026-10-06: `0.1.0-rc.11`** | — |
-| Release through `docs/RELEASE_GATE.md` | **In progress** | The gate's deploy and publish steps are the maintainer's; `docs/RELEASE_STATUS.md` records the outcome |
+| Release through `docs/RELEASE_GATE.md` | **Done 2026-10-07 as far as npm's `next` tag.** `latest` was left on rc.10 and no GitHub release page was created, after the purge finding on the deployed site (`TASK-46.md §7`) | — |
 | Report to Nundar | **Drafted**, §3 below | The published version and the measured numbers, once they exist |
 
 Nothing in this task was done by assumption: no number below was measured,

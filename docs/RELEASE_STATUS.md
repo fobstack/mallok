@@ -2,66 +2,89 @@
 
 [English](RELEASE_STATUS.md) · [简体中文](zh-CN/RELEASE_STATUS.md)
 
-Snapshot: **October 6, 2026**. Current version: **0.1.0-rc.10**.
-This is a public release candidate, not stable 0.1.
+Snapshot: **October 8, 2026**. Newest candidate: **0.1.0-rc.11**, on npm's
+`next` tag. `latest`, which `npx mallok create` installs, is still
+**0.1.0-rc.10**. Both are public release candidates, not stable 0.1.
 
-## Published rc.10 candidate
+## Published rc.11 candidate
 
-- [Public source and release](https://github.com/fobstack/mallok/releases/tag/v0.1.0-rc.10).
-- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.10): `0.1.0-rc.10`. Both `next` and `latest` resolve to this candidate; neither means stable 0.1.
-- Source: `476eb32b6042f5ae9d2045a7179fb1c32ff1a152`.
-- Package: `mallok-0.1.0-rc.10.tgz`.
-- SHA-256: `899d942af9a76ca07a90e6ebce620c8555a08bcd85731478712ddc991dec234f`.
-- [CI](https://github.com/fobstack/mallok/actions/runs/37341569691) and
-  [complete release gate](https://github.com/fobstack/mallok/actions/runs/37341595427) passed.
+- [Source at the tag](https://github.com/fobstack/mallok/tree/v0.1.0-rc.11). No GitHub release page was created for this candidate.
+- [npm package](https://www.npmjs.com/package/mallok/v/0.1.0-rc.11): `0.1.0-rc.11`, under `next` only. Install it with `mallok@next` or the exact version.
+- Source: `4e5ebce0b2c41f5d88ead21c5027210e9eeaf30f`.
+- Package: `mallok-0.1.0-rc.11.tgz`.
+- SHA-256: `32f3d6a7728d8d13c36b597172a917a0ff8da2890bf599e1260d30518c9daa7f`.
+- [CI](https://github.com/fobstack/mallok/actions/runs/37427663469) and
+  [complete release gate](https://github.com/fobstack/mallok/actions/runs/37427665950) passed.
 - Linux CI, the local build and a clean-clone rebuild produced byte-for-byte
   identical tarballs; the exact-artifact consumer checks passed against it.
-- The isolated test site was upgraded from rc.9 with `mallok upgrade`, given
-  the second rate-limit binding the upgrade notes ask for, and the exact
-  package deployed to `rc5-gate.mallok.dev`.
-- **Checked on the deployed site, without signing in:** pages in both
-  languages, SEO endpoints, cache MISS/HIT and HEAD hits, credential bypass
-  and the admin boundary; exactly one JSON-LD node on a product page; a
-  cross-site `POST` to the inquiry form answered 403 and a same-site one was
-  accepted; a two-segment path on the version 1 inquiry plugin answered 404.
-- **Reported by the maintainer from the deployed admin, signed in, after the
-  upgrade:** Settings → Email showed the sender and the Resend key already
-  set, so the move from the inquiry plugin ran on a real site; and a second
-  content item opened in the same session showed the editor, with nothing
-  marked unsaved.
+- The isolated test site was upgraded from rc.10 with `mallok upgrade` and
+  the exact package deployed to `rc5-gate.mallok.dev`.
+- **Checked on the deployed site, without signing in:** the home pages in
+  both languages, a list page, the sitemap, feed and `robots.txt`, a
+  not-found page sent `private, no-store`, and cache MISS then HIT. Pages
+  are still stored after the upgrade, which is what the `claimed_at`
+  migration has to preserve for a site that already has an administrator.
 - Registry integrity matches the release artifact.
 
-rc.10 ships plugin API 2 — `renderData` with structured data and cache tags,
-routes with parameters and a locale segment, rate-limit tiers, plugin pages
-rendered through theme layouts, the content save and delete hooks, editable
-records panels and panels attached to the editor — site-level email
-settings, and four fixes: the admin going blank when a second item was
-opened, an opened item marked unsaved, a removed plugin secret still shown as
-set, and themes with a declared script escaping the script check. **The
-changelog's upgrade notes list what existing sites, themes and plugins have
-to do.**
+rc.11 ships the rest of plugin API 2 — raw-body routes, action parameters
+and related rows, plugin jobs and isolated scheduled hooks — resolved
+`reference[]` fields, starters a site brings with sample data for its
+plugins, a tagline per language, `site.kinds` for templates, inquiry form
+labels from the theme's language pack, and three fixes: a kind's base
+address answering 500, a fresh site's placeholder outliving setup, and a
+plugin job that stops its Worker retrying for ever. **Two schema migrations
+run on the first request after deploying; the changelog's upgrade notes say
+what else changes.**
+
+**Found on the deployed site after publishing, and open:**
+
+- **A purge that fails is reported as success, and is not logged.** On the
+  test site, switching the inquiry plugin and the admin's "Clear cached
+  pages" both left a cached page in place: sampled per data centre, entries
+  more than thirty minutes old were still served after the click, while the
+  admin said "Cleared the page cache." The admin shows that text for any
+  purge it attempted, whether or not Cloudflare carried it out, and nothing
+  records a failed purge made after a save, a plugin switch or a settings
+  change. Both defects are in rc.10 and earlier as well. They are fixed on
+  the branch `fix/purge-failure-reporting` and are **not in any release**.
+- **Why the test site's purges fail is not known.** Its token and zone id
+  are bound and worked on rc.5; the response of the purge call has not been
+  read. Until it has, "a change reaches visitors at once on a site with a
+  purge token" is not established for rc.6 through rc.11.
 
 **Not checked on a deployed site**, and so resting on Worker and browser
 tests only:
 
 - Plugin API 2 as a whole. It has been exercised by test plugins; no real
   plugin on a deployed site has used `renderData`, plugin pages, records
-  panels or the content hooks.
-- That email is still delivered with the moved Resend key. The move itself
-  was seen on the deployed site; no message was sent through it.
-- A purge by plugin cache tag evicting only the pages that carry it.
-- The two rate-limit bindings counting separately. Both deployed on the test
-  account; that shows they can be declared, nothing more. Cloudflare's
-  documentation still does not say whether the Free plan includes them.
-- The removed-plugin-secret fix, which is verified in a real browser by the
-  end-to-end suite against a local Worker.
+  panels, the content hooks, a raw-body route, a job, or a starter with
+  plugin records.
+- A tagline per language, the inquiry form's labels from a theme's language
+  pack, `site.kinds`, and a `reference[]` field: no deployed site uses one.
+- What a tick with plugin jobs in it, or a starter's import, costs in one
+  invocation. Five plugin jobs per tick is a judgement, not a measurement.
+- That email is still delivered with the Resend key moved in rc.10, a purge
+  by plugin cache tag, and the two rate-limit bindings counting separately.
+  Cloudflare's documentation still does not say whether the Free plan
+  includes rate-limit bindings.
 
-No CPU sample was taken for rc.6 through rc.10. The rc.5 performance
-measurements below are historical and must not be reported as rc.10
-benchmarks; `renderData` and the save hooks add work to requests that already
-exceeded the 10 ms target there. The maintainer accepted the measured CPU
-limitation for source opening and RC evaluation; stable acceptance remains
-incomplete.
+No CPU sample was taken for rc.6 through rc.11. The rc.5 performance
+measurements below are historical and must not be reported as rc.11
+benchmarks; `renderData`, the save hooks and plugin jobs add work to
+invocations that already exceeded the 10 ms target there. The maintainer
+accepted the measured CPU limitation for source opening and RC evaluation;
+stable acceptance remains incomplete.
+
+## Historical rc.10 artifact
+
+- Source commit: `476eb32b6042f5ae9d2045a7179fb1c32ff1a152`.
+- Package: `mallok-0.1.0-rc.10.tgz`.
+- SHA-256: `899d942af9a76ca07a90e6ebce620c8555a08bcd85731478712ddc991dec234f`.
+- Released October 6, 2026: plugin API 2's first part, site-level email
+  settings and four admin and theme fixes. Checked on the deployed test
+  site: the cross-site refusal on the inquiry form, one JSON-LD node on a
+  product page, and, by the maintainer signed in, the Resend key moved to
+  Settings → Email and a second content item opening in one session.
 
 ## Historical rc.9 artifact
 

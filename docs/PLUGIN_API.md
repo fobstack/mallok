@@ -32,8 +32,11 @@ from installing.
 
 **"Immediate" is about the setting, and reaches visitors through the cache
 like any other change.** Switching a plugin on or off, and saving its
-settings, purge every cached page (the `site` tag) — when the site has a
-purge token (`CLOUDFLARE_RESOURCES.md §6`). Without one, which includes every
+settings, ask Cloudflare to purge every cached page (the `site` tag) — when
+the site has a purge token (`CLOUDFLARE_RESOURCES.md §6`). Through
+`0.1.0-rc.11` a purge that fails is neither shown nor logged, and on the
+project's own deployed test site these purges were observed not to take
+effect (`tasks/TASK-46.md §7`); do not rely on it without checking. Without one, which includes every
 local `wrangler dev`, nothing is purged: a page cached while the plugin was
 off keeps its `[[inquiry]]` marker, and one cached while it was on keeps a
 form whose route is gone, until the page's cache lifetime runs out. That is

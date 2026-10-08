@@ -4,6 +4,18 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+On the branch `fix/purge-failure-reporting`, not merged.
+
+### Fixed
+
+- **A cache purge that fails is no longer reported as success.** "Clear
+  cached pages" answered "Cleared the page cache." for a purge Cloudflare
+  refused or never received; it now shows the failure and Cloudflare's
+  reason. Every failed purge — after a save, a plugin switch or a settings
+  change too — is logged as `purge_failed`.
+
 ## [0.1.0-rc.11] — 2026-10-06
 
 The rest of plugin API 2 — raw-body routes, action parameters, jobs — lists

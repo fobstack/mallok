@@ -1,7 +1,8 @@
 # Task 46 — Stale pages after a plugin switch, a settings change, or a first run
 
-- Status: **done, except the check on a deployed site**, which waits for the
-  next release to be deployed to the gate site (§5).
+- Status: **the first-run fix is done and released in rc.11. The finding
+  about purges was wrong as written** — see §7, added 2026-10-08 after the
+  check on the deployed site.
 - Date: 2026-10-06
 - Scope: what Nundar observed locally, sorted into what was a defect and
   what is the documented behaviour of a site without a purge token.
@@ -92,3 +93,37 @@ From then on pages are cached as before.
   named or filled is cached like any other, and on a site without a token
   stays as it was for its cache lifetime.
 - Migration 0007 has run on the local test database only.
+
+## 7. The check on the deployed site, 2026-10-07 and 08
+
+Done on `rc5-gate.mallok.dev` running rc.11, with its purge token bound, the
+maintainer switching the plugin and pressing the button, and `/contact`
+sampled every two seconds with the data centre recorded.
+
+- Switching the inquiry plugin off and on changed the route at once (404,
+  then answering again). The cached page did not change: after switching it
+  on, two data centres went on serving the page cached four minutes
+  earlier, without the form.
+- "Clear cached pages" answered "Cleared the page cache." Entries cached 33
+  and 34 minutes before the click were still served after it.
+
+So §1's first two rows — "already handled", "not a defect" — do not stand.
+The code does send the purge. What §1 missed:
+
+- **The admin says "Cleared" for a purge Cloudflare did not carry out.** It
+  shows another text only when no token is configured.
+- **A failed purge is logged nowhere**, so stale pages after a save, a
+  plugin switch or a settings change leave no trace.
+- The test of this in §5 stubs Cloudflare's API to answer success. It shows
+  that the call is made, and nothing about a deployed site.
+
+Both defects predate this phase and are in every release so far. They are
+fixed on the branch `fix/purge-failure-reporting` (`2376eda`): a refused or
+unreachable purge answers 502 with Cloudflare's reason, a 200 whose body
+says `"success": false` counts as a failure, and every failed purge logs
+`purge_failed`. **Not released.**
+
+**Still not known:** why the test site's purges fail. The response of the
+purge call has not been read. Nundar's observation — a change that does not
+reach a cached page — therefore remains possible on a site with a token.
+
