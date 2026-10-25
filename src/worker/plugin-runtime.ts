@@ -862,7 +862,18 @@ export async function buildPluginContext(
     sendEmail: (message) =>
       queueEmail(env, executionCtx, pluginId, from, message),
     // Own namespace only, plus `site` (docs/PLUGIN_API.md §9).
-    purgeTags: (tags) => purgeTags(env, pluginPurgeTags(pluginId, tags)),
+    purgeTags: async (tags) => {
+      const result = await purgeTags(
+        env,
+        pluginPurgeTags(pluginId, tags),
+        `plugin:${pluginId}`,
+      );
+      return {
+        attempted: result.attempted,
+        ok: result.ok,
+        ...(result.status === undefined ? {} : { status: result.status }),
+      };
+    },
     waitUntil: (promise) => executionCtx.waitUntil(promise),
     enqueue: async (name, payload, options) => {
       const job = describeJob(active, name, payload, options);

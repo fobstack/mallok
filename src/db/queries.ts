@@ -35,6 +35,11 @@ export interface SiteRow {
   readonly email_from: string | null;
   /** The site's Resend key, encrypted; never returned by any endpoint. */
   readonly email_resend_key: string | null;
+  /**
+   * The last purge Cloudflare did not carry out, as JSON; null when none has
+   * failed since the whole site was last purged.
+   */
+  readonly last_purge_failure: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -622,6 +627,33 @@ export async function updateSite(
   await db
     .prepare(`UPDATE site SET ${assignments}, updated_at = ? WHERE id = 1`)
     .bind(...bindings, now)
+    .run();
+}
+
+/**
+ * Records a purge Cloudflare did not carry out, replacing any earlier one.
+ * `failure` is the JSON the admin's diagnostics shows.
+ */
+export async function recordPurgeFailure(
+  db: D1Database,
+  failure: string,
+): Promise<void> {
+  await db
+    .prepare('UPDATE site SET last_purge_failure = ? WHERE id = 1')
+    .bind(failure)
+    .run();
+}
+
+/**
+ * Forgets the recorded purge failure. Called after the whole site was purged
+ * successfully, which is what replaces every page an earlier failure left
+ * stale. Writes nothing when there is nothing to forget.
+ */
+export async function clearPurgeFailure(db: D1Database): Promise<void> {
+  await db
+    .prepare(
+      'UPDATE site SET last_purge_failure = NULL WHERE id = 1 AND last_purge_failure IS NOT NULL',
+    )
     .run();
 }
 

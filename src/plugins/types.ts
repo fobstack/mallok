@@ -49,6 +49,17 @@ export interface EmailMessage {
 }
 
 /** Capabilities every plugin call receives. */
+/**
+ * What a plugin's `ctx.purgeTags` call came to (§9.1). `attempted` is false
+ * when the site has no purge token; `status` is Cloudflare's HTTP status,
+ * absent when it could not be reached.
+ */
+export interface PurgeOutcome {
+  readonly attempted: boolean;
+  readonly ok: boolean;
+  readonly status?: number;
+}
+
 export interface PluginContext {
   readonly db: D1Database;
   readonly media: R2Bucket;
@@ -66,8 +77,13 @@ export interface PluginContext {
    * Purges this plugin's own cache tags — the names it returned as
    * `cacheTags` from `renderData` — or `site` (§9.1). Nothing else can be
    * named: every other tag is taken to be one of the plugin's own.
+   *
+   * Resolves once Cloudflare has answered. `ok: false` with `attempted: true`
+   * means the pages are still cached: a webhook handler can answer an error
+   * so the sender retries. The failure is also logged and shown in the
+   * admin's diagnostics.
    */
-  readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
+  readonly purgeTags: (tags: readonly string[]) => Promise<PurgeOutcome>;
   readonly waitUntil: (promise: Promise<unknown>) => void;
   /**
    * Queues one of this plugin's jobs (§7.4) and returns its id. The job runs

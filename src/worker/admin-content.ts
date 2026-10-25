@@ -390,7 +390,7 @@ export async function saveContent(
   });
 
   const tags = tagsForContent(row.id, row.kind, row.locale);
-  ctx.waitUntil(purgeTags(env, tags));
+  ctx.waitUntil(purgeTags(env, tags, 'content'));
 
   return json(
     {
@@ -429,7 +429,11 @@ export async function removeContent(
   }
   await deleteContent(env.DB, existing, new Date().toISOString());
   ctx.waitUntil(
-    purgeTags(env, tagsForContent(existing.id, existing.kind, existing.locale)),
+    purgeTags(
+      env,
+      tagsForContent(existing.id, existing.kind, existing.locale),
+      'content',
+    ),
   );
 
   // Plugins hear about it after the fact, so that what they kept for this

@@ -18,6 +18,13 @@ interface Health {
   readonly theme: string;
   readonly pipeline: string;
   readonly purgeConfigured: boolean;
+  /** The last purge Cloudflare did not carry out, until the site is purged. */
+  readonly lastPurgeFailure: {
+    readonly at: string;
+    readonly source: string;
+    readonly status?: number;
+    readonly detail: string;
+  } | null;
   readonly customDomain: string | null;
   readonly mediaBaseUrl: string | null;
 }
@@ -112,6 +119,27 @@ function BackupSection(): JSX.Element {
   );
 }
 
+/** Names what asked for a purge, in the operator's terms. */
+function describePurgeSource(source: string): string {
+  const named: Readonly<Record<string, string>> = {
+    manual: 'Clear cached pages',
+    content: 'a content change',
+    settings: 'a settings change',
+    plugins: 'a plugin switch',
+    setup: 'setup',
+    scheduled: 'a scheduled publication',
+    fragments: 'clearing the fragment cache',
+  };
+  return source
+    .split(',')
+    .map((part) =>
+      part.startsWith('plugin:')
+        ? `the ${part.slice('plugin:'.length)} plugin`
+        : (named[part] ?? part),
+    )
+    .join(' and ');
+}
+
 export function AdvancedPage(): JSX.Element {
   const [health, setHealth] = useState<Health | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
@@ -168,6 +196,8 @@ export function AdvancedPage(): JSX.Element {
       // The server says when it could not purge; repeat that rather than
       // claiming success (docs/ADMIN.md §5).
       setCacheResult(result.note ?? done);
+      // A whole-site purge that worked clears a recorded failure; show that.
+      setHealth(await api<Health>('/health'));
     } catch (caught) {
       notice.value =
         caught instanceof ApiError ? caught.message : 'That did not work.';
@@ -245,6 +275,24 @@ export function AdvancedPage(): JSX.Element {
               )}
             </dd>
           </div>
+          {health?.lastPurgeFailure == null ? null : (
+            <div>
+              <dt>Last failed purge</dt>
+              <dd>
+                <span className="pill warn">
+                  {new Date(health.lastPurgeFailure.at).toLocaleString()} —
+                  after {describePurgeSource(health.lastPurgeFailure.source)}
+                  {health.lastPurgeFailure.status === undefined
+                    ? ', Cloudflare could not be reached'
+                    : `, Cloudflare answered HTTP ${health.lastPurgeFailure.status}`}
+                </span>
+                <p className="help">
+                  Pages it named may still be served from the cache until they
+                  expire. {health.lastPurgeFailure.detail}
+                </p>
+              </dd>
+            </div>
+          )}
           <div>
             <dt>Email (Resend)</dt>
             <dd>

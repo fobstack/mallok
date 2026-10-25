@@ -29,7 +29,7 @@ import {
   updateSite,
 } from '../db/queries.js';
 import { THEMES } from '../themes/index.js';
-import { purgeTags } from './cache.js';
+import { parsePurgeFailure, purgeTags } from './cache.js';
 import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem, readJson } from './http.js';
@@ -189,7 +189,7 @@ export async function patchSettings(
 
   await updateSite(env.DB, patch, new Date().toISOString());
   // Any of these can change every rendered page, so drop the whole site tag.
-  ctx.waitUntil(purgeTags(env, ['site']));
+  ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
   return getSettings(env);
 }
 
@@ -203,6 +203,9 @@ export async function getHealth(env: Env): Promise<Response> {
     pipeline: PIPELINE_VERSION,
     purgeConfigured:
       env.CF_API_TOKEN !== undefined && env.CF_ZONE_ID !== undefined,
+    // A purge that ran in the background and failed: the pages it named may
+    // still be served stale (src/worker/cache.ts).
+    lastPurgeFailure: parsePurgeFailure(data.site?.last_purge_failure ?? null),
     customDomain: data.site?.domain ?? null,
     mediaBaseUrl: data.site?.media_base_url ?? null,
   });
@@ -279,7 +282,7 @@ export async function postDefaultLocale(
   await movePaths(env.DB, gaining, now);
   await movePaths(env.DB, losing, now);
   await setDefaultLocale(env.DB, target, now);
-  ctx.waitUntil(purgeTags(env, ['site']));
+  ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
 
   return json({
     defaultLocale: target,

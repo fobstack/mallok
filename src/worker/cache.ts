@@ -3,6 +3,7 @@
  * See docs/ARCHITECTURE.md §6.
  */
 
+import { clearPurgeFailure, recordPurgeFailure } from '../db/queries.js';
 import type { Env } from './env.js';
 
 /** Header that tells operators (and tests) whether a request hit the cache. */
@@ -111,7 +112,15 @@ export function pluginPurgeTags(
 const PURGE_TAGS_PER_CALL = 100;
 
 let pendingTags = new Set<string>();
+let pendingSources = new Set<string>();
 let pendingFlush: Promise<PurgeResult> | undefined;
+
+/**
+ * What asked for a purge, as the admin shows it when one fails: `manual`,
+ * `content`, `settings`, `plugins`, `setup`, `scheduled`, `fragments`, or
+ * `plugin:<id>` for a plugin's own `ctx.purgeTags`.
+ */
+export type PurgeSource = string;
 
 /** Outcome of a purge call, for logging and diagnostics. */
 export interface PurgeResult {
@@ -122,32 +131,44 @@ export interface PurgeResult {
   readonly detail?: string;
 }
 
+/** A failed purge as it is stored on the site row and shown in the admin. */
+export interface PurgeFailure {
+  readonly at: string;
+  readonly source: string;
+  readonly status?: number;
+  readonly tags: number;
+  readonly detail: string;
+}
+
 /**
  * Schedules a purge-by-tag call. Calls within a short window are coalesced
  * into one request to keep purge volume down under heavy edit traffic.
  *
- * The "five tag purges per minute" Free-plan ceiling this comment used to
- * cite was not confirmed against a real account: 16 direct purge calls (six
- * spaced two seconds apart, then ten back-to-back) all succeeded with no
- * throttling observed (docs/ARCHITECTURE.md §18 item 3, 2026-09-03). The
- * debounce here is still worth keeping — it reduces call volume regardless
- * of where the real ceiling turns out to be — but do not cite a specific
- * number without measuring it again.
+ * Cloudflare documents the limit for tag purges as five requests a minute
+ * per account on the Free plan, with a bucket of 25, shared by every zone of
+ * the account (developers.cloudflare.com/cache/how-to/purge-cache/, updated
+ * 2026-09-29, read 2026-10-25). A burst of 16 direct calls succeeded on a
+ * Free account on 2026-09-03 (docs/ARCHITECTURE.md §18 item 3), which the
+ * bucket explains. Coalescing keeps a run of saves or webhooks inside it.
  */
 export function purgeTags(
   env: Env,
   tags: readonly string[],
+  source: PurgeSource,
 ): Promise<PurgeResult> {
   for (const tag of tags) {
     pendingTags.add(tag);
   }
+  pendingSources.add(source);
   if (pendingFlush === undefined) {
     pendingFlush = new Promise<PurgeResult>((resolve) => {
       setTimeout(() => {
         const batch = [...pendingTags];
+        const sources = [...pendingSources].sort().join(',');
         pendingTags = new Set();
+        pendingSources = new Set();
         pendingFlush = undefined;
-        resolve(purgeNow(env, batch));
+        resolve(purgeNow(env, batch, sources));
       }, PURGE_DEBOUNCE_MS);
     });
   }
@@ -158,6 +179,7 @@ export function purgeTags(
 export async function purgeNow(
   env: Env,
   tags: readonly string[],
+  source: PurgeSource,
 ): Promise<PurgeResult> {
   if (env.CF_API_TOKEN === undefined || env.CF_ZONE_ID === undefined) {
     return {
@@ -181,20 +203,71 @@ export async function purgeNow(
       break;
     }
   }
-  if (!last.ok) {
-    // A purge that fails leaves every page it named stale for a whole cache
-    // lifetime, and most callers run it in the background where nobody is
-    // told. It has to be findable afterwards.
+  const result = { ...last, tags };
+  await remember(env, result, source);
+  return result;
+}
+
+/**
+ * Keeps the outcome where an operator can find it.
+ *
+ * A purge that fails leaves every page it named stale for a whole cache
+ * lifetime, and most callers run it in the background where nobody is told.
+ * So a failure is logged and stored on the site row for the admin's
+ * diagnostics; a successful purge of `site` — every page — forgets it,
+ * because nothing an earlier failure left stale can have survived that.
+ * Neither step may turn a purge into an error of its own.
+ */
+async function remember(
+  env: Env,
+  result: PurgeResult,
+  source: PurgeSource,
+): Promise<void> {
+  try {
+    if (!result.ok) {
+      const failure: PurgeFailure = {
+        at: new Date().toISOString(),
+        source,
+        ...(result.status === undefined ? {} : { status: result.status }),
+        tags: result.tags.length,
+        detail: (result.detail ?? '').slice(0, 300),
+      };
+      console.error(JSON.stringify({ event: 'purge_failed', ...failure }));
+      await recordPurgeFailure(env.DB, JSON.stringify(failure));
+    } else if (result.tags.includes(SITE_TAG)) {
+      await clearPurgeFailure(env.DB);
+    }
+  } catch (error) {
     console.error(
       JSON.stringify({
-        event: 'purge_failed',
-        ...(last.status === undefined ? {} : { status: last.status }),
-        tags: tags.length,
-        detail: (last.detail ?? '').slice(0, 300),
+        event: 'purge_record_failed',
+        message: error instanceof Error ? error.message : String(error),
       }),
     );
   }
-  return { ...last, tags };
+}
+
+/** Reads the stored failure back; null when there is none or it is unreadable. */
+export function parsePurgeFailure(json: string | null): PurgeFailure | null {
+  if (json === null) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(json) as Partial<PurgeFailure>;
+    return typeof parsed.at === 'string' && typeof parsed.source === 'string'
+      ? {
+          at: parsed.at,
+          source: parsed.source,
+          ...(typeof parsed.status === 'number'
+            ? { status: parsed.status }
+            : {}),
+          tags: typeof parsed.tags === 'number' ? parsed.tags : 0,
+          detail: typeof parsed.detail === 'string' ? parsed.detail : '',
+        }
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 async function purgeCall(

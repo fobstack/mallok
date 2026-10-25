@@ -126,7 +126,7 @@ describe('a site nobody has claimed', () => {
   it('purges the whole site when a plugin is switched or a setting changes, given a token', {
     timeout: 30_000,
   }, async () => {
-    await purgeTags(env, []);
+    await purgeTags(env, [], 'test');
     const purged: string[][] = [];
     const realFetch = globalThis.fetch;
     globalThis.fetch = (async (

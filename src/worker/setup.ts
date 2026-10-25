@@ -202,7 +202,7 @@ async function applySite(
     },
     new Date().toISOString(),
   );
-  ctx.waitUntil(purgeTags(env, ['site']));
+  ctx.waitUntil(purgeTags(env, ['site'], 'setup'));
   return json({ ok: true, cacheTtlLowered: !purgeConfigured });
 }
 
@@ -340,7 +340,7 @@ async function applyStarter(
     documentIds,
   );
 
-  ctx.waitUntil(purgeTags(env, ['site']));
+  ctx.waitUntil(purgeTags(env, ['site'], 'setup'));
   return json({
     starter: starter.id,
     created: created.length,
@@ -506,7 +506,7 @@ async function complete(env: Env, ctx: ExecutionContext): Promise<Response> {
   // Settings → Site, where the person who attached it can confirm it.
 
   await updateSite(env.DB, patch, now);
-  ctx.waitUntil(purgeTags(env, ['site']));
+  ctx.waitUntil(purgeTags(env, ['site'], 'setup'));
   return json({
     completed: now,
     domain: patch.domain ?? row?.domain ?? null,

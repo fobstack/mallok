@@ -182,15 +182,61 @@ describe('cache maintenance', () => {
       },
     );
 
+    it('records a failed background purge for the admin, and a whole-site purge forgets it', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const health = async () =>
+        (
+          (await (await api('GET', '/_mallok/api/health')).json()) as {
+            lastPurgeFailure: unknown;
+          }
+        ).lastPurgeFailure;
+      // The failures asserted above were recorded; start from a clean slate.
+      answer(() => new Response('{"success":true,"errors":[]}'));
+      await postPurgeAll(withToken);
+      expect(await health()).toBeNull();
+
+      answer(
+        () =>
+          new Response(
+            '{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}',
+            { status: 403 },
+          ),
+      );
+      const failed = await purgeNow(
+        withToken,
+        ['c:1', 'k:article:en'],
+        'plugin:pricing',
+      );
+      expect(failed.ok).toBe(false);
+      expect(await health()).toMatchObject({
+        source: 'plugin:pricing',
+        status: 403,
+        tags: 2,
+        detail: expect.stringContaining('Authentication error'),
+      });
+
+      // A purge that worked but named only some pages cannot vouch for the
+      // rest: the record stays.
+      answer(() => new Response('{"success":true,"errors":[]}'));
+      expect((await purgeNow(withToken, ['c:2'], 'content')).ok).toBe(true);
+      expect(await health()).toMatchObject({ source: 'plugin:pricing' });
+
+      // Every page purged: nothing the failure left stale can remain.
+      const manual = await postPurgeAll(withToken);
+      expect(manual.status).toBe(200);
+      expect(await health()).toBeNull();
+    });
+
     it('logs a failed background purge too, where nobody is waiting for it', async () => {
       const logged = vi
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
       answer(() => new Response('{"success":false}', { status: 401 }));
-      const result = await purgeNow(withToken, ['site', 'c:1']);
+      const result = await purgeNow(withToken, ['site', 'c:1'], 'content');
       expect(result.ok).toBe(false);
       expect(JSON.parse(String(logged.mock.calls[0]?.[0]))).toMatchObject({
         event: 'purge_failed',
+        source: 'content',
         status: 401,
         tags: 2,
       });
