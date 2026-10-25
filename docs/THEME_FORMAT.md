@@ -376,11 +376,23 @@ requires bumping `theme.json`'s `version` (§13).
 {{ content.published_at }} {{ content.updated_at }}
 {{ content.html }}      {# the sanitised body fragment; the only rich text emitted verbatim #}
 {{ content.excerpt }}   {{ content.reading_time }}
-{% for h in content.headings %}{{ h.depth }} {{ h.text }}{% endfor %}
+{% for h in content.headings %}<a href="#{{ h.id }}">{{ h.depth }} {{ h.text }}</a>{% endfor %}
 {% for tr in content.translations %}{{ tr.locale }} {{ tr.href }}{% endfor %}
 {{ content.frontmatter.sku }}      {# kind-specific fields come from here #}
 {{ content.cover }}                {# cover image URL; empty string when there is none #}
 ```
+
+`content.headings` lists the body's headings in order, each with `depth`
+(1–6), `text` and `id`. **`id` is the heading's own `id` attribute in
+`content.html`**, so `<a href="#{{ h.id }}">` links to it with no script.
+Ids are built from the heading's text (`## Quick start` → `quick-start`),
+keep letters and digits of any script as they are (`## 快速开始` →
+`快速开始`), fall back to `heading-<n>` when the text has neither, and are
+unique in the document (`example`, `example-1`, …). A heading the author
+gave an id in inline HTML keeps it, with the sanitizer's `user-content-`
+prefix. The heading of the GFM footnotes section is not listed. Since
+pipeline version 2 (Mallok 0.1.0-rc.12); earlier fragments had no ids and
+are re-rendered on their next request.
 
 ### 7.3 List pages also get `list`
 

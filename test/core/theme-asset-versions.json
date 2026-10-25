@@ -49,9 +49,9 @@
     }
   },
   "manual": {
-    "version": "2.0.0",
+    "version": "2.1.0",
     "assets": {
-      "style.css": "19de9cf8522e5478ccee31715c6e678054bf754f5eeb1185c800b4387a7425a1"
+      "style.css": "c6ba7cd935e2120b24f243cf855d718e4e05440147de6dfc7de62602382bc6cc"
     }
   }
 }

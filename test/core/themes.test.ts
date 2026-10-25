@@ -197,6 +197,43 @@ describe.each(themeDirs)('theme %s', (dir) => {
   });
 });
 
+describe('manual table of contents (Task 48)', () => {
+  it('links each entry to its heading', async () => {
+    const { manifest, files } = await loadTheme('manual');
+    const compiled = compileTheme(manifest, files, 1);
+    const fragment = await renderFragment({
+      body: '## Getting started\n\nText.\n\n## 快速开始\n\nText.\n\n## Getting started\n\nText.\n',
+      frontmatter: {},
+      assets: {},
+      mediaBaseUrl: '',
+    });
+    const item = summary('article');
+    const html = await renderPage(
+      compiled,
+      'layouts/article.liquid',
+      buildContentPageView(
+        contextFor(manifest, files, item.path),
+        { ...item, updatedAt: '2026-08-02T00:00:00Z' },
+        { html: fragment.html, meta: fragment.meta },
+        [{ locale: 'en', path: item.path }],
+        { refs: {}, backrefs: {}, siblings: [] },
+      ),
+    );
+    const toc = html.slice(html.indexOf('<aside class="toc"'));
+    const links = [...toc.matchAll(/<a href="#([^"]+)">([^<]+)<\/a>/g)].map(
+      (match) => [match[1], match[2]],
+    );
+    expect(links).toEqual([
+      ['getting-started', 'Getting started'],
+      ['快速开始', '快速开始'],
+      ['getting-started-1', 'Getting started'],
+    ]);
+    for (const [id] of links) {
+      expect(html).toContain(`<h2 id="${id}">`);
+    }
+  });
+});
+
 describe('atelier trade layouts', () => {
   it('shows the relations and question list the trade kinds need', async () => {
     const { manifest, files } = await loadTheme('atelier');

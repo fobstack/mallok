@@ -2,7 +2,7 @@
   "id": "manual",
   "name": "Manual",
   "description": "Premium documentation: centred hero, quick-start cards, guide rows, numbered sections in every article.",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "themeApi": 1,
   "home": "layouts/home.liquid",
   "kinds": {

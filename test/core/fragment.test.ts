@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   type AssetMap,
   computeFragmentCacheKey,
+  PIPELINE_VERSION,
   renderFragment,
 } from '../../src/core/index.js';
 
@@ -45,7 +46,10 @@ describe('renderFragment', () => {
     expect(first.html).toBe(second.html);
     expect(first.cacheKey).toBe(second.cacheKey);
     expect(first.html).toContain('<table>');
-    expect(first.meta.headings).toEqual([{ depth: 1, text: 'Title' }]);
+    expect(first.meta.headings).toEqual([
+      { depth: 1, text: 'Title', id: 'title' },
+    ]);
+    expect(first.html).toContain('<h1 id="title">Title</h1>');
     expect(first.meta.excerpt).toBe('Hello world.');
   });
 
@@ -175,5 +179,94 @@ describe('renderFragment', () => {
       computeFragmentCacheKey({ ...base, frontmatter: { a: 1 } }),
     ]);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('heading ids (Task 48)', () => {
+  it('gives every heading an id a table of contents can link to', async () => {
+    const { html, meta } = await render(
+      '## Quick start\n\n### Install the SDK\n\nText.\n',
+    );
+    expect(meta.headings).toEqual([
+      { depth: 2, text: 'Quick start', id: 'quick-start' },
+      { depth: 3, text: 'Install the SDK', id: 'install-the-sdk' },
+    ]);
+    expect(html).toContain('<h2 id="quick-start">Quick start</h2>');
+    expect(html).toContain('<h3 id="install-the-sdk">Install the SDK</h3>');
+  });
+
+  it('numbers repeated headings in document order', async () => {
+    const { html, meta } = await render(
+      '## Example\n\n## Example\n\n## Example\n\n## Example 1\n',
+    );
+    expect(meta.headings.map((h) => h.id)).toEqual([
+      'example',
+      'example-1',
+      'example-2',
+      // Its own slug was taken by the second "Example".
+      'example-1-1',
+    ]);
+    expect(new Set(meta.headings.map((h) => h.id)).size).toBe(4);
+    expect(html.match(/ id="/g)).toHaveLength(4);
+  });
+
+  it('keeps CJK headings in their own script, without transliteration', async () => {
+    const { meta } = await render(
+      '## 快速开始\n\n## 認證方式（API Key）\n\n## 快速开始\n\n## 시작하기\n',
+    );
+    expect(meta.headings.map((h) => h.id)).toEqual([
+      '快速开始',
+      '認證方式api-key',
+      '快速开始-1',
+      '시작하기',
+    ]);
+  });
+
+  it('drops punctuation and falls back to the position when nothing is left', async () => {
+    const { meta } = await render(
+      "## What's new in v2.1?\n\n## `GET /stock/quote`\n\n## ???\n\n## 🚀\n\n## --a__b  c--\n",
+    );
+    expect(meta.headings.map((h) => h.id)).toEqual([
+      'whats-new-in-v21',
+      'get-stockquote',
+      'heading-3',
+      'heading-4',
+      'a-b-c',
+    ]);
+  });
+
+  it("keeps an author's own id and never repeats it", async () => {
+    const { html, meta } = await render(
+      '<h2 id="intro">Intro</h2>\n\n## user-content-intro\n\n## Intro\n',
+    );
+    expect(meta.headings).toEqual([
+      // The sanitizer's prefix stays on an author's id (docs/SECURITY.md §4).
+      { depth: 2, text: 'Intro', id: 'user-content-intro' },
+      { depth: 2, text: 'user-content-intro', id: 'user-content-intro-1' },
+      { depth: 2, text: 'Intro', id: 'intro' },
+    ]);
+    expect(html.match(/id="user-content-intro"/g)).toHaveLength(1);
+  });
+
+  it('does not list the footnotes label as a section', async () => {
+    const { meta, html } = await render(
+      '## Body\n\nA claim.[^1]\n\n[^1]: The source.\n',
+    );
+    expect(meta.headings.map((h) => h.text)).toEqual(['Body']);
+    expect(html).toContain('data-footnotes');
+  });
+
+  it('cuts a very long heading and stays deterministic', async () => {
+    const long = `## ${'word '.repeat(60)}\n`;
+    const first = await render(long);
+    const second = await render(long);
+    const id = first.meta.headings[0]?.id ?? '';
+    expect(Array.from(id).length).toBeLessThanOrEqual(80);
+    expect(id.endsWith('-')).toBe(false);
+    expect(first.html).toBe(second.html);
+  });
+
+  it('is part of a new pipeline version, so stored fragments re-render', () => {
+    expect(PIPELINE_VERSION).toBe('2');
   });
 });
