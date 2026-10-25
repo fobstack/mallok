@@ -24,6 +24,8 @@ interface Health {
     readonly source: string;
     readonly status?: number;
     readonly detail: string;
+    /** What to check, from the status Cloudflare answered with. */
+    readonly advice: string;
   } | null;
   readonly customDomain: string | null;
   readonly mediaBaseUrl: string | null;
@@ -288,7 +290,8 @@ export function AdvancedPage(): JSX.Element {
                 </span>
                 <p className="help">
                   Pages it named may still be served from the cache until they
-                  expire. {health.lastPurgeFailure.detail}
+                  expire. {health.lastPurgeFailure.advice}{' '}
+                  {health.lastPurgeFailure.detail}
                 </p>
               </dd>
             </div>

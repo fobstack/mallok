@@ -144,7 +144,7 @@ describe('cache maintenance', () => {
             '{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}',
             { status: 403 },
           ),
-        /HTTP 403.*Authentication error/,
+        /HTTP 403.*Zone → Cache Purge → Purge.*not Cache Rules.*Authentication error/,
       ],
       [
         'a 200 whose body says it failed',
@@ -213,6 +213,7 @@ describe('cache maintenance', () => {
         status: 403,
         tags: 2,
         detail: expect.stringContaining('Authentication error'),
+        advice: expect.stringContaining('Cache Purge'),
       });
 
       // A purge that worked but named only some pages cannot vouch for the

@@ -29,7 +29,12 @@ import {
   updateSite,
 } from '../db/queries.js';
 import { THEMES } from '../themes/index.js';
-import { parsePurgeFailure, purgeTags } from './cache.js';
+import {
+  type PurgeFailure,
+  parsePurgeFailure,
+  purgeFailureAdvice,
+  purgeTags,
+} from './cache.js';
 import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem, readJson } from './http.js';
@@ -205,10 +210,21 @@ export async function getHealth(env: Env): Promise<Response> {
       env.CF_API_TOKEN !== undefined && env.CF_ZONE_ID !== undefined,
     // A purge that ran in the background and failed: the pages it named may
     // still be served stale (src/worker/cache.ts).
-    lastPurgeFailure: parsePurgeFailure(data.site?.last_purge_failure ?? null),
+    lastPurgeFailure: withAdvice(
+      parsePurgeFailure(data.site?.last_purge_failure ?? null),
+    ),
     customDomain: data.site?.domain ?? null,
     mediaBaseUrl: data.site?.media_base_url ?? null,
   });
+}
+
+/** A stored purge failure with what the operator should check. */
+function withAdvice(
+  failure: PurgeFailure | null,
+): (PurgeFailure & { advice: string }) | null {
+  return failure === null
+    ? null
+    : { ...failure, advice: purgeFailureAdvice(failure.status) };
 }
 
 const defaultLocaleSchema = z.object({

@@ -247,6 +247,25 @@ async function remember(
   }
 }
 
+/**
+ * What an operator should check, given the status of a failed purge.
+ *
+ * A refusal (401, 403) almost always means the token lacks the one
+ * permission that matters. On the deployed test site, on 2026-10-25, a token
+ * that Cloudflare reported "valid and active" was refused every purge
+ * because it held Zone → Cache Rules → Edit, which sits next to Cache Purge
+ * in the dashboard's list and purges nothing (docs/tasks/TASK-47.md).
+ */
+export function purgeFailureAdvice(status: number | undefined): string {
+  if (status === 401 || status === 403) {
+    return "The purge token was refused. It needs Zone → Cache Purge → Purge on this zone — not Cache Rules, which purges nothing — and CF_ZONE_ID must be this zone's id.";
+  }
+  if (status === 429) {
+    return 'Cloudflare is limiting purge requests for this account; pages expire on their own meanwhile.';
+  }
+  return 'Check that the purge token is still valid and may purge this zone.';
+}
+
 /** Reads the stored failure back; null when there is none or it is unreadable. */
 export function parsePurgeFailure(json: string | null): PurgeFailure | null {
   if (json === null) {

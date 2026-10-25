@@ -13,7 +13,7 @@
  */
 
 import { clearRenderCache } from '../db/queries.js';
-import { purgeNow } from './cache.js';
+import { purgeFailureAdvice, purgeNow } from './cache.js';
 import type { Env } from './env.js';
 import { json, problem } from './http.js';
 
@@ -27,7 +27,7 @@ export async function postPurgeAll(env: Env): Promise<Response> {
     // the operator looking at stale pages they were just told were gone.
     return problem(
       502,
-      `Cloudflare did not purge the cache${result.status === undefined ? '' : ` (HTTP ${result.status})`}. Check that the purge token is still valid and may purge this zone. ${(result.detail ?? '').slice(0, 300)}`.trim(),
+      `Cloudflare did not purge the cache${result.status === undefined ? '' : ` (HTTP ${result.status})`}. ${purgeFailureAdvice(result.status)} ${(result.detail ?? '').slice(0, 300)}`.trim(),
     );
   }
   return json({
