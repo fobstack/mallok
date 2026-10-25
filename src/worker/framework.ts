@@ -74,6 +74,7 @@ export type {
   PluginSecretVerdict,
   PluginSettingDeclaration,
   PluginSiteSettings,
+  PurgeOutcome,
   RouteInput,
 } from '../plugins/types.js';
 export { defineStarter, StarterDefinitionError } from '../starters/define.js';
