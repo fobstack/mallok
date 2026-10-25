@@ -7,7 +7,7 @@
  * document.
  */
 
-import { HOME_RECENT, homeKinds } from '../../core/index.js';
+import { buildHomePath, HOME_RECENT, homeKinds } from '../../core/index.js';
 import { listRecentByKind } from '../../db/queries.js';
 import { definePage } from '../../runtime/core/index.js';
 import { runAfterRender } from '../plugin-runtime.js';
@@ -16,7 +16,24 @@ import { runRenderData } from '../render-data.js';
 import { type PublicLocals, publicHeaders, renderDataItem } from './context.js';
 
 export default definePage<PublicLocals>()({
-  load: async ({ locals }) => {
+  load: async ({ locals, url }) => {
+    // A site that prefixes its default locale has no page at its root, only
+    // a fixed redirect to the default locale's home. Not language detection:
+    // every visitor and crawler is sent to the same place
+    // (docs/ARCHITECTURE.md §9). A response is never stored.
+    if (!locals.prefixed) {
+      return Response.redirect(
+        new URL(
+          buildHomePath(
+            locals.settings.defaultLocale,
+            locals.settings.defaultLocale,
+            true,
+          ),
+          url.origin,
+        ).toString(),
+        301,
+      );
+    }
     // Every kind the theme lists, not `article` alone: a theme's
     // `recent.product` used to be empty on a served site
     // (docs/THEME_FORMAT.md §7.4).

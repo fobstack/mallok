@@ -155,7 +155,9 @@ In `site.json`, `tagline` is one string or, for a site with a tagline per
 language, a map of locale to string keyed the way `nav` is —
 `{ "en": "…", "de": "…" }`. An export writes the string unless some language
 other than the default has a tagline of its own. A language absent from the
-map uses the default language's.
+map uses the default language's. `"prefixDefaultLocale": true` is written
+only for a site that prefixes its default locale (`ARCHITECTURE.md §9`);
+`mallok import --with-settings` and `mallok build` honour it.
 
 **An export contains no theme directory** (corrected 2026-08-29): a theme is
 source code that travels with the deployment, not site data. `site.json`

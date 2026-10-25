@@ -139,3 +139,54 @@ describe('mallok build with prefixDefaultLocale off', () => {
     expect(actual).toEqual(JSON.parse(await readFile(GOLDEN, 'utf8')));
   });
 });
+
+describe('mallok build with prefixDefaultLocale on', () => {
+  it('writes every locale under its prefix, and only redirects at the root', async () => {
+    const out = await build({ prefixDefaultLocale: true });
+    const files = await snapshot(out);
+    const pages = Object.keys(files).filter((file) => file.endsWith('.html'));
+    // Nothing of the default locale outside `/en/`, apart from the redirect.
+    expect(pages.filter((file) => !/^(en|zh)\//.test(file)).sort()).toEqual([
+      'index.html',
+    ]);
+    expect(pages).toEqual(
+      expect.arrayContaining([
+        'en/index.html',
+        'en/about/index.html',
+        'en/news/index.html',
+        'en/news/note/index.html',
+        'en/products/bar/index.html',
+        'en/families/alloys/index.html',
+        'en/tags/metal/index.html',
+        'zh/index.html',
+        'zh/about/index.html',
+        'zh/news/note/index.html',
+      ]),
+    );
+
+    expect(await readFile(join(out, '_redirects'), 'utf8')).toBe(
+      '/ /en 301\n/feed.xml /en/feed.xml 301\n',
+    );
+    const root = await readFile(join(out, 'index.html'), 'utf8');
+    expect(root).toContain('<meta name="robots" content="noindex">');
+    expect(root).toContain(`url=${ORIGIN}/en"`);
+    expect(root).toContain(`<link rel="canonical" href="${ORIGIN}/en">`);
+
+    const about = await readFile(join(out, 'en/about/index.html'), 'utf8');
+    expect(about).toContain(`<link rel="canonical" href="${ORIGIN}/en/about">`);
+    expect(about).toContain(
+      `<link rel="alternate" hreflang="zh" href="${ORIGIN}/zh/about">`,
+    );
+    expect(about).toContain(
+      `<link rel="alternate" hreflang="x-default" href="${ORIGIN}/en/about">`,
+    );
+
+    expect(files['sitemap.xml']?.every((url) => /^\/(en|zh)\//.test(url))).toBe(
+      true,
+    );
+    expect(existsSync(join(out, 'feed.xml'))).toBe(false);
+    const feed = await readFile(join(out, 'en/feed.xml'), 'utf8');
+    expect(feed).toContain(`<link>${ORIGIN}/en</link>`);
+    expect(feed).toContain(`href="${ORIGIN}/en/feed.xml"`);
+  });
+});

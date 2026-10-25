@@ -56,6 +56,8 @@ export interface SiteConfigFile {
   /** One tagline, or one per language keyed by locale. */
   readonly tagline?: string | Readonly<Record<string, string>> | null;
   readonly defaultLocale: string;
+  /** True when the default locale is prefixed too (docs/ARCHITECTURE.md §9). */
+  readonly prefixDefaultLocale?: boolean;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
   readonly nav?: Readonly<
@@ -129,6 +131,7 @@ export function buildSiteModel(
           kind: bundle.kind,
           locale: document.locale,
           defaultLocale: config.defaultLocale,
+          prefixDefaultLocale: config.prefixDefaultLocale === true,
           slug,
           base: config.kinds[bundle.kind]?.base ?? bundle.kind,
         }),

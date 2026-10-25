@@ -419,6 +419,19 @@ describe('site.kinds, links to list pages', () => {
     });
   });
 
+  it("carries the default locale's prefix when the site prefixes it", () => {
+    const site = buildSiteView({
+      ...ctx,
+      settings: { ...settings, prefixDefaultLocale: true },
+      manifest: listing,
+    });
+    expect(site.home_path).toBe('/en');
+    expect(site.kinds).toEqual({
+      product: { path: '/en/products', label: 'Products' },
+      case: { path: '/en/work', label: 'case' },
+    });
+  });
+
   it('follows a change of base', () => {
     const site = buildSiteView({
       ...ctx,

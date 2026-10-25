@@ -32,7 +32,11 @@ import { mallokHandler } from './handler.js';
  * §7.6). A plugin in a site can import only this entry, and the official
  * plugin's forms and emails are built with exactly these two.
  */
-export { escapeHtml, renderTextTemplate } from '../core/index.js';
+export {
+  escapeHtml,
+  localePrefix,
+  renderTextTemplate,
+} from '../core/index.js';
 export type { PluginInput } from '../plugins/define.js';
 export { definePlugin, PluginDefinitionError } from '../plugins/define.js';
 /**

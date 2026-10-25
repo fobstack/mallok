@@ -29,8 +29,10 @@ import {
   buildRobots,
   buildSitemap,
   compileTheme,
+  escapeHtml,
   HOME_RECENT,
   homeKinds,
+  localePrefix,
   renderFragment,
   renderPage,
   type SitemapEntry,
@@ -105,6 +107,47 @@ async function readConfig(root: string): Promise<SiteConfigFile> {
   return parsed;
 }
 
+/**
+ * What a site that prefixes its default locale serves at its root.
+ *
+ * A static host cannot answer with a status by itself, so the redirects are
+ * written twice: as `_redirects`, which Cloudflare's static assets and Pages
+ * (and Netlify) turn into real 301s, and as a root page that refreshes to the
+ * default locale's home for any host that does not read that file. The page
+ * says `noindex` and names the home as canonical, so it never competes with
+ * it in search results.
+ */
+async function writeRootRedirects(
+  outDir: string,
+  homeUrl: string,
+  rules: readonly (readonly [string, string])[],
+): Promise<void> {
+  await writeFile(
+    join(outDir, '_redirects'),
+    `${rules.map(([from, to]) => `${from} ${to} 301`).join('\n')}\n`,
+    'utf8',
+  );
+  const href = escapeHtml(homeUrl);
+  await writeFile(
+    join(outDir, 'index.html'),
+    [
+      '<!doctype html>',
+      '<html>',
+      '<head>',
+      '<meta charset="utf-8">',
+      '<meta name="robots" content="noindex">',
+      `<meta http-equiv="refresh" content="0; url=${href}">`,
+      `<link rel="canonical" href="${href}">`,
+      '<title>Redirecting</title>',
+      '</head>',
+      `<body><a href="${href}">${href}</a></body>`,
+      '</html>',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
+}
+
 /** Where a public path is written inside the output directory. */
 function outputPath(outDir: string, path: string): string {
   const clean = path.replace(/^\/+/, '').replace(/\/+$/, '');
@@ -136,6 +179,7 @@ function contextFor(
       name: config.name,
       ...splitTagline(config.tagline, config.defaultLocale),
       defaultLocale: config.defaultLocale,
+      prefixDefaultLocale: config.prefixDefaultLocale === true,
       locales: config.locales,
       kinds: config.kinds,
       nav: config.nav ?? {},
@@ -313,8 +357,20 @@ export async function buildStatic(
   }
 
   // --- home, lists and tag archives, per locale -----------------------
+  const prefixDefault = config.prefixDefaultLocale === true;
+  if (prefixDefault) {
+    const home = buildHomePath(
+      config.defaultLocale,
+      config.defaultLocale,
+      true,
+    );
+    await writeRootRedirects(options.outDir, `${options.origin}${home}`, [
+      ['/', home],
+      ['/feed.xml', `${home}/feed.xml`],
+    ]);
+  }
   for (const locale of config.locales) {
-    const homePath = buildHomePath(locale, config.defaultLocale);
+    const homePath = buildHomePath(locale, config.defaultLocale, prefixDefault);
     const recent: Record<string, SummaryInput[]> = {};
     // The same kinds and the same bound as the Worker's home page, so the
     // two paths render the same page from the same content.
@@ -337,7 +393,7 @@ export async function buildStatic(
     );
     pages++;
 
-    const prefix = locale === config.defaultLocale ? '' : `/${locale}`;
+    const prefix = localePrefix(locale, config);
 
     for (const [kind, kindConfig] of Object.entries(config.kinds)) {
       const listLayout = manifest.kinds[kind]?.listLayout;
@@ -421,8 +477,7 @@ export async function buildStatic(
 
     // Per-locale feed.
     const articles = listOf(model, 'article', locale).slice(0, FEED_ITEMS);
-    const feedPath =
-      locale === config.defaultLocale ? '/feed.xml' : `${prefix}/feed.xml`;
+    const feedPath = `${prefix}/feed.xml`;
     await mkdir(
       dirname(join(options.outDir, ...feedPath.replace(/^\//, '').split('/'))),
       { recursive: true },

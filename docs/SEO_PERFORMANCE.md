@@ -31,7 +31,7 @@ The core provides all of this, depending on neither a theme nor a plugin
 | Output | Path or location | Cache |
 | --- | --- | --- |
 | Sitemap, with hreflang | `/sitemap.xml` (plus `/sitemap-<n>.xml`) | Edge cache |
-| RSS | `/feed.xml`, `/<locale>/feed.xml` | Edge cache |
+| RSS | `/feed.xml`, `/<locale>/feed.xml`; with the default locale prefixed, `/<locale>/feed.xml` only and `/feed.xml` answers 301 (`ARCHITECTURE §9`) | Edge cache |
 | robots | `/robots.txt` | Edge cache |
 | canonical | Each page's `<head>` | With the page |
 | hreflang and x-default | Each page's `<head>` and the sitemap | With the page |

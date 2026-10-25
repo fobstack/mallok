@@ -26,6 +26,7 @@ import {
   type PathMove,
   type SitePatch,
   setDefaultLocale,
+  setPrefixDefaultLocale,
   updateSite,
 } from '../db/queries.js';
 import { THEMES } from '../themes/index.js';
@@ -38,7 +39,7 @@ import {
 import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem, readJson } from './http.js';
-import { parseSiteSettings } from './site.js';
+import { parseSiteSettings, type SiteSettings } from './site.js';
 import { siteEmailView } from './site-email.js';
 
 /** Failed background jobs listed in diagnostics, newest first. */
@@ -79,6 +80,8 @@ const settingsSchema = z
     maxImageEdge: z.number().int().min(320).max(8192).nullable(),
     /** Present only so callers get a clear error instead of silent breakage. */
     defaultLocale: z.string(),
+    /** The same: it rewrites every URL, so it has its own endpoint. */
+    prefixDefaultLocale: z.boolean(),
   })
   .partial();
 
@@ -111,6 +114,7 @@ export async function getSettings(env: Env): Promise<Response> {
     name: settings.name,
     tagline: joinTagline(settings, settings.defaultLocale),
     defaultLocale: settings.defaultLocale,
+    prefixDefaultLocale: settings.prefixDefaultLocale,
     locales: settings.locales,
     kinds: settings.kinds,
     themeOptions: settings.themeOptions,
@@ -153,6 +157,16 @@ export async function patchSettings(
     return problem(
       409,
       'Changing the default locale rewrites every URL. Use POST /_mallok/api/settings/default-locale.',
+    );
+  }
+
+  if (
+    input.prefixDefaultLocale !== undefined &&
+    input.prefixDefaultLocale !== (row.prefix_default_locale === 1)
+  ) {
+    return problem(
+      409,
+      'Prefixing the default locale rewrites every URL. Use POST /_mallok/api/settings/locale-prefix.',
     );
   }
 
@@ -279,6 +293,7 @@ export async function postDefaultLocale(
       kind: item.kind,
       locale: item.locale,
       defaultLocale: target,
+      prefixDefaultLocale: settings.prefixDefaultLocale,
       slug: item.slug,
       base,
     });
@@ -305,6 +320,103 @@ export async function postDefaultLocale(
     moved: gaining.length + losing.length,
     redirects: gaining.length + losing.length,
   });
+}
+
+const localePrefixSchema = z.object({
+  enabled: z.boolean(),
+  /** Required: this rewrites every public URL on the site. */
+  confirm: z.literal(true),
+});
+
+/**
+ * Turns the default locale's prefix on or off (docs/ARCHITECTURE.md §9).
+ *
+ * Every content row of the default locale moves — `/about` to `/en/about`,
+ * or back — and a 301 is recorded from each old path, so no external link
+ * breaks: an old unprefixed address answers with a redirect, never with a
+ * second copy of the page. Only the default locale's rows move, all in the
+ * same direction, so no row claims a path another still holds; a target that
+ * is already taken refuses the whole change before anything is written.
+ */
+export async function postLocalePrefix(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const parsed = localePrefixSchema.safeParse(await readJson(request));
+  if (!parsed.success) {
+    return problem(
+      400,
+      'Provide "enabled": true or false, and "confirm": true; this rewrites every URL.',
+    );
+  }
+  const row = await loadSite(env.DB);
+  if (row === null) {
+    return problem(503, 'Site is not initialized.');
+  }
+  const settings = parseSiteSettings(row);
+  const enabled = parsed.data.enabled;
+  if (enabled === settings.prefixDefaultLocale) {
+    return json({ prefixDefaultLocale: enabled, moved: 0, unchanged: true });
+  }
+  const result = await changeLocalePrefix(env, settings, enabled);
+  if ('clash' in result) {
+    return problem(
+      409,
+      `"${result.clash.from}" would move to "${result.clash.to}", which another item already uses. Change one of their slugs first. Nothing was changed.`,
+    );
+  }
+  ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
+  return json({
+    prefixDefaultLocale: enabled,
+    moved: result.moved,
+    redirects: result.moved,
+  });
+}
+
+/**
+ * Moves every content path to where `enabled` puts it, records a redirect
+ * from each old one, and stores the setting. Refuses, writing nothing, when
+ * a path would land on one another item holds. Shared by the settings
+ * endpoint and the setup wizard, which applies a starter's choice.
+ */
+export async function changeLocalePrefix(
+  env: Env,
+  settings: SiteSettings,
+  enabled: boolean,
+): Promise<{ moved: number } | { clash: PathMove }> {
+  const locations = await listContentLocations(env.DB);
+  const moves: PathMove[] = [];
+  for (const item of locations) {
+    const to = buildPublicPath({
+      kind: item.kind,
+      locale: item.locale,
+      defaultLocale: settings.defaultLocale,
+      prefixDefaultLocale: enabled,
+      slug: item.slug,
+      base: settings.kinds[item.kind]?.base ?? '',
+    });
+    if (to !== item.path) {
+      moves.push({ id: item.id, from: item.path, to });
+    }
+  }
+  // With the paths the rules allow, no target is anybody's current path: the
+  // default locale's rows all gain, or all lose, the same prefix. A path set
+  // by hand can break that, and the database would then refuse halfway.
+  const held = new Set(locations.map((item) => item.path));
+  const targets = new Set<string>();
+  const clash = moves.find((move) => {
+    const taken = held.has(move.to) || targets.has(move.to);
+    targets.add(move.to);
+    return taken;
+  });
+  if (clash !== undefined) {
+    return { clash };
+  }
+  const now = new Date().toISOString();
+  await movePaths(env.DB, moves, now);
+  await setPrefixDefaultLocale(env.DB, enabled, now);
+  return { moved: moves.length };
 }
 
 /**

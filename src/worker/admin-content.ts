@@ -318,6 +318,7 @@ export async function saveContent(
     kind: input.kind,
     locale,
     defaultLocale: settings.defaultLocale,
+    prefixDefaultLocale: settings.prefixDefaultLocale,
     slug,
     base: kindConfig.base,
   });

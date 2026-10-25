@@ -40,6 +40,8 @@ export interface SiteRow {
    * failed since the whole site was last purged.
    */
   readonly last_purge_failure: string | null;
+  /** 1 when the default locale is prefixed too; changed by its own flow. */
+  readonly prefix_default_locale: number;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -739,6 +741,11 @@ export interface PathMove {
  * `moves` must be ordered so that a path is vacated before another row claims
  * it, because `content.path` is unique. The caller guarantees that by moving
  * every row that gains a locale prefix before any row that loses one.
+ *
+ * A path that is content again stops redirecting, and a redirect that
+ * pointed at a moved path is pointed at its new one: moving there and back
+ * must not leave a redirect behind, and an older slug's redirect must stay
+ * one hop.
  */
 export async function movePaths(
   db: D1Database,
@@ -754,6 +761,10 @@ export async function movePaths(
         db
           .prepare('UPDATE content SET path = ?, updated_at = ? WHERE id = ?')
           .bind(move.to, now, move.id),
+        db.prepare('DELETE FROM redirect WHERE from_path = ?').bind(move.to),
+        db
+          .prepare('UPDATE redirect SET to_path = ? WHERE to_path = ?')
+          .bind(move.to, move.from),
         db
           .prepare(
             `INSERT OR REPLACE INTO redirect
@@ -765,6 +776,23 @@ export async function movePaths(
     }
     await db.batch(statements);
   }
+}
+
+/**
+ * Records whether the default locale is prefixed. Paths must already have
+ * been moved.
+ */
+export async function setPrefixDefaultLocale(
+  db: D1Database,
+  enabled: boolean,
+  now: string,
+): Promise<void> {
+  await db
+    .prepare(
+      'UPDATE site SET prefix_default_locale = ?, updated_at = ? WHERE id = 1',
+    )
+    .bind(enabled ? 1 : 0, now)
+    .run();
 }
 
 /** Changes the site's default locale. Paths must already have been moved. */

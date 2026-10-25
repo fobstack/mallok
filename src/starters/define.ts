@@ -35,6 +35,7 @@ const starterSchema = z.object({
   plugins: z.array(z.string().min(1)).default([]),
   settings: z.object({
     locales: z.array(z.string().regex(LOCALE_PATTERN)).optional(),
+    prefixDefaultLocale: z.boolean().optional(),
     kinds: z.record(z.string(), z.object({ base: z.string() })),
     nav: z.record(z.string(), z.array(linkSchema)).default({}),
     themeOptions: z.record(z.string(), z.unknown()).default({}),

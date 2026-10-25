@@ -30,6 +30,7 @@ import type { Starter, StarterRecord } from '../starters/types.js';
 import { bootstrapAdmin } from './admin-auth.js';
 import { saveContent } from './admin-content.js';
 import { savePluginRecord } from './admin-plugins.js';
+import { changeLocalePrefix } from './admin-settings.js';
 import { authenticate } from './auth.js';
 import { purgeTags } from './cache.js';
 import { activeTheme, compiledPlugins, siteStarters } from './composition.js';
@@ -253,6 +254,26 @@ async function applyStarter(
     },
     new Date().toISOString(),
   );
+
+  // Before the documents, so they are saved at their prefixed paths. A site
+  // with content already has it moved, with redirects, as the settings
+  // endpoint does.
+  if (
+    starter.settings.prefixDefaultLocale !== undefined &&
+    starter.settings.prefixDefaultLocale !== settings.prefixDefaultLocale
+  ) {
+    const changed = await changeLocalePrefix(
+      env,
+      { ...settings, kinds: starter.settings.kinds },
+      starter.settings.prefixDefaultLocale,
+    );
+    if ('clash' in changed) {
+      return problem(
+        409,
+        `The starter prefixes the default locale, but "${changed.clash.from}" would move to "${changed.clash.to}", which another item already uses.`,
+      );
+    }
+  }
 
   for (const pluginId of starter.plugins) {
     await setPluginEnabled(env.DB, pluginId, true, new Date().toISOString());

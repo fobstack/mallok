@@ -182,10 +182,12 @@ export function SiteSettingsPage(): JSX.Element {
 }
 
 /**
- * Enabled languages, and the default-locale switch.
+ * Enabled languages, the default-locale switch, and whether the default
+ * language carries a prefix.
  *
- * Changing the default rewrites every public URL, so it goes through its own
- * endpoint with an explicit confirmation (docs/DATA_MODEL.md §2.2).
+ * Changing either of the last two rewrites every public URL, so each goes
+ * through its own endpoint with an explicit confirmation
+ * (docs/DATA_MODEL.md §2.2).
  */
 function LocaleSection(): JSX.Element {
   const current = settings.value;
@@ -230,13 +232,58 @@ function LocaleSection(): JSX.Element {
     }
   };
 
+  const setPrefix = async (enabled: boolean): Promise<void> => {
+    const ok = window.confirm(
+      enabled
+        ? `Serve "${current.defaultLocale}" under /${current.defaultLocale}/ too?\n\nEvery URL of the default language moves (/about becomes /${current.defaultLocale}/about) and each old URL redirects to its new one. The site's root then only redirects to /${current.defaultLocale}.`
+        : `Serve "${current.defaultLocale}" at the root again?\n\nEvery URL of the default language moves (/${current.defaultLocale}/about becomes /about) and each old URL redirects to its new one.`,
+    );
+    if (!ok) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await api<{ moved: number }>('/settings/locale-prefix', {
+        method: 'POST',
+        body: { enabled, confirm: true },
+      });
+      await loadWorkspace();
+      notice.value = `${result.moved} URLs moved, each with a redirect.`;
+    } catch (caught) {
+      notice.value =
+        caught instanceof ApiError ? caught.message : 'Could not switch.';
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <section className="card">
       <h2>Languages</h2>
       <p className="help">
-        The default language has no URL prefix; every other language is served
-        under <code>/&lt;locale&gt;/</code>.
+        {current.prefixDefaultLocale ? (
+          <>
+            Every language is served under <code>/&lt;locale&gt;/</code>, the
+            default one too; the site&apos;s root redirects to{' '}
+            <code>/{current.defaultLocale}</code>.
+          </>
+        ) : (
+          <>
+            The default language has no URL prefix; every other language is
+            served under <code>/&lt;locale&gt;/</code>.
+          </>
+        )}
       </p>
+      <label className="check">
+        <input
+          type="checkbox"
+          checked={current.prefixDefaultLocale}
+          disabled={busy}
+          onChange={(event) => void setPrefix(event.currentTarget.checked)}
+        />
+        Prefix the default language too (<code>/{current.defaultLocale}/…</code>
+        )
+      </label>
       <ul className="rows">
         {current.locales.map((locale) => (
           <li key={locale}>

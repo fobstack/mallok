@@ -25,7 +25,7 @@ import type {
   SiteView,
   ThemeView,
 } from './page.js';
-import { buildHomePath } from './paths.js';
+import { buildHomePath, localePrefix } from './paths.js';
 import type { ThemeManifest } from './theme.js';
 
 /** One navigation entry as configured for a locale. */
@@ -42,6 +42,8 @@ export interface SiteConfig {
   /** Taglines of other languages, by locale. */
   readonly taglines?: Readonly<Record<string, string>>;
   readonly defaultLocale: string;
+  /** True when the default locale is prefixed too (docs/ARCHITECTURE.md §9). */
+  readonly prefixDefaultLocale?: boolean;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
   readonly nav: Readonly<Record<string, readonly NavEntry[]>>;
@@ -243,6 +245,15 @@ export function themeAssetBase(themeId: string, version: string): string {
   return `/theme/${themeId}/${version}`;
 }
 
+/** The home path of `locale` on the site being rendered. */
+function homePath(ctx: ViewContext, locale: string): string {
+  return buildHomePath(
+    locale,
+    ctx.settings.defaultLocale,
+    ctx.settings.prefixDefaultLocale === true,
+  );
+}
+
 /** Site-wide view data. */
 export function buildSiteView(ctx: ViewContext): SiteView {
   const entries = ctx.settings.nav[ctx.locale] ?? [];
@@ -251,8 +262,7 @@ export function buildSiteView(ctx: ViewContext): SiteView {
     href: entry.href,
     active: entry.href === ctx.path,
   }));
-  const prefix =
-    ctx.locale === ctx.settings.defaultLocale ? '' : `/${ctx.locale}`;
+  const prefix = localePrefix(ctx.locale, ctx.settings);
   const kinds: Record<string, KindLinkView> = {};
   for (const [kind, config] of Object.entries(ctx.settings.kinds)) {
     // The same two conditions that make the list page exist.
@@ -274,7 +284,7 @@ export function buildSiteView(ctx: ViewContext): SiteView {
     default_locale: ctx.settings.defaultLocale,
     locales: ctx.settings.locales,
     base_url: ctx.origin,
-    home_path: buildHomePath(ctx.locale, ctx.settings.defaultLocale),
+    home_path: homePath(ctx, ctx.locale),
     nav,
     kinds,
   };
@@ -607,10 +617,10 @@ export function buildHomePageView(
   for (const [kind, items] of Object.entries(recent)) {
     recentViews[kind] = items.map(buildSummaryView);
   }
-  const canonical = `${ctx.origin}${buildHomePath(ctx.locale, ctx.settings.defaultLocale)}`;
+  const canonical = `${ctx.origin}${homePath(ctx, ctx.locale)}`;
   const alternates: AlternateView[] = ctx.settings.locales.map((locale) => ({
     locale,
-    href: `${ctx.origin}${buildHomePath(locale, ctx.settings.defaultLocale)}`,
+    href: `${ctx.origin}${homePath(ctx, locale)}`,
     name: ctx.languageNames?.[locale] ?? locale,
   }));
   return {
@@ -674,7 +684,7 @@ export function buildListPageView(ctx: ViewContext, list: ListInput): PageView {
   // Every locale shows the same list under its own prefix, so the page has
   // real alternates and must say so (docs/SEO_PERFORMANCE.md §4).
   const alternates: AlternateView[] = ctx.settings.locales.map((locale) => {
-    const prefix = locale === ctx.settings.defaultLocale ? '' : `/${locale}`;
+    const prefix = localePrefix(locale, ctx.settings);
     return {
       locale,
       href: `${ctx.origin}${prefix}/${list.kindBase}${suffix}`,

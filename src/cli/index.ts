@@ -180,11 +180,17 @@ async function runPublish(
         // A dry run writes nothing, the site's settings included.
         wouldApply = patch.settings;
         report.step(
-          `Dry run: site.json would be applied (${Object.keys(patch.settings).join(', ')}).`,
+          `Dry run: site.json would be applied (${[
+            ...Object.keys(patch.settings),
+            ...(patch.prefixDefaultLocale === undefined
+              ? []
+              : ['prefixDefaultLocale']),
+          ].join(', ')}).`,
         );
       } else {
         report.step('Applying site.json…');
         await client.patch('/settings', patch.settings);
+        await applyLocalePrefix(client, patch.prefixDefaultLocale, report);
       }
       await warnAboutTheme(client, patch.themeId, report);
     }
@@ -290,15 +296,47 @@ interface SettingsPatch {
 }
 
 /**
+ * Applies a `site.json`'s `prefixDefaultLocale`, which the settings PATCH
+ * refuses because it moves every URL: it has its own confirmed endpoint.
+ * Applied after the patch, so the paths it moves use the file's kinds.
+ */
+async function applyLocalePrefix(
+  client: SiteClient,
+  wanted: boolean | undefined,
+  report: Reporter,
+): Promise<void> {
+  if (wanted === undefined) {
+    return;
+  }
+  const current = await client.get<{ prefixDefaultLocale: boolean }>(
+    '/settings',
+  );
+  if (current.prefixDefaultLocale === wanted) {
+    return;
+  }
+  const result = await client.post<{ moved: number }>(
+    '/settings/locale-prefix',
+    { enabled: wanted, confirm: true },
+  );
+  report.step(
+    wanted
+      ? `Prefixed the default locale: ${result.moved} paths moved, each old one redirects.`
+      : `Removed the default locale's prefix: ${result.moved} paths moved, each old one redirects.`,
+  );
+}
+
+/**
  * Reads an export's `site.json` as a settings patch; null when there is none.
  *
  * Only the fields the settings API accepts are kept; the theme block is
  * informational, because a theme is source code and an import cannot install
  * one (docs/CONTENT_FORMAT.md §5).
  */
-async function readSiteJson(
-  root: string,
-): Promise<{ settings: SettingsPatch; themeId: string | undefined } | null> {
+async function readSiteJson(root: string): Promise<{
+  settings: SettingsPatch;
+  prefixDefaultLocale: boolean | undefined;
+  themeId: string | undefined;
+} | null> {
   const { readFile } = await import('node:fs/promises');
   let parsed: Record<string, unknown>;
   try {
@@ -325,7 +363,14 @@ async function readSiteJson(
     settings.locales = parsed.locales;
   }
   const theme = parsed.theme as { id?: string } | undefined;
-  return { settings, themeId: theme?.id };
+  return {
+    settings,
+    prefixDefaultLocale:
+      typeof parsed.prefixDefaultLocale === 'boolean'
+        ? parsed.prefixDefaultLocale
+        : undefined,
+    themeId: theme?.id,
+  };
 }
 
 /** Says so when an export was made with a theme the site does not run. */

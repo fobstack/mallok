@@ -306,7 +306,7 @@ from Shopify and Jekyll — one of the two camelCase exceptions in
 {{ site.locale }}          {{ site.default_locale }}
 {{ site.locales }}         {# array #}
 {{ site.base_url }}        {# https://example.com, no trailing slash #}
-{{ site.home_path }}       {# / or /de/ #}
+{{ site.home_path }}       {# / or /de/; /en and /de on a site that prefixes its default locale #}
 {% for item in site.nav %}{{ item.label }} {{ item.href }} {{ item.active }}{% endfor %}
 {{ site.kinds.product.path }}  {{ site.kinds.product.label }}   {# the list page of a kind #}
 

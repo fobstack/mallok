@@ -89,6 +89,8 @@ export {
   buildHomePath,
   buildPublicPath,
   LOCALE_PATTERN,
+  type LocaleUrls,
+  localePrefix,
   type ParsedPath,
   type PublicPathInput,
   parsePublicPath,

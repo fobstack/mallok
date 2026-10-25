@@ -226,6 +226,11 @@ succeeded** (`AC-CONTENT-10`, `docs/ACCEPTANCE.md §14.2` item 7).
 
 ### 6.6 Multiple languages
 
+- Settings → Site → Languages has a checkbox, **Prefix the default language
+  too**. Changing it asks for confirmation, then moves every URL of the
+  default language and records a redirect from each (`ARCHITECTURE §9`); the
+  editor's path preview follows it.
+
 - The language switcher sits at the top of the editor, and switching to a
   translation that does not exist yet offers "create the `<language>`
   version".
@@ -357,7 +362,13 @@ This is the only place lower-level vocabulary is allowed:
   (`CLI.md §7`).
 - **Diagnostics**: whether a custom domain is bound, whether caching is in
   effect, whether `CF_API_TOKEN` is configured, whether Resend is configured,
-  and the schema version. Below them, **Failed background jobs**: the latest
+  and the schema version. **Last failed purge** appears when a purge
+  Cloudflare did not carry out is recorded (`ARCHITECTURE §6.2`): when, after
+  what (a content change, a plugin by name, …), Cloudflare's status and
+  answer, and what to check — for a 401 or 403, that the token needs Zone →
+  Cache Purge → Purge rather than Cache Rules. It stays until a purge of the
+  whole site succeeds, including the "purge all cached pages" button, which
+  itself answers with Cloudflare's reason when it fails. Below them, **Failed background jobs**: the latest
   twenty jobs that ran out of attempts — email or a plugin's
   (`PLUGIN_API.md §7.4`) — with what each was, when it gave up and its last
   error. The list is absent when there are none. It is read-only: there is no

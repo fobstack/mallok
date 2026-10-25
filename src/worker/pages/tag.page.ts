@@ -7,6 +7,7 @@
  * catch-all page instead.
  */
 
+import { localePrefix } from '../../core/index.js';
 import { listByTag } from '../../db/queries.js';
 import { definePage } from '../../runtime/core/index.js';
 import { runAfterRender } from '../plugin-runtime.js';
@@ -42,7 +43,9 @@ export default definePage<PublicLocals>()({
     const matched = PAGED.exec(raw);
     const tag = decodeURIComponent(matched?.[1] ?? '');
     const page = matched?.[2] === undefined ? 1 : Number(matched[2]);
-    if (tag === '' || page < 1) {
+    // An archive lives under its locale's prefix; on a site that prefixes the
+    // default locale, `/tags/x` is not one.
+    if (tag === '' || page < 1 || !locals.prefixed) {
       return { found: false };
     }
     const rows = await listByTag(
@@ -82,10 +85,7 @@ export default definePage<PublicLocals>()({
       };
     }
     const { tag, page, rows, covers, pluginData } = archive;
-    const prefix =
-      locals.locale === locals.settings.defaultLocale
-        ? ''
-        : `/${locals.locale}`;
+    const prefix = localePrefix(locals.locale, locals.settings);
     const rendered = await renderListPage(
       {
         ...locals.render,

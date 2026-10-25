@@ -10,6 +10,7 @@
  * would rightly refuse them.
  */
 
+import { localePrefix } from '../../core/index.js';
 import type { ContentRow } from '../../db/queries.js';
 import { findRedirect, listPublished } from '../../db/queries.js';
 import { definePage } from '../../runtime/core/index.js';
@@ -121,7 +122,11 @@ export default definePage<PublicLocals>()({
     //    A kind the theme gives no list layout has no list page: its items
     //    are served under the base, and the base itself names nothing
     //    (docs/THEME_FORMAT.md §7.4).
-    const list = matchList(locals.rest, settings.kinds);
+    // An unprefixed path on a site that prefixes its default locale names
+    // no list: only a stored redirect can answer it.
+    const list = locals.prefixed
+      ? matchList(locals.rest, settings.kinds)
+      : null;
     if (
       list !== null &&
       locals.render.theme.manifest.kinds[list.kind]?.listLayout !== undefined
@@ -145,8 +150,7 @@ export default definePage<PublicLocals>()({
             items: rows.items.map(renderDataItem),
           }),
         ]);
-      const prefix =
-        locals.locale === settings.defaultLocale ? '' : `/${locals.locale}`;
+      const prefix = localePrefix(locals.locale, settings);
       const rendered = await renderListPage(
         { ...locals.render, plugins, structuredData },
         list.kind,

@@ -14,6 +14,7 @@ import {
   buildRobots,
   buildSitemap,
   buildSitemapIndex,
+  localePrefix,
   type SitemapEntry,
   taglineFor,
 } from '../core/index.js';
@@ -86,6 +87,13 @@ export async function handleSeo(
 
   const feedMatch = FEED_PATTERN.exec(pathname);
   if (feedMatch !== null) {
+    if (feedMatch[1] === undefined && settings.prefixDefaultLocale) {
+      // Every locale's feed is under its prefix; the root one moved there.
+      return Response.redirect(
+        `${origin}${feedPath(settings.defaultLocale, settings)}`,
+        301,
+      );
+    }
     const locale = feedMatch[1] ?? settings.defaultLocale;
     if (!settings.locales.includes(locale)) {
       return problem(404, 'Not found.');
@@ -194,14 +202,16 @@ async function feed(
     0,
     now,
   );
-  const prefix = buildHomePath(locale, settings.defaultLocale);
-  const feedPath =
-    locale === settings.defaultLocale ? '/feed.xml' : `${prefix}feed.xml`;
+  const home = buildHomePath(
+    locale,
+    settings.defaultLocale,
+    settings.prefixDefaultLocale,
+  );
   return xml(
     buildFeed({
       siteName: settings.name,
-      siteUrl: `${origin}${prefix}`,
-      feedUrl: `${origin}${feedPath}`,
+      siteUrl: `${origin}${home}`,
+      feedUrl: `${origin}${feedPath(locale, settings)}`,
       description: taglineFor(settings, locale),
       locale,
       items: recent.items.map((item) => ({
@@ -213,6 +223,11 @@ async function feed(
     }),
     'application/rss+xml; charset=utf-8',
   );
+}
+
+/** Where a locale's feed lives: under its prefix, if it has one. */
+function feedPath(locale: string, settings: SiteSettings): string {
+  return `${localePrefix(locale, settings)}/feed.xml`;
 }
 
 function xml(body: string, type = 'application/xml; charset=utf-8'): Response {
