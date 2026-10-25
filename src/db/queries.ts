@@ -277,6 +277,25 @@ export async function findContentByKey(
     .first<ContentRow>();
 }
 
+/**
+ * Which item holds a public path, if any: kind, locale and slug, for saying
+ * whose it is when a save would take it.
+ */
+export async function findPathHolder(
+  db: D1Database,
+  path: string,
+): Promise<{
+  readonly id: string;
+  readonly kind: string;
+  readonly locale: string;
+  readonly slug: string;
+} | null> {
+  return db
+    .prepare('SELECT id, kind, locale, slug FROM content WHERE path = ?')
+    .bind(path)
+    .first();
+}
+
 /** Input for {@link upsertContent}. */
 export interface ContentUpsert {
   readonly row: ContentRow;

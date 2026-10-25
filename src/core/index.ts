@@ -88,13 +88,19 @@ export {
 export {
   buildHomePath,
   buildPublicPath,
+  canonicalSlug,
   LOCALE_PATTERN,
   type LocaleUrls,
   localePrefix,
+  MAX_SLUG_LENGTH,
+  MAX_SLUG_SEGMENTS,
   type ParsedPath,
   type PublicPathInput,
   parsePublicPath,
+  type SlugProblem,
   slugify,
+  slugPlacementProblem,
+  slugProblem,
 } from './paths.js';
 export {
   matchPluginRoute,

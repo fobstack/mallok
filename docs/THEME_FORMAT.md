@@ -371,7 +371,7 @@ requires bumping `theme.json`'s `version` (§13).
 
 ```liquid
 {{ content.id }}        {{ content.kind }}      {{ content.locale }}
-{{ content.slug }}      {{ content.path }}
+{{ content.slug }}      {{ content.path }}  {# a slug may have several segments: crypto/crypto-quote #}
 {{ content.title }}     {{ content.description }}
 {{ content.published_at }} {{ content.updated_at }}
 {{ content.html }}      {# the sanitised body fragment; the only rich text emitted verbatim #}

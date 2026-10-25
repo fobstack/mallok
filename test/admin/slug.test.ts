@@ -45,3 +45,25 @@ describe('slug field normalisation', () => {
     expect(result.notice).toMatch(/Latin/);
   });
 });
+
+describe('slug field normalisation with several segments (Task 50)', () => {
+  it('accepts a nested slug as typed', () => {
+    expect(normalizeSlugInput('crypto/crypto-quote')).toEqual({
+      slug: 'crypto/crypto-quote',
+      usable: true,
+      notice: null,
+    });
+  });
+
+  it('normalises each segment and drops empty ones', () => {
+    const result = normalizeSlugInput('/Crypto//Crypto Quote/');
+    expect(result).toMatchObject({ slug: 'crypto/crypto-quote', usable: true });
+    expect(result.notice).toContain('crypto/crypto-quote');
+  });
+
+  it('keeps the first four segments and says why', () => {
+    const result = normalizeSlugInput('a/b/c/d/e');
+    expect(result).toMatchObject({ slug: 'a/b/c/d', usable: true });
+    expect(result.notice).toContain('at most 4');
+  });
+});

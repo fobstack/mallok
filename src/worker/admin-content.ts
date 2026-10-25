@@ -12,12 +12,15 @@ import {
   deriveFrontmatter,
   exportPathKey,
   LOCALE_PATTERN,
+  MAX_SLUG_LENGTH,
   normalizeRelativePath,
   PIPELINE_VERSION,
   type RenderedFragment,
   renderFragment,
   sha256Hex,
   slugify,
+  slugPlacementProblem,
+  slugProblem,
   splitFrontmatter,
 } from '../core/index.js';
 import {
@@ -25,6 +28,7 @@ import {
   deleteContent,
   findContentById,
   findContentByKey,
+  findPathHolder,
   listContent,
   listTranslationsOf,
   loadSite,
@@ -66,7 +70,7 @@ const contentInputSchema = z.object({
   id: z.string().uuid().optional(),
   kind: z.string().regex(/^[a-z][a-z0-9_]*$/),
   locale: z.string().regex(LOCALE_PATTERN).optional(),
-  slug: z.string().min(1).max(80).optional(),
+  slug: z.string().min(1).max(MAX_SLUG_LENGTH).optional(),
   translationGroup: z.string().uuid().optional(),
   /** Full `index.md` text including the front matter block. */
   markdown: z.string().max(MAX_MARKDOWN_BYTES),
@@ -191,17 +195,15 @@ export async function saveContent(
   if (slug === '') {
     return problem(400, 'Could not derive a slug; provide one explicitly.');
   }
-  // A slug becomes a folder name in an export, so it has to survive a round
-  // trip through a filesystem. Name the value that would have been accepted:
-  // the rule alone leaves the caller guessing.
-  const canonicalSlug = slugify(slug);
-  if (canonicalSlug !== slug) {
-    return problem(
-      400,
-      canonicalSlug === ''
-        ? `The slug "${slug}" has no Latin letters or digits to build a folder name from. Provide one written in Latin characters.`
-        : `The slug must use lowercase Latin letters, digits and single dashes. Use "${canonicalSlug}".`,
-    );
+  // A slug becomes a URL and, flattened, a folder name in an export, so it
+  // has to survive a round trip through a filesystem; one of several
+  // segments must not land on an address the site already answers. Name the
+  // value that would have been accepted: the rule alone leaves the caller
+  // guessing (docs/CONTENT_FORMAT.md §3.1).
+  const refused =
+    slugProblem(slug) ?? slugPlacementProblem(slug, kindConfig.base, settings);
+  if (refused !== null) {
+    return problem(400, refused.message);
   }
 
   const assets: Record<string, string> = {};
@@ -322,6 +324,16 @@ export async function saveContent(
     slug,
     base: kindConfig.base,
   });
+
+  // Two kinds without a base share the root of a locale, so one path can be
+  // asked for twice. Say whose it is, rather than fail on the constraint.
+  const holder = await findPathHolder(env.DB, path);
+  if (holder !== null && holder.id !== existing?.id) {
+    return problem(
+      409,
+      `${path} is already the address of the ${holder.kind} "${holder.slug}" (${holder.locale}). Choose another slug.`,
+    );
+  }
 
   const fragment: RenderedFragment = tooLongToRenderSafely
     ? {

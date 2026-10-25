@@ -7,7 +7,7 @@
  * of them, before a request is made.
  */
 
-import { slugify } from '../core/index.js';
+import { canonicalSlug, MAX_SLUG_SEGMENTS, slugify } from '../core/index.js';
 
 /**
  * What the slug field should hold, and what to tell the operator.
@@ -36,9 +36,19 @@ export function normalizeSlugInput(typed: string): SlugNormalization {
   if (typed === '') {
     return { slug: '', usable: true, notice: null };
   }
-  const normalized = slugify(typed);
+  // Several segments, `crypto/crypto-quote`, are normalised one by one.
+  const normalized = typed.includes('/')
+    ? canonicalSlug(typed)
+    : slugify(typed);
   if (normalized === typed) {
     return { slug: typed, usable: true, notice: null };
+  }
+  if (typed.split('/').length > MAX_SLUG_SEGMENTS && normalized !== '') {
+    return {
+      slug: normalized,
+      usable: true,
+      notice: `The slug became "${normalized}": a slug has at most ${MAX_SLUG_SEGMENTS} segments.`,
+    };
   }
   if (normalized === '') {
     return {

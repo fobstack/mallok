@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   buildHomePath,
   buildPublicPath,
+  canonicalSlug,
   localePrefix,
   parsePublicPath,
   slugify,
+  slugPlacementProblem,
+  slugProblem,
 } from '../../src/core/index.js';
 
 describe('buildPublicPath', () => {
@@ -140,5 +143,90 @@ describe('slugify', () => {
       'grade-5-titanium-bars',
     );
     expect(slugify('Ünïcödé')).toBe('unicode');
+  });
+});
+
+describe('slugs of several segments (Task 50)', () => {
+  const site = {
+    locales: ['en', 'zh-cn'],
+    kinds: {
+      page: { base: '' },
+      'rest-api': { base: 'rest-api' },
+      faq: { base: 'faq' },
+    },
+  };
+
+  it('accepts one to four canonical segments', () => {
+    for (const slug of ['quote', 'crypto/quote', 'a/b/c/d', 'page/billing']) {
+      expect(slugProblem(slug)).toBeNull();
+    }
+  });
+
+  it('builds the path from the base and every segment', () => {
+    expect(
+      buildPublicPath({
+        kind: 'rest-api',
+        locale: 'en',
+        defaultLocale: 'en',
+        prefixDefaultLocale: true,
+        slug: 'crypto/crypto-quote',
+        base: 'rest-api',
+      }),
+    ).toBe('/en/rest-api/crypto/crypto-quote');
+  });
+
+  it.each([
+    ['a/b/c/d/e', /at most 4/, 'a/b/c/d'],
+    ['a//b', /empty segment/, 'a/b'],
+    ['/a', /empty segment/, 'a'],
+    ['a/', /empty segment/, 'a'],
+    ['Crypto/Quote', /Segment 1 \("Crypto"\)/, 'crypto/quote'],
+    ['crypto/行情', /Segment 2 \("行情"\).*Latin/, 'crypto'],
+  ])('refuses %j and suggests what would do', (slug, message, suggestion) => {
+    const problem = slugProblem(slug);
+    expect(problem?.message).toMatch(message);
+    expect(problem?.suggestion).toBe(suggestion);
+  });
+
+  it('refuses page/<number>, the address of a list page', () => {
+    expect(slugProblem('page/2')?.message).toContain('list');
+    expect(slugProblem('page/2/x')?.message).toContain('list');
+  });
+
+  it('refuses a slug over the length limit', () => {
+    const tooLong = `${'a'.repeat(80)}/`.repeat(3);
+    expect(slugProblem(`${tooLong}b`)).not.toBeNull();
+  });
+
+  it('keeps the words a one-segment slug has always been refused with', () => {
+    expect(slugProblem('Hello World')?.message).toBe(
+      'The slug must use lowercase Latin letters, digits and single dashes. Use "hello-world".',
+    );
+    expect(slugProblem('你好')?.message).toBe(
+      'The slug "你好" has no Latin letters or digits to build a folder name from. Provide one written in Latin characters.',
+    );
+  });
+
+  it('canonicalises segment by segment', () => {
+    expect(canonicalSlug(' Crypto / Crypto Quote ')).toBe(
+      'crypto/crypto-quote',
+    );
+    expect(canonicalSlug('a/b/c/d/e')).toBe('a/b/c/d');
+  });
+
+  it('keeps a nested slug of a kind with no base off addresses the site answers', () => {
+    expect(slugPlacementProblem('tags/x', '', site)?.message).toContain(
+      'answers that address itself',
+    );
+    expect(slugPlacementProblem('faq/x', '', site)?.message).toContain(
+      'the kind "faq"',
+    );
+    expect(slugPlacementProblem('zh-cn/x', '', site)?.message).toContain(
+      'the language "zh-cn"',
+    );
+    expect(slugPlacementProblem('guides/x', '', site)).toBeNull();
+    // Under a base, or in one segment, nothing is held to these rules.
+    expect(slugPlacementProblem('tags/x', 'rest-api', site)).toBeNull();
+    expect(slugPlacementProblem('faq', '', site)).toBeNull();
   });
 });
