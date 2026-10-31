@@ -446,6 +446,12 @@ out there with uncommitted files.
   committed state is **80.0 KiB** counted properly, not the 74.5 KiB
   reported above — and route-level loading made more of them. The script
   now counts them.
+- **The legacy styles are in Tailwind's `base` layer.** Left unlayered,
+  their element rules (`button`, `input`, `a`, …) beat every utility class
+  a shadcn/ui component is built from — unlayered CSS outranks all layers,
+  whatever the specificity. The first screenshots showed it: sidebar and
+  breadcrumb links in the legacy link blue. The legacy `a` rule now skips
+  elements with `data-slot`, which shadcn/ui puts on everything it renders.
 - **The account menu is not modal.** A modal Radix menu marks the rest of
   the page `aria-hidden` while open, which the accessibility gate flags as
   serious. One consequence, tested around rather than fixed: a click on the
