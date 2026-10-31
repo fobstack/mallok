@@ -97,12 +97,17 @@ function Field(
         <p className="help">{spec.field.help}</p>
       )}
       {error === undefined ? null : (
-        <p className="error" role="alert">
+        <p className="error" role="alert" id={errorIdFor(id)}>
           {error}
         </p>
       )}
     </div>
   );
+}
+
+/** The id of a field's error message, which its control points at. */
+export function errorIdFor(id: string): string {
+  return `${id}-error`;
 }
 
 /** The generator itself. */

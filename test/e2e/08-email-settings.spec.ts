@@ -20,15 +20,17 @@ test('the site sender and Resend key are saved once and the key is never shown',
   await expect(page.getByRole('heading', { name: 'Email' })).toBeVisible();
 
   // A sender that is not an address is refused before any request.
-  await page.locator('#email-from').fill('not an address');
+  await page.getByLabel('From address').fill('not an address');
   await page.getByRole('button', { name: 'Save sender' }).click();
   await expect(page.getByRole('alert')).toContainText('hello@example.com');
 
-  await page.locator('#email-from').fill('Acme <hello@example.com>');
+  await page.getByLabel('From address').fill('Acme <hello@example.com>');
   await page.getByRole('button', { name: 'Save sender' }).click();
-  await expect(page.locator('form .pill.ok')).toHaveText('Saved');
+  await expect(page.getByText('Saved', { exact: true })).toHaveText('Saved');
 
-  const key = page.getByLabel('Resend API key', { exact: true });
+  const key = page
+    .getByRole('group', { name: 'Resend API key' })
+    .getByLabel('Resend API key', { exact: true });
   await key.fill(KEY);
   const stored = page.waitForResponse(
     (response) =>
@@ -36,37 +38,51 @@ test('the site sender and Resend key are saved once and the key is never shown',
       response.request().method() === 'PUT',
   );
   await page
-    .locator('#email-resend-key')
+    .getByRole('group', { name: 'Resend API key' })
     .getByRole('button', { name: 'Save' })
     .click();
   const response = await stored;
   expect(response.status()).toBe(200);
   expect(await response.text()).not.toContain(KEY);
-  await expect(page.locator('#email-resend-key .pill.ok')).toHaveText('Set');
+  await expect(
+    page
+      .getByRole('group', { name: 'Resend API key' })
+      .getByText('Set', { exact: true }),
+  ).toHaveText('Set');
   await expect(page.getByRole('button', { name: 'Test' })).toBeVisible();
 
   // After a reload everything on the page comes from the server.
   await page.reload();
-  await expect(page.locator('#email-from')).toHaveValue(
+  await expect(page.getByLabel('From address')).toHaveValue(
     'Acme <hello@example.com>',
   );
-  await expect(page.locator('#email-resend-key .pill.ok')).toHaveText('Set');
+  await expect(
+    page
+      .getByRole('group', { name: 'Resend API key' })
+      .getByText('Set', { exact: true }),
+  ).toHaveText('Set');
   expect(await page.content()).not.toContain(KEY);
 
   // Diagnostics reads the same setting.
   await page.getByRole('link', { name: 'Advanced' }).click();
   await expect(
-    page.locator('.facts div', { hasText: 'Email (Resend)' }),
+    page
+      .getByText('Email (Resend)', { exact: true })
+      .locator('xpath=following-sibling::dd[1]'),
   ).toContainText('Configured');
 
   // Removing the key brings the empty field back and says what that means.
   await page.getByRole('link', { name: 'Email' }).click();
   await page
-    .locator('#email-resend-key')
+    .getByRole('group', { name: 'Resend API key' })
     .getByRole('button', { name: 'Remove' })
     .click();
   await expect(
-    page.getByLabel('Resend API key', { exact: true }),
+    page
+      .getByRole('group', { name: 'Resend API key' })
+      .getByLabel('Resend API key', { exact: true }),
   ).toBeVisible();
-  await expect(page.locator('.warning-line')).toContainText('no email is sent');
+  await expect(page.getByText(/no email is sent/)).toContainText(
+    'no email is sent',
+  );
 });

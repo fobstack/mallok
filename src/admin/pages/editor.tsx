@@ -406,7 +406,10 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
           />
         )}
 
-        <div className="editor-panes">
+        <section
+          className="editor-panes"
+          aria-label="Fields, Markdown and preview"
+        >
           <aside className="pane pane-fields">
             <SchemaForm
               specs={specs}
@@ -450,7 +453,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
               Rendered by the same code the site runs — {previewPath}
             </p>
           </section>
-        </div>
+        </section>
 
         {picker === null ? null : (
           <MediaPicker

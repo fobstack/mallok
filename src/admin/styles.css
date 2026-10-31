@@ -472,6 +472,11 @@ main {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  /* A fieldset, for its group semantics; none of its default frame. */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
 }
 
 /* Rows and tables */

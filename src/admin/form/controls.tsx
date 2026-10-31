@@ -20,12 +20,27 @@ function asList(value: unknown): string[] {
     : [];
 }
 
+/**
+ * Ties a control to its field's error message: marked invalid, and described
+ * by the message, so a screen reader reads the problem with the field rather
+ * than as a stray alert.
+ */
+function invalidProps(
+  id: string,
+  error: string | undefined,
+): { 'aria-invalid'?: true; 'aria-describedby'?: string } {
+  return error === undefined
+    ? {}
+    : { 'aria-invalid': true, 'aria-describedby': `${id}-error` };
+}
+
 /** Single-line text, and the base for `color`, `date` and friends. */
 export function TextControl({
   spec,
   value,
   onChange,
   id,
+  error,
 }: ControlProps): JSX.Element {
   const type =
     spec.field.type === 'color'
@@ -36,6 +51,7 @@ export function TextControl({
   return (
     <input
       id={id}
+      {...invalidProps(id, error)}
       type={type}
       value={asString(value)}
       onInput={(event) => onChange(event.currentTarget.value)}
@@ -49,10 +65,12 @@ export function TextAreaControl({
   value,
   onChange,
   id,
+  error,
 }: ControlProps): JSX.Element {
   return (
     <textarea
       id={id}
+      {...invalidProps(id, error)}
       rows={4}
       value={asString(value)}
       onInput={(event) => onChange(event.currentTarget.value)}
@@ -66,10 +84,12 @@ export function NumberControl({
   value,
   onChange,
   id,
+  error,
 }: ControlProps): JSX.Element {
   return (
     <input
       id={id}
+      {...invalidProps(id, error)}
       type="number"
       value={typeof value === 'number' ? String(value) : ''}
       onInput={(event) => {
@@ -104,10 +124,12 @@ export function SelectControl({
   value,
   onChange,
   id,
+  error,
 }: ControlProps): JSX.Element {
   return (
     <select
       id={id}
+      {...invalidProps(id, error)}
       value={asString(value)}
       onChange={(event) => onChange(event.currentTarget.value)}
     >
@@ -396,7 +418,7 @@ export function SecretControl({
   const [draft, setDraft] = useState('');
   if (configured && !replacing) {
     return (
-      <div className="secret-control" id={id}>
+      <fieldset className="secret-control" id={id} aria-label={label}>
         <span className="pill ok">Set</span>
         <button
           type="button"
@@ -408,11 +430,11 @@ export function SecretControl({
         <button type="button" className="ghost" onClick={onClear}>
           Remove
         </button>
-      </div>
+      </fieldset>
     );
   }
   return (
-    <div className="secret-control" id={id}>
+    <fieldset className="secret-control" id={id} aria-label={label}>
       <input
         type="password"
         autoComplete="off"
@@ -445,6 +467,6 @@ export function SecretControl({
           Cancel
         </button>
       ) : null}
-    </div>
+    </fieldset>
   );
 }

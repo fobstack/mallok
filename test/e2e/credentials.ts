@@ -22,11 +22,13 @@ export const ADMIN = {
  */
 export async function signIn(page: Page): Promise<void> {
   await page.goto('/_mallok/app/');
-  const email = page.locator('#login-email');
+  const email = page.getByLabel('Email', { exact: true });
   if (await email.isVisible().catch(() => false)) {
     await email.fill(ADMIN.email);
-    await page.locator('#login-password').fill(ADMIN.password);
+    await page.getByLabel('Password', { exact: true }).fill(ADMIN.password);
     await page.getByRole('button', { name: 'Sign in' }).click();
   }
-  await page.waitForSelector('#login-password', { state: 'detached' });
+  await page
+    .getByLabel('Password', { exact: true })
+    .waitFor({ state: 'detached' });
 }

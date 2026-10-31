@@ -8,8 +8,6 @@ import { signIn } from './credentials.js';
  * interface: everything clicked here was built by the admin from the fields
  * the plugin declares, and every write went through the plugin's handlers.
  */
-/** The required price field; its label carries the `*` marker. */
-const PRICE = '#record-catalog-items-price';
 
 test('records are created, edited, sorted, searched and deleted from the declared form', async ({
   page,
@@ -17,15 +15,15 @@ test('records are created, edited, sorted, searched and deleted from the declare
   await signIn(page);
   await page.goto('/_mallok/app/plugins');
 
-  const card = page.locator('.plugin', { hasText: 'Catalog' });
+  const card = page.getByRole('region', { name: /^Catalog \d/ });
   // The switch shows the server's state, which arrives after the request:
   // click it and wait, rather than asking Playwright to "check" it.
-  const power = card.locator('.switch');
-  if ((await power.textContent())?.trim() !== 'On') {
-    await power.getByRole('checkbox').click();
+  const power = card.getByRole('switch', { name: 'Catalog enabled' });
+  if (!(await power.isChecked())) {
+    await power.click();
   }
-  await expect(power).toHaveText('On');
-  const panel = card.locator('.panel', { hasText: 'Catalog items' });
+  await expect(power).toBeChecked();
+  const panel = card.getByRole('region', { name: 'Catalog items' });
   await expect(panel.getByText('Nothing here yet.')).toBeVisible();
 
   // --- create, with a validation error first ------------------------------
@@ -33,12 +31,12 @@ test('records are created, edited, sorted, searched and deleted from the declare
   const form = page.getByRole('dialog', { name: 'New: Catalog items' });
   await form.getByLabel('Name').fill('Grade 5 bar');
   await form.getByLabel('Status').selectOption('active');
-  await form.locator(PRICE).fill('99.5');
+  await form.getByRole('textbox', { name: 'Price', exact: true }).fill('99.5');
   await form.getByRole('button', { name: 'Save' }).click();
   // `Code` is required: the message sits on that field, and nothing closed.
   await expect(
-    form.locator('.field', { hasText: 'Code' }).getByRole('alert'),
-  ).toHaveText('This field is required.');
+    form.getByRole('textbox', { name: 'Code', exact: true }),
+  ).toHaveAccessibleDescription('This field is required.');
 
   await form.getByLabel('Code').fill('TI-BAR');
   // A repeatable group: add two rows, fill them, remove the first.
@@ -67,7 +65,9 @@ test('records are created, edited, sorted, searched and deleted from the declare
   // --- edit: the form comes back as it was saved ---------------------------
   await row.getByRole('button', { name: 'Edit Grade 5 bar' }).click();
   const edit = page.getByRole('dialog', { name: 'Edit: Catalog items' });
-  await expect(edit.locator(PRICE)).toHaveValue('99.50');
+  await expect(
+    edit.getByRole('textbox', { name: 'Price', exact: true }),
+  ).toHaveValue('99.50');
   const variant = edit.getByRole('group', { name: 'Variants 1' });
   await expect(variant.getByLabel('SKU')).toHaveValue('TI-BAR-20');
   await expect(variant.getByLabel('Stock')).toHaveValue('4');
@@ -89,11 +89,11 @@ test('records are created, edited, sorted, searched and deleted from the declare
   await second2.getByLabel('Name').fill('Zulu plate');
   await second2.getByLabel('Code').fill('TI-BAR');
   await second2.getByLabel('Status').selectOption('archived');
-  await second2.locator(PRICE).fill('10');
+  await second2.getByRole('textbox', { name: 'Price', exact: true }).fill('10');
   await second2.getByRole('button', { name: 'Save' }).click();
   await expect(
-    second2.locator('.field', { hasText: 'Code' }).getByRole('alert'),
-  ).toHaveText('Another item already uses this code.');
+    second2.getByRole('textbox', { name: 'Code', exact: true }),
+  ).toHaveAccessibleDescription('Another item already uses this code.');
   await second2.getByLabel('Code').fill('ZU-PLATE');
   await second2.getByRole('button', { name: 'Save' }).click();
   await expect(second2).toHaveCount(0);
@@ -126,12 +126,14 @@ test('records are created, edited, sorted, searched and deleted from the declare
   await ask.getByLabel('Reason').fill('discontinued');
   await ask.getByRole('button', { name: 'Set status' }).click();
   await expect(
-    ask.locator('.field', { hasText: 'New status' }).getByRole('alert'),
-  ).toHaveText('This field is required.');
+    ask.getByRole('combobox', { name: 'New status', exact: true }),
+  ).toHaveAccessibleDescription('This field is required.');
   await ask.getByLabel('New status').selectOption('archived');
   await ask.getByRole('button', { name: 'Set status' }).click();
   await expect(ask).toHaveCount(0);
-  await expect(alpha.locator('.pill')).toHaveText('archived');
+  await expect(alpha.getByText('archived', { exact: true })).toHaveText(
+    'archived',
+  );
 
   // --- related rows: the variants of the record that is open --------------
   await alpha.getByRole('button', { name: 'Edit Alpha bar' }).click();
@@ -154,7 +156,7 @@ test('records are created, edited, sorted, searched and deleted from the declare
   await expect.poll(names).toEqual(['Alpha bar']);
 
   // A panel whose plugin gave no `remove` offers no delete at all.
-  const log = card.locator('.panel', { hasText: 'Catalog log' });
+  const log = card.getByRole('region', { name: 'Catalog log' });
   await log.getByRole('button', { name: 'New' }).click();
   const note = page.getByRole('dialog', { name: 'New: Catalog log' });
   await note.getByLabel('Note').fill('first entry');

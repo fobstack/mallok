@@ -137,6 +137,9 @@ function MoneyField({
           id={id}
           type="text"
           inputMode="decimal"
+          {...(error === undefined
+            ? {}
+            : { 'aria-invalid': true, 'aria-describedby': `${id}-error` })}
           value={text}
           placeholder={fromMinor(0, currency)}
           onInput={(event) => {
@@ -158,7 +161,7 @@ function MoneyField({
       </div>
       {field.help === undefined ? null : <p className="help">{field.help}</p>}
       {error === undefined ? null : (
-        <p className="error" role="alert">
+        <p className="error" role="alert" id={`${id}-error`}>
           {error}
         </p>
       )}

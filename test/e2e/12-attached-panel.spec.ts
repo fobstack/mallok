@@ -15,17 +15,17 @@ test("a product's editor shows the plugin's records for that product only", asyn
 
   // The catalog plugin has to be on; an earlier spec may have left it so.
   await page.goto('/_mallok/app/plugins');
-  const card = page.locator('.plugin', { hasText: 'Catalog' });
-  const power = card.locator('.switch');
-  if ((await power.textContent())?.trim() !== 'On') {
-    await power.getByRole('checkbox').click();
+  const card = page.getByRole('region', { name: /^Catalog \d/ });
+  const power = card.getByRole('switch', { name: 'Catalog enabled' });
+  if (!(await power.isChecked())) {
+    await power.click();
   }
-  await expect(power).toHaveText('On');
+  await expect(power).toBeChecked();
   // On the plugins page an attached panel is pointed to, not listed.
   await expect(card).toContainText('Product notes is edited where it belongs');
-  await expect(
-    card.locator('.panel', { hasText: 'Product notes' }),
-  ).toHaveCount(0);
+  await expect(card.getByRole('region', { name: 'Product notes' })).toHaveCount(
+    0,
+  );
 
   // Two different products of the starter, by id.
   const products = await page.evaluate(async () => {
@@ -47,13 +47,14 @@ test("a product's editor shows the plugin's records for that product only", asyn
 
   await page.goto(`/_mallok/app/content/${first.id}`);
   await expect(page.locator('.cm-content')).toBeVisible();
-  const panel = page.locator('.attached-panel', { hasText: 'Product notes' });
+  const panel = page.getByRole('region', { name: 'Product notes' });
   // Whether the item itself counts as edited must not change by adding a
   // record: the panel saves on its own.
   const unsavedBefore = await page
     .getByText('Unsaved', { exact: true })
     .count();
-  await expect(panel).toContainText('From the Catalog plugin');
+  // Said above the panel: whose records these are, and that they save alone.
+  await expect(page.getByText(/^From the Catalog plugin\./)).toBeVisible();
   await expect(panel.getByText('Nothing here yet.')).toBeVisible();
 
   await panel.getByRole('button', { name: 'New' }).click();
@@ -70,21 +71,23 @@ test("a product's editor shows the plugin's records for that product only", asyn
     unsavedBefore,
   );
   await expect(
-    page.locator('.editor-bar').getByRole('link', { name: /Product notes/ }),
+    page.getByRole('link', { name: /Product notes/ }),
   ).toHaveAttribute('href', '#attached-panels');
-  const panes = await page.locator('.editor-panes').boundingBox();
+  const panes = await page
+    .getByRole('region', { name: 'Fields, Markdown and preview' })
+    .boundingBox();
   expect(panes?.height ?? 0).toBeGreaterThan(300);
 
   // Another product has none of it.
   await page.goto(`/_mallok/app/content/${second.id}`);
   await expect(page.locator('.cm-content')).toBeVisible();
-  const other = page.locator('.attached-panel', { hasText: 'Product notes' });
+  const other = page.getByRole('region', { name: 'Product notes' });
   await expect(other.getByText('Nothing here yet.')).toBeVisible();
 
   // And the first one still has it after a reload.
   await page.goto(`/_mallok/app/content/${first.id}`);
   await expect(
-    page.locator('.attached-panel tbody tr', {
+    page.getByRole('region', { name: 'Product notes' }).locator('tbody tr', {
       hasText: 'Ships in 15 business days.',
     }),
   ).toBeVisible();
@@ -96,5 +99,7 @@ test("a product's editor shows the plugin's records for that product only", asyn
   });
   await page.goto(`/_mallok/app/content/${pages[0]?.id}`);
   await expect(page.locator('.cm-content')).toBeVisible();
-  await expect(page.locator('.attached-panel')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Product notes' })).toHaveCount(
+    0,
+  );
 });

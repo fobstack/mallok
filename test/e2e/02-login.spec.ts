@@ -11,15 +11,15 @@ test('refuses the wrong password without saying which half was wrong', async ({
   page,
 }) => {
   await page.goto('/_mallok/app/');
-  await page.locator('#login-email').fill(ADMIN.email);
-  await page.locator('#login-password').fill('not-the-password');
+  await page.getByLabel('Email', { exact: true }).fill(ADMIN.email);
+  await page.getByLabel('Password', { exact: true }).fill('not-the-password');
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   const error = page.getByRole('alert');
   await expect(error).toBeVisible();
   // Telling an attacker that the address exists is a free account enumeration.
   await expect(error).not.toContainText(ADMIN.email);
-  await expect(page.locator('#login-password')).toBeVisible();
+  await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
 });
 
 test('signs in and reaches the content list', async ({ page }) => {
@@ -47,7 +47,7 @@ test('signs out and stops accepting the old session', async ({ page }) => {
   // The button lives in the shell header, on every admin page.
   await page.getByRole('button', { name: 'Sign out' }).click();
 
-  await expect(page.locator('#login-password')).toBeVisible();
+  await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
   const listing = await page.request.get('/_mallok/api/content', {
     failOnStatusCode: false,
   });

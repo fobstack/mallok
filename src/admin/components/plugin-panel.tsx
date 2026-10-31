@@ -191,9 +191,12 @@ export function PluginPanelView({
   };
 
   return (
-    <div className="panel">
+    <section
+      className="panel"
+      aria-labelledby={`panel-${pluginId}-${panel.id}`}
+    >
       <div className="panel-head">
-        <h3>{panel.label}</h3>
+        <h3 id={`panel-${pluginId}-${panel.id}`}>{panel.label}</h3>
         {panel.filters.map((field) => (
           <label className="filter" key={field}>
             <span>{field.replace(/_/g, ' ')}</span>
@@ -401,7 +404,7 @@ export function PluginPanelView({
           {...(attachedTo === undefined ? {} : { attachedTo })}
         />
       )}
-    </div>
+    </section>
   );
 }
 

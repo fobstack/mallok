@@ -170,10 +170,13 @@ function PluginCard({
   };
 
   return (
-    <section className="card plugin">
+    <section
+      className="card plugin"
+      aria-labelledby={`plugin-${plugin.id}-name`}
+    >
       <header className="plugin-head">
         <div>
-          <h2>
+          <h2 id={`plugin-${plugin.id}-name`}>
             {plugin.name} <span className="code">{plugin.version}</span>
             {plugin.official ? <span className="pill">Official</span> : null}
           </h2>
@@ -182,6 +185,9 @@ function PluginCard({
         <label className="switch">
           <input
             type="checkbox"
+            role="switch"
+            aria-checked={plugin.enabled}
+            aria-label={`${plugin.name} enabled`}
             checked={plugin.enabled}
             disabled={busy}
             onChange={(event) => void toggle(event.currentTarget.checked)}

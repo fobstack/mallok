@@ -289,8 +289,8 @@ export function AdvancedPage(): JSX.Element {
       </section>
 
       {diagnostics === null || diagnostics.failedJobs.length === 0 ? null : (
-        <section className="card">
-          <h2>Failed background jobs</h2>
+        <section className="card" aria-labelledby="failed-jobs-heading">
+          <h2 id="failed-jobs-heading">Failed background jobs</h2>
           <p className="help">
             Work that was retried and gave up — an email that could not be sent,
             a plugin's job that kept failing. Nothing here is retried again by
