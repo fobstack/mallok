@@ -1107,6 +1107,58 @@ echo "admin save purged after $(($(date +%s) - started))s"
 Record the seconds. This is the row `AC-CONTENT-02b` actually asserts; §9.1
 and §9.2 are what make its result mean something.
 
+### 9.4 Switching a plugin purges every page
+
+Added for Task 47. A plugin switch purges `site`, the tag every page
+carries; on 2026-10-07 it did not, and nothing said so. Uses the inquiry
+plugin and the starter's contact page, which carries its form.
+
+```bash
+set -euo pipefail
+SITE_DOMAIN=$(node -p "require('./.mallok/create-state.json').domain")
+PAGE="https://$SITE_DOMAIN/contact"
+form_count() { curl -fsS "$PAGE" | grep -c 'class="mallok-inquiry"' || true; }
+# 1. Warm the page with the plugin on; the form is there.
+curl -fsS -o /dev/null "$PAGE"
+[ "$(form_count)" -ge 1 ] || { echo 'expected the inquiry form' >&2; exit 1; }
+
+# 2. Switch the inquiry plugin off in the admin (Plugins). Purge nothing by hand.
+printf '%s\n' 'Switch Inquiry off in the admin, then press Enter here.' >&2
+read -r _
+started=$(date +%s)
+until [ "$(form_count)" -eq 0 ]; do
+  [ $(($(date +%s) - started)) -lt 60 ] || { echo 'switch did not purge within 60 seconds' >&2; exit 1; }
+  sleep 2
+done
+echo "plugin switch purged after $(($(date +%s) - started))s"
+printf '%s\n' 'Switch Inquiry back on, then press Enter here.' >&2
+read -r _
+```
+
+**Pass:** the form disappears within a minute, with no manual purge. Run it
+inside the page's cache lifetime; a page that simply expired proves nothing,
+so check its `age` header before step 2 if in doubt.
+
+### 9.5 A refused purge is shown, and a good token clears it
+
+Added for Task 47. On the test site on 2026-10-25 the token held Cache Rules
+→ Edit instead of Cache Purge → Purge and was refused every purge, while
+the admin said the cache was cleared.
+
+1. Replace the token with one that cannot purge — a real token without
+   Cache Purge, or any wrong value — with
+   `./node_modules/.bin/wrangler secret put CF_API_TOKEN`.
+2. In the admin, Settings → Advanced → **Clear cached pages**. **Pass:** an
+   error naming Cloudflare's status (401 or 403) and the permission to check,
+   not "Cleared the page cache.", and the page lists the failure with its
+   time and source `manual`.
+3. Put the real token back the same way, and press **Clear cached pages**
+   again. **Pass:** it succeeds and the failure is gone from the page.
+
+A plugin's own tag purge (`p:<plugin>:<tag>`) is not exercised here: the gate
+site has no plugin that purges. It is covered by the Worker tests and checked
+on the site whose plugin uses it.
+
 ## 10. Cache safety on the real edge
 
 **Blocker:** a real domain. **Status:** `NOT_RUN`. **Rows:** the `AC-INV`
