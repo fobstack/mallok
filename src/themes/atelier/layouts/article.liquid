@@ -6,7 +6,7 @@
   <div class="prose">{{ content.html }}</div>
   {% if content.frontmatter.tags.size > 0 %}
   <nav class="tag-row" aria-label="{{ t.tags }}">
-    {% for tag in content.frontmatter.tags %}<a href="/tags/{{ tag | url_encode }}">{{ tag }}</a>{% endfor %}
+    {% for tag in content.frontmatter.tags %}<a href="{{ site.tags_path }}/{{ tag | url_encode }}">{{ tag }}</a>{% endfor %}
   </nav>
   {% endif %}
 </article>

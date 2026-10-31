@@ -11,7 +11,9 @@ import {
   buildPublicPath,
   joinTagline,
   LOCALE_PATTERN,
+  linkForPrefix,
   PIPELINE_VERSION,
+  type SiteLocales,
   splitTagline,
   themeAssetBase,
 } from '../core/index.js';
@@ -378,53 +380,30 @@ export async function postLocalePrefix(
 }
 
 /**
- * The default locale's navigation, rewritten for the prefix setting.
+ * The navigation, rewritten for the prefix setting.
  *
  * Its links are the site's own paths (`/products`), written for the setting
  * as it was. Left alone they would each cost a redirect, and a list page has
- * no redirect to fall back on. Only the default locale's entries that are
- * paths on this site change: other languages already carry their prefix, and
- * an absolute URL or an admin path is not the site's to rewrite.
+ * no redirect to fall back on. The view maps them while the prefix is on
+ * (`linkForPrefix`), but turning it off has to put them back, and what is
+ * stored should be what is served. Every locale's entries are rewritten,
+ * because a link to the default locale's page can sit in any of them; a link
+ * under another locale, an absolute URL or an admin path is left alone.
  */
 export function prefixNavigation(
   nav: SiteSettings['nav'],
-  defaultLocale: string,
+  site: SiteLocales,
   enabled: boolean,
 ): SiteSettings['nav'] {
-  const own = nav[defaultLocale];
-  if (own === undefined) {
-    return nav;
-  }
-  const prefix = `/${defaultLocale}`;
-  const rewrite = (href: string): string => {
-    if (
-      !href.startsWith('/') ||
-      href.startsWith('//') ||
-      href.startsWith('/_mallok')
-    ) {
-      return href;
-    }
-    const prefixed =
-      href === prefix ||
-      href.startsWith(`${prefix}/`) ||
-      href.startsWith(`${prefix}?`) ||
-      href.startsWith(`${prefix}#`);
-    if (enabled) {
-      return prefixed ? href : href === '/' ? prefix : `${prefix}${href}`;
-    }
-    if (!prefixed) {
-      return href;
-    }
-    const rest = href.slice(prefix.length);
-    return rest === '' ? '/' : rest.startsWith('/') ? rest : `/${rest}`;
-  };
-  return {
-    ...nav,
-    [defaultLocale]: own.map((entry) => ({
-      ...entry,
-      href: rewrite(entry.href),
-    })),
-  };
+  return Object.fromEntries(
+    Object.entries(nav).map(([locale, entries]) => [
+      locale,
+      entries.map((entry) => ({
+        ...entry,
+        href: linkForPrefix(entry.href, site, enabled),
+      })),
+    ]),
+  );
 }
 
 /**
@@ -537,9 +516,7 @@ export async function changeLocalePrefix(
     setPrefixDefaultLocaleStatement(
       env.DB,
       enabled,
-      JSON.stringify(
-        prefixNavigation(settings.nav, settings.defaultLocale, enabled),
-      ),
+      JSON.stringify(prefixNavigation(settings.nav, settings, enabled)),
       now,
     ),
   ]);

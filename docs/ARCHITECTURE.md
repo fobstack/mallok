@@ -571,8 +571,13 @@ in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
   `"confirm": true`; Settings → Site; `prefixDefaultLocale` in `site.json` or
   a starter) moves every content path of the default language and records a
   `301` from each old one, and rewrites the default language's navigation
-  links that are paths on the site (`/notes` ↔ `/en/notes`; absolute URLs and
-  `/_mallok/…` are left alone). Turning it off also records a `301` from
+  links that are paths on the site, in every language's menu (`/notes` ↔
+  `/en/notes`; absolute URLs, paths under another language and `/_mallok/…`
+  are left alone). While the prefix is on, the view maps such a link again
+  as it renders, and does the same for a theme's `string` options
+  (`linkForPrefix` in `src/core/paths.ts`), so a link written unprefixed
+  after the switch, or a theme default such as `/contact`, goes straight to
+  the page. Turning it off also records a `301` from
   `/<default>`, each `/<default>/<base>` and each `/<default>/tags/<tag>` in
   use, since those were real pages a moment before; turning it back on
   removes them. Paths, redirects, navigation and setting are written in one

@@ -6,7 +6,7 @@
     </div>
     <nav class="colophon-nav" aria-label="{{ t.sections }}">
       {% for item in site.nav %}<a href="{{ item.href }}">{{ item.label }}</a>{% endfor %}
-      <a href="/feed.xml">RSS</a>
+      <a href="{{ site.feed_path }}">RSS</a>
     </nav>
   </div>
 </footer>

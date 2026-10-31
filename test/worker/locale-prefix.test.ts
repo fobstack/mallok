@@ -81,8 +81,13 @@ const NAV_OFF = {
     { label: 'Elsewhere', href: 'https://elsewhere.example/notes' },
     { label: 'Protocol-relative', href: '//elsewhere.example/notes' },
     { label: 'Admin', href: '/_mallok/app/' },
+    { label: '中文', href: '/zh/about' },
+    { label: 'Sitemap', href: '/sitemap.xml' },
   ],
-  zh: [{ label: '笔记', href: '/zh/notes' }],
+  zh: [
+    { label: '笔记', href: '/zh/notes' },
+    { label: 'English', href: '/about' },
+  ],
 };
 
 /** The same navigation once the prefix is on. */
@@ -94,8 +99,13 @@ const NAV_ON = {
     { label: 'Elsewhere', href: 'https://elsewhere.example/notes' },
     { label: 'Protocol-relative', href: '//elsewhere.example/notes' },
     { label: 'Admin', href: '/_mallok/app/' },
+    { label: '中文', href: '/zh/about' },
+    { label: 'Sitemap', href: '/sitemap.xml' },
   ],
-  zh: [{ label: '笔记', href: '/zh/notes' }],
+  zh: [
+    { label: '笔记', href: '/zh/notes' },
+    { label: 'English', href: '/en/about' },
+  ],
 };
 
 async function navigation(): Promise<unknown> {
@@ -247,6 +257,10 @@ describe('prefixDefaultLocale', () => {
     const html = await (await get('/en/about')).text();
     expect(html).toContain('href="/en/notes"');
     expect(html).not.toContain('href="/notes"');
+    // A theme option is a link the owner wrote too: Atelier's quote button
+    // defaults to `/contact`, which on this site is `/en/contact`.
+    expect(html).toContain('href="/en/contact"');
+    expect(html).not.toContain('href="/contact"');
   });
 
   it('answers the root with a fixed 301 to the default locale, never a page', async () => {

@@ -25,7 +25,7 @@ import type {
   SiteView,
   ThemeView,
 } from './page.js';
-import { buildHomePath, localePrefix } from './paths.js';
+import { buildHomePath, linkForPrefix, localePrefix } from './paths.js';
 import type { ThemeManifest } from './theme.js';
 
 /** One navigation entry as configured for a locale. */
@@ -254,14 +254,28 @@ function homePath(ctx: ViewContext, locale: string): string {
   );
 }
 
+/**
+ * A link the site's owner wrote, as the site addresses it now.
+ *
+ * On a site that prefixes its default locale, a path written unprefixed
+ * (`/contact`) is the default locale's and lives under its prefix; written
+ * that way it would cost every visitor a redirect, or end in a 404 for a page
+ * created after the switch. On any other site the link is left as written,
+ * so a site that never turns the prefix on renders exactly as before.
+ */
+function siteLink(ctx: ViewContext, href: string): string {
+  return ctx.settings.prefixDefaultLocale === true
+    ? linkForPrefix(href, ctx.settings, true)
+    : href;
+}
+
 /** Site-wide view data. */
 export function buildSiteView(ctx: ViewContext): SiteView {
   const entries = ctx.settings.nav[ctx.locale] ?? [];
-  const nav: NavItemView[] = entries.map((entry) => ({
-    label: entry.label,
-    href: entry.href,
-    active: entry.href === ctx.path,
-  }));
+  const nav: NavItemView[] = entries.map((entry) => {
+    const href = siteLink(ctx, entry.href);
+    return { label: entry.label, href, active: href === ctx.path };
+  });
   const prefix = localePrefix(ctx.locale, ctx.settings);
   const kinds: Record<string, KindLinkView> = {};
   for (const [kind, config] of Object.entries(ctx.settings.kinds)) {
@@ -285,6 +299,8 @@ export function buildSiteView(ctx: ViewContext): SiteView {
     locales: ctx.settings.locales,
     base_url: ctx.origin,
     home_path: homePath(ctx, ctx.locale),
+    tags_path: `${prefix}/tags`,
+    feed_path: `${prefix}/feed.xml`,
     nav,
     kinds,
   };
@@ -314,8 +330,13 @@ export function buildThemeView(ctx: ViewContext): ThemeView {
   );
   const options: Record<string, unknown> = {};
   for (const [key, option] of Object.entries(ctx.manifest.options)) {
-    options[key] =
+    const value =
       overrides[key] ?? ctx.settings.themeOptions[key] ?? option.default;
+    // A one-line string option is where a theme takes a link (`quote_href`).
+    options[key] =
+      option.type === 'string' && typeof value === 'string'
+        ? siteLink(ctx, value)
+        : value;
   }
   return {
     id: ctx.manifest.id,

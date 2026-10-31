@@ -12,6 +12,10 @@ import golden from '../fixtures/locale-prefix-off.json';
  * visitor or a crawler is given — stored paths, statuses, redirects, and each
  * `href`, `src`, `action`, `<loc>` and `<link>` in pages, sitemaps and feeds
  * — not whole pages, whose markup other tasks may change.
+ *
+ * Re-recorded once since, for Atelier 2.5.2: its version in asset URLs, and a
+ * Chinese article's tag link, `/tags/alpha` before (the English archive),
+ * `/zh/tags/alpha` now. Nothing else moved.
  */
 
 const ORIGIN = 'https://prefix-golden.example';

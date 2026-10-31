@@ -3,6 +3,7 @@ import {
   buildHomePath,
   buildPublicPath,
   canonicalSlug,
+  linkForPrefix,
   localePrefix,
   parsePublicPath,
   slugify,
@@ -134,6 +135,51 @@ describe('the default locale prefixed too (Task 49)', () => {
       rest: '/en/faq',
       prefixed: true,
     });
+  });
+});
+
+describe('linkForPrefix', () => {
+  const site = { defaultLocale: 'en', locales: ['en', 'zh', 'pt-BR'] };
+
+  it("puts the owner's paths under the default locale's prefix", () => {
+    expect(linkForPrefix('/', site, true)).toBe('/en');
+    expect(linkForPrefix('/?ref=nav', site, true)).toBe('/en?ref=nav');
+    expect(linkForPrefix('/#top', site, true)).toBe('/en#top');
+    expect(linkForPrefix('/contact', site, true)).toBe('/en/contact');
+    expect(linkForPrefix('/about#team', site, true)).toBe('/en/about#team');
+    expect(linkForPrefix('/feed.xml', site, true)).toBe('/en/feed.xml');
+    // A first segment that only starts like a locale is a page.
+    expect(linkForPrefix('/english', site, true)).toBe('/en/english');
+  });
+
+  it('takes them back out when the prefix goes', () => {
+    expect(linkForPrefix('/en', site, false)).toBe('/');
+    expect(linkForPrefix('/en?ref=nav', site, false)).toBe('/?ref=nav');
+    expect(linkForPrefix('/en/contact', site, false)).toBe('/contact');
+    expect(linkForPrefix('/english', site, false)).toBe('/english');
+  });
+
+  it("leaves what is not the default locale's path on this site", () => {
+    for (const prefixed of [true, false]) {
+      for (const href of [
+        'https://elsewhere.example/contact',
+        '//elsewhere.example/contact',
+        'mailto:sales@example.com',
+        '#top',
+        '/zh/about',
+        '/pt-BR',
+        '/_mallok/app/',
+        '/media/a.jpg',
+        '/theme/atelier/2.5.2/style.css',
+        '/robots.txt',
+        '/sitemap.xml',
+        '/sitemap-2.xml',
+      ]) {
+        expect(linkForPrefix(href, site, prefixed), href).toBe(href);
+      }
+    }
+    // Already where the prefix puts it.
+    expect(linkForPrefix('/en/contact', site, true)).toBe('/en/contact');
   });
 });
 

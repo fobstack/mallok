@@ -197,6 +197,65 @@ describe.each(themeDirs)('theme %s', (dir) => {
   });
 });
 
+describe.each(themeDirs)('theme %s, on a page in another language', (dir) => {
+  it('links to every page of the site at an address that serves it', async () => {
+    // A theme that writes `/tags/x` or `/feed.xml` sends a Chinese reader to
+    // the English archive or feed, and every reader of a site that prefixes
+    // its default language to a redirect. The view hands a theme every
+    // address it needs in the page's language (docs/THEME_FORMAT.md §7.1),
+    // and maps the owner's own links, nav and options, to the prefix.
+    const { manifest, files } = await loadTheme(dir);
+    const compiled = compileTheme(manifest, files, 1);
+    const fragment = await renderFragment({
+      body: BODY,
+      frontmatter: {},
+      assets: {},
+      mediaBaseUrl: '',
+    });
+    for (const [kind, config] of Object.entries(manifest.kinds)) {
+      const item = { ...summary(kind), locale: 'zh' };
+      const path = `/zh/${kind}s/${item.slug}`;
+      const plain = contextFor(manifest, files, path);
+      const ctx = {
+        ...plain,
+        settings: { ...plain.settings, prefixDefaultLocale: true },
+        locale: 'zh',
+        strings: themeStrings(manifest, files, 'zh'),
+      };
+      const html = await renderPage(
+        compiled,
+        config.layout,
+        buildContentPageView(
+          ctx,
+          {
+            ...item,
+            path,
+            frontmatter: { ...item.frontmatter, tags: ['alpha'] },
+            updatedAt: '2026-08-02T00:00:00Z',
+          },
+          { html: fragment.html, meta: fragment.meta },
+          [{ locale: 'zh', path }],
+          { refs: {}, backrefs: {}, siblings: [] },
+        ),
+      );
+      const links = [...html.matchAll(/href="(\/[^"]*)"/g)].map(
+        (match) => match[1] ?? '',
+      );
+      const unserved = links.filter(
+        (href) =>
+          !href.startsWith('//') &&
+          !/^\/(?:en|zh)(?:[/?#]|$)/.test(href) &&
+          !href.startsWith(`/theme/${manifest.id}/`),
+      );
+      expect(unserved, `${dir} ${kind}`).toEqual([]);
+      // A tag is this page's language's tag, whatever the owner's links say.
+      for (const href of links.filter((link) => link.includes('/tags/'))) {
+        expect(href, `${dir} ${kind}`).toMatch(/^\/zh\/tags\//);
+      }
+    }
+  });
+});
+
 describe('manual table of contents (Task 48)', () => {
   it('links each entry to its heading', async () => {
     const { manifest, files } = await loadTheme('manual');

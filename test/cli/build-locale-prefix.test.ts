@@ -14,6 +14,8 @@ import { makeReporter } from '../../src/cli/output.js';
  * `test/fixtures/build-locale-prefix-off.json` was recorded from this test on
  * the code before Task 49 (commit c6c6894). Run with
  * `MALLOK_RECORD_GOLDEN=1` to record it again, for an intended change only.
+ * It was, once, for Atelier 2.5.2: its version in asset URLs, and a Chinese
+ * article's tag link, now `/zh/tags/metal` instead of the English archive.
  */
 
 const GOLDEN = 'test/fixtures/build-locale-prefix-off.json';

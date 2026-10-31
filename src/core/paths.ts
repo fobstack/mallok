@@ -71,6 +71,58 @@ export function buildHomePath(
   return locale === defaultLocale ? '/' : `/${locale}/`;
 }
 
+/** How a site writes its locales into URLs, with the locales it has. */
+export interface SiteLocales extends LocaleUrls {
+  readonly locales: readonly string[];
+}
+
+/** Root addresses no locale ever prefixes: the admin, media, theme assets, robots and sitemaps. */
+const UNLOCALIZED =
+  /^\/(?:(?:_mallok|media|theme)(?:[/?#]|$)|robots\.txt(?:[?#]|$)|sitemap(?:-\d+)?\.xml(?:[?#]|$))/;
+
+/**
+ * Where a link written as a path on this site points under one setting of
+ * the default locale's prefix.
+ *
+ * The site's owner writes navigation and theme options (`/contact`,
+ * `/products`) as the default locale's paths, usually before the prefix was
+ * turned on, or on a site that never had it. With `prefixed` true such a path
+ * is `/<default>/contact`; with it false, `/<default>/contact` is
+ * `/contact` again. Everything else is returned as it is: an absolute or
+ * protocol-relative URL, a path already under another locale (`/de/…`), and
+ * the root addresses that no locale prefixes ({@link UNLOCALIZED}).
+ */
+export function linkForPrefix(
+  href: string,
+  site: SiteLocales,
+  prefixed: boolean,
+): string {
+  if (
+    !href.startsWith('/') ||
+    href.startsWith('//') ||
+    UNLOCALIZED.test(href)
+  ) {
+    return href;
+  }
+  const own = `/${site.defaultLocale}`;
+  if (!prefixed) {
+    const tail = href.startsWith(own) ? href.slice(own.length) : null;
+    if (tail === null || !(tail === '' || /^[/?#]/.test(tail))) {
+      return href;
+    }
+    // `/en` → `/`, `/en?x` → `/?x`, `/en/about` → `/about`
+    return tail.startsWith('/') ? tail : `/${tail}`;
+  }
+  const first = /^\/([^/?#]*)/.exec(href)?.[1] ?? '';
+  if (site.locales.includes(first)) {
+    return href;
+  }
+  // `/` → `/en`, `/?x` → `/en?x`, `/about` → `/en/about`
+  return /^\/(?:[?#]|$)/.test(href)
+    ? `${own}${href.slice(1)}`
+    : `${own}${href}`;
+}
+
 /** A request path split into its locale and the locale-relative remainder. */
 export interface ParsedPath {
   readonly locale: string;
