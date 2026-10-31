@@ -66,4 +66,25 @@ describe('slug field normalisation with several segments (Task 50)', () => {
     expect(result).toMatchObject({ slug: 'a/b/c/d', usable: true });
     expect(result.notice).toContain('at most 4');
   });
+
+  it('keeps a value with a segment it cannot spell, rather than drop it', () => {
+    // `产品/x` would otherwise become `x`: a different address, silently.
+    const result = normalizeSlugInput('产品/titanium-bar');
+    expect(result).toEqual({
+      slug: '产品/titanium-bar',
+      usable: false,
+      notice: expect.stringContaining('Segment 1 ("产品")'),
+    });
+  });
+
+  it("refuses a list's page address before the server does", () => {
+    for (const typed of ['page/2', 'Page/2/intro']) {
+      const result = normalizeSlugInput(typed);
+      expect(result.usable, typed).toBe(false);
+      expect(result.slug, typed).toBe(typed);
+      expect(result.notice, typed).toContain('list');
+    }
+    // `page` alone, or followed by a word, is an ordinary slug.
+    expect(normalizeSlugInput('page/intro').usable).toBe(true);
+  });
 });

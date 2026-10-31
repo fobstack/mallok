@@ -180,7 +180,10 @@ explanation — the operator can see what they typed while they fix it. Nobody
 should meet that refusal as a bare 400 after writing an article
 (`src/admin/slug.ts`). A slug may have up to four segments joined by `/`
 (`crypto/crypto-quote`, `CONTENT_FORMAT §3.1.1`); each is canonicalised on its
-own, empty ones are dropped, and a fifth and later are cut with a notice. What
+own, empty ones are dropped, and a fifth and later are cut with a notice. A
+segment with no Latin letters or digits is not dropped — that would be another
+address — but kept, with a notice naming it, and `page/<n>` at the start is
+refused in the field with the server's own words. What
 depends on the site — a first segment that is another kind's base, say — is
 the server's to refuse, and its message names the segment and the reason.
 

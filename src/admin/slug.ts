@@ -7,7 +7,12 @@
  * of them, before a request is made.
  */
 
-import { canonicalSlug, MAX_SLUG_SEGMENTS, slugify } from '../core/index.js';
+import {
+  canonicalSlug,
+  MAX_SLUG_SEGMENTS,
+  slugify,
+  slugProblem,
+} from '../core/index.js';
 
 /**
  * What the slug field should hold, and what to tell the operator.
@@ -36,10 +41,32 @@ export function normalizeSlugInput(typed: string): SlugNormalization {
   if (typed === '') {
     return { slug: '', usable: true, notice: null };
   }
+  // A segment with nothing Latin in it would simply vanish in
+  // `canonicalSlug` (`产品/x` to `x`): another address than the one typed.
+  // Keep the value and say which segment, as for a one-segment slug.
+  const segments = typed.split('/');
+  if (segments.length > 1) {
+    const lost = segments.findIndex(
+      (segment) => segment.trim() !== '' && slugify(segment) === '',
+    );
+    if (lost !== -1) {
+      return {
+        slug: typed,
+        usable: false,
+        notice: `Segment ${lost + 1} ("${segments[lost]}") has no Latin letters or digits to build a folder name from. Write it in Latin characters.`,
+      };
+    }
+  }
   // Several segments, `crypto/crypto-quote`, are normalised one by one.
   const normalized = typed.includes('/')
     ? canonicalSlug(typed)
     : slugify(typed);
+  // What normalising cannot fix, the server refuses whatever the spelling:
+  // `page/2` is a list's second page. Say so before the request, in its words.
+  const refused = normalized === '' ? null : slugProblem(normalized);
+  if (refused !== null) {
+    return { slug: typed, usable: false, notice: refused.message };
+  }
   if (normalized === typed) {
     return { slug: typed, usable: true, notice: null };
   }
