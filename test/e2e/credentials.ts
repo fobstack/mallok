@@ -23,7 +23,10 @@ export const ADMIN = {
 export async function signIn(page: Page): Promise<void> {
   await page.goto('/_mallok/app/');
   const email = page.getByLabel('Email', { exact: true });
-  if (await email.isVisible().catch(() => false)) {
+  // Both the sign-in page and the shell load after the first paint, so wait
+  // for whichever arrives before deciding whether to sign in.
+  await email.or(page.getByRole('button', { name: 'Account menu' })).waitFor();
+  if (await email.isVisible()) {
     await email.fill(ADMIN.email);
     await page.getByLabel('Password', { exact: true }).fill(ADMIN.password);
     await page.getByRole('button', { name: 'Sign in' }).click();

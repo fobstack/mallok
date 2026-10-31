@@ -389,7 +389,9 @@ textarea {
   font-size: 0.9rem;
 }
 
-main {
+/* The page area inside the shell's `<main>` (the sidebar inset). */
+.admin-content {
+  width: 100%;
   max-width: 68rem;
   margin-inline: auto;
   padding: clamp(1.2rem, 3vw, 2.2rem);
@@ -1260,17 +1262,4 @@ main {
 }
 .alt-button:hover {
   color: var(--blueprint);
-}
-
-/* A short list of radio choices, one per line. */
-.choice-list {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-  display: grid;
-  gap: 0.4rem;
-}
-.choice-list legend {
-  margin-bottom: 0.4rem;
 }

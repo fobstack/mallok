@@ -214,6 +214,20 @@
           }
         }
       }
+    },
+    {
+      "includes": ["src/admin/components/ui/**", "src/admin/hooks/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off",
+            "useFocusableInteractive": "off"
+          },
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
     }
   ],
   "css": {

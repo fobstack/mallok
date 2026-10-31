@@ -1,6 +1,6 @@
 # Admin migration to shadcn/ui
 
-- Status: **accepted 2026-10-08; phases 0 and 1 done, phase 2 not started.** The
+- Status: **accepted 2026-10-08; phases 0–2 done, phase 3 not started.** The
   owner chose the full version and took every recommendation in §3: D1
   option B, D3 the shadcn baseline with one brand accent, D4 the sidebar, D5
   and D6 as written. D2 was decided by phase 0's measurement: **Radix**.
@@ -415,6 +415,53 @@ out there with uncommitted files.
   They are now read from the stylesheet (`stylesheetPackages`); the notices
   went from 118 packages to 121.
 - **First load: 74.5 KiB** (72.8 before): 67.9 KiB script, 6.6 KiB styles.
+
+### Phase 2, 2026-10-31
+
+- **The shell.** A collapsible sidebar (Content, Media, Plugins; Site,
+  Appearance, Email, Advanced), a breadcrumb bar, and an account menu at the
+  sidebar's foot with the account page, the colour scheme and sign-out. On
+  a phone the sidebar is a sheet. The settings tabs are gone; the sidebar
+  holds them. Errors pages report through `notice` are toasts; the
+  no-purge-token warning is an alert above every page, marked `role="note"`
+  rather than shadcn's default `alert`, since it is standing and must not
+  interrupt a screen reader. Loading shows the shell's outline; an unknown
+  route has a page. Sign-in is a shadcn card.
+- **Changes to what shadcn generates**, each commented where it is made:
+  the sidebar kept its open state in a `sidebar_state` cookie on path `/`,
+  which would make the operator's every visit to their own public site skip
+  the shared cache (`ARCHITECTURE.md §6.4`) — it uses `localStorage` now; the
+  toast reads the admin's own colour scheme instead of `next-themes`. Biome
+  relaxes three rules for `components/ui/**` only, so the generated files
+  stay as generated.
+- **Size.** The shell as first written was 147.8 KiB by the old count. Three
+  things were moved out of the first load: every page now loads with its
+  route, the toasts load with the first one, and the account menu with its
+  first click. **First load: 124.1 KiB**, with the content list adding about
+  1.3 KiB more.
+- **The budget was being under-counted, and is no longer.** `pnpm
+  admin:size` counted `<script src>` and stylesheets but not the shared
+  chunks Vite lists as `<link rel="modulepreload">`, which download with the
+  first load all the same. Such chunks existed before this work — phase 1's
+  committed state is **80.0 KiB** counted properly, not the 74.5 KiB
+  reported above — and route-level loading made more of them. The script
+  now counts them.
+- **The account menu is not modal.** A modal Radix menu marks the rest of
+  the page `aria-hidden` while open, which the accessibility gate flags as
+  serious. One consequence, tested around rather than fixed: a click on the
+  trigger during the menu's closing animation, about a tenth of a second,
+  counts as a click outside and is ignored.
+- **Third-party notices.** Radix brings `react-remove-scroll-bar`, whose
+  npm package ships no licence file. The notices build fails on a missing
+  text by design; that package is now a named exception which states the
+  declared licence and where the text is (checked: MIT, in the upstream
+  repository). The notices list 167 packages.
+- **Tests.** `17-shell.spec.ts`: every section reached from the sidebar by
+  keyboard, with `aria-current`; axe clean with the sidebar open, collapsed
+  and as a phone sheet, and with the account menu open; the collapsed state
+  surviving a reload with no cookie set. The sign-out test opens the account
+  menu first, and the sign-in helper waits for the page to settle, since the
+  sign-in page now loads after the first paint. 43 browser tests pass.
 
 ### D7 — The first-load budget, raised by phase 0
 

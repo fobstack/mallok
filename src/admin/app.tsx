@@ -3,15 +3,17 @@
  */
 
 import type { JSX } from 'react';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { lazyRoute } from './components/lazy.js';
 import { Shell } from './components/shell.js';
-import { AccountPage } from './pages/account.js';
-import { ContentListPage } from './pages/content-list.js';
-import { LoginPage } from './pages/login.js';
-import { AdvancedPage } from './pages/settings-advanced.js';
-import { AppearancePage } from './pages/settings-appearance.js';
-import { EmailSettingsPage } from './pages/settings-email.js';
-import { SiteSettingsPage } from './pages/settings-site.js';
 import { match, navigate, route } from './router.js';
 import { ready, session } from './state.js';
 
@@ -20,6 +22,33 @@ import { ready, session } from './state.js';
  * rendering pipeline (its preview is the real renderer) and the library
  * carries the image conversion path. Neither belongs in the first paint.
  */
+// Every page loads with its route: the first load is the shell and the page
+// you land on, not every page in the admin (docs/ADMIN_MIGRATION.md §8).
+const AccountPage = lazyRoute<Record<string, never>>(() =>
+  import('./pages/account.js').then((module) => module.AccountPage),
+);
+const ContentListPage = lazyRoute<Record<string, never>>(() =>
+  import('./pages/content-list.js').then((module) => module.ContentListPage),
+);
+const LoginPage = lazyRoute<Record<string, never>>(() =>
+  import('./pages/login.js').then((module) => module.LoginPage),
+);
+const AdvancedPage = lazyRoute<Record<string, never>>(() =>
+  import('./pages/settings-advanced.js').then((module) => module.AdvancedPage),
+);
+const AppearancePage = lazyRoute<Record<string, never>>(() =>
+  import('./pages/settings-appearance.js').then(
+    (module) => module.AppearancePage,
+  ),
+);
+const EmailSettingsPage = lazyRoute<Record<string, never>>(() =>
+  import('./pages/settings-email.js').then(
+    (module) => module.EmailSettingsPage,
+  ),
+);
+const SiteSettingsPage = lazyRoute<Record<string, never>>(() =>
+  import('./pages/settings-site.js').then((module) => module.SiteSettingsPage),
+);
 const EditorPage = lazyRoute<{ id: string }>(() =>
   import('./pages/editor.js').then((module) => module.EditorPage),
 );
@@ -33,56 +62,44 @@ const SetupPage = lazyRoute<Record<string, never>>(() =>
   import('./pages/setup.js').then((module) => module.SetupPage),
 );
 
-const SETTINGS_TABS = [
-  { href: '/settings', label: 'Site' },
-  { href: '/settings/appearance', label: 'Appearance' },
-  { href: '/settings/email', label: 'Email' },
-  { href: '/settings/advanced', label: 'Advanced' },
-] as const;
-
+/**
+ * A settings page. The sections are in the sidebar now; this only keeps the
+ * call sites below readable while the pages move (docs/ADMIN_MIGRATION.md).
+ */
 function SettingsLayout({
   children,
 }: {
   readonly children: JSX.Element;
 }): JSX.Element {
-  const path = route.value;
-  return (
-    <div className="with-tabs">
-      <nav className="tabs" aria-label="Settings sections">
-        {SETTINGS_TABS.map((tab) => (
-          <a
-            key={tab.href}
-            href={`/_mallok/app${tab.href}`}
-            {...(path === tab.href ? { 'aria-current': 'page' } : {})}
-            onClick={(event) => {
-              event.preventDefault();
-              navigate(tab.href);
-            }}
-          >
-            {tab.label}
-          </a>
-        ))}
-      </nav>
-      {children}
-    </div>
-  );
+  return children;
 }
 
 function NotFound(): JSX.Element {
   return (
     <div className="page">
-      <h1>Not found</h1>
-      <p>
-        <a
-          href="/_mallok/app/"
-          onClick={(event) => {
-            event.preventDefault();
-            navigate('/');
-          }}
-        >
-          Back to content
-        </a>
-      </p>
+      <Card className="mx-auto mt-8 max-w-md">
+        <CardHeader>
+          <CardTitle>
+            <h1>Not found</h1>
+          </CardTitle>
+          <CardDescription>
+            There is no page at this address in the admin.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <a
+              href="/_mallok/app/"
+              onClick={(event) => {
+                event.preventDefault();
+                navigate('/');
+              }}
+            >
+              Back to content
+            </a>
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -135,6 +152,25 @@ function resolve(path: string): JSX.Element {
   return <NotFound />;
 }
 
+/** What shows while the session and settings load: the shell's outline. */
+function Booting(): JSX.Element {
+  return (
+    <div className="flex min-h-svh" aria-busy="true">
+      <span className="sr-only">Loading…</span>
+      <div className="hidden w-64 flex-col gap-3 border-r p-4 md:flex">
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-4 w-28" />
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-4 w-24" />
+      </div>
+      <div className="flex flex-1 flex-col gap-4 p-8">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40 w-full max-w-4xl" />
+      </div>
+    </div>
+  );
+}
+
 export function App(): JSX.Element {
   // The wizard runs before there is a session to restore, so it is checked
   // before the signed-in/signed-out split (docs/ADMIN.md §5).
@@ -142,7 +178,7 @@ export function App(): JSX.Element {
     return <SetupPage />;
   }
   if (!ready.value) {
-    return <div className="booting">Loading…</div>;
+    return <Booting />;
   }
   if (session.value === false) {
     return <LoginPage />;

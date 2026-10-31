@@ -10,12 +10,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, api } from '../api.js';
 import { notice, session } from '../state.js';
 import {
-  setThemeMode,
-  THEME_MODES,
-  type ThemeMode,
-  useThemeMode,
-} from '../theme-mode.js';
-import {
   describeToken,
   revokeFailureMessage,
   type TokenSummary,
@@ -110,8 +104,6 @@ export function AccountPage(): JSX.Element {
           </p>
         </section>
       ) : null}
-
-      <AppearanceSection />
 
       <section className="card">
         <h2>API tokens</h2>
@@ -271,36 +263,5 @@ function PasswordSection(): JSX.Element {
         {done ? <span className="pill ok">Changed</span> : null}
       </div>
     </form>
-  );
-}
-
-/** Light, dark or the system's — for this browser only. */
-function AppearanceSection(): JSX.Element {
-  const current = useThemeMode();
-  const labels: Readonly<Record<ThemeMode, string>> = {
-    system: 'Same as the system',
-    light: 'Light',
-    dark: 'Dark',
-  };
-  return (
-    <section className="card" aria-labelledby="appearance-heading">
-      <h2 id="appearance-heading">Appearance</h2>
-      <fieldset className="choice-list">
-        <legend className="help">
-          How the admin looks in this browser. It does not change the site.
-        </legend>
-        {THEME_MODES.map((mode) => (
-          <label key={mode}>
-            <input
-              type="radio"
-              name="theme-mode"
-              checked={current === mode}
-              onChange={() => setThemeMode(mode)}
-            />{' '}
-            {labels[mode]}
-          </label>
-        ))}
-      </fieldset>
-    </section>
   );
 }

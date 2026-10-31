@@ -44,8 +44,10 @@ test('keeps the admin behind the session, not behind the interface', async ({
 
 test('signs out and stops accepting the old session', async ({ page }) => {
   await signIn(page);
-  // The button lives in the shell header, on every admin page.
-  await page.getByRole('button', { name: 'Sign out' }).click();
+  // Signing out is in the account menu at the foot of the sidebar, on every
+  // admin page (it was a button in the old top bar).
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await page.getByRole('menuitem', { name: 'Sign out' }).click();
 
   await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
   const listing = await page.request.get('/_mallok/api/content', {

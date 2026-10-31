@@ -70,6 +70,22 @@ async function manifestAt(dir) {
 }
 
 /**
+ * Packages that are bundled but whose npm tarball carries no licence file,
+ * only a `license` field in `package.json`.
+ *
+ * Failing on a missing text is deliberate (below), so each exception is named
+ * here, one by one, with where the licence text actually lives. The notices
+ * then say exactly that rather than reproducing a text the package did not
+ * ship. Add an entry only after checking the upstream repository.
+ */
+const SHIPPED_WITHOUT_TEXT = new Map([
+  [
+    'react-remove-scroll-bar',
+    'https://github.com/theKashey/react-remove-scroll-bar/blob/master/LICENSE',
+  ],
+]);
+
+/**
  * Completes a Vite licence entry whose nested package.json omits metadata.
  *
  * `@preact/signals-react/runtime/package.json`, for example, deliberately has
@@ -79,6 +95,20 @@ async function manifestAt(dir) {
  * from the installed manifests — no hand-maintained dependency table.
  */
 async function completeViteLicense(entry) {
+  // A package that ships no text has nothing to complete it from, wherever
+  // it is installed; say where the text is instead.
+  const elsewhere = SHIPPED_WITHOUT_TEXT.get(entry.name);
+  if (
+    elsewhere !== undefined &&
+    entry.version !== '0.0.0' &&
+    typeof entry.identifier === 'string' &&
+    (typeof entry.text !== 'string' || entry.text === '')
+  ) {
+    return {
+      ...entry,
+      text: `The npm package ships no licence file. Its package.json declares ${entry.identifier}; the licence text is at ${elsewhere}`,
+    };
+  }
   if (
     entry.version !== '0.0.0' &&
     entry.identifier !== undefined &&

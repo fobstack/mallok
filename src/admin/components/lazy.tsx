@@ -13,12 +13,20 @@
  * of reshaping the routing around `lazy`'s expectations.
  */
 
-import type { ComponentType, JSX } from 'react';
+import type { ComponentType, JSX, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 
 /** Wraps a dynamic import as a component that renders once it resolves. */
 export function lazyRoute<P extends Record<string, unknown>>(
   load: () => Promise<ComponentType<P>>,
+  options: {
+    /**
+     * What shows while the code loads, and instead of the failure message.
+     * For a part of a page rather than a whole route — a menu, the toasts —
+     * where a "Loading…" block would be in the way.
+     */
+    readonly placeholder?: ReactNode;
+  } = {},
 ): (props: P) => JSX.Element {
   let cached: ComponentType<P> | null = null;
   return function LazyRoute(props: P): JSX.Element {
@@ -51,6 +59,9 @@ export function lazyRoute<P extends Record<string, unknown>>(
       };
     }, []);
 
+    if (options.placeholder !== undefined && (failed || loaded === null)) {
+      return <>{options.placeholder}</>;
+    }
     if (failed) {
       return (
         <div className="page">
@@ -62,7 +73,13 @@ export function lazyRoute<P extends Record<string, unknown>>(
       );
     }
     if (loaded === null) {
-      return <div className="booting">Loading…</div>;
+      return (
+        <div className="page" aria-busy="true">
+          <span className="sr-only">Loading…</span>
+          <div className="h-8 w-48 animate-pulse rounded-md bg-muted" />
+          <div className="mt-6 h-40 animate-pulse rounded-md bg-muted" />
+        </div>
+      );
     }
     const Loaded = loaded;
     return <Loaded {...props} />;

@@ -7,7 +7,9 @@
  * (docs/ADMIN.md §5, docs/ARCHITECTURE.md §6.2).
  */
 
+import { Clock } from 'lucide-react';
 import type { JSX } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { liveDelay } from '../state.js';
 
 /** Human-readable form of a cache lifetime. */
@@ -49,13 +51,21 @@ export function PurgeNotice(): JSX.Element | null {
     return null;
   }
   return (
-    <div className="banner soft">
-      <span>
-        No cache-purge token is configured, so a saved change reaches visitors
-        only after the cached page expires (up to {humanize(delay.seconds)}).
-        This is a working site, not a broken one — add <code>CF_API_TOKEN</code>{' '}
-        and <code>CF_ZONE_ID</code> as Worker secrets to get instant publishing.
-      </span>
-    </div>
+    // A standing note, not an alert: it is true from the first render until
+    // someone configures the token, and must not interrupt a screen reader.
+    <Alert role="note" className="mx-4 mt-4 w-auto">
+      <Clock />
+      <AlertTitle>
+        Changes reach visitors within {humanize(delay.seconds)}
+      </AlertTitle>
+      <AlertDescription>
+        <p>
+          No cache-purge token is configured, so a saved change reaches visitors
+          only after the cached page expires. This is a working site, not a
+          broken one — add <code>CF_API_TOKEN</code> and <code>CF_ZONE_ID</code>{' '}
+          as Worker secrets to get instant publishing.
+        </p>
+      </AlertDescription>
+    </Alert>
   );
 }
