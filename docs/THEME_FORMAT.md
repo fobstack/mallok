@@ -306,7 +306,9 @@ from Shopify and Jekyll — one of the two camelCase exceptions in
 {{ site.locale }}          {{ site.default_locale }}
 {{ site.locales }}         {# array #}
 {{ site.base_url }}        {# https://example.com, no trailing slash #}
-{{ site.home_path }}       {# / or /de/ #}
+{{ site.home_path }}       {# / or /de/; /en and /de on a site that prefixes its default locale #}
+{{ site.tags_path }}/{{ tag | url_encode }}   {# a tag's archive in this page's language #}
+{{ site.feed_path }}       {# this language's feed: /feed.xml, /de/feed.xml #}
 {% for item in site.nav %}{{ item.label }} {{ item.href }} {{ item.active }}{% endfor %}
 {{ site.kinds.product.path }}  {{ site.kinds.product.label }}   {# the list page of a kind #}
 
@@ -343,6 +345,17 @@ a `listLayout` — and none for any other, so the entry itself is the test:
   asks for it in an option.
 - `label` is what the list page is titled: `t[kind]`, then the kind's `label`
   in `theme.json`, then the kind's name.
+
+A theme never writes a site address itself — not `/tags/…`, not
+`/feed.xml`: those are `site.tags_path` and `site.feed_path`, in the page's
+language. Links the site's owner writes reach the theme already mapped: on a
+site that prefixes its default language, an unprefixed path in `site.nav` or
+in a `string` option (`/contact` as a `quote_href`) arrives as
+`/<default>/contact`. Other option types, absolute URLs, paths under another
+language and `/_mallok/…`, `/media/…`, `/theme/…`, `/robots.txt` and the
+sitemaps are passed through as written; a site that never prefixes gets every
+link exactly as written. `test/core/themes.test.ts` checks every official
+theme against this on a prefixed site.
 - It is on every page: content, home, list, the not-found page and a plugin's
   page.
 
@@ -371,16 +384,37 @@ requires bumping `theme.json`'s `version` (§13).
 
 ```liquid
 {{ content.id }}        {{ content.kind }}      {{ content.locale }}
-{{ content.slug }}      {{ content.path }}
+{{ content.slug }}      {{ content.path }}  {# a slug may have several segments: crypto/crypto-quote #}
 {{ content.title }}     {{ content.description }}
 {{ content.published_at }} {{ content.updated_at }}
 {{ content.html }}      {# the sanitised body fragment; the only rich text emitted verbatim #}
 {{ content.excerpt }}   {{ content.reading_time }}
-{% for h in content.headings %}{{ h.depth }} {{ h.text }}{% endfor %}
+{% for h in content.headings %}<a href="#{{ h.id }}">{{ h.depth }} {{ h.text }}</a>{% endfor %}
 {% for tr in content.translations %}{{ tr.locale }} {{ tr.href }}{% endfor %}
 {{ content.frontmatter.sku }}      {# kind-specific fields come from here #}
 {{ content.cover }}                {# cover image URL; empty string when there is none #}
 ```
+
+`content.headings` lists the body's headings in order, each with `depth`
+(1–6), `text` and `id`. **`id` is the heading's own `id` attribute in
+`content.html`**, so `<a href="#{{ h.id }}">` links to it with no script.
+Ids are built from the heading's text (`## Quick start` → `quick-start`),
+keep letters and digits of any script as they are (`## 快速开始` →
+`快速开始`), fall back to `heading-<n>` when the text has neither, and are
+unique in the document (`example`, `example-1`, …). A heading the author
+gave an id in inline HTML keeps it, with the sanitizer's `user-content-`
+prefix, unless an earlier element already has that id: then it is numbered
+like a repeated heading. The heading of the GFM footnotes section is not
+listed.
+
+Generated ids are not prefixed, so they share the page with the theme's own.
+They never take the ids the official themes and plugins write — `main`,
+`menu-toggle`, `products`, `capabilities`, `turnstile`, `hero-slide-<n>`,
+`shot-<n>` (`RESERVED_IDS` in `src/core/fragment.ts`); a heading called
+"Main" is `main-1`. A theme of your own should give its elements ids with an
+underscore (`site_menu`): a heading's id never contains one. Since
+pipeline version 2 (Mallok 0.1.0-rc.12); earlier fragments had no ids and
+are re-rendered on their next request.
 
 ### 7.3 List pages also get `list`
 

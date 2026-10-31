@@ -55,6 +55,8 @@ describe('walking skeleton', () => {
       '0005_move_inquiry_email',
       '0006_site_taglines',
       '0007_site_claimed',
+      '0008_site_purge_failure',
+      '0009_site_locale_prefix',
       'plugin:inquiry:0001_inquiry',
     ]);
     const sites = await env.DB.prepare('SELECT COUNT(*) AS n FROM site').first<{

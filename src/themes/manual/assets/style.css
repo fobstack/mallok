@@ -410,6 +410,15 @@ img {
   display: flex;
   gap: 0.6rem;
 }
+.toc a {
+  color: inherit;
+  text-decoration: none;
+}
+.toc a:hover,
+.toc a:focus-visible {
+  color: var(--orange);
+  text-decoration: underline;
+}
 .toc li::before {
   content: counter(toc);
   font-family: var(--mono);

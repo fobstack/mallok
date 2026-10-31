@@ -178,7 +178,14 @@ it changed ("ASTM B265" becomes `astm-b265`). A value with no Latin letters or
 digits to build a name from is kept in the field, not erased, with an
 explanation — the operator can see what they typed while they fix it. Nobody
 should meet that refusal as a bare 400 after writing an article
-(`src/admin/slug.ts`).
+(`src/admin/slug.ts`). A slug may have up to four segments joined by `/`
+(`crypto/crypto-quote`, `CONTENT_FORMAT §3.1.1`); each is canonicalised on its
+own, empty ones are dropped, and a fifth and later are cut with a notice. A
+segment with no Latin letters or digits is not dropped — that would be another
+address — but kept, with a notice naming it, and `page/<n>` at the start is
+refused in the field with the server's own words. What
+depends on the site — a first segment that is another kind's base, say — is
+the server's to refuse, and its message names the segment and the reason.
 
 ### 6.3 Preview
 
@@ -225,6 +232,13 @@ normally. **It does not fail silently, and it does not pretend to have
 succeeded** (`AC-CONTENT-10`, `docs/ACCEPTANCE.md §14.2` item 7).
 
 ### 6.6 Multiple languages
+
+- Settings → Site → Languages has a checkbox, **Prefix the default language
+  too**. Changing it asks for confirmation, then moves every URL of the
+  default language and records a redirect from each, rewrites the default
+  language's navigation links to match, and keeps the old list, tag and home
+  addresses redirecting (`ARCHITECTURE §9`); the editor's path preview
+  follows it.
 
 - The language switcher sits at the top of the editor, and switching to a
   translation that does not exist yet offers "create the `<language>`
@@ -357,7 +371,13 @@ This is the only place lower-level vocabulary is allowed:
   (`CLI.md §7`).
 - **Diagnostics**: whether a custom domain is bound, whether caching is in
   effect, whether `CF_API_TOKEN` is configured, whether Resend is configured,
-  and the schema version. Below them, **Failed background jobs**: the latest
+  and the schema version. **Last failed purge** appears when a purge
+  Cloudflare did not carry out is recorded (`ARCHITECTURE §6.2`): when, after
+  what (a content change, a plugin by name, …), Cloudflare's status and
+  answer, and what to check — for a 401 or 403, that the token needs Zone →
+  Cache Purge → Purge rather than Cache Rules. It stays until a purge of the
+  whole site succeeds, including the "purge all cached pages" button, which
+  itself answers with Cloudflare's reason when it fails. Below them, **Failed background jobs**: the latest
   twenty jobs that ran out of attempts — email or a plugin's
   (`PLUGIN_API.md §7.4`) — with what each was, when it gave up and its last
   error. The list is absent when there are none. It is read-only: there is no

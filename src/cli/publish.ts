@@ -144,7 +144,9 @@ export async function publishBundles(
         // Predict rather than assume: the server decides "unchanged" by
         // comparing the Markdown hash and the assets map, and the same
         // comparison can be made here from the item the site already has.
-        const slug = typeof data.slug === 'string' ? data.slug : bundle.name;
+        // The slug the real run would save under: a nested slug's folder is
+        // flattened, so only the identity says what it is.
+        const slug = documentSlug(bundle, document);
         const existing = await findExisting(
           client,
           bundle.kind,

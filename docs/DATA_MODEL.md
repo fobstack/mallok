@@ -34,6 +34,7 @@ CREATE TABLE site (
   tagline          TEXT,                          -- in the default language; used wherever a language has none of its own
   taglines         TEXT NOT NULL DEFAULT '{}',    -- JSON: {"de":"…","zh":"…"}, other languages' taglines (migration 0006)
   default_locale   TEXT NOT NULL,                 -- 'en'
+  prefix_default_locale INTEGER NOT NULL DEFAULT 0, -- 1: the default locale is prefixed too, '/en/…'; changed only with its paths (migration 0009)
   locales          TEXT NOT NULL,                 -- JSON: ["en","de","zh"]
   kinds            TEXT NOT NULL,                 -- JSON: {"product":{"base":"products"},"article":{"base":"news"},...}
   theme_options    TEXT NOT NULL DEFAULT '{}',    -- JSON, validated against the options schema of the theme in this build
@@ -48,6 +49,7 @@ CREATE TABLE site (
   claimed_at       TEXT,                          -- when the first administrator was created; NULL until then, and pages are not cached (ARCHITECTURE §6.4; migration 0007)
   email_from       TEXT,                          -- site sender, e.g. 'Acme <hello@example.com>'; NULL when unset
   email_resend_key TEXT,                          -- the site's Resend key, encrypted as in §2.7; NULL when unset
+  last_purge_failure TEXT,                        -- JSON: the last purge Cloudflare did not carry out; NULL once the whole site is purged again (migration 0008)
   created_at       TEXT NOT NULL,
   updated_at       TEXT NOT NULL
 );
@@ -62,6 +64,17 @@ re-encrypts it for the site, moves the plugin's `from_address` too, and
 removes both from `plugin_state` — in one batch with its own migration record.
 It never overwrites a value the site already has and leaves a key it cannot
 decrypt where it is.
+
+`last_purge_failure` (migration `0008_site_purge_failure`) holds
+`{ at, source, status?, tags, detail }` for the last cache purge that
+Cloudflare refused or could not be reached for. `source` names what asked:
+`manual`, `content`, `settings`, `plugins`, `setup`, `scheduled`,
+`fragments`, or `plugin:<id>`. It is written only on a failure and cleared
+only when a purge of the `site` tag — every page — succeeds; Settings →
+Advanced and `GET /health` show it (`ARCHITECTURE.md §6`).
+
+`prefix_default_locale` (migration `0009_site_locale_prefix`) is 0 for every
+existing site. `ARCHITECTURE.md §9` says what 1 changes.
 
 ### 2.2 `content`
 
@@ -99,8 +112,14 @@ Constraints and notes:
   error when it does not fit.
 - `path` is computed from `site.kinds[kind].base`, the locale prefix and the
   slug; the `page` kind has no base. A changed `path` writes a `redirect`.
-- Changing `site.default_locale` recomputes every `path` and writes the
-  redirects. It is an explicit bulk operation requiring confirmation.
+- Changing `site.default_locale`, or `site.prefix_default_locale`, recomputes
+  every `path` and writes the redirects. Each is an explicit bulk operation
+  requiring confirmation (`POST /settings/default-locale`,
+  `POST /settings/locale-prefix`), written in one D1 `batch()` so a failure
+  moves nothing. Moving a path also deletes a redirect
+  *from* the path it moves to, and points any redirect that targeted the old
+  path at the new one, so switching back and forth leaves no loop and an
+  older slug's redirect stays one hop.
 - `cover_sha256` is a redundant copy of `assets[frontmatter.cover]`, kept in
   sync on save so a list page reads a cover from the same row.
 

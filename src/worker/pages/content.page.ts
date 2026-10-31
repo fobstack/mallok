@@ -10,6 +10,7 @@
  * would rightly refuse them.
  */
 
+import { localePrefix } from '../../core/index.js';
 import type { ContentRow } from '../../db/queries.js';
 import { findRedirect, listPublished } from '../../db/queries.js';
 import { definePage } from '../../runtime/core/index.js';
@@ -52,6 +53,32 @@ type Resolved =
       readonly pluginTags: readonly string[];
     }
   | { readonly kind: 'missing'; readonly html: string };
+
+/**
+ * Where an address written for the other setting of the default locale's
+ * prefix now lives, or null.
+ *
+ * - Prefix on: an unprefixed list address, `/products`, is
+ *   `/<default>/products`. Only an address that is a list is redirected; any
+ *   other unprefixed one is content, redirected by its own row, or nothing,
+ *   and stays a 404.
+ *
+ * With the prefix off nothing is worked out here: a site that never turned
+ * it on must answer exactly as before. A site that turns it off records the
+ * redirects its old prefixed addresses need when it does
+ * (`changeLocalePrefix`), and step 3 serves them.
+ */
+function prefixElsewhere(locals: PublicLocals): string | null {
+  const { settings } = locals;
+  if (!settings.prefixDefaultLocale || locals.prefixed) {
+    return null;
+  }
+  const list = matchList(locals.rest, settings.kinds);
+  return list !== null &&
+    locals.render.theme.manifest.kinds[list.kind]?.listLayout !== undefined
+    ? `/${settings.defaultLocale}${locals.rest}`
+    : null;
+}
 
 export default definePage<PublicLocals>()({
   load: async ({ locals, url }): Promise<Resolved | Response> => {
@@ -121,7 +148,11 @@ export default definePage<PublicLocals>()({
     //    A kind the theme gives no list layout has no list page: its items
     //    are served under the base, and the base itself names nothing
     //    (docs/THEME_FORMAT.md §7.4).
-    const list = matchList(locals.rest, settings.kinds);
+    // An unprefixed path on a site that prefixes its default locale names
+    // no list: only a stored redirect can answer it.
+    const list = locals.prefixed
+      ? matchList(locals.rest, settings.kinds)
+      : null;
     if (
       list !== null &&
       locals.render.theme.manifest.kinds[list.kind]?.listLayout !== undefined
@@ -145,8 +176,7 @@ export default definePage<PublicLocals>()({
             items: rows.items.map(renderDataItem),
           }),
         ]);
-      const prefix =
-        locals.locale === settings.defaultLocale ? '' : `/${locals.locale}`;
+      const prefix = localePrefix(locals.locale, settings);
       const rendered = await renderListPage(
         { ...locals.render, plugins, structuredData },
         list.kind,
@@ -175,8 +205,21 @@ export default definePage<PublicLocals>()({
     const redirect = await findRedirect(locals.env.DB, locals.pathname);
     if (redirect !== null) {
       return Response.redirect(
-        new URL(redirect.to_path, url.origin).toString(),
+        new URL(`${redirect.to_path}${url.search}`, url.origin).toString(),
         redirect.status,
+      );
+    }
+
+    // 4. An address written for the other setting of the default locale's
+    //    prefix. Content records its own redirects when the setting changes
+    //    (step 3); a list page has no row to record one for, so the address
+    //    is worked out here instead. The home page and tag archives do the
+    //    same in their own routes.
+    const elsewhere = prefixElsewhere(locals);
+    if (elsewhere !== null) {
+      return Response.redirect(
+        new URL(`${elsewhere}${url.search}`, url.origin).toString(),
+        301,
       );
     }
 

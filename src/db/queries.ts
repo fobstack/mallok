@@ -35,6 +35,13 @@ export interface SiteRow {
   readonly email_from: string | null;
   /** The site's Resend key, encrypted; never returned by any endpoint. */
   readonly email_resend_key: string | null;
+  /**
+   * The last purge Cloudflare did not carry out, as JSON; null when none has
+   * failed since the whole site was last purged.
+   */
+  readonly last_purge_failure: string | null;
+  /** 1 when the default locale is prefixed too; changed by its own flow. */
+  readonly prefix_default_locale: number;
   readonly created_at: string;
   readonly updated_at: string;
 }
@@ -268,6 +275,25 @@ export async function findContentByKey(
     .prepare('SELECT * FROM content WHERE kind = ? AND locale = ? AND slug = ?')
     .bind(kind, locale, slug)
     .first<ContentRow>();
+}
+
+/**
+ * Which item holds a public path, if any: kind, locale and slug, for saying
+ * whose it is when a save would take it.
+ */
+export async function findPathHolder(
+  db: D1Database,
+  path: string,
+): Promise<{
+  readonly id: string;
+  readonly kind: string;
+  readonly locale: string;
+  readonly slug: string;
+} | null> {
+  return db
+    .prepare('SELECT id, kind, locale, slug FROM content WHERE path = ?')
+    .bind(path)
+    .first();
 }
 
 /** Input for {@link upsertContent}. */
@@ -625,6 +651,40 @@ export async function updateSite(
     .run();
 }
 
+/**
+ * Records a purge Cloudflare did not carry out, replacing any earlier one.
+ * `failure` is the JSON the admin's diagnostics shows.
+ */
+export async function recordPurgeFailure(
+  db: D1Database,
+  failure: string,
+): Promise<void> {
+  await db
+    .prepare('UPDATE site SET last_purge_failure = ? WHERE id = 1')
+    .bind(failure)
+    .run();
+}
+
+/**
+ * Forgets the recorded purge failure, if it is older than `before`. Called
+ * after the whole site was purged successfully, which replaces every page an
+ * earlier failure left stale — but not one recorded while that purge was in
+ * flight. Writes nothing when there is nothing to forget.
+ */
+export async function clearPurgeFailure(
+  db: D1Database,
+  before: string,
+): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE site SET last_purge_failure = NULL
+       WHERE id = 1 AND last_purge_failure IS NOT NULL
+         AND COALESCE(json_extract(last_purge_failure, '$.at'), '') <= ?`,
+    )
+    .bind(before)
+    .run();
+}
+
 /** Row counts used by the admin's diagnostics page. */
 export interface StorageCounts {
   readonly content: number;
@@ -702,37 +762,73 @@ export interface PathMove {
 }
 
 /**
- * Rewrites public paths and records a redirect for each one.
+ * The statements that rewrite public paths and record a redirect for each.
  *
  * `moves` must be ordered so that a path is vacated before another row claims
  * it, because `content.path` is unique. The caller guarantees that by moving
  * every row that gains a locale prefix before any row that loses one.
+ *
+ * A path that is content again stops redirecting, and a redirect that
+ * pointed at a moved path is pointed at its new one: moving there and back
+ * must not leave a redirect behind, and an older slug's redirect must stay
+ * one hop.
+ *
+ * Statements, not a call: the caller runs them in one `batch()` with the
+ * setting that makes them right, so a site never has half its paths moved.
+ * A batch is one transaction and counts as one query against the Free plan's
+ * 50 per invocation, however many statements it holds
+ * (developers.cloudflare.com/d1/platform/limits/, updated 2026-10-30;
+ * developers.cloudflare.com/d1/worker-api/d1-database/, updated 2026-06-22).
  */
-export async function movePaths(
+export function movePathStatements(
   db: D1Database,
   moves: readonly PathMove[],
   now: string,
-  chunkSize = 20,
-): Promise<void> {
-  for (let i = 0; i < moves.length; i += chunkSize) {
-    const chunk = moves.slice(i, i + chunkSize);
-    const statements: D1PreparedStatement[] = [];
-    for (const move of chunk) {
-      statements.push(
-        db
-          .prepare('UPDATE content SET path = ?, updated_at = ? WHERE id = ?')
-          .bind(move.to, now, move.id),
-        db
-          .prepare(
-            `INSERT OR REPLACE INTO redirect
-               (from_path, to_path, status, content_id, created_at)
-             VALUES (?, ?, 301, ?, ?)`,
-          )
-          .bind(move.from, move.to, move.id, now),
-      );
-    }
-    await db.batch(statements);
-  }
+): D1PreparedStatement[] {
+  return moves.flatMap((move) => [
+    db
+      .prepare('UPDATE content SET path = ?, updated_at = ? WHERE id = ?')
+      .bind(move.to, now, move.id),
+    db.prepare('DELETE FROM redirect WHERE from_path = ?').bind(move.to),
+    db
+      .prepare('UPDATE redirect SET to_path = ? WHERE to_path = ?')
+      .bind(move.to, move.from),
+    db
+      .prepare(
+        `INSERT OR REPLACE INTO redirect
+           (from_path, to_path, status, content_id, created_at)
+         VALUES (?, ?, 301, ?, ?)`,
+      )
+      .bind(move.from, move.to, move.id, now),
+  ]);
+}
+
+/**
+ * Records whether the default locale is prefixed, and the navigation that
+ * goes with it; run in the same batch as the moves.
+ */
+export function setPrefixDefaultLocaleStatement(
+  db: D1Database,
+  enabled: boolean,
+  nav: string,
+  now: string,
+): D1PreparedStatement {
+  return db
+    .prepare(
+      'UPDATE site SET prefix_default_locale = ?, nav = ?, updated_at = ? WHERE id = 1',
+    )
+    .bind(enabled ? 1 : 0, nav, now);
+}
+
+/** Changes the default locale; run in the same batch as the moves. */
+export function setDefaultLocaleStatement(
+  db: D1Database,
+  locale: string,
+  now: string,
+): D1PreparedStatement {
+  return db
+    .prepare('UPDATE site SET default_locale = ?, updated_at = ? WHERE id = 1')
+    .bind(locale, now);
 }
 
 /** Changes the site's default locale. Paths must already have been moved. */

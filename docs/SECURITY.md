@@ -228,6 +228,18 @@ prints it once. Four properties matter, and each is tested:
 - The allowed `img` attributes extend the default list with `srcSet`, `sizes`,
   `width`, `height`, `loading` and `decoding` (`src/core/fragment.ts`),
   because the core adds those itself.
+- **Heading ids are generated after sanitisation and are not prefixed**
+  (owner decision 2026-10-25, Task 48). An `id` or `name` an author writes
+  keeps the sanitizer's `user-content-` prefix, which is what stops markup
+  from clobbering a page script's globals (`window.config` resolving to an
+  element). A heading the author gave no id gets one built from its text —
+  `## Quick start` becomes `id="quick-start"` — so that `#quick-start`
+  works without JavaScript. That narrows the protection for headings only:
+  a heading's words can now name a global. The narrowing is accepted because
+  Mallok's themes are declarative and a theme's only scripts are the files it
+  declares in `clientScripts` (`THEME_FORMAT.md §9`); a theme script must
+  not read globals by bare name. Generated ids never repeat an id already in
+  the fragment, the author's included.
 
 ## 5. Relative paths
 

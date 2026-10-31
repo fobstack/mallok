@@ -8,7 +8,7 @@
  */
 
 import { z } from 'zod';
-import { LOCALE_PATTERN } from '../core/index.js';
+import { LOCALE_PATTERN, slugProblem } from '../core/index.js';
 import type { MallokPlugin } from '../plugins/types.js';
 import type { Starter } from './types.js';
 
@@ -24,7 +24,18 @@ const idSchema = z
   .string()
   .regex(/^[a-z][a-z0-9-]{0,39}$/, 'lower-case letters, digits and hyphens');
 const kindSchema = z.string().regex(/^[a-z][a-z0-9_]*$/);
-const slugSchema = z.string().min(1).max(200);
+// The rules a save applies, checked when the Worker loads so that a starter
+// is not found broken only at import (docs/CONTENT_FORMAT.md §3.1).
+const slugSchema = z
+  .string()
+  .min(1)
+  .max(200)
+  .superRefine((slug, ctx) => {
+    const refused = slugProblem(slug);
+    if (refused !== null) {
+      ctx.addIssue({ code: 'custom', message: refused.message });
+    }
+  });
 const linkSchema = z.object({ label: z.string(), href: z.string() });
 
 const starterSchema = z.object({
@@ -35,6 +46,7 @@ const starterSchema = z.object({
   plugins: z.array(z.string().min(1)).default([]),
   settings: z.object({
     locales: z.array(z.string().regex(LOCALE_PATTERN)).optional(),
+    prefixDefaultLocale: z.boolean().optional(),
     kinds: z.record(z.string(), z.object({ base: z.string() })),
     nav: z.record(z.string(), z.array(linkSchema)).default({}),
     themeOptions: z.record(z.string(), z.unknown()).default({}),

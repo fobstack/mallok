@@ -117,12 +117,12 @@ describe('SEO endpoints', () => {
     );
   });
 
-  it('caches the sitemap under its own tag', async () => {
+  it('caches the sitemap under its own tag and the whole-site one', async () => {
     const again = await get('/sitemap.xml');
     expect(again.headers.get('x-mallok-cache')).toBe('HIT');
     await forgetCached('/sitemap.xml');
     const fresh = await get('/sitemap.xml');
-    expect(fresh.headers.get('cache-tag')).toBe('sitemap');
+    expect(fresh.headers.get('cache-tag')).toBe('site,sitemap');
   });
 
   it('serves an RSS feed per locale', async () => {
@@ -142,7 +142,7 @@ describe('SEO endpoints', () => {
     const deBody = await german.text();
     expect(deBody).toContain('<title>Sitemap-Futter</title>');
     expect(deBody).toContain('<language>de</language>');
-    expect(german.headers.get('cache-tag')).toBe('feed:de');
+    expect(german.headers.get('cache-tag')).toBe('site,feed:de');
   });
 
   it('returns 404 for a feed in a locale the site has not enabled', async () => {

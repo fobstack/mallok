@@ -60,6 +60,12 @@ export interface StarterSettings {
    * starter needs.
    */
   readonly locales?: readonly string[];
+  /**
+   * Prefix the default locale too (`/en/…`), and make the root a redirect to
+   * its home (docs/ARCHITECTURE.md §9). Applied before the starter's content
+   * is imported, so the documents land at their prefixed paths.
+   */
+  readonly prefixDefaultLocale?: boolean;
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
   readonly nav: Readonly<
     Record<string, readonly { label: string; href: string }[]>

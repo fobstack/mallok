@@ -1,4 +1,4 @@
-import { SELF } from 'cloudflare:test';
+import { env, SELF } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 const ORIGIN = 'https://locale-test.example';
@@ -213,6 +213,28 @@ describe('multiple locales', () => {
       confirm: true,
     });
     expect(response.status).toBe(400);
+  });
+
+  it('moves no path when the setting itself cannot be stored', async () => {
+    // Paths and setting are one batch, so one transaction: a failure in the
+    // last statement must leave the first ones unwritten, not half a swap.
+    await env.DB.prepare(
+      "CREATE TRIGGER refuse_site BEFORE UPDATE ON site BEGIN SELECT RAISE(ABORT, 'refused'); END",
+    ).run();
+    try {
+      const response = await api(
+        'POST',
+        '/_mallok/api/settings/default-locale',
+        { locale: 'de', confirm: true },
+      );
+      expect(response.status).toBeGreaterThanOrEqual(500);
+    } finally {
+      await env.DB.prepare('DROP TRIGGER refuse_site').run();
+    }
+    const row = await env.DB.prepare('SELECT path FROM content WHERE id = ?')
+      .bind(englishId)
+      .first<{ path: string }>();
+    expect(row?.path).toBe('/news/titanium-supply');
   });
 
   it('swaps every URL when the default locale changes, leaving redirects', async () => {

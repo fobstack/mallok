@@ -12,7 +12,7 @@
   <aside class="toc" aria-label="{{ t.on_this_page }}">
     <p class="toc-h">{{ t.on_this_page }}</p>
     <ol>
-      {% for h in content.headings %}{% if h.depth == 2 %}<li>{{ h.text }}</li>{% endif %}{% endfor %}
+      {% for h in content.headings %}{% if h.depth == 2 %}<li><a href="#{{ h.id }}">{{ h.text }}</a></li>{% endif %}{% endfor %}
     </ol>
     <p class="toc-meta">{{ content.reading_time }} {{ t.min }}</p>
   </aside>

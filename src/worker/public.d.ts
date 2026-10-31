@@ -118,6 +118,12 @@ export interface PluginSiteSettings {
   /** Taglines of other languages, by locale. */
   readonly taglines: Readonly<Record<string, string>>;
   readonly defaultLocale: string;
+  /**
+   * True when the default locale is prefixed too (`/en/…`); build a page's
+   * path with `localePrefix(locale, ctx.site)` rather than testing for the
+   * default locale.
+   */
+  readonly prefixDefaultLocale: boolean;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
   readonly nav: Readonly<
@@ -287,6 +293,17 @@ export interface PluginManifest {
   }[];
 }
 
+/**
+ * What a plugin's `ctx.purgeTags` call came to (§9.1). `attempted` is false
+ * when the site has no purge token; `status` is Cloudflare's HTTP status,
+ * absent when it could not be reached.
+ */
+export interface PurgeOutcome {
+  readonly attempted: boolean;
+  readonly ok: boolean;
+  readonly status?: number;
+}
+
 /** Capabilities every plugin call receives (§7). */
 export interface PluginContext {
   readonly db: D1Database;
@@ -305,8 +322,13 @@ export interface PluginContext {
    * Purges this plugin's own cache tags — the names it returned as
    * `cacheTags` from `renderData` — or `site` (§9.1). Nothing else can be
    * named: every other tag is taken to be one of the plugin's own.
+   *
+   * Resolves once Cloudflare has answered. `ok: false` with `attempted: true`
+   * means the pages are still cached: a webhook handler can answer an error
+   * so the sender retries. The failure is also logged and shown in the
+   * admin's diagnostics.
    */
-  readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
+  readonly purgeTags: (tags: readonly string[]) => Promise<PurgeOutcome>;
   readonly waitUntil: (promise: Promise<unknown>) => void;
   /**
    * Queues one of this plugin's jobs (§7.4) and returns its id. The job runs
@@ -652,6 +674,21 @@ export declare function renderTextTemplate(
   data: Readonly<Record<string, unknown>>,
 ): Promise<string>;
 
+/**
+ * The URL prefix of `locale` on a site: `''` for the default locale when it
+ * lives at the root, `/<locale>` otherwise — including the default locale on a
+ * site that sets `prefixDefaultLocale`. Pass `ctx.site`. Build a public link
+ * as `` `${localePrefix(locale, ctx.site)}/pricing` `` rather than testing for
+ * the default locale.
+ */
+export declare function localePrefix(
+  locale: string,
+  site: {
+    readonly defaultLocale: string;
+    readonly prefixDefaultLocale?: boolean;
+  },
+): string;
+
 /** The five official themes, ready to pass to {@link createMallok}. */
 export declare const atelier: BundledTheme;
 export declare const folio: BundledTheme;
@@ -719,6 +756,12 @@ export interface StarterRecord {
 export interface StarterSettings {
   /** Languages the starter's content covers; added to the operator's own. */
   readonly locales?: readonly string[];
+  /**
+   * Prefix the default locale too (`/en/…`), and make the root a redirect to
+   * its home (docs/ARCHITECTURE.md §9). Applied before the starter's content
+   * is imported, so the documents land at their prefixed paths.
+   */
+  readonly prefixDefaultLocale?: boolean;
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
   readonly nav: Readonly<
     Record<string, readonly { label: string; href: string }[]>

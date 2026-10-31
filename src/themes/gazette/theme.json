@@ -2,7 +2,7 @@
   "id": "gazette",
   "name": "Gazette",
   "description": "A premium trade-news magazine: serif masthead, lead story with art, latest rail, subscribe band.",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "themeApi": 1,
   "home": "layouts/home.liquid",
   "kinds": {

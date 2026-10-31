@@ -10,7 +10,7 @@
  */
 
 import { z } from 'zod';
-import { renderTextTemplate } from '../../core/index.js';
+import { localePrefix, renderTextTemplate } from '../../core/index.js';
 import { defineOfficialPlugin } from '../define.js';
 import type { PluginRequestContext, RouteInput } from '../types.js';
 import {
@@ -208,7 +208,7 @@ function thanksRedirect(ctx: PluginRequestContext, locale: string): Response {
     ctx.settings.thanks_path.startsWith('/')
       ? ctx.settings.thanks_path
       : '/thank-you';
-  const prefix = locale === ctx.site.defaultLocale ? '' : `/${locale}`;
+  const prefix = localePrefix(locale, ctx.site);
   return Response.redirect(
     new URL(`${prefix}${raw}`, ctx.url.origin).toString(),
     302,

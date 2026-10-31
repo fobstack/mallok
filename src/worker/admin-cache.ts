@@ -13,15 +13,23 @@
  */
 
 import { clearRenderCache } from '../db/queries.js';
-import { purgeNow } from './cache.js';
+import { purgeFailureAdvice, purgeNow } from './cache.js';
 import type { Env } from './env.js';
-import { json } from './http.js';
+import { json, problem } from './http.js';
 
 /** Purges every cached page at the edge. */
 export async function postPurgeAll(env: Env): Promise<Response> {
   // `site` is on every page, list, feed and sitemap response
   // (see `tagsForContent`), so one tag clears the lot.
-  const result = await purgeNow(env, ['site']);
+  const result = await purgeNow(env, ['site'], 'manual');
+  if (result.attempted && !result.ok) {
+    // Asked, and refused or unreachable. Saying "cleared" here would leave
+    // the operator looking at stale pages they were just told were gone.
+    return problem(
+      502,
+      `Cloudflare did not purge the cache${result.status === undefined ? '' : ` (HTTP ${result.status})`}. ${purgeFailureAdvice(result.status)} ${(result.detail ?? '').slice(0, 300)}`.trim(),
+    );
+  }
   return json({
     purged: result.ok,
     attempted: result.attempted,
@@ -43,7 +51,7 @@ export async function postClearFragments(
 ): Promise<Response> {
   const removed = await clearRenderCache(env.DB);
   // The pages at the edge still hold the old HTML, so they go too.
-  ctx.waitUntil(purgeNow(env, ['site']));
+  ctx.waitUntil(purgeNow(env, ['site'], 'fragments'));
   return json({
     cleared: removed,
     note: 'Fragments are derived from your Markdown and are rebuilt on the next request.',

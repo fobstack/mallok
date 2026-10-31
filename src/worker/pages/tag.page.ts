@@ -7,6 +7,7 @@
  * catch-all page instead.
  */
 
+import { localePrefix } from '../../core/index.js';
 import { listByTag } from '../../db/queries.js';
 import { definePage } from '../../runtime/core/index.js';
 import { runAfterRender } from '../plugin-runtime.js';
@@ -37,11 +38,23 @@ type Archive =
   | { readonly found: false };
 
 export default definePage<PublicLocals>()({
-  load: async ({ params, locals }): Promise<Archive> => {
+  load: async ({ params, locals, url }): Promise<Archive | Response> => {
     const raw = params.tag ?? '';
     const matched = PAGED.exec(raw);
     const tag = decodeURIComponent(matched?.[1] ?? '');
     const page = matched?.[2] === undefined ? 1 : Number(matched[2]);
+    // An archive lives under its locale's prefix; on a site that prefixes the
+    // default locale, `/tags/x` is the default locale's archive under its
+    // old address, and is sent there.
+    if (!locals.prefixed) {
+      return Response.redirect(
+        new URL(
+          `/${locals.settings.defaultLocale}${url.pathname}${url.search}`,
+          url.origin,
+        ).toString(),
+        301,
+      );
+    }
     if (tag === '' || page < 1) {
       return { found: false };
     }
@@ -82,10 +95,7 @@ export default definePage<PublicLocals>()({
       };
     }
     const { tag, page, rows, covers, pluginData } = archive;
-    const prefix =
-      locals.locale === locals.settings.defaultLocale
-        ? ''
-        : `/${locals.locale}`;
+    const prefix = localePrefix(locals.locale, locals.settings);
     const rendered = await renderListPage(
       {
         ...locals.render,

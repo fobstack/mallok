@@ -417,8 +417,39 @@ describe('what createMallok accepts as a starter', () => {
     ).toBe('accepted');
   });
 
+  it('takes a document with a slug of several segments', () => {
+    expect(
+      said([
+        {
+          ...base,
+          documents: [
+            {
+              kind: 'product',
+              slug: 'bars/round',
+              markdown: '---\ntitle: Round bar\n---\n',
+            },
+          ],
+        },
+      ]),
+    ).toBe('accepted');
+  });
+
   it.each([
     ['an id that is not a slug', { ...base, id: 'My Shop' }, /at id/],
+    [
+      'a slug a save would refuse',
+      {
+        ...base,
+        documents: [
+          {
+            kind: 'product',
+            slug: 'bars/Round Bar',
+            markdown: '---\ntitle: Round bar\n---\n',
+          },
+        ],
+      },
+      /Segment 2 \("Round Bar"\).*Use "bars\/round-bar"/,
+    ],
     [
       'two documents at one kind and slug',
       { ...base, documents: [...base.documents, ...base.documents] },

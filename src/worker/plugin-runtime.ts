@@ -862,7 +862,23 @@ export async function buildPluginContext(
     sendEmail: (message) =>
       queueEmail(env, executionCtx, pluginId, from, message),
     // Own namespace only, plus `site` (docs/PLUGIN_API.md §9).
-    purgeTags: (tags) => purgeTags(env, pluginPurgeTags(pluginId, tags)),
+    purgeTags: async (tags) => {
+      const pending = purgeTags(
+        env,
+        pluginPurgeTags(pluginId, tags),
+        `plugin:${pluginId}`,
+      );
+      // The purge runs on a short timer (`purgeTags`). Kept alive here, it
+      // happens even when the plugin does not wait for it; otherwise the
+      // timer dies with the request and nothing is purged or recorded.
+      executionCtx.waitUntil(pending);
+      const result = await pending;
+      return {
+        attempted: result.attempted,
+        ok: result.ok,
+        ...(result.status === undefined ? {} : { status: result.status }),
+      };
+    },
     waitUntil: (promise) => executionCtx.waitUntil(promise),
     enqueue: async (name, payload, options) => {
       const job = describeJob(active, name, payload, options);

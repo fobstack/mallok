@@ -72,7 +72,7 @@ npm 包与 GitHub 附件来自同一个经过验证的 tarball，验证流程见
 
 Mallok 以 Cloudflare 免费额度起步为设计目标。实际成本与容量取决于用量、套餐限制、域名注册和邮件等可选服务；免费不代表无限使用。
 
-自动缓存失效需要把仅授权当前 zone 的 Cache Purge 令牌 `CF_API_TOKEN` 和 `CF_ZONE_ID` 配置为 Worker secrets。未配置时，访客可能看到旧内容直到缓存到期。不要提交凭据。
+自动缓存失效需要把仅授权当前 zone、权限为 **Zone → Cache Purge → Purge** 的令牌 `CF_API_TOKEN` 和 `CF_ZONE_ID` 配置为 Worker secrets。后台列表里紧挨着它的 **Cache Rules** 是另一种权限，不能清缓存；清缓存失败会显示在“设置 → 高级”里。未配置时，访客可能看到旧内容直到缓存到期。不要提交凭据。
 即使主题不输出 JavaScript，Cloudflare 或第三方集成也可能注入脚本。
 
 ## 文档与参与贡献

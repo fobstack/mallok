@@ -32,6 +32,12 @@ export interface PublicLocals {
   /** Path with the locale prefix removed, as Mallok's own parser sees it. */
   readonly rest: string;
   readonly locale: string;
+  /**
+   * False on a site that prefixes its default locale, when this path does
+   * not: such a path serves nothing but a redirect to where it moved
+   * (docs/ARCHITECTURE.md §9).
+   */
+  readonly prefixed: boolean;
   /** Normalised request path, including any locale prefix. */
   readonly pathname: string;
   readonly now: string;
@@ -111,6 +117,7 @@ export async function buildLocals(
     pathname,
     settings.locales,
     settings.defaultLocale,
+    settings.prefixDefaultLocale,
   );
   const theme = getCompiledTheme();
   return {
@@ -120,6 +127,7 @@ export async function buildLocals(
     data,
     rest: parsed.rest,
     locale: parsed.locale,
+    prefixed: parsed.prefixed,
     pathname,
     now,
     noindex: settings.domain === null || url.host !== settings.domain,
