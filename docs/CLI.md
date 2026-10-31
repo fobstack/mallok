@@ -310,6 +310,13 @@ only redirects: a `_redirects` file (`/ /en 301`, `/feed.xml /en/feed.xml
 and an `index.html` that refreshes to `/en`, says `noindex` and names `/en` as
 canonical, for a host that does not read `_redirects`.
 
+It takes the slugs the Worker takes, checked by the same functions before
+anything is written: a slug the Worker would refuse (`../x`, `page/2`,
+`Products`, a first segment that is a language or a kind's base) stops the
+build, listing each one, and the output is not touched. A slug becomes
+folders here, so letting one through could write outside the output or over
+a list's second page.
+
 **It renders through exactly the same `src/core` functions as the Worker**, so
 the same input produces the same bytes. That is precisely why `src/core` may
 not import Cloudflare types.

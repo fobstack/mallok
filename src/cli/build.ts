@@ -37,6 +37,8 @@ import {
   renderPage,
   type SitemapEntry,
   type SummaryInput,
+  slugPlacementProblem,
+  slugProblem,
   splitTagline,
   type ThemeFiles,
   type ThemeManifest,
@@ -148,12 +150,57 @@ async function writeRootRedirects(
   );
 }
 
-/** Where a public path is written inside the output directory. */
-function outputPath(outDir: string, path: string): string {
+/**
+ * Where a public path is written inside the output directory.
+ *
+ * Slugs are checked before anything is written ({@link slugProblems}); this
+ * is the last line for whatever else becomes a path, a tag named `..` say,
+ * which would otherwise overwrite the page above its archive. A path with a
+ * `.` or `..` segment is refused; with none, `join` cannot leave `outDir`
+ * (a tag reaches here URL-encoded, so it has no separator of its own).
+ */
+export function outputPath(outDir: string, path: string): string {
   const clean = path.replace(/^\/+/, '').replace(/\/+$/, '');
-  return clean === ''
-    ? join(outDir, 'index.html')
-    : join(outDir, ...clean.split('/'), 'index.html');
+  const segments = clean === '' ? [] : clean.split('/');
+  if (segments.some((segment) => segment === '.' || segment === '..')) {
+    throw new CliError(
+      EXIT.user,
+      `"${path}" is not an address the build can write: it steps outside its own folder.`,
+      'Rename the slug or tag that produces it.',
+    );
+  }
+  return join(outDir, ...segments, 'index.html');
+}
+
+/**
+ * Every published item whose slug the Worker would refuse, in the words it
+ * would refuse it with.
+ *
+ * A slug becomes folders here, so one the Worker never lets through —
+ * `../../x`, `page/2`, `Products` — would write outside the output, over a
+ * list's second page, or to an address that serves nothing once imported.
+ * The build and the Worker take the same slugs (docs/CLI.md §6.7).
+ */
+export function slugProblems(
+  items: readonly SiteItem[],
+  config: SiteConfigFile,
+): string[] {
+  const problems: string[] = [];
+  for (const item of items) {
+    const base = config.kinds[item.kind]?.base ?? item.kind;
+    const problem =
+      slugProblem(item.slug) ??
+      slugPlacementProblem(item.slug, item.kind === 'page' ? '' : base, {
+        locales: config.locales,
+        kinds: config.kinds,
+      });
+    if (problem !== null) {
+      problems.push(
+        `${item.kind} "${item.slug}" (${item.locale}): ${problem.message}`,
+      );
+    }
+  }
+  return problems;
 }
 
 async function write(
@@ -272,6 +319,14 @@ export async function buildStatic(
     ),
   });
   const model = buildSiteModel(scan.bundles, config, options.now);
+  const refused = slugProblems(model.published, config);
+  if (refused.length > 0) {
+    throw new CliError(
+      EXIT.user,
+      `${refused.length} slug${refused.length === 1 ? '' : 's'} cannot be built:\n${refused.map((line) => `  ${line}`).join('\n')}`,
+      'Set `slug:` in the front matter, or rename the bundle folder. Nothing was written.',
+    );
+  }
   report.step(
     `${model.published.length} published items in ${config.locales.length} language${config.locales.length === 1 ? '' : 's'}.`,
   );
