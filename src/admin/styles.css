@@ -310,93 +310,6 @@
     color: var(--muted-foreground);
     text-align: center;
   }
-  .topbar {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-    padding: 0.65rem clamp(1rem, 3vw, 2rem);
-    border-bottom: 1px solid var(--line-strong);
-    background: var(--bg-surface);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.55rem;
-    color: var(--ink);
-    font-weight: 650;
-    letter-spacing: -0.005em;
-  }
-  .brand:hover {
-    text-decoration: none;
-  }
-  .brand .mark {
-    display: grid;
-    place-items: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: var(--radius-sm);
-    background: var(--blueprint);
-    color: #fff;
-    font-family: var(--mono);
-    font-size: 0.8rem;
-    font-weight: 600;
-  }
-  .topbar nav {
-    display: flex;
-    gap: 1.4rem;
-  }
-  .topbar nav a {
-    color: var(--muted-foreground);
-    padding: 0.2rem 0;
-    border-bottom: 2px solid transparent;
-    font-size: 0.9rem;
-  }
-  .topbar nav a[aria-current] {
-    color: var(--ink);
-    border-bottom-color: var(--blueprint);
-    text-decoration: none;
-  }
-  .user {
-    margin-inline-start: auto;
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    font-size: 0.85rem;
-    color: var(--muted-foreground);
-  }
-
-  @media (max-width: 40rem) {
-    .topbar {
-      flex-wrap: wrap;
-      gap: 0.6rem 1.2rem;
-    }
-    .brand span:last-child {
-      max-width: 11rem;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .topbar nav {
-      order: 3;
-      flex-basis: 100%;
-      gap: 1rem;
-    }
-  }
-
-  .banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.6rem clamp(1rem, 3vw, 2rem);
-    background: var(--oxide-tint);
-    color: var(--oxide);
-    border-bottom: 1px solid var(--line);
-    font-size: 0.9rem;
-  }
 
   /* The page area inside the shell's `<main>` (the sidebar inset). */
   .admin-content {
@@ -465,25 +378,6 @@
   }
   .bullets li + li {
     margin-top: 0.3rem;
-  }
-
-  /* Tabs */
-  .tabs {
-    display: flex;
-    gap: 1.2rem;
-    border-bottom: 1px solid var(--line-strong);
-    margin-bottom: 1.5rem;
-  }
-  .tabs a {
-    color: var(--muted-foreground);
-    padding: 0 0 0.6rem;
-    border-bottom: 2px solid transparent;
-  }
-  /* biome-ignore lint/style/noDescendingSpecificity: topbar and tabs are unrelated components */
-  .tabs a[aria-current] {
-    color: var(--ink);
-    border-bottom-color: var(--blueprint);
-    text-decoration: none;
   }
 
   /* Forms */
@@ -755,18 +649,6 @@
   .login h1 {
     font-size: 1.375rem;
     margin-bottom: 1.2rem;
-  }
-  .login button {
-    width: 100%;
-  }
-
-  .banner.soft {
-    background: var(--bg-sunken);
-    color: var(--muted-foreground);
-    border-bottom: 1px solid var(--line);
-  }
-  .banner.soft code {
-    color: var(--ink);
   }
 
   /* ---------------------------------------------------------------------------
