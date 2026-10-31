@@ -403,7 +403,16 @@ keep letters and digits of any script as they are (`## 快速开始` →
 `快速开始`), fall back to `heading-<n>` when the text has neither, and are
 unique in the document (`example`, `example-1`, …). A heading the author
 gave an id in inline HTML keeps it, with the sanitizer's `user-content-`
-prefix. The heading of the GFM footnotes section is not listed. Since
+prefix, unless an earlier element already has that id: then it is numbered
+like a repeated heading. The heading of the GFM footnotes section is not
+listed.
+
+Generated ids are not prefixed, so they share the page with the theme's own.
+They never take the ids the official themes and plugins write — `main`,
+`menu-toggle`, `products`, `capabilities`, `turnstile`, `hero-slide-<n>`,
+`shot-<n>` (`RESERVED_IDS` in `src/core/fragment.ts`); a heading called
+"Main" is `main-1`. A theme of your own should give its elements ids with an
+underscore (`site_menu`): a heading's id never contains one. Since
 pipeline version 2 (Mallok 0.1.0-rc.12); earlier fragments had no ids and
 are re-rendered on their next request.
 

@@ -1,4 +1,7 @@
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { RESERVED_IDS, RESERVED_NUMBERED_ID } from '../../src/core/fragment.js';
 import {
   type AssetMap,
   computeFragmentCacheKey,
@@ -246,6 +249,56 @@ describe('heading ids (Task 48)', () => {
       { depth: 2, text: 'Intro', id: 'intro' },
     ]);
     expect(html.match(/id="user-content-intro"/g)).toHaveLength(1);
+  });
+
+  it('never takes an id the theme or a plugin puts on the page', async () => {
+    // Unprefixed, a heading called "Main" would be a second `id="main"`, and
+    // the skip link would land on it instead of the page's content.
+    const { meta } = await render(
+      '## Main\n\n## Products\n\n## Turnstile\n\n## Shot 1\n\n## Hero slide 2\n\n## Shot\n',
+    );
+    expect(meta.headings.map((h) => h.id)).toEqual([
+      'main-1',
+      'products-1',
+      'turnstile-1',
+      'shot-1-1',
+      'hero-slide-2-1',
+      'shot',
+    ]);
+  });
+
+  it('reserves every fixed id the official themes and plugins write', async () => {
+    const found = new Set<string>();
+    for (const root of ['src/themes', 'src/plugins']) {
+      for (const file of await readdir(root, { recursive: true })) {
+        if (!/\.(liquid|ts)$/.test(file)) continue;
+        const text = await readFile(join(root, file), 'utf8');
+        for (const match of text.matchAll(/\bid=\\?"([^"\\]+)\\?"/g)) {
+          found.add(match[1] ?? '');
+        }
+      }
+    }
+    expect(found.size).toBeGreaterThan(0);
+    for (const id of found) {
+      // A templated id is numbered by its loop: check the number it gets.
+      const sample = id.replace(/\{\{[^}]*\}\}/g, '1');
+      expect(
+        RESERVED_IDS.has(sample) || RESERVED_NUMBERED_ID.test(sample),
+        id,
+      ).toBe(true);
+    }
+  });
+
+  it("numbers an author's id that an earlier element already has", async () => {
+    const { html, meta } = await render(
+      '<a id="setup"></a>\n\n<h2 id="setup">Setup</h2>\n\n<h2 id="faq">FAQ</h2>\n\n<h2 id="faq">More FAQ</h2>\n',
+    );
+    expect(meta.headings.map((h) => h.id)).toEqual([
+      'user-content-setup-1',
+      'user-content-faq',
+      'user-content-faq-1',
+    ]);
+    expect(html.match(/id="user-content-faq"/g)).toHaveLength(1);
   });
 
   it('does not list the footnotes label as a section', async () => {

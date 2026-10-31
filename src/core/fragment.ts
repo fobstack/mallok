@@ -144,7 +144,7 @@ export async function renderFragment(
     .use(rehypeRaw)
     .use(rehypeSanitize, sanitizeSchema)
     // After the sanitizer, so the ids it generates are not prefixed the
-    // way an author's own ids are (see `assignHeadingIds`).
+    // way an author's own ids are (see `collectHeadings`).
     .use(() => (tree: HastRoot) => {
       collectHeadings(tree, headings);
     })
@@ -230,11 +230,19 @@ const MAX_HEADING_ID = 80;
  *
  * These ids are not prefixed, unlike an author's: `#quick-start` is the
  * link a table of contents and a reader expect (owner decision 2026-10-25,
- * docs/SECURITY.md §4). The GFM footnotes' own heading is not listed: it
- * labels the footnotes, it is not a section of the document.
+ * docs/SECURITY.md §4). Unprefixed, they share the page with the theme's and
+ * plugins' own ids, so they never take one of {@link RESERVED_IDS}: a heading
+ * called "Main" is `main-1`, and the skip link still reaches `<main>`.
+ *
+ * An author's id is kept, except where an earlier element already has it:
+ * then the heading is numbered like a repeated one, so its table-of-contents
+ * link leads to it rather than to the first. The GFM footnotes' own heading
+ * is not listed: it labels the footnotes, it is not a section of the
+ * document.
  */
 function collectHeadings(tree: HastRoot, out: HeadingInfo[]): void {
-  const taken = new Set<string>();
+  const taken = new Set<string>(RESERVED_IDS);
+  const before = new Set<string>();
   visit(tree, 'element', (node) => {
     const id = node.properties.id;
     if (typeof id === 'string') {
@@ -245,6 +253,10 @@ function collectHeadings(tree: HastRoot, out: HeadingInfo[]): void {
   visit(tree, 'element', (node, _index, parent) => {
     const match = /^h([1-6])$/.exec(node.tagName);
     if (match === null) {
+      const id = node.properties.id;
+      if (typeof id === 'string') {
+        before.add(id);
+      }
       return;
     }
     position++;
@@ -259,20 +271,51 @@ function collectHeadings(tree: HastRoot, out: HeadingInfo[]): void {
     const text = hastToString(node).trim();
     const own = node.properties.id;
     let id: string;
-    if (typeof own === 'string' && own !== '') {
+    if (typeof own === 'string' && own !== '' && !before.has(own)) {
       id = own;
     } else {
-      const base = headingSlug(text) || `heading-${position}`;
+      const base =
+        typeof own === 'string' && own !== ''
+          ? own
+          : headingSlug(text) || `heading-${position}`;
       id = base;
-      for (let suffix = 1; taken.has(id); suffix++) {
+      for (
+        let suffix = 1;
+        taken.has(id) || RESERVED_NUMBERED_ID.test(id);
+        suffix++
+      ) {
         id = `${base}-${suffix}`;
       }
       taken.add(id);
       node.properties.id = id;
     }
+    before.add(id);
     out.push({ depth, text, id });
   });
 }
+
+/**
+ * Ids the official themes and plugins put on the page themselves, which a
+ * generated heading id must not repeat: `main` is every theme's skip-link
+ * target, `menu-toggle` Atelier's menu, `products` and `capabilities` its
+ * home sections, and `turnstile`, the global the inquiry form's Turnstile
+ * script defines: an element with that id is `window.turnstile` until the
+ * script has loaded. Numbered ids (`hero-slide-1`,
+ * `shot-1`) come from loops and are covered by {@link RESERVED_NUMBERED_ID}.
+ * `test/core/fragment.test.ts` keeps this list in step with the themes.
+ * A theme of its own should use ids with `_` in them (`site_menu`): a
+ * heading's id never has one (docs/THEME_FORMAT.md §7.2).
+ */
+export const RESERVED_IDS: ReadonlySet<string> = new Set([
+  'main',
+  'menu-toggle',
+  'products',
+  'capabilities',
+  'turnstile',
+]);
+
+/** Numbered ids the official themes write in loops. */
+export const RESERVED_NUMBERED_ID = /^(?:hero-slide|shot)-\d+$/;
 
 /**
  * The id a heading's text becomes: lowercased, letters, marks and digits of
