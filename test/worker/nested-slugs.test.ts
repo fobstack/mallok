@@ -368,4 +368,59 @@ describe('slugs of several segments', () => {
     ).first<{ slug: string }>();
     expect(stored?.slug).toBe('crypto/crypto-quote');
   });
+
+  it("refuses a settings change that would give a nested slug's first segment away", async () => {
+    // A save checks the first segment against the languages and bases there
+    // are; enabling `de`, or giving a kind the base `guides`, would make it
+    // the address of something else, and the page would never be served.
+    const handbook = await saved({
+      kind: 'page',
+      slug: 'de/handbook',
+      markdown: '---\ntitle: Handbook\n---\n\nX.',
+    });
+    const kinds = {
+      page: { base: '' },
+      article: { base: 'rest-api' },
+      faq: { base: 'faq' },
+      case: { base: '' },
+    };
+
+    const language = await api('PATCH', '/_mallok/api/settings', {
+      locales: ['en', 'zh-cn', 'de'],
+    });
+    expect(language.status).toBe(409);
+    const refused = (await language.json()) as {
+      stranded: { id: string; path: string; problem: string }[];
+    };
+    expect(refused.stranded).toEqual([
+      {
+        id: handbook.id,
+        path: '/en/de/handbook',
+        problem: expect.stringContaining('the language "de"'),
+      },
+    ]);
+
+    const base = await api('PATCH', '/_mallok/api/settings', {
+      kinds: { ...kinds, faq: { base: 'guides' } },
+    });
+    expect(base.status).toBe(409);
+    expect(await base.text()).toContain('/en/guides/getting-started');
+
+    // Nothing was stored, and a change that strands nothing goes through.
+    const settings = (await (
+      await api('GET', '/_mallok/api/settings')
+    ).json()) as {
+      locales: string[];
+      kinds: Record<string, { base: string }>;
+    };
+    expect(settings.locales).toEqual(['en', 'zh-cn']);
+    expect(settings.kinds.faq?.base).toBe('faq');
+    expect(
+      (
+        await api('PATCH', '/_mallok/api/settings', {
+          locales: ['en', 'zh-cn', 'fr'],
+        })
+      ).status,
+    ).toBe(200);
+  });
 });

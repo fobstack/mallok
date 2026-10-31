@@ -14,6 +14,7 @@ import {
   linkForPrefix,
   PIPELINE_VERSION,
   type SiteLocales,
+  slugPlacementProblem,
   splitTagline,
   themeAssetBase,
 } from '../core/index.js';
@@ -195,6 +196,23 @@ export async function patchSettings(
     );
   }
 
+  if (input.locales !== undefined || input.kinds !== undefined) {
+    const current = parseSiteSettings(row);
+    const stranded = await strandedSlugs(env.DB, {
+      locales: input.locales ?? current.locales,
+      kinds: input.kinds ?? current.kinds,
+    });
+    if (stranded.length > 0) {
+      return json(
+        {
+          error: `${stranded.length} slug${stranded.length === 1 ? '' : 's'} would start at an address the new settings give to a language or a kind. Change ${stranded.length === 1 ? 'it' : 'them'} first.`,
+          stranded,
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   const patch: SitePatch = {
     ...pick('name', input.name),
     ...taglinePatch(input.tagline, row.default_locale),
@@ -213,6 +231,39 @@ export async function patchSettings(
   // Any of these can change every rendered page, so drop the whole site tag.
   ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
   return getSettings(env);
+}
+
+/**
+ * Content whose slug of several segments the given settings would refuse.
+ *
+ * A save checks a slug against the languages and kind bases as they are
+ * (`slugPlacementProblem`). Enabling `de`, or giving a kind the base `docs`,
+ * changes what is free: a page at `/de/pricing` or `/docs/setup` would then
+ * share its first segment with the language's or kind's addresses, and one
+ * of the two would never be served. Only slugs with a `/` can clash, so only
+ * those rows are read.
+ */
+async function strandedSlugs(
+  db: D1Database,
+  site: Pick<SiteSettings, 'locales' | 'kinds'>,
+): Promise<{ id: string; path: string; problem: string }[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT id, kind, slug, path FROM content WHERE instr(slug, '/') > 0",
+    )
+    .all<{ id: string; kind: string; slug: string; path: string }>();
+  const stranded: { id: string; path: string; problem: string }[] = [];
+  for (const row of results) {
+    const kind = site.kinds[row.kind];
+    if (kind === undefined) {
+      continue;
+    }
+    const refused = slugPlacementProblem(row.slug, kind.base, site);
+    if (refused !== null) {
+      stranded.push({ id: row.id, path: row.path, problem: refused.message });
+    }
+  }
+  return stranded;
 }
 
 /** Liveness plus the facts the admin's diagnostics page needs. */

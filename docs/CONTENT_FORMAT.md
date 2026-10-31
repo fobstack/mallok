@@ -81,7 +81,11 @@ slug `crypto/crypto-quote` is `/rest-api/crypto/crypto-quote`, or
 - **In a kind with no base**, a slug of several segments may not start with
   `tags`, `media` or `theme`, another kind's base, or an enabled language: the
   site already answers those addresses. A one-segment slug is not held to this,
-  so nothing a site could save before is refused now.
+  so nothing a site could save before is refused now. The same holds the other
+  way round: a settings change that would enable a language, or give a kind a
+  base, matching the first segment of a slug already saved is refused with 409
+  and a `stranded` list of those items (id, path, reason); change their slugs
+  first.
 - **An intermediate address answers 404** (`/rest-api/crypto` above), unless an
   item has exactly that slug — a parent and its children are independent
   items, and there is no automatic index page.
