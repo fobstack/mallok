@@ -666,15 +666,22 @@ export async function recordPurgeFailure(
 }
 
 /**
- * Forgets the recorded purge failure. Called after the whole site was purged
- * successfully, which is what replaces every page an earlier failure left
- * stale. Writes nothing when there is nothing to forget.
+ * Forgets the recorded purge failure, if it is older than `before`. Called
+ * after the whole site was purged successfully, which replaces every page an
+ * earlier failure left stale — but not one recorded while that purge was in
+ * flight. Writes nothing when there is nothing to forget.
  */
-export async function clearPurgeFailure(db: D1Database): Promise<void> {
+export async function clearPurgeFailure(
+  db: D1Database,
+  before: string,
+): Promise<void> {
   await db
     .prepare(
-      'UPDATE site SET last_purge_failure = NULL WHERE id = 1 AND last_purge_failure IS NOT NULL',
+      `UPDATE site SET last_purge_failure = NULL
+       WHERE id = 1 AND last_purge_failure IS NOT NULL
+         AND COALESCE(json_extract(last_purge_failure, '$.at'), '') <= ?`,
     )
+    .bind(before)
     .run();
 }
 

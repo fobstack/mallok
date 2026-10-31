@@ -385,9 +385,15 @@ the home page also carry the `c:<id>` tag of every item they display.
 - **A failed purge is never silent** (Task 47). It is logged as
   `purge_failed`, stored on the site row with when, from where and what
   Cloudflare answered, and shown under Settings → Advanced and in
-  `GET /health` until a purge of the whole site succeeds. The admin's "Clear
-  cached pages" answers 502 with the reason and the permission to check, and
-  a plugin's `ctx.purgeTags` resolves to `{ attempted, ok, status }`.
+  `GET /health` until a purge of the whole site that started after it
+  succeeds, or until no token is configured. The admin's "Clear cached
+  pages" answers 502 with the reason and the permission to check, and a
+  plugin's `ctx.purgeTags` resolves to `{ attempted, ok, status }`. Purges
+  are coalesced over two seconds on a timer that runs in the request that
+  asked; every caller keeps that request alive for it (`waitUntil`), and a
+  flush whose timer was lost anyway is noticed by the next purge, logged as
+  `purge_flush_lost`, and sent with it — a lost timer can delay a purge, not
+  swallow it.
 
 **0.1 takes plan A by default with B as the alternative. Task 01 must measure
 the availability, latency and rate limits of both and write the conclusion

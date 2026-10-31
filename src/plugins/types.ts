@@ -48,7 +48,6 @@ export interface EmailMessage {
   readonly replyTo?: string;
 }
 
-/** Capabilities every plugin call receives. */
 /**
  * What a plugin's `ctx.purgeTags` call came to (§9.1). `attempted` is false
  * when the site has no purge token; `status` is Cloudflare's HTTP status,
@@ -60,6 +59,7 @@ export interface PurgeOutcome {
   readonly status?: number;
 }
 
+/** Capabilities every plugin call receives. */
 export interface PluginContext {
   readonly db: D1Database;
   readonly media: R2Bucket;

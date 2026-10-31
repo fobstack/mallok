@@ -1374,7 +1374,10 @@ only the pages showing that price are purged.
   ```
 
   The failure is logged as `purge_failed` with `source: "plugin:<id>"` and
-  shown under Settings → Advanced, whatever the plugin does with it. Checked on
+  shown under Settings → Advanced, whatever the plugin does with it. **The
+  purge happens whether or not the plugin waits for it**: the core keeps it
+  alive past the end of the request. Only a success counts as one: a reply
+  that is not Cloudflare's JSON saying `"success": true` is a failure. Checked on
   a deployed site on 2026-10-25: a raw-body route's purge of its own tag
   reached a cached page 3.6 seconds after the request.
 - A page a failed `renderData` hook kept out of the cache carries no tags;

@@ -1,7 +1,9 @@
 import { env, SELF } from 'cloudflare:test';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { definePlugin } from '../../src/plugins/define.js';
 import { postPurgeAll } from '../../src/worker/admin-cache.js';
-import { purgeNow } from '../../src/worker/cache.js';
+import { purgeNow, purgeTags } from '../../src/worker/cache.js';
+import { buildPluginContext } from '../../src/worker/plugin-runtime.js';
 
 /**
  * Cache maintenance (docs/ADMIN.md §11).
@@ -226,6 +228,160 @@ describe('cache maintenance', () => {
       const manual = await postPurgeAll(withToken);
       expect(manual.status).toBe(200);
       expect(await health()).toBeNull();
+    });
+
+    it('counts only an envelope that says success: a 200 that is not Cloudflare JSON fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      answer(() => new Response('<html>Proxy says hello</html>'));
+      const result = await purgeNow(withToken, ['c:9'], 'content');
+      expect(result).toMatchObject({ attempted: true, ok: false, status: 200 });
+      answer(() => new Response('{"errors":[]}'));
+      expect((await purgeNow(withToken, ['c:9'], 'content')).ok).toBe(false);
+    });
+
+    it('keeps a failure recorded while a whole-site purge was in flight', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const stored = async () =>
+        (
+          await env.DB.prepare(
+            'SELECT last_purge_failure AS f FROM site WHERE id = 1',
+          ).first<{ f: string | null }>()
+        )?.f ?? null;
+      // A failure stamped after the purge below starts: it concerns a change
+      // that purge may not have covered.
+      const later = JSON.stringify({
+        at: new Date(Date.now() + 60_000).toISOString(),
+        source: 'plugin:pricing',
+        tags: 1,
+        detail: 'refused',
+      });
+      await env.DB.prepare(
+        'UPDATE site SET last_purge_failure = ? WHERE id = 1',
+      )
+        .bind(later)
+        .run();
+      answer(() => new Response('{"success":true,"errors":[]}'));
+      expect((await purgeNow(withToken, ['site'], 'manual')).ok).toBe(true);
+      expect(await stored()).toBe(later);
+
+      // One stamped before it is what a whole-site purge replaces.
+      const earlier = JSON.stringify({
+        at: new Date(Date.now() - 60_000).toISOString(),
+        source: 'content',
+        tags: 1,
+        detail: 'refused',
+      });
+      await env.DB.prepare(
+        'UPDATE site SET last_purge_failure = ? WHERE id = 1',
+      )
+        .bind(earlier)
+        .run();
+      expect((await purgeNow(withToken, ['site'], 'manual')).ok).toBe(true);
+      expect(await stored()).toBeNull();
+    });
+
+    it('forgets a failure once no token is configured, since nothing can fail', async () => {
+      await env.DB.prepare(
+        'UPDATE site SET last_purge_failure = ? WHERE id = 1',
+      )
+        .bind(
+          JSON.stringify({
+            at: new Date(Date.now() - 1000).toISOString(),
+            source: 'content',
+            tags: 1,
+            detail: 'refused',
+          }),
+        )
+        .run();
+      const result = await purgeNow(env, ['site'], 'content');
+      expect(result.attempted).toBe(false);
+      const row = await env.DB.prepare(
+        'SELECT last_purge_failure AS f FROM site WHERE id = 1',
+      ).first<{ f: string | null }>();
+      expect(row?.f).toBeNull();
+    });
+
+    it("keeps a plugin's purge alive when the plugin does not wait for it, and tells it a failure", async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      // Purges are coalesced per isolate and flushed with the environment of
+      // the first caller. Let whatever earlier requests queued go out first.
+      await purgeTags(env, [], 'content');
+      const kept: Promise<unknown>[] = [];
+      const pricing = definePlugin({
+        manifest: { id: 'pricing', name: 'Pricing', version: '1.0.0' },
+      });
+      const ctx = await buildPluginContext(
+        withToken,
+        {
+          waitUntil: (promise: Promise<unknown>) => {
+            kept.push(promise);
+          },
+          passThroughOnException: () => undefined,
+          props: {},
+        } as unknown as ExecutionContext,
+        {} as never,
+        {
+          plugin: pricing,
+          settings: {},
+          state: {
+            plugin_id: 'pricing',
+            enabled: 1,
+            version: '1.0.0',
+            settings: '{}',
+            secrets: '{}',
+            updated_at: '',
+          },
+        },
+      );
+      answer(
+        () =>
+          new Response(
+            '{"success":false,"errors":[{"code":10000,"message":"Authentication error"}]}',
+            { status: 403 },
+          ),
+      );
+      // Called and not awaited, the way a fire-and-forget plugin would.
+      const outcome = ctx.purgeTags(['prices']);
+      expect(kept).toHaveLength(1);
+      await Promise.all(kept);
+      expect(await outcome).toEqual({
+        attempted: true,
+        ok: false,
+        status: 403,
+      });
+    });
+
+    it('recovers when a scheduled flush was lost, and sends what it held', async () => {
+      const logged = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+      const sent: string[][] = [];
+      globalThis.fetch = (async (
+        _input: RequestInfo | URL,
+        init?: RequestInit,
+      ) => {
+        sent.push((JSON.parse(String(init?.body)) as { tags: string[] }).tags);
+        return new Response('{"success":true,"errors":[]}');
+      }) as typeof fetch;
+      vi.useFakeTimers();
+      try {
+        // A flush whose timer never fires: its request ended without keeping
+        // it alive.
+        void purgeTags(withToken, ['lost'], 'plugin:pricing');
+        vi.clearAllTimers();
+        vi.setSystemTime(Date.now() + 15_000);
+        const next = purgeTags(withToken, ['next'], 'content');
+        await vi.advanceTimersByTimeAsync(2_000);
+        expect((await next).ok).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+      expect(sent).toEqual([['lost', 'next']]);
+      expect(
+        logged.mock.calls.map(
+          (call) => (JSON.parse(String(call[0])) as { event: string }).event,
+        ),
+      ).toContain('purge_flush_lost');
     });
 
     it('logs a failed background purge too, where nobody is waiting for it', async () => {

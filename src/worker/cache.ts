@@ -114,6 +114,16 @@ const PURGE_TAGS_PER_CALL = 100;
 let pendingTags = new Set<string>();
 let pendingSources = new Set<string>();
 let pendingFlush: Promise<PurgeResult> | undefined;
+/** When the pending flush was scheduled, to notice one whose timer died. */
+let pendingSince = 0;
+
+/**
+ * How long a scheduled flush may be outstanding before it is taken for lost.
+ * Its timer runs in the request that scheduled it; if that request ended
+ * without keeping it alive, the timer never fires, and every later purge in
+ * the isolate would join a flush that never comes.
+ */
+const PURGE_STALE_MS = PURGE_DEBOUNCE_MS * 5;
 
 /**
  * What asked for a purge, as the admin shows it when one fails: `manual`,
@@ -160,7 +170,23 @@ export function purgeTags(
     pendingTags.add(tag);
   }
   pendingSources.add(source);
+  if (
+    pendingFlush !== undefined &&
+    Date.now() - pendingSince > PURGE_STALE_MS
+  ) {
+    // The earlier flush's timer never fired. Its tags are still pending and
+    // go out with this one; the lost promise is abandoned.
+    console.error(
+      JSON.stringify({
+        event: 'purge_flush_lost',
+        tags: pendingTags.size,
+        sources: [...pendingSources].sort().join(','),
+      }),
+    );
+    pendingFlush = undefined;
+  }
   if (pendingFlush === undefined) {
+    pendingSince = Date.now();
     pendingFlush = new Promise<PurgeResult>((resolve) => {
       setTimeout(() => {
         const batch = [...pendingTags];
@@ -182,6 +208,9 @@ export async function purgeNow(
   source: PurgeSource,
 ): Promise<PurgeResult> {
   if (env.CF_API_TOKEN === undefined || env.CF_ZONE_ID === undefined) {
+    // Nothing can fail without a token, so an old failure — from before the
+    // token was removed — no longer describes this site.
+    await forgetFailure(env, new Date().toISOString());
     return {
       attempted: false,
       ok: false,
@@ -192,6 +221,7 @@ export async function purgeNow(
   // More tags than one call may carry are sent as several calls. Each one
   // counts against the plan's purge rate, so the first failure stops the rest
   // and is what the caller is told about.
+  const startedAt = new Date().toISOString();
   let last: PurgeResult = { attempted: true, ok: true, tags };
   for (let start = 0; start < tags.length; start += PURGE_TAGS_PER_CALL) {
     last = await purgeCall(
@@ -204,7 +234,7 @@ export async function purgeNow(
     }
   }
   const result = { ...last, tags };
-  await remember(env, result, source);
+  await remember(env, result, source, startedAt);
   return result;
 }
 
@@ -222,6 +252,7 @@ async function remember(
   env: Env,
   result: PurgeResult,
   source: PurgeSource,
+  startedAt: string,
 ): Promise<void> {
   try {
     if (!result.ok) {
@@ -235,8 +266,24 @@ async function remember(
       console.error(JSON.stringify({ event: 'purge_failed', ...failure }));
       await recordPurgeFailure(env.DB, JSON.stringify(failure));
     } else if (result.tags.includes(SITE_TAG)) {
-      await clearPurgeFailure(env.DB);
+      // Only a failure older than this purge: one recorded while it was in
+      // flight concerns a change it may not have covered.
+      await clearPurgeFailure(env.DB, startedAt);
     }
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: 'purge_record_failed',
+        message: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
+}
+
+/** Forgets a recorded failure, never letting that turn into an error. */
+async function forgetFailure(env: Env, before: string): Promise<void> {
+  try {
+    await clearPurgeFailure(env.DB, before);
   } catch (error) {
     console.error(
       JSON.stringify({
@@ -307,9 +354,16 @@ async function purgeCall(
       },
     );
     const text = await response.text();
-    // Cloudflare's envelope carries its own verdict. A 200 whose body says
-    // `"success": false` is a refusal, and is treated as one.
-    const ok = response.ok && !/"success"\s*:\s*false/.test(text);
+    // Cloudflare's envelope carries its own verdict, and only an envelope
+    // that says `"success": true` counts. A 200 that says false, or that is
+    // not Cloudflare's JSON at all (a proxy's page), is a failure.
+    let success = false;
+    try {
+      success = (JSON.parse(text) as { success?: unknown }).success === true;
+    } catch {
+      success = false;
+    }
+    const ok = response.ok && success;
     const detail = ok ? undefined : text;
     return {
       attempted: true,
