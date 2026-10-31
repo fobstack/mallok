@@ -115,7 +115,8 @@ Constraints and notes:
 - Changing `site.default_locale`, or `site.prefix_default_locale`, recomputes
   every `path` and writes the redirects. Each is an explicit bulk operation
   requiring confirmation (`POST /settings/default-locale`,
-  `POST /settings/locale-prefix`). Moving a path also deletes a redirect
+  `POST /settings/locale-prefix`), written in one D1 `batch()` so a failure
+  moves nothing. Moving a path also deletes a redirect
   *from* the path it moves to, and points any redirect that targeted the old
   path at the new one, so switching back and forth leaves no loop and an
   older slug's redirect stays one hop.

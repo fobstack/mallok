@@ -561,13 +561,25 @@ in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
     `site.home_path`, `site.kinds`, the inquiry thank-you redirect and
     `mallok build` all use the prefixed paths; a static build writes the root
     redirects to `_redirects` and to a `noindex` refresh page;
-  - an unprefixed address never serves a page: a list or tag path without a
-    prefix is a 404, and a content path is a 404 unless a redirect records
-    where it moved.
+  - an unprefixed address never serves a page. A list or tag path without a
+    prefix answers a `301` to the same path under `/<default>`, worked out as
+    it is asked for, because no content row moved from it to record one; a
+    content path is redirected by the redirect its move recorded, or is a
+    404. Any other unprefixed address stays a 404 rather than becoming a
+    redirect to one. Every redirect keeps the query string.
   Turning it on or off (`POST /_mallok/api/settings/locale-prefix`, with
   `"confirm": true`; Settings → Site; `prefixDefaultLocale` in `site.json` or
   a starter) moves every content path of the default language and records a
-  `301` from each old one. Off is the default, and a site that leaves it off
+  `301` from each old one, and rewrites the default language's navigation
+  links that are paths on the site (`/notes` ↔ `/en/notes`; absolute URLs and
+  `/_mallok/…` are left alone). Turning it off also records a `301` from
+  `/<default>`, each `/<default>/<base>` and each `/<default>/tags/<tag>` in
+  use, since those were real pages a moment before; turning it back on
+  removes them. Paths, redirects, navigation and setting are written in one
+  D1 `batch()`, which D1 runs as one transaction, so a failure leaves none of
+  them changed; changing the default language is one batch for the same
+  reason. The sitemap and feeds are cached under `site` as well as their own
+  tags, so the whole-site purge that follows reaches them. Off is the default, and a site that leaves it off
   serves byte-identical URLs (`test/worker/locale-prefix-golden.test.ts`,
   `test/cli/build-locale-prefix.test.ts`). Plugin addresses
   (`/_mallok/p/<plugin>/[<locale>/]…`) are not public pages and are unchanged:

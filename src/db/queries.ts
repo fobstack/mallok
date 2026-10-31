@@ -762,7 +762,7 @@ export interface PathMove {
 }
 
 /**
- * Rewrites public paths and records a redirect for each one.
+ * The statements that rewrite public paths and record a redirect for each.
  *
  * `moves` must be ordered so that a path is vacated before another row claims
  * it, because `content.path` is unique. The caller guarantees that by moving
@@ -772,53 +772,63 @@ export interface PathMove {
  * pointed at a moved path is pointed at its new one: moving there and back
  * must not leave a redirect behind, and an older slug's redirect must stay
  * one hop.
+ *
+ * Statements, not a call: the caller runs them in one `batch()` with the
+ * setting that makes them right, so a site never has half its paths moved.
+ * A batch is one transaction and counts as one query against the Free plan's
+ * 50 per invocation, however many statements it holds
+ * (developers.cloudflare.com/d1/platform/limits/, updated 2026-10-30;
+ * developers.cloudflare.com/d1/worker-api/d1-database/, updated 2026-06-22).
  */
-export async function movePaths(
+export function movePathStatements(
   db: D1Database,
   moves: readonly PathMove[],
   now: string,
-  chunkSize = 20,
-): Promise<void> {
-  for (let i = 0; i < moves.length; i += chunkSize) {
-    const chunk = moves.slice(i, i + chunkSize);
-    const statements: D1PreparedStatement[] = [];
-    for (const move of chunk) {
-      statements.push(
-        db
-          .prepare('UPDATE content SET path = ?, updated_at = ? WHERE id = ?')
-          .bind(move.to, now, move.id),
-        db.prepare('DELETE FROM redirect WHERE from_path = ?').bind(move.to),
-        db
-          .prepare('UPDATE redirect SET to_path = ? WHERE to_path = ?')
-          .bind(move.to, move.from),
-        db
-          .prepare(
-            `INSERT OR REPLACE INTO redirect
-               (from_path, to_path, status, content_id, created_at)
-             VALUES (?, ?, 301, ?, ?)`,
-          )
-          .bind(move.from, move.to, move.id, now),
-      );
-    }
-    await db.batch(statements);
-  }
+): D1PreparedStatement[] {
+  return moves.flatMap((move) => [
+    db
+      .prepare('UPDATE content SET path = ?, updated_at = ? WHERE id = ?')
+      .bind(move.to, now, move.id),
+    db.prepare('DELETE FROM redirect WHERE from_path = ?').bind(move.to),
+    db
+      .prepare('UPDATE redirect SET to_path = ? WHERE to_path = ?')
+      .bind(move.to, move.from),
+    db
+      .prepare(
+        `INSERT OR REPLACE INTO redirect
+           (from_path, to_path, status, content_id, created_at)
+         VALUES (?, ?, 301, ?, ?)`,
+      )
+      .bind(move.from, move.to, move.id, now),
+  ]);
 }
 
 /**
- * Records whether the default locale is prefixed. Paths must already have
- * been moved.
+ * Records whether the default locale is prefixed, and the navigation that
+ * goes with it; run in the same batch as the moves.
  */
-export async function setPrefixDefaultLocale(
+export function setPrefixDefaultLocaleStatement(
   db: D1Database,
   enabled: boolean,
+  nav: string,
   now: string,
-): Promise<void> {
-  await db
+): D1PreparedStatement {
+  return db
     .prepare(
-      'UPDATE site SET prefix_default_locale = ?, updated_at = ? WHERE id = 1',
+      'UPDATE site SET prefix_default_locale = ?, nav = ?, updated_at = ? WHERE id = 1',
     )
-    .bind(enabled ? 1 : 0, now)
-    .run();
+    .bind(enabled ? 1 : 0, nav, now);
+}
+
+/** Changes the default locale; run in the same batch as the moves. */
+export function setDefaultLocaleStatement(
+  db: D1Database,
+  locale: string,
+  now: string,
+): D1PreparedStatement {
+  return db
+    .prepare('UPDATE site SET default_locale = ?, updated_at = ? WHERE id = 1')
+    .bind(locale, now);
 }
 
 /** Changes the site's default locale. Paths must already have been moved. */

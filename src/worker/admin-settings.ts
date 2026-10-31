@@ -20,13 +20,14 @@ import {
   countStorage,
   failedJobs,
   listContentLocations,
+  listTags,
   loadSite,
   loadSiteRenderData,
-  movePaths,
+  movePathStatements,
   type PathMove,
   type SitePatch,
-  setDefaultLocale,
-  setPrefixDefaultLocale,
+  setDefaultLocaleStatement,
+  setPrefixDefaultLocaleStatement,
   updateSite,
 } from '../db/queries.js';
 import { THEMES } from '../themes/index.js';
@@ -310,9 +311,11 @@ export async function postDefaultLocale(
   }
 
   const now = new Date().toISOString();
-  await movePaths(env.DB, gaining, now);
-  await movePaths(env.DB, losing, now);
-  await setDefaultLocale(env.DB, target, now);
+  // One batch, one transaction: every path and the setting move together.
+  await env.DB.batch([
+    ...movePathStatements(env.DB, [...gaining, ...losing], now),
+    setDefaultLocaleStatement(env.DB, target, now),
+  ]);
   ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
 
   return json({
@@ -375,6 +378,111 @@ export async function postLocalePrefix(
 }
 
 /**
+ * The default locale's navigation, rewritten for the prefix setting.
+ *
+ * Its links are the site's own paths (`/products`), written for the setting
+ * as it was. Left alone they would each cost a redirect, and a list page has
+ * no redirect to fall back on. Only the default locale's entries that are
+ * paths on this site change: other languages already carry their prefix, and
+ * an absolute URL or an admin path is not the site's to rewrite.
+ */
+export function prefixNavigation(
+  nav: SiteSettings['nav'],
+  defaultLocale: string,
+  enabled: boolean,
+): SiteSettings['nav'] {
+  const own = nav[defaultLocale];
+  if (own === undefined) {
+    return nav;
+  }
+  const prefix = `/${defaultLocale}`;
+  const rewrite = (href: string): string => {
+    if (
+      !href.startsWith('/') ||
+      href.startsWith('//') ||
+      href.startsWith('/_mallok')
+    ) {
+      return href;
+    }
+    const prefixed =
+      href === prefix ||
+      href.startsWith(`${prefix}/`) ||
+      href.startsWith(`${prefix}?`) ||
+      href.startsWith(`${prefix}#`);
+    if (enabled) {
+      return prefixed ? href : href === '/' ? prefix : `${prefix}${href}`;
+    }
+    if (!prefixed) {
+      return href;
+    }
+    const rest = href.slice(prefix.length);
+    return rest === '' ? '/' : rest.startsWith('/') ? rest : `/${rest}`;
+  };
+  return {
+    ...nav,
+    [defaultLocale]: own.map((entry) => ({
+      ...entry,
+      href: rewrite(entry.href),
+    })),
+  };
+}
+
+/**
+ * The default locale's pages that have no content row, and so no redirect of
+ * their own when the prefix changes: the home page, each list and each tag
+ * archive in use. Unprefixed, as the setting off writes them.
+ */
+async function addressesWithoutRows(
+  env: Env,
+  settings: SiteSettings,
+): Promise<string[]> {
+  const tags = await listTags(
+    env.DB,
+    settings.defaultLocale,
+    new Date().toISOString(),
+  );
+  const bases = Object.values(settings.kinds)
+    .map((kind) => kind.base)
+    .filter((base) => base !== '');
+  return [
+    '/',
+    ...bases.map((base) => `/${base}`),
+    ...tags.map(({ tag }) => `/tags/${encodeURIComponent(tag)}`),
+  ];
+}
+
+/**
+ * Redirects for {@link addressesWithoutRows} when the prefix is turned off.
+ *
+ * Turning it on needs none: an unprefixed list or tag address is worked out
+ * and redirected as it is asked for (`content.page.ts`, `tag.page.ts`), and
+ * `/` always redirects then. Turning it off leaves `/en`, `/en/products` and
+ * `/en/tags/x` — in bookmarks, in search results, cached as a 301 by
+ * browsers — with nothing to answer; those are recorded here, and removed
+ * again if the prefix comes back on, when they are real addresses.
+ */
+function prefixRedirectStatements(
+  db: D1Database,
+  pages: readonly string[],
+  defaultLocale: string,
+  enabled: boolean,
+  now: string,
+): D1PreparedStatement[] {
+  return pages.map((page) => {
+    const prefixed = `/${defaultLocale}${page === '/' ? '' : page}`;
+    return enabled
+      ? db.prepare('DELETE FROM redirect WHERE from_path = ?').bind(prefixed)
+      : db
+          .prepare(
+            `INSERT OR REPLACE INTO redirect
+               (from_path, to_path, status, content_id, created_at)
+             VALUES (?, ?, 301, NULL, ?)`,
+          )
+          .bind(prefixed, page, now);
+  });
+}
+
+/**
  * Moves every content path to where `enabled` puts it, records a redirect
  * from each old one, and stores the setting. Refuses, writing nothing, when
  * a path would land on one another item holds. Shared by the settings
@@ -414,8 +522,27 @@ export async function changeLocalePrefix(
     return { clash };
   }
   const now = new Date().toISOString();
-  await movePaths(env.DB, moves, now);
-  await setPrefixDefaultLocale(env.DB, enabled, now);
+  const pages = await addressesWithoutRows(env, settings);
+  // One batch, one transaction: every path, the navigation and the setting
+  // move together, or none of them does.
+  await env.DB.batch([
+    ...movePathStatements(env.DB, moves, now),
+    ...prefixRedirectStatements(
+      env.DB,
+      pages,
+      settings.defaultLocale,
+      enabled,
+      now,
+    ),
+    setPrefixDefaultLocaleStatement(
+      env.DB,
+      enabled,
+      JSON.stringify(
+        prefixNavigation(settings.nav, settings.defaultLocale, enabled),
+      ),
+      now,
+    ),
+  ]);
   return { moved: moves.length };
 }
 

@@ -69,6 +69,44 @@ function alternatesOf(html: string): Record<string, string> {
   return found;
 }
 
+/**
+ * The navigation as an operator writes it with the prefix off: the default
+ * locale's own paths unprefixed, beside links that are not the site's paths.
+ */
+const NAV_OFF = {
+  en: [
+    { label: 'Home', href: '/' },
+    { label: 'Notes', href: '/notes' },
+    { label: 'Team', href: '/about#team' },
+    { label: 'Elsewhere', href: 'https://elsewhere.example/notes' },
+    { label: 'Protocol-relative', href: '//elsewhere.example/notes' },
+    { label: 'Admin', href: '/_mallok/app/' },
+  ],
+  zh: [{ label: '笔记', href: '/zh/notes' }],
+};
+
+/** The same navigation once the prefix is on. */
+const NAV_ON = {
+  en: [
+    { label: 'Home', href: '/en' },
+    { label: 'Notes', href: '/en/notes' },
+    { label: 'Team', href: '/en/about#team' },
+    { label: 'Elsewhere', href: 'https://elsewhere.example/notes' },
+    { label: 'Protocol-relative', href: '//elsewhere.example/notes' },
+    { label: 'Admin', href: '/_mallok/app/' },
+  ],
+  zh: [{ label: '笔记', href: '/zh/notes' }],
+};
+
+async function navigation(): Promise<unknown> {
+  const settings = (await (
+    await api('GET', '/_mallok/api/settings')
+  ).json()) as {
+    nav: unknown;
+  };
+  return settings.nav;
+}
+
 describe('prefixDefaultLocale', () => {
   const ids: Record<string, string> = {};
 
@@ -110,6 +148,7 @@ describe('prefixDefaultLocale', () => {
             article: { base: 'notes' },
             product: { base: 'products' },
           },
+          nav: NAV_OFF,
         })
       ).status,
     ).toBe(200);
@@ -201,12 +240,23 @@ describe('prefixDefaultLocale', () => {
     expect(await storedPath(ids.helloZh ?? '')).toBe('/zh/notes/hello');
   });
 
+  it("rewrites the default locale's navigation in the same change", async () => {
+    // Left alone, `/notes` would cost every visitor a redirect, and the
+    // operator would have to find and fix each link by hand.
+    expect(await navigation()).toEqual(NAV_ON);
+    const html = await (await get('/en/about')).text();
+    expect(html).toContain('href="/en/notes"');
+    expect(html).not.toContain('href="/notes"');
+  });
+
   it('answers the root with a fixed 301 to the default locale, never a page', async () => {
     const root = await get('/');
     expect(root.status).toBe(301);
     expect(root.headers.get('location')).toBe(`${ORIGIN}/en`);
     // A redirect is not stored: switching the setting off must take effect.
     expect(root.headers.get('x-mallok-cache')).not.toBe('MISS');
+    const tagged = await get('/?utm_source=mail');
+    expect(tagged.headers.get('location')).toBe(`${ORIGIN}/en?utm_source=mail`);
   });
 
   it('serves each home under its prefix, with prefixed alternates', async () => {
@@ -235,13 +285,18 @@ describe('prefixDefaultLocale', () => {
     const old = await get('/about');
     expect(old.status).toBe(301);
     expect(old.headers.get('location')).toBe(`${ORIGIN}/en/about`);
+    // A query string, a campaign tag say, survives the hop.
+    const tagged = await get('/about?utm_source=mail');
+    expect(tagged.headers.get('location')).toBe(
+      `${ORIGIN}/en/about?utm_source=mail`,
+    );
     // The slug that moved earlier still takes one hop, to the new place.
     const older = await get('/notes/old-hello');
     expect(older.status).toBe(301);
     expect(older.headers.get('location')).toBe(`${ORIGIN}/en/notes/hello`);
   });
 
-  it('serves lists and tag archives only under a prefix', async () => {
+  it('serves lists and tag archives under a prefix, and redirects the old addresses', async () => {
     const list = await get('/en/notes');
     expect(list.status).toBe(200);
     const html = await list.text();
@@ -251,13 +306,27 @@ describe('prefixDefaultLocale', () => {
       zh: `${ORIGIN}/zh/notes`,
     });
     expect(html).toContain('href="/en/notes/hello"');
-    expect((await get('/notes')).status).toBe(404);
-    expect((await get('/notes/page/2')).status).toBe(404);
+    // No content row moved from `/notes`, so none recorded a redirect; the
+    // address is worked out as it is asked for. Without it, every link and
+    // search result for a list would end in a 404 the day the prefix went on.
+    const oldList = await get('/notes?page_ref=1');
+    expect(oldList.status).toBe(301);
+    expect(oldList.headers.get('location')).toBe(
+      `${ORIGIN}/en/notes?page_ref=1`,
+    );
+    const oldPage = await get('/notes/page/2');
+    expect(oldPage.status).toBe(301);
+    expect(oldPage.headers.get('location')).toBe(`${ORIGIN}/en/notes/page/2`);
+    // Only a list is worked out: an unprefixed address that is nothing stays
+    // a 404, not a redirect to another 404.
+    expect((await get('/nothing-here')).status).toBe(404);
 
     const tag = await get('/en/tags/alpha');
     expect(tag.status).toBe(200);
     expect(canonicalOf(await tag.text())).toBe(`${ORIGIN}/en/tags/alpha`);
-    expect((await get('/tags/alpha')).status).toBe(404);
+    const oldTag = await get('/tags/alpha?x=1');
+    expect(oldTag.status).toBe(301);
+    expect(oldTag.headers.get('location')).toBe(`${ORIGIN}/en/tags/alpha?x=1`);
   });
 
   it('gives templates the prefixed home path', async () => {
@@ -283,6 +352,15 @@ describe('prefixDefaultLocale', () => {
     expect(sitemap).toContain(`hreflang="x-default" href="${ORIGIN}/en/about"`);
   });
 
+  it('tags the sitemap and feeds for a whole-site purge', async () => {
+    // The prefix switch purges `site`; a sitemap or feed kept under its own
+    // tag only would go on listing the old URLs until it expired.
+    const sitemap = await get('/sitemap.xml');
+    expect(sitemap.headers.get('cache-tag')?.split(',')).toContain('site');
+    const feed = await get('/en/feed.xml');
+    expect(feed.headers.get('cache-tag')?.split(',')).toContain('site');
+  });
+
   it('moves the default feed under the prefix', async () => {
     const old = await get('/feed.xml');
     expect(old.status).toBe(301);
@@ -293,6 +371,10 @@ describe('prefixDefaultLocale', () => {
     expect(xml).toContain(`<link>${ORIGIN}/en</link>`);
     expect(xml).toContain(`href="${ORIGIN}/en/feed.xml"`);
     expect(xml).toContain(`<link>${ORIGIN}/en/notes/hello</link>`);
+    const tagged = await get('/feed.xml?utm_source=reader');
+    expect(tagged.headers.get('location')).toBe(
+      `${ORIGIN}/en/feed.xml?utm_source=reader`,
+    );
   });
 
   it('saves new content at a prefixed path, with no unprefixed copy', async () => {
@@ -371,6 +453,26 @@ describe('prefixDefaultLocale', () => {
     expect((await get('/')).status).toBe(200);
   });
 
+  it('puts the navigation back as it was written', async () => {
+    expect(await navigation()).toEqual(NAV_OFF);
+  });
+
+  it('redirects the prefixed home, list and tag addresses it leaves behind', async () => {
+    // They were real pages until a moment ago: bookmarks, search results and
+    // browsers' cached 301s still point at them.
+    for (const [from, to] of [
+      ['/en', '/'],
+      ['/en/notes', '/notes'],
+      ['/en/tags/alpha', '/tags/alpha'],
+    ] as const) {
+      const response = await get(from);
+      expect(response.status, from).toBe(301);
+      expect(response.headers.get('location'), from).toBe(`${ORIGIN}${to}`);
+    }
+    expect((await get('/notes')).status).toBe(200);
+    expect((await get('/tags/alpha')).status).toBe(200);
+  });
+
   it('refuses the change when a moved path would land on an existing one', async () => {
     // Slug rules keep this from happening through the API, so force it: an
     // item that does not move already holds the path another moves to.
@@ -389,5 +491,31 @@ describe('prefixDefaultLocale', () => {
       await api('GET', '/_mallok/api/settings')
     ).json()) as { prefixDefaultLocale: boolean };
     expect(settings.prefixDefaultLocale).toBe(false);
+  });
+
+  it('moves no path when the setting itself cannot be stored', async () => {
+    // Paths, redirects, navigation and setting are one batch, so one
+    // transaction: a failure in the last statement leaves the first unwritten.
+    await env.DB.prepare('UPDATE content SET path = ? WHERE id = ?')
+      .bind('/zh/about', ids.aboutZh)
+      .run();
+    await env.DB.prepare(
+      "CREATE TRIGGER refuse_site BEFORE UPDATE ON site BEGIN SELECT RAISE(ABORT, 'refused'); END",
+    ).run();
+    try {
+      const response = await api(
+        'POST',
+        '/_mallok/api/settings/locale-prefix',
+        { enabled: true, confirm: true },
+      );
+      expect(response.status).toBeGreaterThanOrEqual(500);
+    } finally {
+      await env.DB.prepare('DROP TRIGGER refuse_site').run();
+    }
+    expect(await storedPath(ids.about ?? '')).toBe('/about');
+    const redirects = await env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM redirect WHERE from_path = '/about'",
+    ).first<{ n: number }>();
+    expect(redirects?.n).toBe(0);
   });
 });

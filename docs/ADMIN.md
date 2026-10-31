@@ -232,8 +232,10 @@ succeeded** (`AC-CONTENT-10`, `docs/ACCEPTANCE.md §14.2` item 7).
 
 - Settings → Site → Languages has a checkbox, **Prefix the default language
   too**. Changing it asks for confirmation, then moves every URL of the
-  default language and records a redirect from each (`ARCHITECTURE §9`); the
-  editor's path preview follows it.
+  default language and records a redirect from each, rewrites the default
+  language's navigation links to match, and keeps the old list, tag and home
+  addresses redirecting (`ARCHITECTURE §9`); the editor's path preview
+  follows it.
 
 - The language switcher sits at the top of the editor, and switching to a
   translation that does not exist yet offers "create the `<language>`

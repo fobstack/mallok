@@ -320,8 +320,8 @@ async function applyLocalePrefix(
   );
   report.step(
     wanted
-      ? `Prefixed the default locale: ${result.moved} paths moved, each old one redirects.`
-      : `Removed the default locale's prefix: ${result.moved} paths moved, each old one redirects.`,
+      ? `Prefixed the default locale: ${result.moved} paths moved, each old one redirects; navigation links rewritten.`
+      : `Removed the default locale's prefix: ${result.moved} paths moved, each old one redirects; navigation links rewritten.`,
   );
 }
 

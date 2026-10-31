@@ -235,8 +235,8 @@ function LocaleSection(): JSX.Element {
   const setPrefix = async (enabled: boolean): Promise<void> => {
     const ok = window.confirm(
       enabled
-        ? `Serve "${current.defaultLocale}" under /${current.defaultLocale}/ too?\n\nEvery URL of the default language moves (/about becomes /${current.defaultLocale}/about) and each old URL redirects to its new one. The site's root then only redirects to /${current.defaultLocale}.`
-        : `Serve "${current.defaultLocale}" at the root again?\n\nEvery URL of the default language moves (/${current.defaultLocale}/about becomes /about) and each old URL redirects to its new one.`,
+        ? `Serve "${current.defaultLocale}" under /${current.defaultLocale}/ too?\n\nEvery URL of the default language moves (/about becomes /${current.defaultLocale}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /${current.defaultLocale}.`
+        : `Serve "${current.defaultLocale}" at the root again?\n\nEvery URL of the default language moves (/${current.defaultLocale}/about becomes /about) and each old URL, lists, tags and /${current.defaultLocale} included, redirects to its new one. The navigation's links to this site are rewritten to match.`,
     );
     if (!ok) {
       return;
@@ -248,7 +248,7 @@ function LocaleSection(): JSX.Element {
         body: { enabled, confirm: true },
       });
       await loadWorkspace();
-      notice.value = `${result.moved} URLs moved, each with a redirect.`;
+      notice.value = `${result.moved} URLs moved, each with a redirect; navigation links rewritten.`;
     } catch (caught) {
       notice.value =
         caught instanceof ApiError ? caught.message : 'Could not switch.';

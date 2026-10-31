@@ -24,11 +24,11 @@ export default definePage<PublicLocals>()({
     if (!locals.prefixed) {
       return Response.redirect(
         new URL(
-          buildHomePath(
+          `${buildHomePath(
             locals.settings.defaultLocale,
             locals.settings.defaultLocale,
             true,
-          ),
+          )}${url.search}`,
           url.origin,
         ).toString(),
         301,

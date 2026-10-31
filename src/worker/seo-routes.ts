@@ -82,15 +82,18 @@ export async function handleSeo(
   if (sitemapMatch !== null) {
     const page = sitemapMatch[1] === undefined ? null : Number(sitemapMatch[1]);
     const response = await sitemap(env, settings, origin, page);
-    return finish(request, ctx, response, settings, ['sitemap'], row);
+    // `site` too: every whole-site purge — a settings change, the prefix
+    // switch, Clear cached pages — must reach the sitemap.
+    return finish(request, ctx, response, settings, ['site', 'sitemap'], row);
   }
 
   const feedMatch = FEED_PATTERN.exec(pathname);
   if (feedMatch !== null) {
+    const search = new URL(request.url).search;
     if (feedMatch[1] === undefined && settings.prefixDefaultLocale) {
       // Every locale's feed is under its prefix; the root one moved there.
       return Response.redirect(
-        `${origin}${feedPath(settings.defaultLocale, settings)}`,
+        `${origin}${feedPath(settings.defaultLocale, settings)}${search}`,
         301,
       );
     }
@@ -99,7 +102,14 @@ export async function handleSeo(
       return problem(404, 'Not found.');
     }
     const response = await feed(env, settings, origin, locale);
-    return finish(request, ctx, response, settings, [`feed:${locale}`], row);
+    return finish(
+      request,
+      ctx,
+      response,
+      settings,
+      ['site', `feed:${locale}`],
+      row,
+    );
   }
 
   return problem(404, 'Not found.');
