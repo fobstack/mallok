@@ -106,7 +106,7 @@ with **no vendor SDK entering the Worker**:
 | Field forms | Generated in-repository from zod/JSON schemas | Content-kind fields, theme options, plugin settings and plugin panels are all schema-driven; no bespoke forms |
 | Live preview | Reuses `src/core/` in the browser | Byte-identical to production |
 | Visual editing | `@tiptap/core` + `@tiptap/pm` (**0.2**) | Not in 0.1. Tiptap's DOM is never the truth about content |
-| Styling | In-repository CSS variables and components | No Tailwind, no CSS-in-JS, no third-party component library |
+| Styling | Tailwind CSS 4 and shadcn/ui on Radix | Decided 2026-10-08 with the move of the admin to shadcn/ui (`ADMIN_MIGRATION.md`); until then this row said no Tailwind and no component library, while `styles.css` already imported Tailwind |
 | Image processing | The browser's Canvas API | On upload the client computes sha256, converts to WebP and generates width variants; see ARCHITECTURE §8 |
 
 **The admin build is served through Cloudflare Workers Static Assets and is

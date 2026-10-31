@@ -235,6 +235,47 @@ export async function thirdPartyNotices(builds, viteLicenses = []) {
   return { packages, text: render(packages) };
 }
 
+/**
+ * Packages the admin stylesheet inlines with `@import`, as licence entries.
+ *
+ * Vite's licence list is built from the modules that reach a chunk, and a
+ * stylesheet `@import` resolved by Tailwind never becomes one: Tailwind's
+ * own reset, `tw-animate-css` and shadcn/ui's stylesheet were all bundled
+ * into the admin's CSS without being attributed. They are read here from the
+ * stylesheet itself, so an import added later is attributed without anyone
+ * remembering to list it.
+ */
+export async function stylesheetPackages(cssFile) {
+  const css = await readFile(cssFile, 'utf8');
+  const names = new Set();
+  for (const match of css.matchAll(/@import\s+["']([^"'./][^"']*)["']/g)) {
+    const parts = (match[1] ?? '').split('/');
+    names.add(
+      parts[0]?.startsWith('@')
+        ? parts.slice(0, 2).join('/')
+        : (parts[0] ?? ''),
+    );
+  }
+  const entries = [];
+  for (const name of [...names].sort()) {
+    const dir = join('node_modules', name);
+    const manifest = JSON.parse(
+      await readFile(join(dir, 'package.json'), 'utf8'),
+    );
+    const text = await licenseText(dir);
+    entries.push({
+      name,
+      version: manifest.version,
+      identifier:
+        typeof manifest.license === 'string'
+          ? manifest.license
+          : manifest.license?.type,
+      ...(text === null ? {} : { text }),
+    });
+  }
+  return entries;
+}
+
 /** The file itself. */
 function render(packages) {
   const lines = [

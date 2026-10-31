@@ -42,7 +42,7 @@ From `TECH_STACK §6`, not re-argued here:
 | Markdown editing | `codemirror` + `@codemirror/lang-markdown` |
 | Forms | The in-repository schema-driven generator (§7) |
 | Preview | Reuses `src/core/`, rendering in the browser |
-| Styling | In-repository CSS variables and components; **no Tailwind, no CSS-in-JS, no component library** |
+| Styling | Tailwind CSS 4 with shadcn/ui's design tokens and, as pages move, its components on Radix; light, dark or the system's, chosen per browser. Pages not yet moved still use hand-written classes that read the same tokens (`ADMIN_MIGRATION.md`) |
 | Image processing | The browser's Canvas API |
 
 **0.1 does not include Tiptap.** Visual editing belongs to 0.2

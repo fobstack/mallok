@@ -1,6 +1,6 @@
 # Admin migration to shadcn/ui
 
-- Status: **accepted 2026-10-08; phase 0 done, phase 1 not started.** The
+- Status: **accepted 2026-10-08; phases 0 and 1 done, phase 2 not started.** The
   owner chose the full version and took every recommendation in §3: D1
   option B, D3 the shadcn baseline with one brand accent, D4 the sidebar, D5
   and D6 as written. D2 was decided by phase 0's measurement: **Radix**.
@@ -377,6 +377,44 @@ So:
    with its page.
 3. **Phase 5 cannot be done inside 150 KiB.** React Router alone is 29 KiB.
    See D7.
+
+### Phase 1, 2026-10-31
+
+On the branch `feature/admin-shadcn`, in a worktree beside the main
+checkout, because another line of work (`feature/itick-m1-m4`) was checked
+out there with uncommitted files.
+
+- **Selectors.** Every browser test that named a hand-written class, an id
+  or a component's structure now finds it by role, label or text, and all
+  39 passed on the old interface first. To be findable, the old interface
+  gained what it lacked: a field's error is its input's description
+  (`aria-invalid`, `aria-describedby`), a plugin's switch is a named
+  `switch`, plugin cards, panels, the editor's panes and the failed-jobs
+  list are labelled regions, and a stored secret is a named group. A test
+  that removes the error wiring fails. What still uses CSS selectors:
+  CodeMirror's own `.cm-*` classes (CodeMirror stays), the public site's
+  pages in `04-public-pages`, and the accessibility spec.
+- **Tokens.** `styles.css` starts with shadcn/ui's `radix-nova` neutral set
+  as `shadcn init` generates it, `--primary` set to the brand blue
+  (`#1f4e79`, `#6fa8d8` in dark), and the old variable names mapped onto the
+  tokens so every page still renders. One deviation: **shadcn's light
+  `--muted-foreground` (`oklch(0.556 0 0)`) is 4.35:1 on its own `--muted`
+  surface and failed the accessibility gate**; it is `oklch(0.53 0 0)` here,
+  4.82:1. The old `--muted` meant grey text and shadcn's means a grey
+  surface; the 17 old uses were renamed.
+- **Dark mode** is the `.dark` class, set before the first render by
+  `theme-mode.ts`: system by default, or light or dark chosen in Account and
+  kept in this browser. Covered by `16-appearance.spec.ts`. The choice moves
+  to the account menu in phase 2.
+- `components.json` is `radix-nova`. Biome parses Tailwind's directives
+  (`css.parser.tailwindDirectives`). `tw-animate-css` and `shadcn` (for its
+  stylesheet) are new development dependencies.
+- **Found on the way:** packages the admin stylesheet inlines with
+  `@import` were never in `THIRD_PARTY_NOTICES` — Vite's licence list only
+  sees modules — including Tailwind itself, imported long before this work.
+  They are now read from the stylesheet (`stylesheetPackages`); the notices
+  went from 118 packages to 121.
+- **First load: 74.5 KiB** (72.8 before): 67.9 KiB script, 6.6 KiB styles.
 
 ### D7 — The first-load budget, raised by phase 0
 
