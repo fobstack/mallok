@@ -301,8 +301,13 @@ export async function saveContent(
   const publishedAt = resolvePublishedAt(fm, existing, now);
   const assetsJson = JSON.stringify(assets);
 
+  // The address counts too: an item found by id whose slug was the only
+  // change is a rename, not a repeat — taking it for one dropped the new slug.
   if (
     existing !== null &&
+    existing.kind === input.kind &&
+    existing.locale === locale &&
+    existing.slug === slug &&
     existing.markdown_sha256 === markdownSha &&
     existing.assets === assetsJson &&
     existing.status === status &&

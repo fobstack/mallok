@@ -315,6 +315,40 @@ describe('slugs of several segments', () => {
     );
   });
 
+  it('renames an item whose slug is the only change', async () => {
+    // Same Markdown, same status: before, this was answered "unchanged" and
+    // the new slug was dropped without a word.
+    const markdown = '---\ntitle: Rename me\n---\n\nSame body.';
+    const first = await saved({
+      kind: 'page',
+      slug: 'guides/old-name',
+      markdown,
+    });
+    const renamed = (await (
+      await save({
+        id: first.id,
+        kind: 'page',
+        slug: 'guides/new-name',
+        markdown,
+      })
+    ).json()) as Saved & { unchanged?: boolean };
+    expect(renamed.unchanged).toBeUndefined();
+    expect(renamed.path).toBe('/en/guides/new-name');
+    const old = await get('/en/guides/old-name');
+    expect(old.status).toBe(301);
+    expect(old.headers.get('location')).toBe(`${ORIGIN}/en/guides/new-name`);
+    // Saved again exactly as it now is, it is unchanged.
+    const again = (await (
+      await save({
+        id: first.id,
+        kind: 'page',
+        slug: 'guides/new-name',
+        markdown,
+      })
+    ).json()) as { unchanged?: boolean };
+    expect(again.unchanged).toBe(true);
+  });
+
   it('exports a nested slug in a flat folder and takes it back unchanged', async () => {
     const first = await exportFiles();
     const folder = 'content/article/crypto-quote';

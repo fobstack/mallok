@@ -187,8 +187,6 @@ describe('prefixDefaultLocale', () => {
     ids.hello = hello.id;
     // A slug that moved before the setting changed: its redirect must keep
     // pointing at the item, in one hop, whatever happens next.
-    // The body changes too: a save whose only change is the slug is taken
-    // for "unchanged" (a separate defect, recorded in docs/tasks/TASK-49.md).
     await save({
       id: hello.id,
       kind: 'article',
