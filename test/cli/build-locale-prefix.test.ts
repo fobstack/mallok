@@ -7,7 +7,7 @@ import { buildStatic } from '../../src/cli/build.js';
 import { makeReporter } from '../../src/cli/output.js';
 
 /**
- * `mallok build` and the default locale's prefix (Task 49, itick M2).
+ * `mallok build` and the default locale's prefix (Task 49, M2).
  *
  * With the setting off, a static build must write the same files with the
  * same URLs in them as it did before the setting existed:

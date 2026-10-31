@@ -2,10 +2,10 @@ import { env, SELF } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * Slugs of several segments within a kind (Task 50, itick M3;
+ * Slugs of several segments within a kind (Task 50, M3;
  * docs/CONTENT_FORMAT.md §3.1): `/en/rest-api/crypto/crypto-quote` is the
  * `rest-api` item with the slug `crypto/crypto-quote`. Run on a site that
- * prefixes its default locale, as itick.dev's docs site does.
+ * prefixes its default locale, as a two-language docs site would.
  */
 
 const ORIGIN = 'https://nested.example';

@@ -552,7 +552,7 @@ in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
   prefixed `/<locale>/` (`/products/x`, `/de/products/x`). In 0.1 the
   languages share a kind's base path, while slugs are set per translation.
 - **A site may prefix the default language too** (`site.prefix_default_locale`,
-  added 2026-10-25 for itick.dev, Task 49). Then:
+  added 2026-10-25, Task 49). Then:
   - every public path carries its locale: `/en/products/x`, `/de/products/x`;
     a locale's home is the bare prefix, `/en` and `/de`;
   - `/` answers a fixed `301` to `/<default>` — not language detection, which

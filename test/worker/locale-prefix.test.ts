@@ -2,7 +2,7 @@ import { env, SELF } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * Prefixing the default locale too (Task 49, itick M2; docs/ARCHITECTURE.md
+ * Prefixing the default locale too (Task 49, M2; docs/ARCHITECTURE.md
  * §9): every page under `/<locale>`, the root a fixed 301 to the default
  * locale's home, and no unprefixed address serving a second copy of a page.
  */

@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import golden from '../fixtures/locale-prefix-off.json';
 
 /**
- * Upgrade guarantee for Task 49 (itick M2): a site that leaves
+ * Upgrade guarantee for Task 49 (M2): a site that leaves
  * `prefixDefaultLocale` off serves exactly the URLs it served before the
  * setting existed.
  *

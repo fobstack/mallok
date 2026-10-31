@@ -6,15 +6,84 @@ Notable changes to Mallok. The format follows
 
 ## [Unreleased]
 
-On the branch `fix/purge-failure-reporting`, not merged.
+Purges that take effect and say when they do not, the default language under
+a prefix too, slugs of several segments, and heading ids for a linked table of
+contents (Tasks 47–50). Two schema migrations run on the first request after
+deploying, and every stored page body is rendered again once.
+
+### Added
+
+- **The default language can be prefixed too** (`docs/ARCHITECTURE.md §9`).
+  Settings → Site → Languages, `POST /_mallok/api/settings/locale-prefix`
+  with `"confirm": true`, or `"prefixDefaultLocale": true` in `site.json`, a
+  starter or `mallok build`. Every public address then carries its language
+  (`/en/about`), `/` and `/feed.xml` answer a 301, and canonical, hreflang,
+  the sitemap, feeds, lists and tags follow. Turning it on or off moves every
+  stored path with a 301 from each old one, rewrites the navigation, keeps
+  the old home, list and tag addresses redirecting, and is written in one
+  transaction. Off is the default, and a site that leaves it off serves the
+  same URLs as before.
+- **Slugs of up to four segments** within a kind (`crypto/crypto-quote`,
+  `docs/CONTENT_FORMAT.md §3.1.1`), served, listed in the sitemap, exported
+  in a flat folder and imported back unchanged. A slug that would be a list's
+  `page/<n>`, or whose first segment the site already answers, is refused
+  with the reason.
+- **Heading ids.** Every heading in a page body has an id, kept in its own
+  script (`#快速开始`), unique in the page and clear of the ids themes and
+  plugins write; `content.headings` carries it, and Manual's contents list
+  links to it (`docs/THEME_FORMAT.md §7.2`).
+- `site.tags_path` and `site.feed_path` for templates, in the page's language.
+- **A failed purge is shown**: when, from where and what Cloudflare answered,
+  under Settings → Advanced and in `GET /health`, until a later purge of the
+  whole site succeeds. A refused token is told which permission it lacks.
 
 ### Fixed
 
 - **A cache purge that fails is no longer reported as success.** "Clear
   cached pages" answered "Cleared the page cache." for a purge Cloudflare
-  refused or never received; it now shows the failure and Cloudflare's
-  reason. Every failed purge — after a save, a plugin switch or a settings
-  change too — is logged as `purge_failed`.
+  refused or never received; it now answers 502 with the reason. A 200 whose
+  body is not `"success": true` counts as a failure, and every failed purge
+  is logged as `purge_failed`. A plugin's purge is kept alive until it is
+  sent.
+- **Renaming an item by its slug alone is saved.** A save with the same
+  Markdown, status and date was answered "unchanged" even when the slug, kind
+  or language differed, and the new slug was dropped.
+- **Atelier linked a translated article's tags to the default language's
+  archive, and Gazette its footer to the default feed.**
+- **`mallok build` refuses the slugs the Worker refuses**, before writing
+  anything. It took any slug: `../../x` wrote outside the output, `page/2`
+  over a list's second page.
+
+### Changed
+
+- **`ctx.purgeTags` resolves to `{ attempted, ok, status? }`** instead of
+  `unknown` (`docs/PLUGIN_API.md §9.1`).
+- On a site that prefixes its default language, unprefixed paths in the
+  navigation and in a theme's `string` options are mapped to the prefix as
+  pages render (`/contact` → `/en/contact`).
+- The sitemap and feeds are cached under `site` as well, so a whole-site
+  purge reaches them.
+- Enabling a language, or giving a kind a base, that matches the first
+  segment of a saved slug is refused with 409 and a `stranded` list.
+- Atelier 2.5.2, Gazette 2.0.1.
+
+### Upgrade notes
+
+**Every site**
+
+- Two schema migrations run on the first request after deploying:
+  `last_purge_failure` and `prefix_default_locale` on `site`. Neither changes
+  what a site serves.
+- The render pipeline is version 2: each stored page body is rendered again
+  once, on its next request, and gains heading ids.
+- A purge token needs **Zone → Cache Purge → Purge**. Cache Rules → Edit,
+  next to it in the dashboard, purges nothing; such a token now shows its
+  refusal in the admin instead of passing for success.
+
+**Plugins**
+
+- A plugin that awaited `ctx.purgeTags` and ignored the result is unaffected;
+  one that typed the result can now read whether the purge happened.
 
 ## [0.1.0-rc.11] — 2026-10-06
 

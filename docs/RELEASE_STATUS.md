@@ -2,7 +2,8 @@
 
 [English](RELEASE_STATUS.md) · [简体中文](zh-CN/RELEASE_STATUS.md)
 
-Snapshot: **October 8, 2026**. Newest candidate: **0.1.0-rc.11**, on npm's
+Snapshot: **October 8, 2026**; the purge findings below updated **November
+1, 2026**. Newest candidate: **0.1.0-rc.11**, on npm's
 `next` tag. `latest`, which `npx mallok create` installs, is still
 **0.1.0-rc.10**. Both are public release candidates, not stable 0.1.
 
@@ -36,7 +37,7 @@ plugin job that stops its Worker retrying for ever. **Two schema migrations
 run on the first request after deploying; the changelog's upgrade notes say
 what else changes.**
 
-**Found on the deployed site after publishing, and open:**
+**Found on the deployed site after publishing:**
 
 - **A purge that fails is reported as success, and is not logged.** On the
   test site, switching the inquiry plugin and the admin's "Clear cached
@@ -46,11 +47,17 @@ what else changes.**
   purge it attempted, whether or not Cloudflare carried it out, and nothing
   records a failed purge made after a save, a plugin switch or a settings
   change. Both defects are in rc.10 and earlier as well. They are fixed on
-  the branch `fix/purge-failure-reporting` and are **not in any release**.
-- **Why the test site's purges fail is not known.** Its token and zone id
-  are bound and worked on rc.5; the response of the purge call has not been
-  read. Until it has, "a change reaches visitors at once on a site with a
-  purge token" is not established for rc.6 through rc.11.
+  `main` and are **not in any release** (`CHANGELOG.md`, Unreleased).
+- **Why the test site's purges failed: the token's permission.** Read on
+  2026-10-25 with a build of the fix: Cloudflare answered every purge 401,
+  code 10000, because the token held Zone → **Cache Rules** → Edit, not Zone
+  → **Cache Purge** → Purge. With that one permission changed, "Clear cached
+  pages" turned a cached page from HIT to MISS within two seconds, and a
+  plugin's tag purge from a webhook reached the page 3.6 seconds after the
+  call (`tasks/TASK-47.md`). Single runs, not percentiles. Whether the token
+  bound when purges worked on rc.5 had the same permission was not checked,
+  so that difference is unexplained. The admin now names the permission
+  when a token is refused.
 
 **Not checked on a deployed site**, and so resting on Worker and browser
 tests only:
@@ -63,8 +70,8 @@ tests only:
   pack, `site.kinds`, and a `reference[]` field: no deployed site uses one.
 - What a tick with plugin jobs in it, or a starter's import, costs in one
   invocation. Five plugin jobs per tick is a judgement, not a measurement.
-- That email is still delivered with the Resend key moved in rc.10, a purge
-  by plugin cache tag, and the two rate-limit bindings counting separately.
+- That email is still delivered with the Resend key moved in rc.10, and the
+  two rate-limit bindings counting separately.
   Cloudflare's documentation still does not say whether the Free plan
   includes rate-limit bindings.
 
