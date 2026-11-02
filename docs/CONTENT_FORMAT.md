@@ -59,12 +59,44 @@ but that is the user deliberately editing, not the import/export path.
 | `description` | string | Summary, used on list pages, in `<meta description>` and in feeds. When absent, stage-one rendering derives it from the body |
 | `date` | ISO 8601 | Publication time. A future time means scheduled publishing |
 | `updated` | ISO 8601 | Last modification. Defaults to import time |
-| `slug` | string | Defaults to the bundle name (default locale) or is generated from `title`. Lowercase Latin letters, digits and single dashes only, because an export turns it into a folder name; a save that supplies anything else is refused and told which value would be accepted |
+| `slug` | string | Defaults to the bundle name (default locale) or is generated from `title`. One to four segments joined by `/` (`crypto/crypto-quote`), each of lowercase Latin letters, digits and single dashes, at most 200 characters in all; a save that supplies anything else is refused and told which value would be accepted. See §3.1.1 |
 | `tags` | string[] | Stored, and merged with the aliases in §3.3. **Archives live at `/tags/<tag>`, or `/<locale>/tags/<tag>`, and list across content kinds.** A tag nobody uses returns 404 rather than generating a thin page for an arbitrary string |
 | `draft` | boolean | `true` means draft. Defaults to `false` |
 | `cover` | relative path | Cover image, e.g. `images/hero.jpg` |
 | `kind` | string | Content kind. Defaults to the containing directory or a CLI argument |
 | `locale` | string | See §2 rule 2 |
+
+### 3.1.1 Slugs of several segments
+
+Added 2026-10-25 for docs sites (Task 50). An item's path is its locale prefix,
+its kind's base and **every segment of its slug**: the `rest-api` item with
+slug `crypto/crypto-quote` is `/rest-api/crypto/crypto-quote`, or
+`/en/rest-api/crypto/crypto-quote` on a site that prefixes its default locale.
+
+- **Unique per kind and language**, as a one-segment slug is. The same slug in
+  two kinds gives two paths (`/faq/x/y`, `/rest-api/x/y`). Two kinds with no
+  base share the root of a language, so they can ask for the same path: the
+  second save is refused with 409, naming the item that holds it.
+- **Not `page/<number>`** at the start: `/<base>/page/<n>` is a list's page.
+- **In a kind with no base**, a slug of several segments may not start with
+  `tags`, `media` or `theme`, another kind's base, or an enabled language: the
+  site already answers those addresses. A one-segment slug is not held to this,
+  so nothing a site could save before is refused now. The same holds the other
+  way round: a settings change that would enable a language, or give a kind a
+  base, matching the first segment of a slug already saved is refused with 409
+  and a `stranded` list of those items (id, path, reason); change their slugs
+  first.
+- **An intermediate address answers 404** (`/rest-api/crypto` above), unless an
+  item has exactly that slug — a parent and its children are independent
+  items, and there is no automatic index page.
+- **Changing a slug** records a 301 from the old path, as for one segment.
+- **In a bundle** the slug is stated in front matter (`slug:
+  crypto/crypto-quote`), or recorded in `mallok.json` by an export. It is
+  **not** expressed by nesting directories: a bundle's own `images/` and
+  `files/` would collide with segments of those names. An export names the
+  folder after the slug with `/` made `-` (`crypto-crypto-quote`, suffixed on
+  a collision, §5) and keeps the slug in `mallok.json`, which `mallok publish`,
+  `mallok import` and `mallok build` read before the folder name.
 
 ### 3.2 Kind-specific fields
 
@@ -155,7 +187,9 @@ In `site.json`, `tagline` is one string or, for a site with a tagline per
 language, a map of locale to string keyed the way `nav` is —
 `{ "en": "…", "de": "…" }`. An export writes the string unless some language
 other than the default has a tagline of its own. A language absent from the
-map uses the default language's.
+map uses the default language's. `"prefixDefaultLocale": true` is written
+only for a site that prefixes its default locale (`ARCHITECTURE.md §9`);
+`mallok import --with-settings` and `mallok build` honour it.
 
 **An export contains no theme directory** (corrected 2026-08-29): a theme is
 source code that travels with the deployment, not site data. `site.json`
@@ -185,7 +219,8 @@ only private file Mallok is allowed to put in a bundle; Astro, Hugo and
 Obsidian ignore it.
 
 `slug` lets an export use a suffixed directory when two translation groups
-would otherwise have the same portable folder name. Re-import takes the slug
+would otherwise have the same portable folder name, and carries a slug of
+several segments, whose folder name is flattened (§3.1.1). Re-import takes the slug
 from this identity before falling back to the directory name, so collision
 avoidance never changes a public URL. Older identity files without `slug`
 remain valid.

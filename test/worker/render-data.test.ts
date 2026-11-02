@@ -909,7 +909,7 @@ describe('renderData', () => {
     it('lets a plugin purge its own tags and the site, and nothing else', async () => {
       // Purges are coalesced per isolate and flushed with the environment of
       // the first caller. Let whatever earlier tests queued go out first.
-      await purgeTags(env, []);
+      await purgeTags(env, [], 'test');
       const bodies: { tags: string[] }[] = [];
       const realFetch = globalThis.fetch;
       globalThis.fetch = (async (
@@ -923,6 +923,7 @@ describe('renderData', () => {
         bodies.push(JSON.parse(String(init?.body)) as { tags: string[] });
         return new Response('{"success":true}', { status: 200 });
       }) as typeof fetch;
+      let outcome: unknown;
       try {
         const ctx = await buildPluginContext(
           { ...env, CF_API_TOKEN: 'fixture-token', CF_ZONE_ID: 'zone' },
@@ -945,7 +946,7 @@ describe('renderData', () => {
             },
           },
         );
-        await ctx.purgeTags([
+        outcome = await ctx.purgeTags([
           'price-alpha',
           'site',
           // Another plugin's tag and the core's, spelled in full: neither
@@ -968,6 +969,9 @@ describe('renderData', () => {
           ],
         },
       ]);
+      // What the plugin is told, so a webhook can answer an error and be
+      // retried when the purge did not happen. Nothing more than that.
+      expect(outcome).toEqual({ attempted: true, ok: true, status: 200 });
     });
 
     it('sends more than a hundred tags as several calls and stops at a failure', async () => {
@@ -991,14 +995,14 @@ describe('renderData', () => {
       };
       const tags = Array.from({ length: 250 }, (_, index) => `t${index}`);
       try {
-        const all = await purgeNow(configured, tags);
+        const all = await purgeNow(configured, tags, 'test');
         expect(sizes).toEqual([100, 100, 50]);
         expect(all).toMatchObject({ ok: true, status: 200 });
         expect(all.tags).toHaveLength(250);
 
         sizes.length = 0;
         failAt = 2;
-        const stopped = await purgeNow(configured, tags);
+        const stopped = await purgeNow(configured, tags, 'test');
         expect(sizes).toEqual([100, 100]);
         expect(stopped).toMatchObject({ ok: false, status: 429 });
       } finally {

@@ -29,12 +29,16 @@ import {
   buildRobots,
   buildSitemap,
   compileTheme,
+  escapeHtml,
   HOME_RECENT,
   homeKinds,
+  localePrefix,
   renderFragment,
   renderPage,
   type SitemapEntry,
   type SummaryInput,
+  slugPlacementProblem,
+  slugProblem,
   splitTagline,
   type ThemeFiles,
   type ThemeManifest,
@@ -105,12 +109,98 @@ async function readConfig(root: string): Promise<SiteConfigFile> {
   return parsed;
 }
 
-/** Where a public path is written inside the output directory. */
-function outputPath(outDir: string, path: string): string {
+/**
+ * What a site that prefixes its default locale serves at its root.
+ *
+ * A static host cannot answer with a status by itself, so the redirects are
+ * written twice: as `_redirects`, which Cloudflare's static assets and Pages
+ * (and Netlify) turn into real 301s, and as a root page that refreshes to the
+ * default locale's home for any host that does not read that file. The page
+ * says `noindex` and names the home as canonical, so it never competes with
+ * it in search results.
+ */
+async function writeRootRedirects(
+  outDir: string,
+  homeUrl: string,
+  rules: readonly (readonly [string, string])[],
+): Promise<void> {
+  await writeFile(
+    join(outDir, '_redirects'),
+    `${rules.map(([from, to]) => `${from} ${to} 301`).join('\n')}\n`,
+    'utf8',
+  );
+  const href = escapeHtml(homeUrl);
+  await writeFile(
+    join(outDir, 'index.html'),
+    [
+      '<!doctype html>',
+      '<html>',
+      '<head>',
+      '<meta charset="utf-8">',
+      '<meta name="robots" content="noindex">',
+      `<meta http-equiv="refresh" content="0; url=${href}">`,
+      `<link rel="canonical" href="${href}">`,
+      '<title>Redirecting</title>',
+      '</head>',
+      `<body><a href="${href}">${href}</a></body>`,
+      '</html>',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
+}
+
+/**
+ * Where a public path is written inside the output directory.
+ *
+ * Slugs are checked before anything is written ({@link slugProblems}); this
+ * is the last line for whatever else becomes a path, a tag named `..` say,
+ * which would otherwise overwrite the page above its archive. A path with a
+ * `.` or `..` segment is refused; with none, `join` cannot leave `outDir`
+ * (a tag reaches here URL-encoded, so it has no separator of its own).
+ */
+export function outputPath(outDir: string, path: string): string {
   const clean = path.replace(/^\/+/, '').replace(/\/+$/, '');
-  return clean === ''
-    ? join(outDir, 'index.html')
-    : join(outDir, ...clean.split('/'), 'index.html');
+  const segments = clean === '' ? [] : clean.split('/');
+  if (segments.some((segment) => segment === '.' || segment === '..')) {
+    throw new CliError(
+      EXIT.user,
+      `"${path}" is not an address the build can write: it steps outside its own folder.`,
+      'Rename the slug or tag that produces it.',
+    );
+  }
+  return join(outDir, ...segments, 'index.html');
+}
+
+/**
+ * Every published item whose slug the Worker would refuse, in the words it
+ * would refuse it with.
+ *
+ * A slug becomes folders here, so one the Worker never lets through —
+ * `../../x`, `page/2`, `Products` — would write outside the output, over a
+ * list's second page, or to an address that serves nothing once imported.
+ * The build and the Worker take the same slugs (docs/CLI.md §6.7).
+ */
+export function slugProblems(
+  items: readonly SiteItem[],
+  config: SiteConfigFile,
+): string[] {
+  const problems: string[] = [];
+  for (const item of items) {
+    const base = config.kinds[item.kind]?.base ?? item.kind;
+    const problem =
+      slugProblem(item.slug) ??
+      slugPlacementProblem(item.slug, item.kind === 'page' ? '' : base, {
+        locales: config.locales,
+        kinds: config.kinds,
+      });
+    if (problem !== null) {
+      problems.push(
+        `${item.kind} "${item.slug}" (${item.locale}): ${problem.message}`,
+      );
+    }
+  }
+  return problems;
 }
 
 async function write(
@@ -136,6 +226,7 @@ function contextFor(
       name: config.name,
       ...splitTagline(config.tagline, config.defaultLocale),
       defaultLocale: config.defaultLocale,
+      prefixDefaultLocale: config.prefixDefaultLocale === true,
       locales: config.locales,
       kinds: config.kinds,
       nav: config.nav ?? {},
@@ -228,6 +319,14 @@ export async function buildStatic(
     ),
   });
   const model = buildSiteModel(scan.bundles, config, options.now);
+  const refused = slugProblems(model.published, config);
+  if (refused.length > 0) {
+    throw new CliError(
+      EXIT.user,
+      `${refused.length} slug${refused.length === 1 ? '' : 's'} cannot be built:\n${refused.map((line) => `  ${line}`).join('\n')}`,
+      'Set `slug:` in the front matter, or rename the bundle folder. Nothing was written.',
+    );
+  }
   report.step(
     `${model.published.length} published items in ${config.locales.length} language${config.locales.length === 1 ? '' : 's'}.`,
   );
@@ -313,8 +412,20 @@ export async function buildStatic(
   }
 
   // --- home, lists and tag archives, per locale -----------------------
+  const prefixDefault = config.prefixDefaultLocale === true;
+  if (prefixDefault) {
+    const home = buildHomePath(
+      config.defaultLocale,
+      config.defaultLocale,
+      true,
+    );
+    await writeRootRedirects(options.outDir, `${options.origin}${home}`, [
+      ['/', home],
+      ['/feed.xml', `${home}/feed.xml`],
+    ]);
+  }
   for (const locale of config.locales) {
-    const homePath = buildHomePath(locale, config.defaultLocale);
+    const homePath = buildHomePath(locale, config.defaultLocale, prefixDefault);
     const recent: Record<string, SummaryInput[]> = {};
     // The same kinds and the same bound as the Worker's home page, so the
     // two paths render the same page from the same content.
@@ -337,7 +448,7 @@ export async function buildStatic(
     );
     pages++;
 
-    const prefix = locale === config.defaultLocale ? '' : `/${locale}`;
+    const prefix = localePrefix(locale, config);
 
     for (const [kind, kindConfig] of Object.entries(config.kinds)) {
       const listLayout = manifest.kinds[kind]?.listLayout;
@@ -421,8 +532,7 @@ export async function buildStatic(
 
     // Per-locale feed.
     const articles = listOf(model, 'article', locale).slice(0, FEED_ITEMS);
-    const feedPath =
-      locale === config.defaultLocale ? '/feed.xml' : `${prefix}/feed.xml`;
+    const feedPath = `${prefix}/feed.xml`;
     await mkdir(
       dirname(join(options.outDir, ...feedPath.replace(/^\//, '').split('/'))),
       { recursive: true },

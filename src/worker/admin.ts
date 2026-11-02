@@ -42,6 +42,7 @@ import {
   getTheme,
   patchSettings,
   postDefaultLocale,
+  postLocalePrefix,
 } from './admin-settings.js';
 import {
   authenticate,
@@ -152,6 +153,10 @@ export async function handleAdmin(
     case 'POST settings/default-locale':
       return withScope(principal, 'settings:write', () =>
         postDefaultLocale(request, env, ctx),
+      );
+    case 'POST settings/locale-prefix':
+      return withScope(principal, 'settings:write', () =>
+        postLocalePrefix(request, env, ctx),
       );
 
     default:

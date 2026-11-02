@@ -105,9 +105,11 @@ Mallok is designed to start on Cloudflare's free allowances. Actual cost and
 capacity depend on usage, plan limits, domain registration, and optional
 services such as email. Free operation is not an unlimited-service promise.
 
-For automatic cache invalidation, configure `CF_API_TOKEN` with Cache Purge
-permission scoped to the site's zone, together with `CF_ZONE_ID`, as Worker
-secrets. Without them, visitors can see the previous version until its cache
+For automatic cache invalidation, configure `CF_API_TOKEN` with the
+permission **Zone → Cache Purge → Purge** scoped to the site's zone, together
+with `CF_ZONE_ID`, as Worker secrets. **Cache Rules**, listed next to it in the
+dashboard, is a different permission and purges nothing; a failed purge is
+shown under Settings → Advanced. Without them, visitors can see the previous version until its cache
 expires. Never commit credentials. Cloudflare or third-party integrations can
 inject JavaScript even where Mallok's theme itself emits none.
 

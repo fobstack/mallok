@@ -206,6 +206,12 @@ publishes exactly the bundles under `content/`, and nothing from
 read, so a kind that file enables is already there when its bundles are
 placed.
 
+A `site.json` with `"prefixDefaultLocale": true` (or `false`) is applied
+through `POST /settings/locale-prefix` after the rest of the file, because it
+moves every URL of the default language and records a redirect from each
+(`ARCHITECTURE.md §9`); nothing is called when the site already has that
+value. An export writes the field only when it is on.
+
 With `--dry-run` as well, `site.json` is **not** applied — a dry run writes
 nothing, settings included. It says which settings it would apply, and places
 bundles by the kinds the site would have afterwards, so the report lists what
@@ -296,6 +302,20 @@ What it generates: a page per item in every language, a paginated list page
 per kind, **tag archives**, a home page and feed per language, `sitemap.xml`
 with hreflang and x-default, `robots.txt`, the theme assets, and the images
 each bundle references.
+
+With `"prefixDefaultLocale": true` in `site.json`, every language is written
+under its prefix (`en/about/index.html`, `en/feed.xml`) and the root holds
+only redirects: a `_redirects` file (`/ /en 301`, `/feed.xml /en/feed.xml
+301`), which Cloudflare's static assets and Pages turn into real redirects,
+and an `index.html` that refreshes to `/en`, says `noindex` and names `/en` as
+canonical, for a host that does not read `_redirects`.
+
+It takes the slugs the Worker takes, checked by the same functions before
+anything is written: a slug the Worker would refuse (`../x`, `page/2`,
+`Products`, a first segment that is a language or a kind's base) stops the
+build, listing each one, and the output is not touched. A slug becomes
+folders here, so letting one through could write outside the output or over
+a list's second page.
 
 **It renders through exactly the same `src/core` functions as the Worker**, so
 the same input produces the same bytes. That is precisely why `src/core` may

@@ -22,6 +22,8 @@ export interface SiteSettings {
   /** Taglines of other languages, by locale. */
   readonly taglines: Readonly<Record<string, string>>;
   readonly defaultLocale: string;
+  /** True when the default locale is prefixed too (docs/ARCHITECTURE.md §9). */
+  readonly prefixDefaultLocale: boolean;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
   readonly nav: Readonly<
@@ -40,6 +42,7 @@ export function parseSiteSettings(row: SiteRow): SiteSettings {
     tagline: row.tagline ?? '',
     taglines: parseWith(z.record(z.string(), z.string()), row.taglines, {}),
     defaultLocale: row.default_locale,
+    prefixDefaultLocale: row.prefix_default_locale === 1,
     locales: parseWith(z.array(z.string()), row.locales, [row.default_locale]),
     kinds: parseWith(kindsSchema, row.kinds, {}),
     nav: parseWith(navSchema, row.nav, {}),

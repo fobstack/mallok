@@ -1,6 +1,6 @@
 {
   "atelier": {
-    "version": "2.5.1",
+    "version": "2.5.2",
     "assets": {
       "favicon.png": "874d8577d4bbab47945306183073857f9180d31d1aa3b4eb9a21804aacc3ca1e",
       "fonts/bricolage-grotesque-normal-latin-ext.woff2": "776f6dcaf03636cd69a5802c94808cc8896c0a66c8e9ce0fe147231b6ee01957",
@@ -37,7 +37,7 @@
     }
   },
   "gazette": {
-    "version": "2.0.0",
+    "version": "2.0.1",
     "assets": {
       "style.css": "ce172c9fe175eb4dfe758c3cc5562a7f41bf3b12561e4be6ee45a9c0bb72c0fd"
     }
@@ -49,9 +49,9 @@
     }
   },
   "manual": {
-    "version": "2.0.0",
+    "version": "2.1.0",
     "assets": {
-      "style.css": "19de9cf8522e5478ccee31715c6e678054bf754f5eeb1185c800b4387a7425a1"
+      "style.css": "c6ba7cd935e2120b24f243cf855d718e4e05440147de6dfc7de62602382bc6cc"
     }
   }
 }

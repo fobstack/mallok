@@ -29,6 +29,14 @@ export interface SiteView {
   readonly base_url: string;
   /** Home path of the current locale (`/` or `/<locale>/`). */
   readonly home_path: string;
+  /**
+   * Where this locale's tag archives live, without a trailing slash: a tag's
+   * archive is `{{ site.tags_path }}/{{ tag | url_encode }}`. `/tags`, or
+   * `/de/tags` on a German page.
+   */
+  readonly tags_path: string;
+  /** This locale's feed: `/feed.xml`, or `/de/feed.xml` on a German page. */
+  readonly feed_path: string;
   readonly nav: readonly NavItemView[];
   /**
    * The list page of each kind that has one, keyed by kind:

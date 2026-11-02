@@ -301,6 +301,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
       kind,
       locale: activeLocale.value,
       defaultLocale: site.defaultLocale,
+      prefixDefaultLocale: site.prefixDefaultLocale,
       slug: slug === '' ? 'preview' : slug,
       base: site.kinds[kind]?.base ?? '',
     });

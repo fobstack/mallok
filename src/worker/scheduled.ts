@@ -83,7 +83,7 @@ export async function handleScheduled(
         tags.add(tag);
       }
     }
-    const result = await purgeNow(env, [...tags]);
+    const result = await purgeNow(env, [...tags], 'scheduled');
     console.log(
       JSON.stringify({
         event: 'scheduled_publish',

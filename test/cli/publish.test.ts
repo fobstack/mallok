@@ -259,6 +259,56 @@ describe('publishing bundles', () => {
     expect(client.saves[0]?.body.translationGroup).toBe('group-1');
   });
 
+  it('saves a nested slug from front matter, or from the identity of a flattened folder', async () => {
+    const client = stubSite();
+    await publishBundles(
+      client,
+      [
+        bundle('symbol-list', [
+          {
+            locale: 'en',
+            markdown: article('Symbol list', 'slug: basics/symbol-list'),
+          },
+        ]),
+        // An export flattens `crypto/crypto-quote` into the folder name and
+        // records the slug in `mallok.json` (docs/CONTENT_FORMAT.md §6).
+        bundle(
+          'crypto-crypto-quote',
+          [
+            { locale: 'en', markdown: article('Crypto quote') },
+            { locale: 'de', markdown: article('Krypto-Kurs') },
+          ],
+          {
+            identity: {
+              translation_group: 'group-2',
+              items: {
+                en: {
+                  id: 'item-2',
+                  created_at: '2026-01-01T00:00:00Z',
+                  path: '/en/rest-api/crypto/crypto-quote',
+                  slug: 'crypto/crypto-quote',
+                },
+                de: {
+                  id: 'item-3',
+                  created_at: '2026-01-01T00:00:00Z',
+                  path: '/de/rest-api/krypto/kurs',
+                  slug: 'krypto/kurs',
+                },
+              },
+            },
+          },
+        ),
+      ],
+      baseOptions,
+      recordingReporter(),
+    );
+    expect(client.saves.map((save) => save.body.slug)).toEqual([
+      'basics/symbol-list',
+      'crypto/crypto-quote',
+      'krypto/kurs',
+    ]);
+  });
+
   it("carries the first language's new group into the others", async () => {
     const client = stubSite({
       saveResponse: { translationGroup: 'group-new' },
@@ -522,6 +572,42 @@ describe('a publish dry run', () => {
     expect(unchanged?.status).toBe('unchanged');
     expect(unchanged?.path).toBe('/articles/a');
     expect(updated?.status).toBe('updated');
+  });
+
+  it("finds a flattened nested slug's item by the slug its identity records", async () => {
+    const markdown = article('Crypto quote');
+    const site = stubSite({
+      items: [
+        {
+          id: '2',
+          slug: 'crypto/crypto-quote',
+          markdown,
+          assets: {},
+          path: '/en/rest-api/crypto/crypto-quote',
+        },
+      ],
+    });
+    const [outcome] = await publishBundles(
+      site,
+      [
+        bundle('crypto-crypto-quote', [{ locale: 'en', markdown }], {
+          identity: {
+            translation_group: 'group-2',
+            items: {
+              en: {
+                id: '2',
+                created_at: '2026-01-01T00:00:00Z',
+                path: '/en/rest-api/crypto/crypto-quote',
+                slug: 'crypto/crypto-quote',
+              },
+            },
+          },
+        }),
+      ],
+      options,
+      recordingReporter(),
+    );
+    expect(outcome?.status).toBe('unchanged');
   });
 
   it('still reports when the lookup itself fails', async () => {

@@ -11,7 +11,10 @@ import {
   buildPublicPath,
   joinTagline,
   LOCALE_PATTERN,
+  linkForPrefix,
   PIPELINE_VERSION,
+  type SiteLocales,
+  slugPlacementProblem,
   splitTagline,
   themeAssetBase,
 } from '../core/index.js';
@@ -20,20 +23,27 @@ import {
   countStorage,
   failedJobs,
   listContentLocations,
+  listTags,
   loadSite,
   loadSiteRenderData,
-  movePaths,
+  movePathStatements,
   type PathMove,
   type SitePatch,
-  setDefaultLocale,
+  setDefaultLocaleStatement,
+  setPrefixDefaultLocaleStatement,
   updateSite,
 } from '../db/queries.js';
 import { THEMES } from '../themes/index.js';
-import { purgeTags } from './cache.js';
+import {
+  type PurgeFailure,
+  parsePurgeFailure,
+  purgeFailureAdvice,
+  purgeTags,
+} from './cache.js';
 import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
 import { json, problem, readJson } from './http.js';
-import { parseSiteSettings } from './site.js';
+import { parseSiteSettings, type SiteSettings } from './site.js';
 import { siteEmailView } from './site-email.js';
 
 /** Failed background jobs listed in diagnostics, newest first. */
@@ -74,6 +84,8 @@ const settingsSchema = z
     maxImageEdge: z.number().int().min(320).max(8192).nullable(),
     /** Present only so callers get a clear error instead of silent breakage. */
     defaultLocale: z.string(),
+    /** The same: it rewrites every URL, so it has its own endpoint. */
+    prefixDefaultLocale: z.boolean(),
   })
   .partial();
 
@@ -106,6 +118,7 @@ export async function getSettings(env: Env): Promise<Response> {
     name: settings.name,
     tagline: joinTagline(settings, settings.defaultLocale),
     defaultLocale: settings.defaultLocale,
+    prefixDefaultLocale: settings.prefixDefaultLocale,
     locales: settings.locales,
     kinds: settings.kinds,
     themeOptions: settings.themeOptions,
@@ -151,6 +164,16 @@ export async function patchSettings(
     );
   }
 
+  if (
+    input.prefixDefaultLocale !== undefined &&
+    input.prefixDefaultLocale !== (row.prefix_default_locale === 1)
+  ) {
+    return problem(
+      409,
+      'Prefixing the default locale rewrites every URL. Use POST /_mallok/api/settings/locale-prefix.',
+    );
+  }
+
   if (input.kinds !== undefined) {
     const clash = Object.entries(input.kinds).find(([, config]) =>
       RESERVED_BASES.has(config.base),
@@ -173,6 +196,23 @@ export async function patchSettings(
     );
   }
 
+  if (input.locales !== undefined || input.kinds !== undefined) {
+    const current = parseSiteSettings(row);
+    const stranded = await strandedSlugs(env.DB, {
+      locales: input.locales ?? current.locales,
+      kinds: input.kinds ?? current.kinds,
+    });
+    if (stranded.length > 0) {
+      return json(
+        {
+          error: `${stranded.length} slug${stranded.length === 1 ? '' : 's'} would start at an address the new settings give to a language or a kind. Change ${stranded.length === 1 ? 'it' : 'them'} first.`,
+          stranded,
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   const patch: SitePatch = {
     ...pick('name', input.name),
     ...taglinePatch(input.tagline, row.default_locale),
@@ -189,8 +229,41 @@ export async function patchSettings(
 
   await updateSite(env.DB, patch, new Date().toISOString());
   // Any of these can change every rendered page, so drop the whole site tag.
-  ctx.waitUntil(purgeTags(env, ['site']));
+  ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
   return getSettings(env);
+}
+
+/**
+ * Content whose slug of several segments the given settings would refuse.
+ *
+ * A save checks a slug against the languages and kind bases as they are
+ * (`slugPlacementProblem`). Enabling `de`, or giving a kind the base `docs`,
+ * changes what is free: a page at `/de/pricing` or `/docs/setup` would then
+ * share its first segment with the language's or kind's addresses, and one
+ * of the two would never be served. Only slugs with a `/` can clash, so only
+ * those rows are read.
+ */
+async function strandedSlugs(
+  db: D1Database,
+  site: Pick<SiteSettings, 'locales' | 'kinds'>,
+): Promise<{ id: string; path: string; problem: string }[]> {
+  const { results } = await db
+    .prepare(
+      "SELECT id, kind, slug, path FROM content WHERE instr(slug, '/') > 0",
+    )
+    .all<{ id: string; kind: string; slug: string; path: string }>();
+  const stranded: { id: string; path: string; problem: string }[] = [];
+  for (const row of results) {
+    const kind = site.kinds[row.kind];
+    if (kind === undefined) {
+      continue;
+    }
+    const refused = slugPlacementProblem(row.slug, kind.base, site);
+    if (refused !== null) {
+      stranded.push({ id: row.id, path: row.path, problem: refused.message });
+    }
+  }
+  return stranded;
 }
 
 /** Liveness plus the facts the admin's diagnostics page needs. */
@@ -203,9 +276,23 @@ export async function getHealth(env: Env): Promise<Response> {
     pipeline: PIPELINE_VERSION,
     purgeConfigured:
       env.CF_API_TOKEN !== undefined && env.CF_ZONE_ID !== undefined,
+    // A purge that ran in the background and failed: the pages it named may
+    // still be served stale (src/worker/cache.ts).
+    lastPurgeFailure: withAdvice(
+      parsePurgeFailure(data.site?.last_purge_failure ?? null),
+    ),
     customDomain: data.site?.domain ?? null,
     mediaBaseUrl: data.site?.media_base_url ?? null,
   });
+}
+
+/** A stored purge failure with what the operator should check. */
+function withAdvice(
+  failure: PurgeFailure | null,
+): (PurgeFailure & { advice: string }) | null {
+  return failure === null
+    ? null
+    : { ...failure, advice: purgeFailureAdvice(failure.status) };
 }
 
 const defaultLocaleSchema = z.object({
@@ -260,6 +347,7 @@ export async function postDefaultLocale(
       kind: item.kind,
       locale: item.locale,
       defaultLocale: target,
+      prefixDefaultLocale: settings.prefixDefaultLocale,
       slug: item.slug,
       base,
     });
@@ -276,16 +364,214 @@ export async function postDefaultLocale(
   }
 
   const now = new Date().toISOString();
-  await movePaths(env.DB, gaining, now);
-  await movePaths(env.DB, losing, now);
-  await setDefaultLocale(env.DB, target, now);
-  ctx.waitUntil(purgeTags(env, ['site']));
+  // One batch, one transaction: every path and the setting move together.
+  await env.DB.batch([
+    ...movePathStatements(env.DB, [...gaining, ...losing], now),
+    setDefaultLocaleStatement(env.DB, target, now),
+  ]);
+  ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
 
   return json({
     defaultLocale: target,
     moved: gaining.length + losing.length,
     redirects: gaining.length + losing.length,
   });
+}
+
+const localePrefixSchema = z.object({
+  enabled: z.boolean(),
+  /** Required: this rewrites every public URL on the site. */
+  confirm: z.literal(true),
+});
+
+/**
+ * Turns the default locale's prefix on or off (docs/ARCHITECTURE.md §9).
+ *
+ * Every content row of the default locale moves — `/about` to `/en/about`,
+ * or back — and a 301 is recorded from each old path, so no external link
+ * breaks: an old unprefixed address answers with a redirect, never with a
+ * second copy of the page. Only the default locale's rows move, all in the
+ * same direction, so no row claims a path another still holds; a target that
+ * is already taken refuses the whole change before anything is written.
+ */
+export async function postLocalePrefix(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext,
+): Promise<Response> {
+  const parsed = localePrefixSchema.safeParse(await readJson(request));
+  if (!parsed.success) {
+    return problem(
+      400,
+      'Provide "enabled": true or false, and "confirm": true; this rewrites every URL.',
+    );
+  }
+  const row = await loadSite(env.DB);
+  if (row === null) {
+    return problem(503, 'Site is not initialized.');
+  }
+  const settings = parseSiteSettings(row);
+  const enabled = parsed.data.enabled;
+  if (enabled === settings.prefixDefaultLocale) {
+    return json({ prefixDefaultLocale: enabled, moved: 0, unchanged: true });
+  }
+  const result = await changeLocalePrefix(env, settings, enabled);
+  if ('clash' in result) {
+    return problem(
+      409,
+      `"${result.clash.from}" would move to "${result.clash.to}", which another item already uses. Change one of their slugs first. Nothing was changed.`,
+    );
+  }
+  ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
+  return json({
+    prefixDefaultLocale: enabled,
+    moved: result.moved,
+    redirects: result.moved,
+  });
+}
+
+/**
+ * The navigation, rewritten for the prefix setting.
+ *
+ * Its links are the site's own paths (`/products`), written for the setting
+ * as it was. Left alone they would each cost a redirect, and a list page has
+ * no redirect to fall back on. The view maps them while the prefix is on
+ * (`linkForPrefix`), but turning it off has to put them back, and what is
+ * stored should be what is served. Every locale's entries are rewritten,
+ * because a link to the default locale's page can sit in any of them; a link
+ * under another locale, an absolute URL or an admin path is left alone.
+ */
+export function prefixNavigation(
+  nav: SiteSettings['nav'],
+  site: SiteLocales,
+  enabled: boolean,
+): SiteSettings['nav'] {
+  return Object.fromEntries(
+    Object.entries(nav).map(([locale, entries]) => [
+      locale,
+      entries.map((entry) => ({
+        ...entry,
+        href: linkForPrefix(entry.href, site, enabled),
+      })),
+    ]),
+  );
+}
+
+/**
+ * The default locale's pages that have no content row, and so no redirect of
+ * their own when the prefix changes: the home page, each list and each tag
+ * archive in use. Unprefixed, as the setting off writes them.
+ */
+async function addressesWithoutRows(
+  env: Env,
+  settings: SiteSettings,
+): Promise<string[]> {
+  const tags = await listTags(
+    env.DB,
+    settings.defaultLocale,
+    new Date().toISOString(),
+  );
+  const bases = Object.values(settings.kinds)
+    .map((kind) => kind.base)
+    .filter((base) => base !== '');
+  return [
+    '/',
+    ...bases.map((base) => `/${base}`),
+    ...tags.map(({ tag }) => `/tags/${encodeURIComponent(tag)}`),
+  ];
+}
+
+/**
+ * Redirects for {@link addressesWithoutRows} when the prefix is turned off.
+ *
+ * Turning it on needs none: an unprefixed list or tag address is worked out
+ * and redirected as it is asked for (`content.page.ts`, `tag.page.ts`), and
+ * `/` always redirects then. Turning it off leaves `/en`, `/en/products` and
+ * `/en/tags/x` — in bookmarks, in search results, cached as a 301 by
+ * browsers — with nothing to answer; those are recorded here, and removed
+ * again if the prefix comes back on, when they are real addresses.
+ */
+function prefixRedirectStatements(
+  db: D1Database,
+  pages: readonly string[],
+  defaultLocale: string,
+  enabled: boolean,
+  now: string,
+): D1PreparedStatement[] {
+  return pages.map((page) => {
+    const prefixed = `/${defaultLocale}${page === '/' ? '' : page}`;
+    return enabled
+      ? db.prepare('DELETE FROM redirect WHERE from_path = ?').bind(prefixed)
+      : db
+          .prepare(
+            `INSERT OR REPLACE INTO redirect
+               (from_path, to_path, status, content_id, created_at)
+             VALUES (?, ?, 301, NULL, ?)`,
+          )
+          .bind(prefixed, page, now);
+  });
+}
+
+/**
+ * Moves every content path to where `enabled` puts it, records a redirect
+ * from each old one, and stores the setting. Refuses, writing nothing, when
+ * a path would land on one another item holds. Shared by the settings
+ * endpoint and the setup wizard, which applies a starter's choice.
+ */
+export async function changeLocalePrefix(
+  env: Env,
+  settings: SiteSettings,
+  enabled: boolean,
+): Promise<{ moved: number } | { clash: PathMove }> {
+  const locations = await listContentLocations(env.DB);
+  const moves: PathMove[] = [];
+  for (const item of locations) {
+    const to = buildPublicPath({
+      kind: item.kind,
+      locale: item.locale,
+      defaultLocale: settings.defaultLocale,
+      prefixDefaultLocale: enabled,
+      slug: item.slug,
+      base: settings.kinds[item.kind]?.base ?? '',
+    });
+    if (to !== item.path) {
+      moves.push({ id: item.id, from: item.path, to });
+    }
+  }
+  // With the paths the rules allow, no target is anybody's current path: the
+  // default locale's rows all gain, or all lose, the same prefix. A path set
+  // by hand can break that, and the database would then refuse halfway.
+  const held = new Set(locations.map((item) => item.path));
+  const targets = new Set<string>();
+  const clash = moves.find((move) => {
+    const taken = held.has(move.to) || targets.has(move.to);
+    targets.add(move.to);
+    return taken;
+  });
+  if (clash !== undefined) {
+    return { clash };
+  }
+  const now = new Date().toISOString();
+  const pages = await addressesWithoutRows(env, settings);
+  // One batch, one transaction: every path, the navigation and the setting
+  // move together, or none of them does.
+  await env.DB.batch([
+    ...movePathStatements(env.DB, moves, now),
+    ...prefixRedirectStatements(
+      env.DB,
+      pages,
+      settings.defaultLocale,
+      enabled,
+      now,
+    ),
+    setPrefixDefaultLocaleStatement(
+      env.DB,
+      enabled,
+      JSON.stringify(prefixNavigation(settings.nav, settings, enabled)),
+      now,
+    ),
+  ]);
+  return { moved: moves.length };
 }
 
 /**

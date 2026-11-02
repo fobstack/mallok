@@ -23,6 +23,8 @@ export interface Settings {
   /** One tagline, or one per language keyed by locale. */
   readonly tagline: string | Readonly<Record<string, string>> | null;
   readonly defaultLocale: string;
+  /** True when the default language is prefixed too (`/en/…`). */
+  readonly prefixDefaultLocale: boolean;
   readonly locales: readonly string[];
   readonly kinds: Readonly<Record<string, { readonly base: string }>>;
   readonly themeOptions: Readonly<Record<string, unknown>>;

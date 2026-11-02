@@ -14,6 +14,8 @@ import setupClaimSql from './migrations/0003_setup_claim.sql';
 import siteEmailSql from './migrations/0004_site_email.sql';
 import siteTaglinesSql from './migrations/0006_site_taglines.sql';
 import siteClaimedSql from './migrations/0007_site_claimed.sql';
+import sitePurgeFailureSql from './migrations/0008_site_purge_failure.sql';
+import siteLocalePrefixSql from './migrations/0009_site_locale_prefix.sql';
 
 /** One migration: a stable id and the SQL text to apply. */
 export interface Migration {
@@ -43,6 +45,8 @@ export const CORE_MIGRATIONS: readonly Migration[] = [
   // (`site-email.ts`) and applied after these by `bootstrap.ts`.
   { id: '0006_site_taglines', sql: siteTaglinesSql },
   { id: '0007_site_claimed', sql: siteClaimedSql },
+  { id: '0008_site_purge_failure', sql: sitePurgeFailureSql },
+  { id: '0009_site_locale_prefix', sql: siteLocalePrefixSql },
 ];
 
 const LOCK_TTL_MS = 60_000;

@@ -357,12 +357,11 @@ the home page also carry the `c:<id>` tag of every item they display.
   window within a Worker, carrying several tags — to keep call volume down
   under heavy edit traffic, and a news site saving repeatedly will queue for
   tens of seconds, which the interface must show as "cache purge queued".
-  The "five tag purges per minute" ceiling this used to cite as the reason
-  was not confirmed against a real account: 16 direct purge calls in quick
-  succession all succeeded with no throttling observed (§18 item 3,
-  2026-09-03) — the debounce is worth keeping regardless of where the real
-  ceiling turns out to be, but no specific number should be asserted without
-  measuring it again.
+  Cloudflare's purge page documents the limit for tag purges as five
+  requests a minute per account on the Free plan, with a bucket of 25, shared
+  across the account's zones (updated 2026-09-29, read 2026-10-25); 16 direct
+  calls in quick succession succeeded on 2026-09-03 (§18 item 3), which the
+  bucket explains.
   **Plugins add tags of their own**, namespaced `p:<plugin-id>:<tag>`, from
   the `renderData` hook, and may purge only that namespace and `site`
   (`PLUGIN_API.md §9.1`). They are appended after the core's tags, so the
@@ -378,6 +377,23 @@ the home page also carry the `c:<id>` tag of every item they display.
 - **Both plans need** an API token with zone-level `Cache Purge` permission
   and the Zone ID, configured in the wizard and stored as a Worker secret.
   That a zone must exist is another reason a custom domain is required.
+  The permission is the one named **Cache Purge → Purge**. On the deployed
+  test site, on 2026-10-25, a token Cloudflare reported "valid and active"
+  was refused every purge with HTTP 401 and code 10000 because it held
+  **Cache Rules → Edit**, listed next to it; with Cache Purge, a plugin's tag
+  purge reached the page in 3.6 seconds (`tasks/TASK-47.md`).
+- **A failed purge is never silent** (Task 47). It is logged as
+  `purge_failed`, stored on the site row with when, from where and what
+  Cloudflare answered, and shown under Settings → Advanced and in
+  `GET /health` until a purge of the whole site that started after it
+  succeeds, or until no token is configured. The admin's "Clear cached
+  pages" answers 502 with the reason and the permission to check, and a
+  plugin's `ctx.purgeTags` resolves to `{ attempted, ok, status }`. Purges
+  are coalesced over two seconds on a timer that runs in the request that
+  asked; every caller keeps that request alive for it (`waitUntil`), and a
+  flush whose timer was lost anyway is noticed by the next purge, logged as
+  `purge_flush_lost`, and sent with it — a lost timer can delay a purge, not
+  swallow it.
 
 **0.1 takes plan A by default with B as the alternative. Task 01 must measure
 the availability, latency and rate limits of both and write the conclusion
@@ -531,10 +547,48 @@ in [CONTENT_FORMAT.md](CONTENT_FORMAT.md).
 
 ## 9. Multiple languages
 
-- `site.locales` declares the enabled languages and `site.default_locale`. The
-  default language's URLs carry no prefix; every other language is prefixed
-  `/<locale>/` (`/products/x`, `/de/products/x`). In 0.1 the languages share a
-  kind's base path, while slugs are set per translation.
+- `site.locales` declares the enabled languages and `site.default_locale`. By
+  default the default language's URLs carry no prefix; every other language is
+  prefixed `/<locale>/` (`/products/x`, `/de/products/x`). In 0.1 the
+  languages share a kind's base path, while slugs are set per translation.
+- **A site may prefix the default language too** (`site.prefix_default_locale`,
+  added 2026-10-25, Task 49). Then:
+  - every public path carries its locale: `/en/products/x`, `/de/products/x`;
+    a locale's home is the bare prefix, `/en` and `/de`;
+  - `/` answers a fixed `301` to `/<default>` — not language detection, which
+    stays excluded below — and `/feed.xml` a `301` to `/<default>/feed.xml`;
+  - canonical, `hreflang`, `x-default`, the sitemap, feeds, list and tag pages,
+    `site.home_path`, `site.kinds`, the inquiry thank-you redirect and
+    `mallok build` all use the prefixed paths; a static build writes the root
+    redirects to `_redirects` and to a `noindex` refresh page;
+  - an unprefixed address never serves a page. A list or tag path without a
+    prefix answers a `301` to the same path under `/<default>`, worked out as
+    it is asked for, because no content row moved from it to record one; a
+    content path is redirected by the redirect its move recorded, or is a
+    404. Any other unprefixed address stays a 404 rather than becoming a
+    redirect to one. Every redirect keeps the query string.
+  Turning it on or off (`POST /_mallok/api/settings/locale-prefix`, with
+  `"confirm": true`; Settings → Site; `prefixDefaultLocale` in `site.json` or
+  a starter) moves every content path of the default language and records a
+  `301` from each old one, and rewrites the default language's navigation
+  links that are paths on the site, in every language's menu (`/notes` ↔
+  `/en/notes`; absolute URLs, paths under another language and `/_mallok/…`
+  are left alone). While the prefix is on, the view maps such a link again
+  as it renders, and does the same for a theme's `string` options
+  (`linkForPrefix` in `src/core/paths.ts`), so a link written unprefixed
+  after the switch, or a theme default such as `/contact`, goes straight to
+  the page. Turning it off also records a `301` from
+  `/<default>`, each `/<default>/<base>` and each `/<default>/tags/<tag>` in
+  use, since those were real pages a moment before; turning it back on
+  removes them. Paths, redirects, navigation and setting are written in one
+  D1 `batch()`, which D1 runs as one transaction, so a failure leaves none of
+  them changed; changing the default language is one batch for the same
+  reason. The sitemap and feeds are cached under `site` as well as their own
+  tags, so the whole-site purge that follows reaches them. Off is the default, and a site that leaves it off
+  serves byte-identical URLs (`test/worker/locale-prefix-golden.test.ts`,
+  `test/cli/build-locale-prefix.test.ts`). Plugin addresses
+  (`/_mallok/p/<plugin>/[<locale>/]…`) are not public pages and are unchanged:
+  the default locale has no segment there in either mode.
 - Every item has a `locale`, and the languages of one item share a
   `translation_group`. A translation is an independent content row — its own
   Markdown, assets, status and URL — not a field-level translation.

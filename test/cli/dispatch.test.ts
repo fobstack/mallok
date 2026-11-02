@@ -178,11 +178,14 @@ describe('a publish and export round trip', () => {
   let saved: Record<string, unknown>[] = [];
   /** Every settings PATCH the stub site received. */
   let patches: Record<string, unknown>[] = [];
+  let prefixCalls: unknown[] = [];
 
   /** Answers the handful of endpoints these two commands call. */
   function stubSite(options: { readonly failSave?: boolean } = {}): void {
     saved = [];
     patches = [];
+    prefixCalls = [];
+    let prefixDefaultLocale = false;
     // The site's kinds, as its settings hold them; a PATCH replaces them, the
     // way applying a `site.json` does.
     let kinds: Record<string, { base: string }> = {
@@ -204,7 +207,18 @@ describe('a publish and export round trip', () => {
           patches.push(patch);
           kinds = patch.kinds ?? kinds;
         }
-        return json({ defaultLocale: 'en', kinds, maxImageEdge: null });
+        return json({
+          defaultLocale: 'en',
+          prefixDefaultLocale,
+          kinds,
+          maxImageEdge: null,
+        });
+      }
+      if (path === '/settings/locale-prefix' && init.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as { enabled: boolean };
+        prefixCalls.push(body);
+        prefixDefaultLocale = body.enabled;
+        return json({ prefixDefaultLocale, moved: 3, redirects: 3 });
       }
       if (path === '/theme') {
         return json({ imageWidths: [320], kinds: { article: {} } });
@@ -327,6 +341,40 @@ describe('a publish and export round trip', () => {
     expect(
       saved.map((item) => `${String(item.kind)}/${String(item.slug)}`).sort(),
     ).toEqual(['article/hello', 'product/bar']);
+  });
+
+  it("applies site.json's prefixDefaultLocale through its own confirmed call", async () => {
+    stubSite();
+    await writeFile(
+      join(dir, 'site.json'),
+      JSON.stringify({
+        name: 'Docs',
+        prefixDefaultLocale: true,
+        kinds: { article: { base: 'articles' }, page: { base: '' } },
+      }),
+      'utf8',
+    );
+    const args = [
+      'publish',
+      dir,
+      '--with-settings',
+      '--url',
+      'https://example.com',
+      '--json',
+    ];
+    const first = await run(args, { MALLOK_TOKEN: 'token' });
+    expect(first.code, first.err).toBe(EXIT.ok);
+    // Not in the PATCH, which refuses it: the endpoint that moves paths.
+    expect(patches.every((patch) => !('prefixDefaultLocale' in patch))).toBe(
+      true,
+    );
+    expect(prefixCalls).toEqual([{ enabled: true, confirm: true }]);
+
+    // Already on: nothing to move, so nothing is asked.
+    prefixCalls.length = 0;
+    const again = await run(args, { MALLOK_TOKEN: 'token' });
+    expect(again.code, again.err).toBe(EXIT.ok);
+    expect(prefixCalls).toEqual([]);
   });
 
   it('applies no settings in a dry run, and still reports what a real run would publish', async () => {

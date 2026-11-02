@@ -553,8 +553,8 @@ interface PluginContext {
   readonly site: SiteSettings;
   /** Provided by the core, see §7.6. */
   readonly sendEmail: (message: EmailMessage) => Promise<string>;
-  /** Purge this plugin's own cache tags, or `site`; coalesced. See §9. */
-  readonly purgeTags: (tags: readonly string[]) => Promise<unknown>;
+  /** Purge this plugin's own cache tags, or `site`; coalesced. See §9.1. */
+  readonly purgeTags: (tags: readonly string[]) => Promise<PurgeOutcome>;
   /** Queues one of the plugin's own jobs; resolves to the job's id (§7.4). */
   readonly enqueue: (
     name: string,
@@ -569,6 +569,16 @@ interface PluginContext {
   ) => D1PreparedStatement;
   readonly waitUntil: (promise: Promise<unknown>) => void;
 }
+```
+
+**Links to public pages.** `ctx.site.prefixDefaultLocale` is true on a site
+that prefixes its default locale as well (`ARCHITECTURE.md §9`). Do not test
+`locale === ctx.site.defaultLocale` to decide on a prefix; build the path
+with the exported helper, which is what the core and the `inquiry` plugin use:
+
+```ts
+import { localePrefix } from 'mallok/worker';
+const thanks = `${localePrefix(ctx.locale, ctx.site)}/thank-you`; // '/thank-you', '/de/thank-you', or '/en/thank-you'
 ```
 
 ```ts
@@ -1345,9 +1355,31 @@ only the pages showing that price are purged.
   the Free plan Cloudflare allows 5 purge calls a minute with a burst of 25,
   shared by every zone of that plan on the account
   ([purge limits](https://developers.cloudflare.com/cache/how-to/purge-cache/),
-  read 2026-10-05). **A bulk change should purge `site` once, not a tag per
-  row.** Without `CF_API_TOKEN` and `CF_ZONE_ID` nothing is purged and pages
-  expire by their TTL, as for the core's own purges.
+  read 2026-10-05, unchanged 2026-10-25). **A bulk change should purge `site`
+  once, not a tag per row.** Without `CF_API_TOKEN` and `CF_ZONE_ID` nothing is
+  purged and pages expire by their TTL, as for the core's own purges.
+- **What the call tells you** (Task 47). `ctx.purgeTags` resolves, after the
+  two-second window, to a `PurgeOutcome`: `{ attempted, ok, status? }`.
+  `attempted: false` means the site has no purge token. `attempted: true,
+  ok: false` means the pages are **still cached**: Cloudflare refused (`status`
+  is its HTTP status; 401 or 403 usually means the token lacks Zone → Cache
+  Purge → Purge) or could not be reached (`status` absent). A webhook handler
+  can answer an error then, so the sender retries:
+
+  ```ts
+  const outcome = await ctx.purgeTags(['pricing']);
+  if (outcome.attempted && !outcome.ok) {
+    return new Response('purge failed', { status: 503 });
+  }
+  ```
+
+  The failure is logged as `purge_failed` with `source: "plugin:<id>"` and
+  shown under Settings → Advanced, whatever the plugin does with it. **The
+  purge happens whether or not the plugin waits for it**: the core keeps it
+  alive past the end of the request. Only a success counts as one: a reply
+  that is not Cloudflare's JSON saying `"success": true` is a failure. Checked on
+  a deployed site on 2026-10-25: a raw-body route's purge of its own tag
+  reached a cached page 3.6 seconds after the request.
 - A page a failed `renderData` hook kept out of the cache carries no tags;
   there is nothing to purge.
 
@@ -1463,6 +1495,8 @@ inquiry cart or a booking plugin as much as a shop.
 | `ctx.t` in `afterRender`: the theme's language pack for the page (any API version) | §5.3; `THEME_FORMAT.md §10` | 42 | Done |
 | Sample data for a plugin from a site's starter, through a records panel's `save` | §7.5; `ARCHITECTURE.md §11.1` | 34 | Done |
 | Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`, `ctx.enqueueStatement`, `jobs`) | §5.5, §7.4 | 33 | Done |
+| `ctx.purgeTags` resolves to a `PurgeOutcome` (was `unknown`) | §9.1 | 47 | Done |
+| `ctx.site.prefixDefaultLocale` and the `localePrefix(locale, site)` helper | §7, `ARCHITECTURE.md §9` | 49 | Done |
 
 Theme-side changes in the same phase are documented in `THEME_FORMAT.md`:
 layouts for plugin pages (§16, Task 26), which are optional, and the script

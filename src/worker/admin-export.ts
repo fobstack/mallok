@@ -247,6 +247,9 @@ export async function getExport(
         name: settings.name,
         tagline: joinTagline(settings, settings.defaultLocale),
         defaultLocale: settings.defaultLocale,
+        // Written only when on, so an export of a site that never turned it
+        // on is what it always was.
+        ...(settings.prefixDefaultLocale ? { prefixDefaultLocale: true } : {}),
         locales: settings.locales,
         kinds: settings.kinds,
         nav: settings.nav,

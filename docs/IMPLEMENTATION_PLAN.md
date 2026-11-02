@@ -31,7 +31,8 @@
 | Design documents | All in place |
 | Implemented | The render core, the schema and self-migration, the public path and edge cache, the full authentication and management API, media storage and responsive image output, the SEO endpoints, multiple languages, the plugin runtime and the `inquiry` plugin, five official themes, the complete admin app |
 | Not started | Nothing in phases one to five. Every task has been advanced; what remains is gate A's measurements, the product owner's decisions, and translating the remaining documents |
-| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 22 (the `renderData` hook; the build's plugin API version is 2 from here), Task 23 (plugin cache tags), Task 24 (plugin routes with parameters, a locale segment and JSON bodies), Task 25 (rate-limit tiers), Task 26 (plugin pages through theme layouts, and the cross-site check on plugin routes), Task 27 (`onContentSave` called at last, and `onContentDelete`), Task 28 (editable records panels, sorting and search), Task 29 (records panels attached to the content editor), Task 30 (theme script validation with declared scripts — **P0 complete**), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`, added 2026-10-05) is done too. Everything through Task 30 and Task 41 is released as `0.1.0-rc.10`. Done since: Task 31 (raw-body routes), Task 32 (action parameters and related rows), Task 33 (isolated scheduled hooks and plugin jobs — **P1 complete** with Task 39, lists of references), Task 34 (starters a site brings — **P2 complete**). Task 44 (a kind with no list layout answers 404 at its base) is done; Tasks 42 (inquiry form labels from the theme's language pack), 43 (a tagline per language), 45 (`site.kinds` for templates) and 46 (nothing stored for an unclaimed site) are done and released in `0.1.0-rc.11` with everything above, on npm's `next` tag; `latest` stays on rc.10. Task 46's check on the deployed site found that purges there do not take effect and that a failed purge is shown as success and not logged (`tasks/TASK-46.md §7`): fixed on a branch, unreleased, cause on the test site unknown. **Open: Task 35**, the close-out — the re-measurement on a real account, the version decision and the release are the owner's; the report to Nundar is drafted (`tasks/TASK-35.md`). Records in `tasks/TASK-18.md` onward |
+| Phase six, plugin API 2 (Tasks 18–41) | **In progress.** Planned 2026-10-01 from the owner's task list for the Nundar shop plugin, extended 2026-10-03 with the owner's items of 2026-10-02 found building Nundar on rc.7: three defects (Tasks 36, 37, 38 with 40) and one gap (Task 39); baseline `0.1.0-rc.7` (`0af520b`). Done: Task 18 (documentation), Task 19 (panel read scope, released as `0.1.0-rc.8`), Task 20 (public plugin helpers), Task 21 (site-level email settings), Task 22 (the `renderData` hook; the build's plugin API version is 2 from here), Task 23 (plugin cache tags), Task 24 (plugin routes with parameters, a locale segment and JSON bodies), Task 25 (rate-limit tiers), Task 26 (plugin pages through theme layouts, and the cross-site check on plugin routes), Task 27 (`onContentSave` called at last, and `onContentDelete`), Task 28 (editable records panels, sorting and search), Task 29 (records panels attached to the content editor), Task 30 (theme script validation with declared scripts — **P0 complete**), Task 36 (one translation group per published bundle), Task 37 (`recent.<kind>` on the home page), Task 38 (a generated site type-checks and is claimed locally), Task 40 (`mallok publish` from a project root). Task 41 (structured data from `renderData`, added 2026-10-05) is done too. Everything through Task 30 and Task 41 is released as `0.1.0-rc.10`. Done since: Task 31 (raw-body routes), Task 32 (action parameters and related rows), Task 33 (isolated scheduled hooks and plugin jobs — **P1 complete** with Task 39, lists of references), Task 34 (starters a site brings — **P2 complete**). Task 44 (a kind with no list layout answers 404 at its base) is done; Tasks 42 (inquiry form labels from the theme's language pack), 43 (a tagline per language), 45 (`site.kinds` for templates) and 46 (nothing stored for an unclaimed site) are done and released in `0.1.0-rc.11` with everything above, on npm's `next` tag; `latest` stays on rc.10. Task 46's check on the deployed site found that purges there do not take effect and that a failed purge is shown as success and not logged (`tasks/TASK-46.md §7`): fixed in Task 47, unreleased; the cause on the test site was the token's permission (`tasks/TASK-47.md`). **Open: Task 35**, the close-out — the re-measurement on a real account, the version decision and the release are the owner's; the report to Nundar is drafted (`tasks/TASK-35.md`). Records in `tasks/TASK-18.md` onward |
+| Phase seven, prefixed locales, nested slugs, heading ids and purges (Tasks 47–51) | **Tasks 47–50 done**, merged to `main`, unreleased. Planned 2026-10-25 from items M1–M4; baseline `0.1.0-rc.11`. **Open: Task 51**, the release, to ship with the admin's move to shadcn/ui (owner, 2026-11-02). Records in `tasks/TASK-47.md` to `TASK-50.md` |
 
 ## 2. The two gates
 
@@ -821,6 +822,96 @@ leave stale pages** [M21]
   task's final interface wherever it differs from the owner's drafts, the
   measured numbers, and every owner decision and deviation.
 - Depends on: every task Nundar's current phase needs (P0 for phase 1).
+
+### Phase seven: prefixed locales, nested slugs, heading ids and purges
+
+Planned 2026-10-25 from the owner's items M1–M4, written for a prospective
+two-language documentation and marketing site; baseline `0.1.0-rc.11`
+(`main` at `5d6caff`). On 2026-11-01 that site decided not to use Mallok, and
+the owner kept the four as general features: a multilingual trade site wants
+every language under its own prefix, a manual or API reference wants nested
+addresses and a linked table of contents, and the purge defects are Mallok's
+own. Theme and plugin work a site needs for itself does not enter Mallok. The
+owner's identifiers are kept in brackets.
+
+Rules for the whole phase:
+
+- The phase-six scope decision "no always-prefix mode" is superseded by
+  Task 49, at the owner's request. The default stays as it was: a site that
+  does not turn the setting on keeps byte-identical paths.
+- One branch carrying the unreleased purge fix of Task 46; the four tasks
+  ship together as one candidate.
+- Order: 47 → 48 → 49 → 50 → 51. Task 50 builds on Task 49's path helpers.
+- **[VERIFY]** marks a Cloudflare fact checked against the current official
+  documentation, with the source and date recorded.
+
+**Task 47 — purges that take effect, and failures an operator can see** [M1]
+- Current: a failed purge is reported as success and logged nowhere (fixed on
+  `fix/purge-failure-reporting`, unreleased); on the deployed test site
+  purges do not take effect, cause unknown; a plugin's `ctx.purgeTags` is
+  typed `Promise<unknown>`.
+- The path: a plugin purges its own tag after a webhook and the cached page
+  is gone on the deployed site, read from the purge API's response; a purge
+  that fails is logged, returned to the plugin as a failure, and shown in
+  Settings → Advanced with when, from where and why.
+- **Owner decisions, 2026-10-25:** the last failure is recorded and shown in
+  the admin (not logging only); the cause is found on the deployed test site,
+  which the owner authorised for this task.
+- **[VERIFY]** the purge API's response envelope, purge by tag on every plan,
+  `Cache-Tag` limits, and purging Cache API entries by tag.
+- Contracts: `PLUGIN_API.md §9`, `ARCHITECTURE.md §6`, `ADMIN.md`,
+  `RELEASE_GATE.md §9`.
+- **Done** 2026-10-25, review fixes 2026-10-31 (`tasks/TASK-47.md`).
+
+**Task 48 — heading ids for a linked table of contents** [M4]
+- Current: no heading has an id; `content.headings` carries depth and text;
+  author ids are prefixed `user-content-` by the sanitizer; the `manual`
+  theme's contents list is unlinked.
+- The path: every heading of a rendered fragment has a stable id, unique in
+  the document, kept in Unicode script (no transliteration) with a numeric
+  fallback; `content.headings` exposes it and `manual` links to it.
+- **Owner decision, 2026-10-25: plain slugs** (`#quick-start`), not prefixed
+  ids; the narrowing of the sanitizer's clobber protection is recorded in
+  `SECURITY.md`.
+- `PIPELINE_VERSION` goes to `2`: every stored fragment is re-rendered once,
+  on its next request.
+- Contracts: `THEME_FORMAT.md §7`, `SECURITY.md §4`, `ARCHITECTURE.md §5`.
+- **Done** 2026-10-25, review fixes 2026-11-01 (`tasks/TASK-48.md`).
+
+**Task 49 — prefix the default locale too** [M2]
+- Current: the default locale is never prefixed (`src/core/paths.ts`), and
+  the same assumption is repeated in the page modules, the SEO routes, the
+  inquiry redirect, `site.kinds`, `mallok build` and the admin's path preview.
+- The path: with the site setting on, every public URL carries its locale,
+  `/` answers 301 to `/<default>`, canonical, hreflang, sitemap, feeds, tag
+  and list pages and the static build follow, and an unprefixed address
+  serves no duplicate. Turning it on or off recomputes every stored path.
+- **Owner decision, 2026-10-25:** changing the setting records a 301 from
+  every old path, the way changing the default locale does.
+- Touches the `site` row (migration `0009`; `0008` is Task 47's), the settings API, the admin's
+  site settings, `site.json`, starters and `mallok build`. Contracts:
+  `ARCHITECTURE.md §9`, `DATA_MODEL.md §2.2`, `SEO_PERFORMANCE.md`,
+  `THEME_FORMAT.md §7`, `PLUGIN_API.md`, `CLI.md`.
+- **Done** 2026-10-25, review fixes 2026-10-31 (`tasks/TASK-49.md`).
+
+**Task 50 — slugs of several segments within a kind** [M3]
+- Current: a slug is one segment (`docs/CONTENT_FORMAT.md §3.1`).
+- The path: an item saved with `slug: crypto/crypto-quote` in kind
+  `rest-api` is served at `/en/rest-api/crypto/crypto-quote`, listed in the
+  sitemap, exported and imported again unchanged; a slug that would collide
+  with a list's `page/<n>`, a reserved path or another kind's base is refused
+  with the reason.
+- A bundle states a nested slug in front matter, or in `mallok.json`; it is
+  not expressed by nesting directories. An intermediate address answers 404.
+- Contracts: `CONTENT_FORMAT.md §3.1, §6`, `ADMIN.md`, `CLI.md`.
+- **Done** 2026-10-25, review fixes 2026-11-01 (`tasks/TASK-50.md`).
+
+**Task 51 — release**
+- Release the four tasks as one candidate through `docs/RELEASE_GATE.md`;
+  publishing, tagging and the timing are the owner's, who prefers few
+  releases. **Owner decision, 2026-11-02:** released together with the
+  admin's move to shadcn/ui (`docs/ADMIN_MIGRATION.md`), not on its own. No report is owed: the site they were written for does not use
+  Mallok (2026-11-01).
 
 ## 4. The dependency graph
 

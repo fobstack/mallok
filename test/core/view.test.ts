@@ -4,6 +4,7 @@ import {
   buildImageViews,
   buildRelationsView,
   buildSiteView,
+  buildThemeView,
   faqPairs,
   homeKinds,
   joinTagline,
@@ -417,6 +418,93 @@ describe('site.kinds, links to list pages', () => {
       product: { path: '/de/products', label: 'Produkte' },
       case: { path: '/de/work', label: 'Referenzen' },
     });
+  });
+
+  it("carries the default locale's prefix when the site prefixes it", () => {
+    const site = buildSiteView({
+      ...ctx,
+      settings: { ...settings, prefixDefaultLocale: true },
+      manifest: listing,
+    });
+    expect(site.home_path).toBe('/en');
+    expect(site.kinds).toEqual({
+      product: { path: '/en/products', label: 'Products' },
+      case: { path: '/en/work', label: 'case' },
+    });
+  });
+
+  it("maps the owner's links to the prefix, nav and string options alike", () => {
+    // Written unprefixed after the switch, or never rewritten: the view
+    // still sends readers straight to the page, not through a redirect.
+    const prefixed = {
+      ...ctx,
+      path: '/en/products',
+      settings: {
+        ...settings,
+        prefixDefaultLocale: true,
+        nav: {
+          en: [
+            { label: 'Products', href: '/products' },
+            { label: 'Elsewhere', href: 'https://elsewhere.example/' },
+          ],
+        },
+        themeOptions: { cta_href: '/contact', accent: '/not-a-link' },
+      },
+      manifest: {
+        ...listing,
+        options: {
+          cta_href: { type: 'string' as const, label: 'CTA', default: '/' },
+          accent: { type: 'color' as const, label: 'Accent', default: '#000' },
+        },
+      },
+    };
+    expect(buildSiteView(prefixed).nav).toEqual([
+      { label: 'Products', href: '/en/products', active: true },
+      { label: 'Elsewhere', href: 'https://elsewhere.example/', active: false },
+    ]);
+    expect(buildThemeView(prefixed).options).toEqual({
+      cta_href: '/en/contact',
+      // Only a one-line string is a link; anything else is left alone.
+      accent: '/not-a-link',
+    });
+    // A site that never prefixes renders its links exactly as written.
+    const plain = {
+      ...prefixed,
+      path: '/products',
+      settings: { ...prefixed.settings, prefixDefaultLocale: false },
+    };
+    expect(buildSiteView(plain).nav[0]).toEqual({
+      label: 'Products',
+      href: '/products',
+      active: true,
+    });
+    expect(buildThemeView(plain).options.cta_href).toBe('/contact');
+  });
+
+  it("gives the tag archives and feed of the page's language", () => {
+    // A theme that wrote `/tags/x` linked a German article's tags to the
+    // English archive, and every tag on a prefixed site to a redirect.
+    const plain = buildSiteView({ ...ctx, settings, manifest: listing });
+    expect([plain.tags_path, plain.feed_path]).toEqual(['/tags', '/feed.xml']);
+    const german = buildSiteView({
+      ...ctx,
+      settings,
+      manifest: listing,
+      locale: 'de',
+    });
+    expect([german.tags_path, german.feed_path]).toEqual([
+      '/de/tags',
+      '/de/feed.xml',
+    ]);
+    const prefixed = buildSiteView({
+      ...ctx,
+      settings: { ...settings, prefixDefaultLocale: true },
+      manifest: listing,
+    });
+    expect([prefixed.tags_path, prefixed.feed_path]).toEqual([
+      '/en/tags',
+      '/en/feed.xml',
+    ]);
   });
 
   it('follows a change of base', () => {

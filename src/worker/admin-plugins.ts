@@ -234,7 +234,7 @@ async function postEnabled(
     return problem(404, 'Plugin state row is missing.');
   }
   // Cached pages may embed (or now lack) this plugin's stage-two output.
-  ctx.waitUntil(purgeTags(env, ['site']));
+  ctx.waitUntil(purgeTags(env, ['site'], 'plugins'));
   return json({ id: plugin.manifest.id, enabled: body.enabled });
 }
 
@@ -264,7 +264,7 @@ async function patchPluginSettings(
     JSON.stringify(parsed.data),
     now,
   );
-  ctx.waitUntil(purgeTags(env, ['site']));
+  ctx.waitUntil(purgeTags(env, ['site'], 'plugins'));
   return json({ id: plugin.manifest.id, settings: parsed.data });
 }
 

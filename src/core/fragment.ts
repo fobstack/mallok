@@ -27,7 +27,7 @@ import { type AssetMap, rehypeResolveAssets } from './assets.js';
 import { sha256Hex, stableStringify } from './hash.js';
 
 /** Bump whenever the pipeline output may change for identical input. */
-export const PIPELINE_VERSION = '1';
+export const PIPELINE_VERSION = '2';
 
 /** A `beforeRender` plugin hook. Must be a pure function of its arguments. */
 export type BeforeRenderHook = (
@@ -64,6 +64,8 @@ export interface FragmentInput {
 export interface HeadingInfo {
   readonly depth: 1 | 2 | 3 | 4 | 5 | 6;
   readonly text: string;
+  /** The heading's `id`, unique in the document: what `#…` links to. */
+  readonly id: string;
 }
 
 /** Derived metadata that travels with the fragment. */
@@ -141,6 +143,8 @@ export async function renderFragment(
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeSanitize, sanitizeSchema)
+    // After the sanitizer, so the ids it generates are not prefixed the
+    // way an author's own ids are (see `collectHeadings`).
     .use(() => (tree: HastRoot) => {
       collectHeadings(tree, headings);
     })
@@ -210,13 +214,121 @@ function estimateReadingTime(text: string): number {
   return Math.max(1, Math.ceil(minutes));
 }
 
+/** Longest generated id, in code points; longer headings are cut. */
+const MAX_HEADING_ID = 80;
+
+/**
+ * Lists the document's headings and gives each one an id.
+ *
+ * A heading the author already gave an id (inline HTML) keeps it, as the
+ * sanitizer wrote it (`user-content-…`). Every other heading gets
+ * {@link headingSlug} of its text: Unicode letters and digits are kept as
+ * they are, so a Chinese heading's id is Chinese, not a transliteration;
+ * a heading with neither gets `heading-<n>`, its position among the
+ * headings. A repeated id gets `-1`, `-2`, … in document order, and no
+ * generated id repeats any id already in the fragment.
+ *
+ * These ids are not prefixed, unlike an author's: `#quick-start` is the
+ * link a table of contents and a reader expect (owner decision 2026-10-25,
+ * docs/SECURITY.md §4). Unprefixed, they share the page with the theme's and
+ * plugins' own ids, so they never take one of {@link RESERVED_IDS}: a heading
+ * called "Main" is `main-1`, and the skip link still reaches `<main>`.
+ *
+ * An author's id is kept, except where an earlier element already has it:
+ * then the heading is numbered like a repeated one, so its table-of-contents
+ * link leads to it rather than to the first. The GFM footnotes' own heading
+ * is not listed: it labels the footnotes, it is not a section of the
+ * document.
+ */
 function collectHeadings(tree: HastRoot, out: HeadingInfo[]): void {
+  const taken = new Set<string>(RESERVED_IDS);
+  const before = new Set<string>();
   visit(tree, 'element', (node) => {
+    const id = node.properties.id;
+    if (typeof id === 'string') {
+      taken.add(id);
+    }
+  });
+  let position = 0;
+  visit(tree, 'element', (node, _index, parent) => {
     const match = /^h([1-6])$/.exec(node.tagName);
     if (match === null) {
+      const id = node.properties.id;
+      if (typeof id === 'string') {
+        before.add(id);
+      }
+      return;
+    }
+    position++;
+    if (
+      parent !== undefined &&
+      parent.type === 'element' &&
+      parent.properties.dataFootnotes !== undefined
+    ) {
       return;
     }
     const depth = Number(match[1]) as HeadingInfo['depth'];
-    out.push({ depth, text: hastToString(node).trim() });
+    const text = hastToString(node).trim();
+    const own = node.properties.id;
+    let id: string;
+    if (typeof own === 'string' && own !== '' && !before.has(own)) {
+      id = own;
+    } else {
+      const base =
+        typeof own === 'string' && own !== ''
+          ? own
+          : headingSlug(text) || `heading-${position}`;
+      id = base;
+      for (
+        let suffix = 1;
+        taken.has(id) || RESERVED_NUMBERED_ID.test(id);
+        suffix++
+      ) {
+        id = `${base}-${suffix}`;
+      }
+      taken.add(id);
+      node.properties.id = id;
+    }
+    before.add(id);
+    out.push({ depth, text, id });
   });
+}
+
+/**
+ * Ids the official themes and plugins put on the page themselves, which a
+ * generated heading id must not repeat: `main` is every theme's skip-link
+ * target, `menu-toggle` Atelier's menu, `products` and `capabilities` its
+ * home sections, and `turnstile`, the global the inquiry form's Turnstile
+ * script defines: an element with that id is `window.turnstile` until the
+ * script has loaded. Numbered ids (`hero-slide-1`,
+ * `shot-1`) come from loops and are covered by {@link RESERVED_NUMBERED_ID}.
+ * `test/core/fragment.test.ts` keeps this list in step with the themes.
+ * A theme of its own should use ids with `_` in them (`site_menu`): a
+ * heading's id never has one (docs/THEME_FORMAT.md §7.2).
+ */
+export const RESERVED_IDS: ReadonlySet<string> = new Set([
+  'main',
+  'menu-toggle',
+  'products',
+  'capabilities',
+  'turnstile',
+]);
+
+/** Numbered ids the official themes write in loops. */
+export const RESERVED_NUMBERED_ID = /^(?:hero-slide|shot)-\d+$/;
+
+/**
+ * The id a heading's text becomes: lowercased, letters, marks and digits of
+ * any script kept, everything else dropped, runs of spaces and dashes made
+ * one dash. Empty when the text has no letter or digit at all.
+ */
+export function headingSlug(text: string): string {
+  const slug = text
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{M}\p{N}\s_-]/gu, '')
+    .trim()
+    .replace(/[\s_-]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+  return Array.from(slug).slice(0, MAX_HEADING_ID).join('').replace(/-+$/, '');
 }
