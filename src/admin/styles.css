@@ -248,15 +248,19 @@
     letter-spacing: 0.01em;
   }
 
-  /* Buttons */
+  /* Buttons. The frame is for the legacy buttons only: a shadcn/ui control
+     carries `data-slot` and sizes itself, and a checkbox — a `button` that
+     sets its width but not its padding — was stretched by this padding. */
   button {
-    font: inherit;
     cursor: pointer;
+  }
+  button:where(:not([data-slot])) {
+    font: inherit;
     border-radius: var(--radius);
     border: 1px solid transparent;
     padding: 0.45rem 0.9rem;
   }
-  button:disabled {
+  button:where(:not([data-slot])):disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }

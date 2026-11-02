@@ -5,9 +5,29 @@
  * is stated plainly rather than hidden (docs/SECURITY.md §3.1).
  */
 
+import { cn } from 'cn';
+import { Info, KeyRound } from 'lucide-react';
 import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Field,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
+import {
+  Code,
+  Page,
+  PageHeader,
+  Section,
+  StatusBadge,
+} from '../components/page.js';
 import { notice, session } from '../state.js';
 import {
   describeToken,
@@ -80,121 +100,169 @@ export function AccountPage(): JSX.Element {
       activeSession.passwordRecommendedIterations;
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1>Account</h1>
-      </header>
+    <Page>
+      <PageHeader title="Account" />
 
       <PasswordSection />
 
       {weakPassword && activeSession !== null ? (
-        <section className="card note">
-          <h2>About password hashing</h2>
-          <p>
-            Passwords are hashed with PBKDF2-SHA256 at{' '}
-            {activeSession.passwordIterations.toLocaleString()} iterations.
-            Current guidance is{' '}
-            {activeSession.passwordRecommendedIterations.toLocaleString()}, but
-            a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU
-            budget, so the cost is capped.
-          </p>
-          <p className="help">
-            Use a long, unique password. For stronger protection, put Cloudflare
-            Access in front of <code>/_mallok/</code>.
-          </p>
-        </section>
+        <Alert role="note">
+          <Info />
+          <AlertTitle role="heading" aria-level={2}>
+            About password hashing
+          </AlertTitle>
+          <AlertDescription>
+            <p>
+              Passwords are hashed with PBKDF2-SHA256 at{' '}
+              {activeSession.passwordIterations.toLocaleString()} iterations.
+              Current guidance is{' '}
+              {activeSession.passwordRecommendedIterations.toLocaleString()},
+              but a sign-in has to finish inside the Cloudflare Free plan's 10
+              ms CPU budget, so the cost is capped.
+            </p>
+            <p>
+              Use a long, unique password. For stronger protection, put
+              Cloudflare Access in front of <Code>/_mallok/</Code>.
+            </p>
+          </AlertDescription>
+        </Alert>
       ) : null}
 
-      <section className="card">
-        <h2>API tokens</h2>
-        <p className="help">
-          The CLI and any script use these. A token is shown once — copy it now,
-          it cannot be retrieved later.
-        </p>
+      <Section
+        title="API tokens"
+        description="The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
+      >
         {minted === '' ? null : (
-          <div className="token-reveal" role="alert">
-            <code>{minted}</code>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => {
-                void navigator.clipboard?.writeText(minted);
-              }}
-            >
-              Copy
-            </button>
-            <button
-              type="button"
-              className="ghost"
-              onClick={() => setMinted('')}
-            >
-              Done
-            </button>
-          </div>
-        )}
-        <ul className="rows">
-          {tokens.map((token) => {
-            const view = describeToken(token);
-            return (
-              <li
-                key={token.id}
-                className={view.revocable ? undefined : 'revoked'}
+          // A real alert: the token is on screen this once, and never again.
+          <Alert className="border-primary/40 bg-primary/5">
+            <KeyRound />
+            <AlertDescription className="flex flex-wrap items-center gap-2 text-foreground">
+              <code className="min-w-0 flex-1 rounded-sm bg-background px-2 py-1 font-mono text-xs break-all">
+                {minted}
+              </code>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(minted);
+                }}
               >
-                <span>{token.name}</span>
-                <span className="code">{token.scopes.join(' ')}</span>
-                <span className="help">{view.status}</span>
-                {view.revocable ? (
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => {
-                      void revoke(token.id);
-                    }}
+                Copy
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setMinted('')}
+              >
+                Done
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        {tokens.length === 0 ? null : (
+          <ul className="flex flex-col divide-y rounded-lg border">
+            {tokens.map((token) => {
+              const view = describeToken(token);
+              return (
+                <li
+                  key={token.id}
+                  // `revoked` styles nothing; it marks the row for the browser
+                  // test that checks a revoked token is told apart.
+                  className={cn(
+                    'flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm',
+                    !view.revocable && 'revoked text-muted-foreground',
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'font-medium',
+                      !view.revocable && 'font-normal line-through',
+                    )}
                   >
-                    Revoke
-                  </button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-        <form className="inline-form" onSubmit={(event) => void create(event)}>
-          <div className="field">
-            <label htmlFor="token-name">New token name</label>
-            <div className="control">
-              <input
-                id="token-name"
-                required
-                value={name}
-                onInput={(event) => setName(event.currentTarget.value)}
-              />
+                    {token.name}
+                  </span>
+                  <span className="flex flex-wrap gap-1">
+                    {token.scopes.map((scope) => (
+                      <Badge
+                        key={scope}
+                        variant="secondary"
+                        className="font-mono"
+                      >
+                        {scope}
+                      </Badge>
+                    ))}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {view.status}
+                  </span>
+                  {view.revocable ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="ml-auto"
+                      onClick={() => {
+                        void revoke(token.id);
+                      }}
+                    >
+                      Revoke
+                    </Button>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => void create(event)}
+        >
+          <Field>
+            <FieldLabel htmlFor="token-name">New token name</FieldLabel>
+            <Input
+              id="token-name"
+              className="max-w-sm"
+              required
+              value={name}
+              onInput={(event) => setName(event.currentTarget.value)}
+            />
+          </Field>
+          <FieldSet>
+            <FieldLegend variant="label">Scopes</FieldLegend>
+            <div className="flex flex-wrap gap-x-6 gap-y-3">
+              {SCOPES.map((scope) => (
+                <Field key={scope} orientation="horizontal" className="w-auto">
+                  <Checkbox
+                    id={`token-scope-${scope}`}
+                    checked={chosen.includes(scope)}
+                    onCheckedChange={(checked) =>
+                      setChosen(
+                        checked === true
+                          ? [...chosen, scope]
+                          : chosen.filter((entry) => entry !== scope),
+                      )
+                    }
+                  />
+                  <FieldLabel
+                    htmlFor={`token-scope-${scope}`}
+                    className="font-mono font-normal"
+                  >
+                    {scope}
+                  </FieldLabel>
+                </Field>
+              ))}
             </div>
+          </FieldSet>
+          <div>
+            <Button type="submit" disabled={busy}>
+              Create token
+            </Button>
           </div>
-          <fieldset className="scopes">
-            <legend>Scopes</legend>
-            {SCOPES.map((scope) => (
-              <label key={scope} className="check">
-                <input
-                  type="checkbox"
-                  checked={chosen.includes(scope)}
-                  onChange={(event) =>
-                    setChosen(
-                      event.currentTarget.checked
-                        ? [...chosen, scope]
-                        : chosen.filter((entry) => entry !== scope),
-                    )
-                  }
-                />
-                <span className="code">{scope}</span>
-              </label>
-            ))}
-          </fieldset>
-          <button type="submit" className="primary" disabled={busy}>
-            Create token
-          </button>
         </form>
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }
 
@@ -227,41 +295,42 @@ function PasswordSection(): JSX.Element {
   };
 
   return (
-    <form className="card" onSubmit={(event) => void submit(event)}>
-      <h2>Password</h2>
-      <div className="field">
-        <label htmlFor="pw-current">Current password</label>
-        <div className="control">
-          <input
-            id="pw-current"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={currentPassword}
-            onInput={(event) => setCurrentPassword(event.currentTarget.value)}
-          />
-        </div>
-      </div>
-      <div className="field">
-        <label htmlFor="pw-next">New password</label>
-        <div className="control">
-          <input
-            id="pw-next"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={12}
-            value={nextPassword}
-            onInput={(event) => setNextPassword(event.currentTarget.value)}
-          />
-        </div>
-      </div>
-      <div className="actions">
-        <button type="submit" className="primary" disabled={busy}>
-          {busy ? 'Changing…' : 'Change password'}
-        </button>
-        {done ? <span className="pill ok">Changed</span> : null}
-      </div>
-    </form>
+    <Section
+      as="form"
+      title="Password"
+      onSubmit={(event) => void submit(event)}
+      footer={
+        <>
+          <Button type="submit" disabled={busy}>
+            {busy ? 'Changing…' : 'Change password'}
+          </Button>
+          {done ? <StatusBadge tone="ok">Changed</StatusBadge> : null}
+        </>
+      }
+    >
+      <Field>
+        <FieldLabel htmlFor="pw-current">Current password</FieldLabel>
+        <Input
+          id="pw-current"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={currentPassword}
+          onInput={(event) => setCurrentPassword(event.currentTarget.value)}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="pw-next">New password</FieldLabel>
+        <Input
+          id="pw-next"
+          type="password"
+          autoComplete="new-password"
+          required
+          minLength={12}
+          value={nextPassword}
+          onInput={(event) => setNextPassword(event.currentTarget.value)}
+        />
+      </Field>
+    </Section>
   );
 }

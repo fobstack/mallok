@@ -504,6 +504,34 @@ out there with uncommitted files.
   account menu test of phase 2 once (the closing-animation timing recorded
   above); it passed in the two runs either side.
 
+### Phase 3, step 2 — Account and API tokens, 2026-11-02
+
+- **The account page** is built from the same blocks: the password form is a
+  section with its submit in the footer, the hashing note is a `role="note"`
+  alert like the Appearance page's, and the token list shows each scope as
+  a badge. No copy changed.
+- **Two departures from the plan's component list, both to keep the tests
+  unchanged and the behaviour as it was.** The tokens stay a list, not a
+  table: `06-tokens` finds a token by its `listitem`. The new token is
+  shown inline in a `role="alert"`, not in a dialog: a dialog closed by
+  Escape or a click outside would lose a token that is never shown again,
+  and both token tests read it from the alert. A revoked row keeps the
+  class `revoked`, which `06-tokens` asserts; it styles nothing now (the
+  strike and muted colour are utilities), so it is a marker, not a legacy
+  class.
+- **A fix that reaches step 1.** The legacy `button` rule's padding also hit
+  shadcn's checkbox — a `button` that sets its width and height but not its
+  padding — and stretched it to a wide box; the Site page's prefix checkbox
+  had it too. The rule's frame (font, border, radius, padding, disabled
+  opacity) now applies only to buttons without `data-slot`, as the legacy
+  `a` rule already did. Legacy buttons (the content list's, for one) were
+  checked unchanged in a screenshot.
+- **Size. First load: 126.5 KiB.**
+- **Checked:** the browser suite (44) passed three times, axe in light and
+  dark included; unit tests (1445), lint, typecheck, build and bundle size
+  pass. Screenshots of the page in both schemes, with a freshly minted
+  token and a revoked one, were reviewed and not committed.
+
 ### D7 — The first-load budget, raised by phase 0
 
 150 KiB is the project's own number (`ADMIN.md §13`), not a platform limit:
