@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
@@ -125,6 +126,13 @@ export default defineConfig({
     projects: [
       {
         plugins: [textModules()],
+        // The admin's own alias (vite.config.ts): its pages import shadcn/ui
+        // as `@/components/ui/…`, and test/admin imports its pages.
+        resolve: {
+          alias: {
+            '@': fileURLToPath(new URL('./src/admin', import.meta.url)),
+          },
+        },
         test: {
           name: 'core',
           environment: 'node',

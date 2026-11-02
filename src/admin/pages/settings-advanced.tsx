@@ -6,9 +6,21 @@
  * and has to be stated once, plainly (docs/ARCHITECTURE.md §15).
  */
 
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
 import { ApiError, api } from '../api.js';
+import {
+  Code,
+  Facts,
+  Page,
+  PageHeader,
+  Section,
+  StatusBadge,
+} from '../components/page.js';
 import type { ExportProgress } from '../export.js';
 import { notice, saveSettings, settings } from '../state.js';
 
@@ -94,30 +106,23 @@ function BackupSection(): JSX.Element {
   };
 
   return (
-    <section className="card">
-      <h2>Backup and export</h2>
-      <p className="help">
-        A zip containing every page as Markdown, its images, your settings and
-        your inquiries. It is a complete site you can read anywhere — take it to
-        Astro, Hugo or Obsidian whenever you like. Export before upgrading.
-      </p>
-      <div className="actions">
-        <button
-          type="button"
-          className="primary"
-          disabled={busy}
-          onClick={() => void run()}
-        >
-          {busy ? 'Building…' : 'Export everything'}
-        </button>
-        {progress === null ? null : (
-          <span className="help" role="status">
-            {progress.done}/{progress.total} files
-          </span>
-        )}
-        {result === '' ? null : <span className="pill ok">{result}</span>}
-      </div>
-    </section>
+    <Section
+      title="Backup and export"
+      description="A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
+      footer={
+        <>
+          <Button type="button" disabled={busy} onClick={() => void run()}>
+            {busy ? 'Building…' : 'Export everything'}
+          </Button>
+          {progress === null ? null : (
+            <span className="text-sm text-muted-foreground" role="status">
+              {progress.done}/{progress.total} files
+            </span>
+          )}
+          {result === '' ? null : <StatusBadge tone="ok">{result}</StatusBadge>}
+        </>
+      }
+    />
   );
 }
 
@@ -208,236 +213,230 @@ export function AdvancedPage(): JSX.Element {
     }
   };
 
+  const purgeFailure = health?.lastPurgeFailure ?? null;
+  const diagnosticsFacts: [ReactNode, ReactNode][] = [
+    [
+      'Custom domain',
+      health?.customDomain === null || health === null ? (
+        <StatusBadge key="v" tone="warn">
+          Not bound
+        </StatusBadge>
+      ) : (
+        <Code key="v">{health.customDomain}</Code>
+      ),
+    ],
+    [
+      'Edge cache',
+      health?.customDomain == null ? (
+        <StatusBadge key="v" tone="warn">
+          Inactive — a workers.dev URL is a preview, not a site
+        </StatusBadge>
+      ) : (
+        <StatusBadge key="v" tone="ok">
+          Active
+        </StatusBadge>
+      ),
+    ],
+    [
+      'Cache purge token',
+      health?.purgeConfigured === true ? (
+        <StatusBadge key="v" tone="ok">
+          Configured
+        </StatusBadge>
+      ) : (
+        <StatusBadge key="v" tone="warn">
+          Not configured — edits go live after the cache expires
+        </StatusBadge>
+      ),
+    ],
+    ...(purgeFailure === null
+      ? []
+      : [
+          [
+            'Last failed purge',
+            <div key="v" className="flex flex-col items-start gap-1">
+              <StatusBadge tone="warn">
+                {new Date(purgeFailure.at).toLocaleString()} — after{' '}
+                {describePurgeSource(purgeFailure.source)}
+                {purgeFailure.status === undefined
+                  ? ', Cloudflare could not be reached'
+                  : `, Cloudflare answered HTTP ${purgeFailure.status}`}
+              </StatusBadge>
+              <p className="text-muted-foreground">
+                Pages it named may still be served from the cache until they
+                expire. {purgeFailure.advice} {purgeFailure.detail}
+              </p>
+            </div>,
+          ] as [ReactNode, ReactNode],
+        ]),
+    [
+      'Email (Resend)',
+      settings.value?.email.resendConfigured !== true ? (
+        <StatusBadge key="v" tone="warn">
+          No key — no email is sent
+        </StatusBadge>
+      ) : settings.value.email.fromAddress === '' ? (
+        <StatusBadge key="v" tone="warn">
+          Key set, no site sender — only plugins with their own send
+        </StatusBadge>
+      ) : (
+        <StatusBadge key="v" tone="ok">
+          Configured
+        </StatusBadge>
+      ),
+    ],
+    [
+      'Media domain',
+      health?.mediaBaseUrl == null ? (
+        <StatusBadge key="v" tone="warn">
+          Served through the Worker
+        </StatusBadge>
+      ) : (
+        <Code key="v">{health.mediaBaseUrl}</Code>
+      ),
+    ],
+    ['Theme', <Code key="v">{health?.theme ?? '—'}</Code>],
+    ['Render pipeline', <Code key="v">{health?.pipeline ?? '—'}</Code>],
+    ['Applied migrations', diagnostics?.migrations.join(', ') ?? '—'],
+  ];
+
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1>Advanced</h1>
-        <p className="lede">
-          Everything below is a platform detail. You do not need any of it to
-          run the site.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Advanced"
+        lede="Everything below is a platform detail. You do not need any of it to run the site."
+      />
 
-      <section className="card">
-        <h2>What is instant, and what needs a deploy</h2>
-        <div className="two-col">
-          <div>
-            <h3>Instant</h3>
-            <ul className="bullets">
-              {INSTANT.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h3>Needs a rebuild and deploy</h3>
-            <ul className="bullets">
-              {NEEDS_DEPLOY.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      <section className="card">
-        <h2>Diagnostics</h2>
-        <dl className="facts">
-          <div>
-            <dt>Custom domain</dt>
-            <dd>
-              {health?.customDomain === null || health === null ? (
-                <span className="pill warn">Not bound</span>
-              ) : (
-                <span className="code">{health.customDomain}</span>
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>Edge cache</dt>
-            <dd>
-              {health?.customDomain == null ? (
-                <span className="pill warn">
-                  Inactive — a workers.dev URL is a preview, not a site
-                </span>
-              ) : (
-                <span className="pill ok">Active</span>
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>Cache purge token</dt>
-            <dd>
-              {health?.purgeConfigured === true ? (
-                <span className="pill ok">Configured</span>
-              ) : (
-                <span className="pill warn">
-                  Not configured — edits go live after the cache expires
-                </span>
-              )}
-            </dd>
-          </div>
-          {health?.lastPurgeFailure == null ? null : (
-            <div>
-              <dt>Last failed purge</dt>
-              <dd>
-                <span className="pill warn">
-                  {new Date(health.lastPurgeFailure.at).toLocaleString()} —
-                  after {describePurgeSource(health.lastPurgeFailure.source)}
-                  {health.lastPurgeFailure.status === undefined
-                    ? ', Cloudflare could not be reached'
-                    : `, Cloudflare answered HTTP ${health.lastPurgeFailure.status}`}
-                </span>
-                <p className="help">
-                  Pages it named may still be served from the cache until they
-                  expire. {health.lastPurgeFailure.advice}{' '}
-                  {health.lastPurgeFailure.detail}
-                </p>
-              </dd>
+      <Section title="What is instant, and what needs a deploy">
+        <div className="grid gap-6 sm:grid-cols-2">
+          {(
+            [
+              ['Instant', INSTANT],
+              ['Needs a rebuild and deploy', NEEDS_DEPLOY],
+            ] as const
+          ).map(([heading, lines]) => (
+            <div key={heading} className="flex flex-col gap-2">
+              <h3 className="text-sm font-medium">{heading}</h3>
+              <ul className="ml-4 flex list-disc flex-col gap-1 text-sm text-muted-foreground">
+                {lines.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
             </div>
-          )}
-          <div>
-            <dt>Email (Resend)</dt>
-            <dd>
-              {settings.value?.email.resendConfigured !== true ? (
-                <span className="pill warn">No key — no email is sent</span>
-              ) : settings.value.email.fromAddress === '' ? (
-                <span className="pill warn">
-                  Key set, no site sender — only plugins with their own send
-                </span>
-              ) : (
-                <span className="pill ok">Configured</span>
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>Media domain</dt>
-            <dd>
-              {health?.mediaBaseUrl == null ? (
-                <span className="pill warn">Served through the Worker</span>
-              ) : (
-                <span className="code">{health.mediaBaseUrl}</span>
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>Theme</dt>
-            <dd>
-              <span className="code">{health?.theme ?? '—'}</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Render pipeline</dt>
-            <dd>
-              <span className="code">{health?.pipeline ?? '—'}</span>
-            </dd>
-          </div>
-          <div>
-            <dt>Applied migrations</dt>
-            <dd>{diagnostics?.migrations.join(', ') ?? '—'}</dd>
-          </div>
-        </dl>
-      </section>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Diagnostics">
+        <Facts items={diagnosticsFacts} />
+      </Section>
 
       {diagnostics === null || diagnostics.failedJobs.length === 0 ? null : (
-        <section className="card" aria-labelledby="failed-jobs-heading">
-          <h2 id="failed-jobs-heading">Failed background jobs</h2>
-          <p className="help">
-            Work that was retried and gave up — an email that could not be sent,
-            a plugin's job that kept failing. Nothing here is retried again by
-            itself.
-          </p>
-          <ul className="rows">
+        <Section
+          title="Failed background jobs"
+          description="Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."
+        >
+          <ul className="flex flex-col divide-y rounded-lg border text-sm">
             {diagnostics.failedJobs.map((job) => (
-              <li key={`${job.type}-${job.updatedAt}`}>
-                <span className="code">{job.type}</span>
-                <span>{job.lastError ?? 'No error was recorded.'}</span>
-                <span>{job.updatedAt.slice(0, 16).replace('T', ' ')}</span>
+              <li
+                key={`${job.type}-${job.updatedAt}`}
+                className="grid gap-1 px-3 py-2 sm:grid-cols-[auto_1fr_auto] sm:gap-4"
+              >
+                <Code>{job.type}</Code>
+                <span className="min-w-0 break-words">
+                  {job.lastError ?? 'No error was recorded.'}
+                </span>
+                <span className="text-muted-foreground tabular-nums">
+                  {job.updatedAt.slice(0, 16).replace('T', ' ')}
+                </span>
               </li>
             ))}
           </ul>
-        </section>
+        </Section>
       )}
 
-      <section className="card">
-        <h2>Storage</h2>
+      <Section
+        title="Storage"
+        {...(diagnostics === null || diagnostics.quotaUsageNote === ''
+          ? {}
+          : { description: diagnostics.quotaUsageNote })}
+      >
         {diagnostics === null ? (
-          <p>Loading…</p>
+          <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
-          <dl className="facts">
-            {Object.entries(diagnostics.counts).map(([key, count]) => (
-              <div key={key}>
-                <dt>{key}</dt>
-                <dd>{count}</dd>
-              </div>
-            ))}
-          </dl>
+          <Facts
+            items={Object.entries(diagnostics.counts).map(
+              ([key, count]) => [key, count] as const,
+            )}
+          />
         )}
-        <p className="help">{diagnostics?.quotaUsageNote ?? ''}</p>
-      </section>
+      </Section>
 
       <BackupSection />
 
-      <section className="card">
-        <h2>Cache</h2>
-        <div className="field field-inline">
-          <label htmlFor="cache-ttl">Edge cache lifetime (seconds)</label>
-          <div className="control">
-            <input
+      <Section title="Cache">
+        <Field>
+          <FieldLabel htmlFor="cache-ttl">
+            Edge cache lifetime (seconds)
+          </FieldLabel>
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
               id="cache-ttl"
+              className="w-40"
               type="number"
               min={60}
               max={31536000}
               value={String(effectiveTtl)}
               onInput={(event) => setTtl(Number(event.currentTarget.value))}
             />
+            <Button
+              type="button"
+              disabled={busy || ttl === null}
+              onClick={() => void saveTtl()}
+            >
+              {busy ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+          <FieldDescription>
+            Saving content purges the pages it affects, so this is a ceiling for
+            pages nothing touched — not the delay before an edit appears.
+          </FieldDescription>
+        </Field>
+
+        <Separator />
+
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-medium">Clearing caches</h3>
+          <p className="text-sm text-muted-foreground">
+            Neither of these loses anything. Cached pages and fragments are both
+            derived from your content and are rebuilt on the next request — the
+            only cost is that the next visitor waits for a render.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={clearing !== ''}
+              onClick={() => void clear('purge', 'Cleared the page cache.')}
+            >
+              {clearing === 'purge' ? 'Clearing…' : 'Clear cached pages'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={clearing !== ''}
+              onClick={() =>
+                void clear('fragments', 'Cleared the fragment cache.')
+              }
+            >
+              {clearing === 'fragments' ? 'Clearing…' : 'Rebuild all pages'}
+            </Button>
+            {cacheResult === '' ? null : (
+              <StatusBadge tone="ok">{cacheResult}</StatusBadge>
+            )}
           </div>
         </div>
-        <p className="help">
-          Saving content purges the pages it affects, so this is a ceiling for
-          pages nothing touched — not the delay before an edit appears.
-        </p>
-        <div className="actions">
-          <button
-            type="button"
-            className="primary"
-            disabled={busy || ttl === null}
-            onClick={() => void saveTtl()}
-          >
-            {busy ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-
-        <h3>Clearing caches</h3>
-        <p className="help">
-          Neither of these loses anything. Cached pages and fragments are both
-          derived from your content and are rebuilt on the next request — the
-          only cost is that the next visitor waits for a render.
-        </p>
-        <div className="actions">
-          <button
-            type="button"
-            className="ghost"
-            disabled={clearing !== ''}
-            onClick={() => void clear('purge', 'Cleared the page cache.')}
-          >
-            {clearing === 'purge' ? 'Clearing…' : 'Clear cached pages'}
-          </button>
-          <button
-            type="button"
-            className="ghost"
-            disabled={clearing !== ''}
-            onClick={() =>
-              void clear('fragments', 'Cleared the fragment cache.')
-            }
-          >
-            {clearing === 'fragments' ? 'Clearing…' : 'Rebuild all pages'}
-          </button>
-          {cacheResult === '' ? null : (
-            <span className="pill ok">{cacheResult}</span>
-          )}
-        </div>
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }

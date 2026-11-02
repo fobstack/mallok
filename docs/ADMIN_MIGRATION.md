@@ -469,6 +469,41 @@ out there with uncommitted files.
   menu first, and the sign-in helper waits for the page to settle, since the
   sign-in page now loads after the first paint. 43 browser tests pass.
 
+### Phase 3, step 1 — Settings, 2026-11-02
+
+- **The four settings pages** (Site, Appearance, Email, Advanced) are built
+  from shadcn/ui's card, field, input, textarea, native select, checkbox,
+  badge, alert and separator, through a few building blocks in
+  `components/page.tsx`: a page header (`h1`), sections (a card whose title
+  is an `h2` and which is a region named by it), status badges, facts lists
+  and inline code. No copy changed.
+- **The form generator's controls and field shell** (`form/controls.tsx`,
+  `form/form.tsx`) are on the same components; its engine is untouched
+  (phase 4). Every page that draws a schema form — the editor, plugin
+  settings, the record editor — now shows these controls.
+- **Added from the registry, as generated** (`radix-nova`): badge, textarea,
+  native-select, checkbox. `shadcn add` does not run non-interactively here,
+  so they were fetched with `shadcn view` and written unchanged except for
+  the one step `add` performs itself: its icon placeholder replaced by the
+  lucide icon it names. A native `<select>` was kept on purpose: keyboard
+  behaviour and the browser tests' `selectOption` stay as they were.
+- **Two tokens:** `--success` beside the existing `--warning`, for status
+  badges in both schemes.
+- **Things the tests caught:** shadcn's alert is `role="alert"` by default;
+  standing notes on a page (no Resend key, a theme change needs a deploy) are
+  `role="note"`, as the shell's no-purge-token note is. A section must be a
+  named region for "Failed background jobs" to be found; an element with
+  `display: contents` was not enough.
+- **Unit tests** resolve the admin's `@/` alias too (`vitest.config.ts`):
+  `test/admin` imports the Advanced page's lists of what is instant and what
+  needs a deploy.
+- **Size. First load: 126.4 KiB**, from 123.6 KiB after merging `main`.
+- **Checked:** the browser suite (44) twice in a row, axe in light and dark
+  included; screenshots of the four pages in both schemes were reviewed and
+  not committed. One run, with an extra screenshot spec appended, failed the
+  account menu test of phase 2 once (the closing-animation timing recorded
+  above); it passed in the two runs either side.
+
 ### D7 — The first-load budget, raised by phase 0
 
 150 KiB is the project's own number (`ADMIN.md §13`), not a platform limit:

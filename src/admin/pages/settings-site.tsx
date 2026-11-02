@@ -7,7 +7,18 @@
 
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
+import {
+  Code,
+  Page,
+  PageHeader,
+  Section,
+  StatusBadge,
+} from '../components/page.js';
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm } from '../form/form.js';
 import type { FieldSpec } from '../form/types.js';
@@ -151,14 +162,23 @@ export function SiteSettingsPage(): JSX.Element {
   };
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1>Site</h1>
-        <p className="lede">
-          These are stored the moment you save — no rebuild, no deploy.
-        </p>
-      </header>
-      <form className="card" onSubmit={(event) => void submit(event)}>
+    <Page>
+      <PageHeader
+        title="Site"
+        lede="These are stored the moment you save — no rebuild, no deploy."
+      />
+      <Section
+        as="form"
+        onSubmit={(event) => void submit(event)}
+        footer={
+          <>
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Saving…' : 'Save'}
+            </Button>
+            {saved ? <SavedNote /> : null}
+          </>
+        }
+      >
         <SchemaForm
           specs={fields}
           values={draft}
@@ -168,16 +188,10 @@ export function SiteSettingsPage(): JSX.Element {
             setDraft((previous) => ({ ...previous, [name]: value }))
           }
         />
-        <div className="actions">
-          <button type="submit" className="primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
-          {saved ? <SavedNote /> : null}
-        </div>
-      </form>
+      </Section>
 
       <LocaleSection />
-    </div>
+    </Page>
   );
 }
 
@@ -258,51 +272,62 @@ function LocaleSection(): JSX.Element {
   };
 
   return (
-    <section className="card">
-      <h2>Languages</h2>
-      <p className="help">
-        {current.prefixDefaultLocale ? (
+    <Section
+      title="Languages"
+      description={
+        current.prefixDefaultLocale ? (
           <>
-            Every language is served under <code>/&lt;locale&gt;/</code>, the
+            Every language is served under <Code>/&lt;locale&gt;/</Code>, the
             default one too; the site&apos;s root redirects to{' '}
-            <code>/{current.defaultLocale}</code>.
+            <Code>/{current.defaultLocale}</Code>.
           </>
         ) : (
           <>
             The default language has no URL prefix; every other language is
-            served under <code>/&lt;locale&gt;/</code>.
+            served under <Code>/&lt;locale&gt;/</Code>.
           </>
-        )}
-      </p>
-      <label className="check">
-        <input
-          type="checkbox"
+        )
+      }
+    >
+      <Field orientation="horizontal">
+        <Checkbox
+          id="site-prefix-default"
           checked={current.prefixDefaultLocale}
           disabled={busy}
-          onChange={(event) => void setPrefix(event.currentTarget.checked)}
+          onCheckedChange={(checked) => void setPrefix(checked === true)}
         />
-        Prefix the default language too (<code>/{current.defaultLocale}/…</code>
-        )
-      </label>
-      <ul className="rows">
+        <FieldLabel htmlFor="site-prefix-default">
+          {/* One run of text: the label lays its children out with a gap. */}
+          <span>
+            Prefix the default language too (
+            <Code>/{current.defaultLocale}/…</Code>)
+          </span>
+        </FieldLabel>
+      </Field>
+      <ul className="flex flex-col divide-y rounded-lg border">
         {current.locales.map((locale) => (
-          <li key={locale}>
-            <span className="code">{locale}</span>
+          <li
+            key={locale}
+            className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm"
+          >
+            <Code>{locale}</Code>
             {locale === current.defaultLocale ? (
-              <span className="pill ok">Default</span>
+              <StatusBadge tone="ok">Default</StatusBadge>
             ) : (
-              <>
-                <button
+              <div className="ml-auto flex gap-2">
+                <Button
                   type="button"
-                  className="ghost"
+                  variant="outline"
+                  size="sm"
                   disabled={busy}
                   onClick={() => void makeDefault(locale)}
                 >
                   Make default
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className="ghost"
+                  variant="outline"
+                  size="sm"
                   disabled={busy}
                   onClick={() =>
                     void setLocales(
@@ -311,22 +336,23 @@ function LocaleSection(): JSX.Element {
                   }
                 >
                   Remove
-                </button>
-              </>
+                </Button>
+              </div>
             )}
           </li>
         ))}
       </ul>
-      <div className="list-row">
-        <input
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          className="w-32"
           aria-label="Language code"
           placeholder="de"
           value={adding}
           onInput={(event) => setAdding(event.currentTarget.value)}
         />
-        <button
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
           disabled={busy || adding.trim() === ''}
           onClick={() => {
             void setLocales([...current.locales, adding.trim()]);
@@ -334,8 +360,8 @@ function LocaleSection(): JSX.Element {
           }}
         >
           Add language
-        </button>
+        </Button>
       </div>
-    </section>
+    </Section>
   );
 }

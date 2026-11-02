@@ -11,6 +11,7 @@ import { Clock } from 'lucide-react';
 import type { JSX } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { liveDelay } from '../state.js';
+import { StatusBadge } from './page.js';
 
 /** Human-readable form of a cache lifetime. */
 function humanize(seconds: number): string {
@@ -28,15 +29,15 @@ function humanize(seconds: number): string {
 export function SavedNote(): JSX.Element {
   const delay = liveDelay.value;
   if (delay.instant) {
-    return <span className="pill ok">Saved — live now</span>;
+    return <StatusBadge tone="ok">Saved — live now</StatusBadge>;
   }
   return (
-    <span
-      className="pill warn"
+    <StatusBadge
+      tone="warn"
       title="Configure a cache-purge token to make saves appear immediately."
     >
       Saved — visitors see it within {humanize(delay.seconds)}
-    </span>
+    </StatusBadge>
   );
 }
 

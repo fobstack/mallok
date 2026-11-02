@@ -7,9 +7,20 @@
  * can never show it.
  */
 
+import { TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
+import { Page, PageHeader, Section, StatusBadge } from '../components/page.js';
 import { SecretControl } from '../form/controls.js';
 import { notice, settings } from '../state.js';
 import type { SiteEmail } from '../types.js';
@@ -96,21 +107,28 @@ export function EmailSettingsPage(): JSX.Element {
   };
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1>Email</h1>
-        <p className="lede">
-          One Resend key and one sender address for the whole site. Every plugin
-          that sends email uses them, and a change applies to the next message —
-          no rebuild, no deploy.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Email"
+        lede="One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+      />
 
-      <form className="card" onSubmit={(event) => void saveSender(event)}>
-        <h2>Sender</h2>
-        <div className="field">
-          <label htmlFor="email-from">From address</label>
-          <input
+      <Section
+        as="form"
+        title="Sender"
+        onSubmit={(event) => void saveSender(event)}
+        footer={
+          <>
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Saving…' : 'Save sender'}
+            </Button>
+            {saved ? <StatusBadge tone="ok">Saved</StatusBadge> : null}
+          </>
+        }
+      >
+        <Field data-invalid={fromError !== ''}>
+          <FieldLabel htmlFor="email-from">From address</FieldLabel>
+          <Input
             id="email-from"
             type="text"
             value={from}
@@ -123,32 +141,21 @@ export function EmailSettingsPage(): JSX.Element {
               setSaved(false);
             }}
           />
-          <p className="help" id="email-from-help">
+          <FieldDescription id="email-from-help">
             Must be on a domain you have verified in Resend. A plugin may set
             its own sender; this one is used whenever it does not.
-          </p>
-          {fromError === '' ? null : (
-            <p className="error" role="alert">
-              {fromError}
-            </p>
-          )}
-        </div>
-        <div className="actions">
-          <button type="submit" className="primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save sender'}
-          </button>
-          {saved ? <span className="pill ok">Saved</span> : null}
-        </div>
-      </form>
+          </FieldDescription>
+          {fromError === '' ? null : <FieldError>{fromError}</FieldError>}
+        </Field>
+      </Section>
 
-      <section className="card secrets">
-        <h2>Resend API key</h2>
-        <p className="help">
-          Stored encrypted. It is never shown again, here or anywhere else.
-        </p>
-        <div className="field field-inline">
-          <label htmlFor="email-resend-key">Resend API key</label>
-          <div className="control">
+      <Section
+        title="Resend API key"
+        description="Stored encrypted. It is never shown again, here or anywhere else."
+      >
+        <Field>
+          <FieldLabel htmlFor="email-resend-key">Resend API key</FieldLabel>
+          <div className="flex flex-wrap items-center gap-2">
             <SecretControl
               id="email-resend-key"
               label="Resend API key"
@@ -157,32 +164,32 @@ export function EmailSettingsPage(): JSX.Element {
               onClear={() => void writeKey(null)}
             />
             {email.resendConfigured ? (
-              <button
+              <Button
                 type="button"
-                className="ghost"
+                variant="outline"
                 disabled={checking}
                 onClick={() => void check()}
               >
                 {checking ? 'Checking…' : 'Test'}
-              </button>
+              </Button>
             ) : null}
             {verdict === null ? null : (
-              <span
-                className={verdict.ok ? 'pill ok' : 'pill warn'}
-                role="status"
-              >
+              <StatusBadge tone={verdict.ok ? 'ok' : 'warn'} role="status">
                 {verdict.message}
-              </span>
+              </StatusBadge>
             )}
           </div>
-        </div>
+        </Field>
         {email.resendConfigured ? null : (
-          <p className="warning-line">
-            Without a key no email is sent. A message queued meanwhile is
-            retried for about 30 minutes and then marked failed.
-          </p>
+          <Alert role="note">
+            <TriangleAlert />
+            <AlertDescription>
+              Without a key no email is sent. A message queued meanwhile is
+              retried for about 30 minutes and then marked failed.
+            </AlertDescription>
+          </Alert>
         )}
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }

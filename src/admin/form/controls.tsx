@@ -8,7 +8,21 @@
 
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
+import { Textarea } from '@/components/ui/textarea';
+import { StatusBadge } from '../components/page.js';
 import type { ControlProps } from './types.js';
+
+/** A row of a list control: its inputs, then its buttons. */
+const ROW = 'flex flex-wrap items-center gap-2 *:data-[slot=input]:flex-1';
+/** A list control: its rows, then the button that adds one. */
+const LIST = 'flex flex-col items-start gap-2 *:w-full *:last:w-auto';
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -49,9 +63,10 @@ export function TextControl({
         ? 'date'
         : 'text';
   return (
-    <input
+    <Input
       id={id}
       {...invalidProps(id, error)}
+      className={type === 'color' ? 'w-16 p-1' : undefined}
       type={type}
       value={asString(value)}
       onInput={(event) => onChange(event.currentTarget.value)}
@@ -68,7 +83,7 @@ export function TextAreaControl({
   error,
 }: ControlProps): JSX.Element {
   return (
-    <textarea
+    <Textarea
       id={id}
       {...invalidProps(id, error)}
       rows={4}
@@ -87,9 +102,10 @@ export function NumberControl({
   error,
 }: ControlProps): JSX.Element {
   return (
-    <input
+    <Input
       id={id}
       {...invalidProps(id, error)}
+      className="w-40"
       type="number"
       value={typeof value === 'number' ? String(value) : ''}
       onInput={(event) => {
@@ -109,11 +125,10 @@ export function BooleanControl({
   id,
 }: ControlProps): JSX.Element {
   return (
-    <input
+    <Checkbox
       id={id}
-      type="checkbox"
       checked={value === true}
-      onChange={(event) => onChange(event.currentTarget.checked)}
+      onCheckedChange={(checked) => onChange(checked === true)}
     />
   );
 }
@@ -127,19 +142,19 @@ export function SelectControl({
   error,
 }: ControlProps): JSX.Element {
   return (
-    <select
+    <NativeSelect
       id={id}
       {...invalidProps(id, error)}
       value={asString(value)}
       onChange={(event) => onChange(event.currentTarget.value)}
     >
-      <option value="">—</option>
+      <NativeSelectOption value="">—</NativeSelectOption>
       {(spec.field.choices ?? []).map((choice) => (
-        <option key={choice} value={choice}>
+        <NativeSelectOption key={choice} value={choice}>
           {choice}
-        </option>
+        </NativeSelectOption>
       ))}
-    </select>
+    </NativeSelect>
   );
 }
 
@@ -160,11 +175,11 @@ export function StringListControl({
     onChange(next.filter((entry) => entry.trim() !== ''));
   };
   return (
-    <div className="list-control" id={id}>
+    <div className={LIST} id={id}>
       {entries.map((entry, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: entries are plain strings edited in place by position, with no other identity.
-        <div className="list-row" key={index}>
-          <input
+        <div className={ROW} key={index}>
+          <Input
             value={entry}
             onInput={(event) => {
               const next = [...entries];
@@ -172,22 +187,22 @@ export function StringListControl({
               onChange(next);
             }}
           />
-          <button
+          <Button
             type="button"
-            className="ghost"
+            variant="outline"
             onClick={() => update(entries.filter((_, i) => i !== index))}
           >
             Remove
-          </button>
+          </Button>
         </div>
       ))}
-      <button
+      <Button
         type="button"
-        className="ghost"
+        variant="outline"
         onClick={() => onChange([...entries, ''])}
       >
         Add entry
-      </button>
+      </Button>
     </div>
   );
 }
@@ -215,11 +230,11 @@ export function KeyValueControl({
     onChange(out);
   };
   return (
-    <div className="list-control" id={id}>
+    <div className={LIST} id={id}>
       {pairs.map(([key, entry], index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: entries are plain strings edited in place by position, with no other identity.
-        <div className="list-row" key={index}>
-          <input
+        <div className={ROW} key={index}>
+          <Input
             aria-label="Name"
             placeholder="Name"
             value={key}
@@ -229,7 +244,7 @@ export function KeyValueControl({
               write(next);
             }}
           />
-          <input
+          <Input
             aria-label="Value"
             placeholder="Value"
             value={entry}
@@ -239,22 +254,22 @@ export function KeyValueControl({
               write(next);
             }}
           />
-          <button
+          <Button
             type="button"
-            className="ghost"
+            variant="outline"
             onClick={() => write(pairs.filter((_, i) => i !== index))}
           >
             Remove
-          </button>
+          </Button>
         </div>
       ))}
-      <button
+      <Button
         type="button"
-        className="ghost"
+        variant="outline"
         onClick={() => write([...pairs, ['', '']])}
       >
         Add row
-      </button>
+      </Button>
     </div>
   );
 }
@@ -280,20 +295,24 @@ export function MediaControl(props: PickerProps): JSX.Element {
   const kind = spec.field.type === 'file' ? 'file' : 'image';
   const preview = current === '' ? null : (previewUrl?.(current) ?? null);
   return (
-    <div className="media-control" id={id}>
+    <div className={ROW} id={id}>
       {preview !== null && kind === 'image' ? (
-        <img className="media-thumb" src={preview} alt="" />
+        <img
+          className="size-16 rounded-md border object-cover"
+          src={preview}
+          alt=""
+        />
       ) : null}
-      <input
-        className="path"
+      <Input
+        className="font-mono"
         value={current}
         placeholder={kind === 'image' ? 'images/photo.jpg' : 'files/sheet.pdf'}
         onInput={(event) => onChange(event.currentTarget.value)}
       />
       {pickMedia === undefined ? null : (
-        <button
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
           onClick={async () => {
             const picked = await pickMedia(kind);
             if (picked !== null) {
@@ -302,12 +321,12 @@ export function MediaControl(props: PickerProps): JSX.Element {
           }}
         >
           Choose…
-        </button>
+        </Button>
       )}
       {current === '' ? null : (
-        <button type="button" className="ghost" onClick={() => onChange('')}>
+        <Button type="button" variant="outline" onClick={() => onChange('')}>
           Clear
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -318,16 +337,20 @@ export function MediaListControl(props: PickerProps): JSX.Element {
   const { value, onChange, id, pickMedia, previewUrl } = props;
   const entries = asList(value);
   return (
-    <div className="list-control" id={id}>
+    <div className={LIST} id={id}>
       {entries.map((entry, index) => {
         const preview = previewUrl?.(entry) ?? null;
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: entries are plain strings edited in place by position, with no other identity.
-          <div className="list-row media-row" key={index}>
+          <div className={ROW} key={index}>
             {preview === null ? null : (
-              <img className="media-thumb small" src={preview} alt="" />
+              <img
+                className="size-10 rounded-md border object-cover"
+                src={preview}
+                alt=""
+              />
             )}
-            <input
+            <Input
               value={entry}
               onInput={(event) => {
                 const next = [...entries];
@@ -335,20 +358,20 @@ export function MediaListControl(props: PickerProps): JSX.Element {
                 onChange(next);
               }}
             />
-            <button
+            <Button
               type="button"
-              className="ghost"
+              variant="outline"
               onClick={() => onChange(entries.filter((_, i) => i !== index))}
             >
               Remove
-            </button>
+            </Button>
           </div>
         );
       })}
       {pickMedia === undefined ? null : (
-        <button
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
           onClick={async () => {
             const picked = await pickMedia('image');
             if (picked !== null) {
@@ -357,7 +380,7 @@ export function MediaListControl(props: PickerProps): JSX.Element {
           }}
         >
           Add image…
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -368,17 +391,17 @@ export function ReferenceControl(props: PickerProps): JSX.Element {
   const { spec, value, onChange, id, pickContent } = props;
   const target = spec.field.kind ?? '';
   return (
-    <div className="media-control" id={id}>
-      <input
-        className="path"
+    <div className={ROW} id={id}>
+      <Input
+        className="font-mono"
         value={asString(value)}
         placeholder={`${target} slug`}
         onInput={(event) => onChange(event.currentTarget.value)}
       />
       {pickContent === undefined ? null : (
-        <button
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
           onClick={async () => {
             const picked = await pickContent(target);
             if (picked !== null) {
@@ -387,7 +410,7 @@ export function ReferenceControl(props: PickerProps): JSX.Element {
           }}
         >
           Choose…
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -418,24 +441,33 @@ export function SecretControl({
   const [draft, setDraft] = useState('');
   if (configured && !replacing) {
     return (
-      <fieldset className="secret-control" id={id} aria-label={label}>
-        <span className="pill ok">Set</span>
-        <button
+      <fieldset
+        className="flex flex-wrap items-center gap-2"
+        id={id}
+        aria-label={label}
+      >
+        <StatusBadge tone="ok">Set</StatusBadge>
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
           onClick={() => setReplacing(true)}
         >
           Replace
-        </button>
-        <button type="button" className="ghost" onClick={onClear}>
+        </Button>
+        <Button type="button" variant="outline" onClick={onClear}>
           Remove
-        </button>
+        </Button>
       </fieldset>
     );
   }
   return (
-    <fieldset className="secret-control" id={id} aria-label={label}>
-      <input
+    <fieldset
+      className="flex flex-wrap items-center gap-2"
+      id={id}
+      aria-label={label}
+    >
+      <Input
+        className="w-72 max-w-full"
         type="password"
         autoComplete="off"
         aria-label={label}
@@ -443,9 +475,9 @@ export function SecretControl({
         placeholder="Paste the value"
         onInput={(event) => setDraft(event.currentTarget.value)}
       />
-      <button
+      <Button
         type="button"
-        className="ghost"
+        variant="outline"
         onClick={() => {
           onSet(draft);
           setDraft('');
@@ -454,18 +486,18 @@ export function SecretControl({
         disabled={draft === ''}
       >
         Save
-      </button>
+      </Button>
       {configured ? (
-        <button
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
           onClick={() => {
             setDraft('');
             setReplacing(false);
           }}
         >
           Cancel
-        </button>
+        </Button>
       ) : null}
     </fieldset>
   );

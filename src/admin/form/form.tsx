@@ -9,6 +9,16 @@
 
 import type { JSX } from 'react';
 import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/components/ui/field';
+import {
   BooleanControl,
   KeyValueControl,
   MediaControl,
@@ -74,34 +84,51 @@ function controlFor(spec: FieldSpec, props: PickerProps): JSX.Element {
   }
 }
 
-/** Renders one declared field with its label, help text and error. */
-function Field(
+/**
+ * Renders one declared field with its label, help text and error. A
+ * checkbox sits before its label; everything else stacks under it.
+ */
+function DeclaredField(
   props: ControlProps & FormPickers & { readonly inline: boolean },
 ): JSX.Element {
   const { spec, error, id, inline } = props;
-  const label = labelFor(spec);
-  return (
-    <div
-      className={`field${inline ? ' field-inline' : ''}${error === undefined ? '' : ' has-error'}`}
-    >
-      <label htmlFor={id}>
-        {label}
-        {spec.field.required ? (
-          <span className="req" aria-hidden="true">
-            *
-          </span>
-        ) : null}
-      </label>
-      <div className="control">{controlFor(spec, props)}</div>
+  const label = (
+    <FieldLabel htmlFor={id}>
+      {labelFor(spec)}
+      {spec.field.required ? (
+        <span className="text-destructive" aria-hidden="true">
+          *
+        </span>
+      ) : null}
+    </FieldLabel>
+  );
+  const notes = (
+    <>
       {spec.field.help === undefined ? null : (
-        <p className="help">{spec.field.help}</p>
+        <FieldDescription>{spec.field.help}</FieldDescription>
       )}
       {error === undefined ? null : (
-        <p className="error" role="alert" id={errorIdFor(id)}>
-          {error}
-        </p>
+        <FieldError id={errorIdFor(id)}>{error}</FieldError>
       )}
-    </div>
+    </>
+  );
+  if (inline) {
+    return (
+      <Field orientation="horizontal" data-invalid={error !== undefined}>
+        {controlFor(spec, props)}
+        <FieldContent>
+          {label}
+          {notes}
+        </FieldContent>
+      </Field>
+    );
+  }
+  return (
+    <Field data-invalid={error !== undefined}>
+      {label}
+      {controlFor(spec, props)}
+      {notes}
+    </Field>
   );
 }
 
@@ -114,15 +141,15 @@ export function errorIdFor(id: string): string {
 export function SchemaForm(props: SchemaFormProps): JSX.Element {
   const groups = byGroup(props.specs);
   return (
-    <div className="schema-form">
+    <FieldGroup>
       {groups.map(([group, specs]) => (
-        <fieldset key={group === '' ? '__ungrouped' : group}>
-          {group === '' ? null : <legend>{group}</legend>}
+        <FieldSet key={group === '' ? '__ungrouped' : group}>
+          {group === '' ? null : <FieldLegend>{group}</FieldLegend>}
           {specs.map((spec) => {
             const id = `${props.idPrefix}-${spec.name}`;
             const error = props.errors?.[spec.name];
             return (
-              <Field
+              <DeclaredField
                 key={spec.name}
                 spec={spec}
                 id={id}
@@ -142,8 +169,8 @@ export function SchemaForm(props: SchemaFormProps): JSX.Element {
               />
             );
           })}
-        </fieldset>
+        </FieldSet>
       ))}
-    </div>
+    </FieldGroup>
   );
 }
