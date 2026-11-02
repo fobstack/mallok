@@ -76,7 +76,7 @@ function SettingsLayout({
 
 function NotFound(): JSX.Element {
   return (
-    <div className="page">
+    <div className="w-full">
       <Card className="mx-auto mt-8 max-w-md">
         <CardHeader>
           <CardTitle>

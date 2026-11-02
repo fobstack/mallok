@@ -346,7 +346,9 @@ export function Shell({
             <PageBreadcrumb path={path} />
           </header>
           <PurgeNotice />
-          <div className="admin-content">{children}</div>
+          <div className="mx-auto w-full max-w-[68rem] p-[clamp(1.2rem,3vw,2.2rem)]">
+            {children}
+          </div>
         </SidebarInset>
         {toastsWanted ? (
           <LazyToastHost message={message} onShown={clearNotice} />

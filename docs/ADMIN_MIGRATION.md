@@ -550,6 +550,72 @@ out there with uncommitted files.
 - **Checked:** the browser suite (44); screenshots in light and dark at a
   desktop and a phone width, reviewed and not committed.
 
+### Phase 3, steps 4 to 8 and the gate — 2026-11-03
+
+Each step is its own commit, in the plan's order. The browser suite was run
+on the media step alone, on the plugins and record editor steps together,
+and then on the whole set as fixes landed; the commits in between were not
+run one by one.
+
+- **Step 4, media.** The upload target is a dashed drop zone around a
+  visually hidden file input, which keeps the keyboard path the old label
+  had; the library is a card grid; the picker is shadcn/ui's dialog in place
+  of the native `<dialog>`, with the same name, Escape to close and focus
+  kept inside. No progress bar: the upload reports a stage (hashing,
+  converting, uploading), not a fraction, so a bar would have nothing true
+  to show.
+- **Step 5, plugins, declarative panels, related rows.** Each plugin is a
+  card with its switch (shadcn's `switch`, still named "<plugin> enabled")
+  in the header; panels are tables with sort buttons, row checkboxes and a
+  pager; a read-only row opens in a sheet that keeps its old name
+  ("<panel> detail"). **No tabs:** a tab hides its panel, and the browser
+  tests (and an operator) expect a plugin's settings, secrets and panels to
+  be on the page together. Badge cells colour only the values the admin
+  knows (published, scheduled, ok, warn); a plugin's own values stay plain.
+- **Step 6, record editor and action parameters.** Both forms are sheets
+  from the right, named as the dialogs were. A click outside does not close
+  them, as it did not close the native dialog — a stray click must not lose
+  what was typed; Escape and the close button do. Money fields and
+  repeatable rows use the field components.
+- **Step 7, content editor.** The bar, the translation switcher, the three
+  panes and the attached panels are Tailwind and shadcn/ui; CodeMirror is
+  themed with `EditorView.theme` reading the tokens (background, text,
+  gutters, selection, the missing-asset marker), so it follows light and
+  dark without a second theme. The preview frame stays white in both
+  schemes: a theme's page is designed on white. axe, scanning an existing
+  long item rather than the new one `05-accessibility` opens, reported the
+  Markdown pane's scroll area as unreachable by keyboard: it does not count
+  a contenteditable as focusable. The editable element now also carries
+  `tabindex="0"`, which changes nothing for the keyboard.
+- **Step 8, setup wizard.** A numbered stepper, one card per step, a radio
+  group for the starters. Two things axe caught on the way: a Radix radio
+  named only by `<label for>` is reported as an unnamed button, so each
+  also points at its label with `aria-labelledby`; and shadcn's destructive
+  alert prints its text at 90 % opacity, under AA on the light card, so the
+  wizard's alerts use full strength. Every step was captured against a
+  mocked API in light and dark, at a desktop and a phone width; the real
+  wizard is still driven by `01-wizard`.
+- **The gate.** No page uses a legacy class: the shell's content area, the
+  lazy-route fallbacks and the not-found page were the last. `styles.css`
+  is the tokens and Tailwind's base layer, 163 lines from 1,167. Its old
+  element rules set the body to 15 px with a 1.55 line height; the admin
+  now has Tailwind's defaults, and every component sets its own size. One
+  class name remains on purpose: a revoked token's row is still marked
+  `revoked`, which `06-tokens` asserts and nothing styles.
+- **Found, not fixed here:** the media API never returns the `url` the
+  admin's `MediaItem` declares, so library thumbnails and the editor's image
+  previews are blank — on `main` too, so it predates this work. Raised as
+  its own task.
+- **Size. First load: 125.0 KiB**, from 126.5 KiB: the stylesheet lost its
+  legacy rules.
+- **Checked:** the browser suite (44) passed in each of the eight runs of
+  these steps, the last on the final tree; axe was clean on every page and every overlay (media picker, record
+  sheet, action sheet, every wizard step) in light and dark; unit tests,
+  lint, typecheck, build and bundle size pass. Screenshots at a desktop and
+  a phone width were reviewed and not committed.
+- **Not done here:** the plan's real-site check at the end of phase 3 — the
+  gate site, deployed by the maintainer. Nothing has been deployed.
+
 ### D7 — The first-load budget, raised by phase 0
 
 150 KiB is the project's own number (`ADMIN.md §13`), not a platform limit:

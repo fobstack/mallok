@@ -64,8 +64,8 @@ export function lazyRoute<P extends Record<string, unknown>>(
     }
     if (failed) {
       return (
-        <div className="page">
-          <p className="error" role="alert">
+        <div className="mx-auto w-full max-w-4xl">
+          <p className="text-sm text-destructive" role="alert">
             This part of the admin could not be loaded. Check your connection
             and reload.
           </p>
@@ -74,7 +74,7 @@ export function lazyRoute<P extends Record<string, unknown>>(
     }
     if (loaded === null) {
       return (
-        <div className="page" aria-busy="true">
+        <div className="mx-auto w-full max-w-4xl" aria-busy="true">
           <span className="sr-only">Loading…</span>
           <div className="h-8 w-48 animate-pulse rounded-md bg-muted" />
           <div className="mt-6 h-40 animate-pulse rounded-md bg-muted" />

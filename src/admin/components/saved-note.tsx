@@ -11,7 +11,7 @@ import { Clock } from 'lucide-react';
 import type { JSX } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { liveDelay } from '../state.js';
-import { StatusBadge } from './page.js';
+import { Code, StatusBadge } from './page.js';
 
 /** Human-readable form of a cache lifetime. */
 function humanize(seconds: number): string {
@@ -63,7 +63,7 @@ export function PurgeNotice(): JSX.Element | null {
         <p>
           No cache-purge token is configured, so a saved change reaches visitors
           only after the cached page expires. This is a working site, not a
-          broken one — add <code>CF_API_TOKEN</code> and <code>CF_ZONE_ID</code>{' '}
+          broken one — add <Code>CF_API_TOKEN</Code> and <Code>CF_ZONE_ID</Code>{' '}
           as Worker secrets to get instant publishing.
         </p>
       </AlertDescription>
