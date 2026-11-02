@@ -13,6 +13,14 @@
 
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
 import {
   buildPublicPath,
   joinFrontmatter,
@@ -21,6 +29,7 @@ import {
 import { ApiError, api } from '../api.js';
 import { MarkdownEditor } from '../components/markdown-editor.js';
 import { MediaPicker } from '../components/media-library.js';
+import { StatusBadge } from '../components/page.js';
 import { PluginPanelView } from '../components/plugin-panel.js';
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm } from '../form/form.js';
@@ -234,7 +243,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
   }, [dirty]);
 
   if (site === null || active === null) {
-    return <p>Loading…</p>;
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
 
   const pickMedia = (mediaKind: 'image' | 'file'): Promise<string | null> =>
@@ -320,14 +329,16 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
 
   return (
     <>
-      <div className="editor">
-        <div className="editor-bar">
-          <button type="button" className="ghost" onClick={() => navigate('/')}>
+      <div className="flex flex-col overflow-hidden rounded-xl border bg-card lg:h-[calc(100svh-8rem)] lg:min-h-[36rem]">
+        <div className="flex flex-wrap items-end gap-3 border-b bg-muted/40 p-3">
+          <Button type="button" variant="ghost" onClick={() => navigate('/')}>
             ← All content
-          </button>
-          <label className="filter">
-            <span>Type</span>
-            <select
+          </Button>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="editor-kind">Type</FieldLabel>
+            <NativeSelect
+              id="editor-kind"
+              className="min-w-32"
               value={kind}
               disabled={loaded !== null}
               onChange={(event) => {
@@ -336,15 +347,17 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
               }}
             >
               {kinds.map((entry) => (
-                <option key={entry} value={entry}>
+                <NativeSelectOption key={entry} value={entry}>
                   {active.kinds[entry]?.label ?? entry}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
-          </label>
-          <label className="filter">
-            <span>Slug</span>
-            <input
+            </NativeSelect>
+          </Field>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="editor-slug">Slug</FieldLabel>
+            <Input
+              id="editor-slug"
+              className="min-w-40"
               value={slug}
               placeholder="derived from the title"
               onInput={(event) => {
@@ -362,40 +375,36 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
                 notice.value = result.notice;
               }}
             />
-          </label>
-          <span className="grow" />
-          {attached.map(({ plugin, panel }) => (
-            <a
-              className="pill"
-              href="#attached-panels"
-              key={`${plugin.id}/${panel.id}`}
+          </Field>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {attached.map(({ plugin, panel }) => (
+              <Badge variant="outline" asChild key={`${plugin.id}/${panel.id}`}>
+                <a href="#attached-panels">{panel.label} ↓</a>
+              </Badge>
+            ))}
+            {missing.length === 0 ? null : (
+              <StatusBadge tone="warn" title={missing.join(', ')}>
+                {missing.length} image{missing.length === 1 ? '' : 's'} missing
+              </StatusBadge>
+            )}
+            {dirty ? <StatusBadge tone="neutral">Unsaved</StatusBadge> : null}
+            {saved && !dirty ? <SavedNote /> : null}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void save('draft')}
             >
-              {panel.label} ↓
-            </a>
-          ))}
-          {missing.length === 0 ? null : (
-            <span className="pill warn" title={missing.join(', ')}>
-              {missing.length} image{missing.length === 1 ? '' : 's'} missing
-            </span>
-          )}
-          {dirty ? <span className="pill">Unsaved</span> : null}
-          {saved && !dirty ? <SavedNote /> : null}
-          <button
-            type="button"
-            className="ghost"
-            disabled={busy}
-            onClick={() => void save('draft')}
-          >
-            Save draft
-          </button>
-          <button
-            type="button"
-            className="primary"
-            disabled={busy}
-            onClick={() => void save('published')}
-          >
-            {busy ? 'Saving…' : 'Publish'}
-          </button>
+              Save draft
+            </Button>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => void save('published')}
+            >
+              {busy ? 'Saving…' : 'Publish'}
+            </Button>
+          </div>
         </div>
 
         {loaded === null ? null : (
@@ -408,10 +417,10 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
         )}
 
         <section
-          className="editor-panes"
+          className="grid min-h-0 flex-1 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)_minmax(0,1fr)]"
           aria-label="Fields, Markdown and preview"
         >
-          <aside className="pane pane-fields">
+          <aside className="min-h-0 min-w-0 overflow-auto border-b bg-muted/20 p-4 lg:border-r lg:border-b-0">
             <SchemaForm
               specs={specs}
               values={frontmatter}
@@ -424,7 +433,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
               }}
             />
           </aside>
-          <section className="pane pane-source">
+          <section className="flex min-h-96 min-w-0 overflow-hidden border-b lg:min-h-0 lg:border-r lg:border-b-0">
             <MarkdownEditor
               value={markdown}
               missing={missing}
@@ -434,7 +443,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
               }}
             />
           </section>
-          <section className="pane pane-preview">
+          <section className="flex min-h-96 min-w-0 flex-col bg-muted lg:min-h-0">
             {/*
             `allow-same-origin` **without** `allow-scripts` is the safe
             combination: the frame can load the theme's stylesheet (a fully
@@ -446,11 +455,13 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
           */}
             <iframe
               title="Preview"
-              className="preview-frame"
+              // A theme's page is designed on white; the frame keeps it so in
+              // the admin's dark scheme too.
+              className="w-full flex-1 border-0 bg-white"
               sandbox="allow-same-origin"
               srcDoc={preview}
             />
-            <p className="help preview-note">
+            <p className="border-t px-3 py-1.5 text-xs text-muted-foreground">
               Rendered by the same code the site runs — {previewPath}
             </p>
           </section>
@@ -476,13 +487,13 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
         written. The bar above links down to these.
       */}
       {loaded === null || attached.length === 0 ? null : (
-        <div className="attached-panels" id="attached-panels">
+        <div className="mt-6 flex flex-col gap-4" id="attached-panels">
           {attached.map(({ plugin, panel }) => (
             <section
-              className="card attached-panel"
+              className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground"
               key={`${plugin.id}/${panel.id}`}
             >
-              <p className="help">
+              <p className="text-sm text-muted-foreground">
                 From the {plugin.name} plugin. Shared by every language of this
                 item, and saved on its own — not with Publish.
               </p>
@@ -514,32 +525,37 @@ function TranslationBar(props: {
     return null;
   }
   return (
-    <nav className="translations" aria-label="Translations">
+    <nav
+      className="flex flex-wrap items-center gap-2 border-b px-3 py-2"
+      aria-label="Translations"
+    >
       {props.translations.map((slot) => {
         if (slot.locale === props.current) {
           return (
-            <span key={slot.locale} className="pill ok">
+            <StatusBadge key={slot.locale} tone="ok">
               {slot.locale}
-            </span>
+            </StatusBadge>
           );
         }
         if (slot.exists && slot.id !== undefined) {
           return (
-            <button
+            <Button
               key={slot.locale}
               type="button"
-              className="ghost"
+              variant="outline"
+              size="sm"
               onClick={() => navigate(`/content/${slot.id}`)}
             >
               {slot.locale}
-            </button>
+            </Button>
           );
         }
         return (
-          <button
+          <Button
             key={slot.locale}
             type="button"
-            className="ghost"
+            variant="outline"
+            size="sm"
             onClick={() =>
               navigate(
                 `/content/new?locale=${slot.locale}&group=${props.group}&kind=${props.kind}`,
@@ -547,7 +563,7 @@ function TranslationBar(props: {
             }
           >
             Create {slot.locale}
-          </button>
+          </Button>
         );
       })}
     </nav>

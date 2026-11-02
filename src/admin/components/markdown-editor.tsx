@@ -35,6 +35,44 @@ interface EditorHandle {
   readonly setMissing: (paths: readonly string[]) => void;
 }
 
+/**
+ * CodeMirror drawn with the admin's tokens, so it follows the light and dark
+ * schemes without a second theme: every colour is a CSS variable.
+ */
+function tokenTheme(
+  editorView: typeof import('@codemirror/view').EditorView,
+): ReturnType<typeof editorView.theme> {
+  return editorView.theme({
+    '&': {
+      height: '100%',
+      fontSize: '14px',
+      color: 'var(--foreground)',
+      backgroundColor: 'var(--background)',
+    },
+    '&.cm-focused': { outline: 'none' },
+    '.cm-scroller': { fontFamily: 'var(--font-mono)' },
+    '.cm-content': { caretColor: 'var(--foreground)' },
+    '.cm-cursor, .cm-dropCursor': { borderLeftColor: 'var(--foreground)' },
+    '.cm-gutters': {
+      color: 'var(--muted-foreground)',
+      backgroundColor: 'var(--muted)',
+      borderRight: '1px solid var(--border)',
+    },
+    '.cm-activeLineGutter': { backgroundColor: 'var(--accent)' },
+    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':
+      {
+        backgroundColor: 'color-mix(in oklch, var(--primary) 25%, transparent)',
+      },
+    // A line referencing a file the bundle does not contain. Missing media
+    // is a normal state, so this is a signpost, not an error
+    // (docs/ADMIN.md §6.4).
+    '.cm-missing-asset': {
+      backgroundColor: 'color-mix(in oklch, var(--warning) 12%, transparent)',
+      boxShadow: 'inset 3px 0 0 var(--warning)',
+    },
+  });
+}
+
 export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
   const host = useRef<HTMLDivElement>(null);
   const handle = useRef<EditorHandle | null>(null);
@@ -115,12 +153,18 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
             lang.markdown(),
             missingField,
             view.EditorView.lineWrapping,
+            tokenTheme(view.EditorView),
             // CodeMirror's editable element is a `role="textbox"` with no
             // label of its own, so a screen reader announced the whole
             // Markdown pane as an unnamed text box. The fallback textarea
             // already carried this name; the rich editor has to as well.
+            // `tabindex` changes nothing for the keyboard — a contenteditable
+            // is in the tab order already — but axe does not count one as
+            // focusable, and reported a long document's scroll area as one
+            // the keyboard could not reach.
             view.EditorView.contentAttributes.of({
               'aria-label': 'Markdown source',
+              tabindex: '0',
             }),
             view.EditorView.updateListener.of((update) => {
               if (
@@ -182,11 +226,14 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
   }, [props.missing, rich]);
 
   return (
-    <div className="markdown-pane">
-      <div ref={host} className={rich ? 'cm-host' : 'cm-host hidden'} />
+    <div className="flex min-w-0 flex-1">
+      <div
+        ref={host}
+        className={rich ? 'min-w-0 flex-1 overflow-auto' : 'hidden'}
+      />
       {rich ? null : (
         <textarea
-          className="markdown-fallback"
+          className="flex-1 resize-none border-0 bg-transparent p-3 font-mono text-sm outline-none"
           aria-label="Markdown source"
           value={props.value}
           spellCheck={false}
