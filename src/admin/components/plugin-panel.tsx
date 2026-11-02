@@ -8,12 +8,32 @@
  * boundary intact while still letting a plugin have a real interface.
  */
 
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { ApiError, api, csrf } from '../api.js';
 import { notice } from '../state.js';
 import type { PluginPanel } from '../types.js';
 import { lazyRoute } from './lazy.js';
+import { Facts } from './page.js';
 import { cell, RelatedRows } from './related-rows.js';
 
 /**
@@ -190,17 +210,26 @@ export function PluginPanelView({
     }
   };
 
+  const titleId = `panel-${pluginId}-${panel.id}`;
   return (
-    <section
-      className="panel"
-      aria-labelledby={`panel-${pluginId}-${panel.id}`}
-    >
-      <div className="panel-head">
-        <h3 id={`panel-${pluginId}-${panel.id}`}>{panel.label}</h3>
+    <section aria-labelledby={titleId} className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <h3
+          id={titleId}
+          className="mr-auto self-center font-heading text-sm font-semibold"
+        >
+          {panel.label}
+        </h3>
         {panel.filters.map((field) => (
-          <label className="filter" key={field}>
-            <span>{field.replace(/_/g, ' ')}</span>
-            <input
+          <Field key={field} className="w-40">
+            <FieldLabel
+              htmlFor={`${titleId}-filter-${field}`}
+              className="capitalize"
+            >
+              {field.replace(/_/g, ' ')}
+            </FieldLabel>
+            <Input
+              id={`${titleId}-filter-${field}`}
               value={filters[field] ?? ''}
               placeholder="any"
               onChange={(event) => {
@@ -211,12 +240,13 @@ export function PluginPanelView({
                 }));
               }}
             />
-          </label>
+          </Field>
         ))}
         {panel.search.length === 0 ? null : (
-          <label className="filter">
-            <span>Search</span>
-            <input
+          <Field className="w-56">
+            <FieldLabel htmlFor={`${titleId}-search`}>Search</FieldLabel>
+            <Input
+              id={`${titleId}-search`}
               type="search"
               value={search}
               placeholder={panel.search
@@ -227,145 +257,162 @@ export function PluginPanelView({
                 setSearch(event.currentTarget.value);
               }}
             />
-          </label>
+          </Field>
         )}
-        <span className="grow" />
         {editable ? (
-          <button
-            type="button"
-            className="primary"
-            onClick={() => setEditing(null)}
-          >
+          <Button type="button" onClick={() => setEditing(null)}>
             New
-          </button>
+          </Button>
         ) : null}
         {panel.actions.map((action) => (
-          <button
+          <Button
             key={action.id}
             type="button"
-            className="ghost"
+            variant="outline"
             onClick={() => void runAction(action)}
           >
             {action.label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {loading ? (
-        <p>Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="empty">Nothing here yet.</p>
+        <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+          Nothing here yet.
+        </p>
       ) : (
-        <table className="rows-table">
-          <thead>
-            <tr>
-              <th scope="col">
-                <span className="visually-hidden">Select</span>
-              </th>
-              {panel.columns.map((column) => {
-                const sorted = sort?.field === column.field;
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col" className="w-10 pl-3">
+                  <span className="sr-only">Select</span>
+                </TableHead>
+                {panel.columns.map((column) => {
+                  const sorted = sort?.field === column.field;
+                  return (
+                    <TableHead
+                      scope="col"
+                      key={column.field}
+                      {...(sorted
+                        ? {
+                            'aria-sort': sort.descending
+                              ? ('descending' as const)
+                              : ('ascending' as const),
+                          }
+                        : {})}
+                    >
+                      {column.sortable ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="-ml-2.5 font-medium"
+                          onClick={() => {
+                            setOffset(0);
+                            setSort({
+                              field: column.field,
+                              descending: sorted && !sort.descending,
+                            });
+                          }}
+                        >
+                          {column.label}
+                          {sorted ? (
+                            sort.descending ? (
+                              <ArrowDown aria-hidden="true" />
+                            ) : (
+                              <ArrowUp aria-hidden="true" />
+                            )
+                          ) : (
+                            <ArrowUpDown
+                              aria-hidden="true"
+                              className="text-muted-foreground"
+                            />
+                          )}
+                        </Button>
+                      ) : (
+                        column.label
+                      )}
+                    </TableHead>
+                  );
+                })}
+                <TableHead scope="col" className="pr-3">
+                  <span className="sr-only">Details</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => {
+                const id = String(row.id ?? '');
                 return (
-                  <th
-                    scope="col"
-                    key={column.field}
-                    {...(sorted
-                      ? {
-                          'aria-sort': sort.descending
-                            ? ('descending' as const)
-                            : ('ascending' as const),
-                        }
-                      : {})}
+                  <TableRow
+                    key={id}
+                    data-state={selected.includes(id) ? 'selected' : undefined}
                   >
-                    {column.sortable ? (
-                      <button
+                    <TableCell className="pl-3">
+                      <Checkbox
+                        aria-label={`Select ${id}`}
+                        checked={selected.includes(id)}
+                        onCheckedChange={(checked) =>
+                          setSelected(
+                            checked === true
+                              ? [...selected, id]
+                              : selected.filter((entry) => entry !== id),
+                          )
+                        }
+                      />
+                    </TableCell>
+                    {panel.columns.map((column) => (
+                      <TableCell key={column.field}>
+                        {cell(row[column.field], column.type)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="pr-3 text-right">
+                      <Button
                         type="button"
-                        className="sort"
-                        onClick={() => {
-                          setOffset(0);
-                          setSort({
-                            field: column.field,
-                            descending: sorted && !sort.descending,
-                          });
-                        }}
+                        variant="outline"
+                        size="sm"
+                        aria-label={
+                          editable
+                            ? `Edit ${String(row[panel.columns[0]?.field ?? 'id'] ?? id)}`
+                            : `Open ${id}`
+                        }
+                        onClick={() =>
+                          editable ? setEditing(id) : setOpen(row)
+                        }
                       >
-                        {column.label}
-                        <span aria-hidden="true">
-                          {sorted ? (sort.descending ? ' ↓' : ' ↑') : ' ↕'}
-                        </span>
-                      </button>
-                    ) : (
-                      column.label
-                    )}
-                  </th>
+                        {editable ? 'Edit' : 'Open'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-              <th scope="col">
-                <span className="visually-hidden">Details</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const id = String(row.id ?? '');
-              return (
-                <tr key={id}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${id}`}
-                      checked={selected.includes(id)}
-                      onChange={(event) =>
-                        setSelected(
-                          event.currentTarget.checked
-                            ? [...selected, id]
-                            : selected.filter((entry) => entry !== id),
-                        )
-                      }
-                    />
-                  </td>
-                  {panel.columns.map((column) => (
-                    <td key={column.field}>
-                      {cell(row[column.field], column.type)}
-                    </td>
-                  ))}
-                  <td>
-                    <button
-                      type="button"
-                      className="ghost"
-                      aria-label={
-                        editable
-                          ? `Edit ${String(row[panel.columns[0]?.field ?? 'id'] ?? id)}`
-                          : `Open ${id}`
-                      }
-                      onClick={() => (editable ? setEditing(id) : setOpen(row))}
-                    >
-                      {editable ? 'Edit' : 'Open'}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+            </TableBody>
+          </Table>
+        </div>
       )}
 
-      <nav className="pager" aria-label="Pagination">
-        <button
+      <nav className="flex gap-2" aria-label="Pagination">
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
+          size="sm"
           disabled={offset === 0}
           onClick={() => setOffset(Math.max(0, offset - PAGE))}
         >
           Previous
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
+          size="sm"
           disabled={!hasNext}
           onClick={() => setOffset(offset + PAGE)}
         >
           Next
-        </button>
+        </Button>
       </nav>
 
       {open === null ? null : (
@@ -424,32 +471,41 @@ function RowDetail({
     ...panel.detail,
   ];
   return (
-    <dialog
-      className="modal"
-      aria-label={`${panel.label} detail`}
-      ref={(element) => element?.showModal()}
-      onClose={onClose}
-      onCancel={onClose}
+    <Sheet
+      open
+      onOpenChange={(next) => {
+        if (!next) {
+          onClose();
+        }
+      }}
     >
-      <header className="modal-head">
-        <h2>{panel.label}</h2>
-        <button type="button" className="ghost" onClick={onClose}>
-          Close
-        </button>
-      </header>
-      <dl className="detail-list">
-        {fields.map((field) => (
-          <div key={field}>
-            <dt>{field.replace(/_/g, ' ')}</dt>
-            <dd>{String(row[field] ?? '—')}</dd>
-          </div>
-        ))}
-      </dl>
-      <RelatedRows
-        pluginId={pluginId}
-        panel={panel}
-        parentId={String(row.id ?? '')}
-      />
-    </dialog>
+      <SheetContent
+        className="w-full overflow-y-auto data-[side=right]:sm:max-w-xl"
+        // The dialog keeps the name it had: the panel's label is the title,
+        // and "detail" says which view of it this is.
+        aria-labelledby={undefined}
+        aria-label={`${panel.label} detail`}
+        aria-describedby={undefined}
+      >
+        <SheetHeader>
+          <SheetTitle>{panel.label}</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col gap-6 px-4 pb-4">
+          <Facts
+            items={fields.map((field) => [
+              <span key="t" className="capitalize">
+                {field.replace(/_/g, ' ')}
+              </span>,
+              String(row[field] ?? '—'),
+            ])}
+          />
+          <RelatedRows
+            pluginId={pluginId}
+            panel={panel}
+            parentId={String(row.id ?? '')}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
