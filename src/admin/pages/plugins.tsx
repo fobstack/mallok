@@ -10,6 +10,7 @@
 import { Info, TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { type FieldValues, useForm } from 'react-hook-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,8 +34,8 @@ import {
 } from '../components/page.js';
 import { PluginPanelView } from '../components/plugin-panel.js';
 import { SecretControl } from '../form/controls.js';
-import { SchemaForm } from '../form/form.js';
-import { toSpecs, validateAll } from '../form/types.js';
+import { SchemaForm, showServerErrors } from '../form/form.js';
+import { toSpecs } from '../form/types.js';
 import { notice } from '../state.js';
 import type { PluginInfo } from '../types.js';
 
@@ -104,10 +105,7 @@ function PluginCard({
   readonly onChanged: () => Promise<void>;
 }): JSX.Element {
   const [busy, setBusy] = useState(false);
-  const [values, setValues] = useState<Record<string, unknown>>(() => ({
-    ...plugin.values,
-  }));
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const form = useForm<FieldValues>({ defaultValues: { ...plugin.values } });
   const [savedSettings, setSavedSettings] = useState(false);
   const [checking, setChecking] = useState('');
   const [checkResult, setCheckResult] = useState<
@@ -131,15 +129,7 @@ function PluginCard({
     }
   };
 
-  const saveSettings = async (event: {
-    preventDefault(): void;
-  }): Promise<void> => {
-    event.preventDefault();
-    const found = validateAll(specs, values);
-    setErrors(found);
-    if (Object.keys(found).length > 0) {
-      return;
-    }
+  const saveSettings = form.handleSubmit(async (values) => {
     setBusy(true);
     setSavedSettings(false);
     try {
@@ -150,12 +140,13 @@ function PluginCard({
       setSavedSettings(true);
       await onChanged();
     } catch (caught) {
+      showServerErrors(form.setError, caught);
       notice.value =
         caught instanceof ApiError ? caught.message : 'Could not save.';
     } finally {
       setBusy(false);
     }
-  };
+  });
 
   const writeSecret = async (
     name: string,
@@ -310,12 +301,8 @@ function PluginCard({
               <h3 className="font-heading text-sm font-semibold">Settings</h3>
               <SchemaForm
                 specs={specs}
-                values={values}
-                errors={errors}
+                control={form.control}
                 idPrefix={`plugin-${plugin.id}`}
-                onChange={(name, value) =>
-                  setValues((previous) => ({ ...previous, [name]: value }))
-                }
               />
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="submit" disabled={busy}>

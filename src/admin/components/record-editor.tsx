@@ -12,8 +12,17 @@
  * only the plugin can produce, such as "this code is already taken".
  */
 
-import type { JSX, ReactNode } from 'react';
+import type { FormEventHandler, JSX, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
+import {
+  type Control,
+  Controller,
+  type FieldValues,
+  get,
+  useFieldArray,
+  useForm,
+  useFormState,
+} from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import {
   Field,
@@ -36,7 +45,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { ApiError, api } from '../api.js';
-import { SchemaForm } from '../form/form.js';
+import { SchemaForm, showServerErrors } from '../form/form.js';
 import type { FieldSpec } from '../form/types.js';
 import { notice } from '../state.js';
 import type {
@@ -194,29 +203,34 @@ function MoneyField({
 
 /** One scalar field: `money` here, everything else through the generator. */
 function ScalarField({
+  control,
   idPrefix,
+  namePrefix,
   name,
   field,
-  value,
-  error,
-  onChange,
 }: {
+  readonly control: Control<FieldValues>;
   readonly idPrefix: string;
+  /** Where the field sits in the form's values: `variants.0.` in a row. */
+  readonly namePrefix: string;
   readonly name: string;
   readonly field: RecordScalarField;
-  readonly value: unknown;
-  readonly error: string | undefined;
-  readonly onChange: (value: unknown) => void;
 }): JSX.Element {
   if (field.type === 'money') {
     return (
-      <MoneyField
-        id={`${idPrefix}-${name}`}
-        name={name}
-        field={field}
-        value={value}
-        error={error}
-        onChange={onChange}
+      <Controller
+        control={control}
+        name={`${namePrefix}${name}`}
+        render={({ field: bound, fieldState }) => (
+          <MoneyField
+            id={`${idPrefix}-${name}`}
+            name={name}
+            field={field}
+            value={bound.value}
+            error={fieldState.error?.message}
+            onChange={bound.onChange}
+          />
+        )}
       />
     );
   }
@@ -224,36 +238,33 @@ function ScalarField({
   return (
     <SchemaForm
       specs={[spec]}
-      values={{ [name]: value ?? undefined }}
-      errors={error === undefined ? {} : { [name]: error }}
+      control={control}
       idPrefix={idPrefix}
-      onChange={(_name, next) => onChange(next)}
+      namePrefix={namePrefix}
+      // The Worker is this form's one validator (see the top of this file).
+      validateHere={false}
     />
   );
 }
 
 function RowsField({
+  control,
   idPrefix,
   name,
   field,
-  value,
-  errors,
-  onChange,
 }: {
+  readonly control: Control<FieldValues>;
   readonly idPrefix: string;
   readonly name: string;
   readonly field: RecordRowsField;
-  readonly value: unknown;
-  readonly errors: Readonly<Record<string, string>>;
-  readonly onChange: (value: unknown) => void;
 }): JSX.Element {
-  const rows = Array.isArray(value) ? (value as Values[]) : [];
-  // Rows have no id of their own, so each gets a key for as long as the
-  // form is open: without one, removing the first row would leave its
-  // typed-in amount showing on the second.
-  const [keys, setKeys] = useState<readonly string[]>(() =>
-    rows.map(() => crypto.randomUUID()),
-  );
+  // Each row keeps its own id for as long as the form is open: without one,
+  // removing the first row would leave its typed-in amount showing on the
+  // second.
+  const { fields: rows, append, remove } = useFieldArray({ control, name });
+  const { errors } = useFormState({ control, name });
+  const fault = get(errors, name) as { message?: unknown } | undefined;
+  const message = typeof fault?.message === 'string' ? fault.message : '';
   const limit = field.max ?? ROWS_MAX;
   const label = labelOf(name, field);
   return (
@@ -270,9 +281,9 @@ function RowsField({
       {field.help === undefined ? null : (
         <FieldDescription>{field.help}</FieldDescription>
       )}
-      {errors[name] === undefined ? null : (
+      {message === '' ? null : (
         <p className="text-sm text-destructive" role="alert">
-          {errors[name]}
+          {message}
         </p>
       )}
       {rows.length === 0 ? (
@@ -281,24 +292,17 @@ function RowsField({
       {rows.map((row, index) => (
         <fieldset
           className="flex flex-col gap-3 rounded-lg border p-3"
-          key={keys[index] ?? index}
+          key={row.id}
           aria-label={`${label} ${index + 1}`}
         >
           {Object.entries(field.fields).map(([subName, subField]) => (
             <ScalarField
               key={subName}
-              idPrefix={`${idPrefix}-${name}-${keys[index] ?? index}`}
+              control={control}
+              idPrefix={`${idPrefix}-${name}-${row.id}`}
+              namePrefix={`${name}.${index}.`}
               name={subName}
               field={subField}
-              value={row[subName]}
-              error={errors[`${name}.${index}.${subName}`]}
-              onChange={(next) =>
-                onChange(
-                  rows.map((existing, at) =>
-                    at === index ? { ...existing, [subName]: next } : existing,
-                  ),
-                )
-              }
             />
           ))}
           <div>
@@ -306,10 +310,7 @@ function RowsField({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                setKeys(keys.filter((_key, at) => at !== index));
-                onChange(rows.filter((_row, at) => at !== index));
-              }}
+              onClick={() => remove(index)}
             >
               Remove {label.toLowerCase()} {index + 1}
             </Button>
@@ -321,10 +322,7 @@ function RowsField({
           type="button"
           variant="outline"
           disabled={rows.length >= limit}
-          onClick={() => {
-            setKeys([...keys, crypto.randomUUID()]);
-            onChange([...rows, {}]);
-          }}
+          onClick={() => append({})}
         >
           Add a row
         </Button>
@@ -351,7 +349,7 @@ function FormSheet({
 }: {
   readonly title: string;
   readonly onClose: () => void;
-  readonly onSubmit?: (event: { preventDefault(): void }) => void;
+  readonly onSubmit?: FormEventHandler<HTMLFormElement>;
   readonly children: ReactNode;
   readonly footer?: ReactNode;
 }): JSX.Element {
@@ -424,10 +422,6 @@ export function RecordEditor({
         )
       : null,
   );
-  const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
-  const [failure, setFailure] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     if (recordId === null) {
@@ -457,12 +451,54 @@ export function RecordEditor({
     };
   }, [base, recordId, onClose]);
 
-  const save = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    if (values === null) {
-      return;
-    }
-    setBusy(true);
+  const title = `${recordId === null ? 'New' : 'Edit'}: ${panel.label}`;
+  if (values === null) {
+    return (
+      <FormSheet title={title} onClose={() => onClose(false)}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </FormSheet>
+    );
+  }
+  return (
+    <RecordForm
+      pluginId={pluginId}
+      panel={panel}
+      recordId={recordId}
+      initial={values}
+      title={title}
+      onClose={onClose}
+      {...(attachedTo === undefined ? {} : { attachedTo })}
+    />
+  );
+}
+
+/** The record's form, once its stored values are in hand. */
+function RecordForm({
+  pluginId,
+  panel,
+  recordId,
+  initial,
+  title,
+  onClose,
+  attachedTo,
+}: {
+  readonly pluginId: string;
+  readonly panel: PluginPanel;
+  readonly recordId: string | null;
+  readonly initial: Values;
+  readonly title: string;
+  readonly onClose: (changed: boolean) => void;
+  readonly attachedTo?: string;
+}): JSX.Element {
+  const fields = panel.fields ?? {};
+  const base = `/plugins/${pluginId}/panels/${panel.id}/records`;
+  const form = useForm<FieldValues>({ defaultValues: initial });
+  const [failure, setFailure] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const busy = form.formState.isSubmitting || deleting;
+
+  const save = form.handleSubmit(async (values) => {
     setFailure('');
     try {
       await api(
@@ -474,21 +510,18 @@ export function RecordEditor({
       );
       onClose(true);
     } catch (caught) {
-      const fieldErrors = caught instanceof ApiError ? caught.fields : {};
-      setErrors(fieldErrors);
+      showServerErrors(form.setError, caught);
       setFailure(
         caught instanceof ApiError ? caught.message : 'Could not save.',
       );
-    } finally {
-      setBusy(false);
     }
-  };
+  });
 
   const remove = async (): Promise<void> => {
     if (recordId === null) {
       return;
     }
-    setBusy(true);
+    setDeleting(true);
     try {
       await api(`${base}/${encodeURIComponent(recordId)}`, {
         method: 'DELETE',
@@ -498,19 +531,11 @@ export function RecordEditor({
       setFailure(
         caught instanceof ApiError ? caught.message : 'Could not delete.',
       );
-      setBusy(false);
+      setDeleting(false);
     }
   };
 
   const idPrefix = `record-${pluginId}-${panel.id}`;
-  const title = `${recordId === null ? 'New' : 'Edit'}: ${panel.label}`;
-  if (values === null) {
-    return (
-      <FormSheet title={title} onClose={() => onClose(false)}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </FormSheet>
-    );
-  }
   return (
     <FormSheet
       title={title}
@@ -555,22 +580,19 @@ export function RecordEditor({
         field.type === 'rows' ? (
           <RowsField
             key={name}
+            control={form.control}
             idPrefix={idPrefix}
             name={name}
             field={field}
-            value={values[name]}
-            errors={errors}
-            onChange={(next) => setValues({ ...values, [name]: next })}
           />
         ) : (
           <ScalarField
             key={name}
+            control={form.control}
             idPrefix={idPrefix}
+            namePrefix=""
             name={name}
             field={field}
-            value={values[name]}
-            error={errors[name]}
-            onChange={(next) => setValues({ ...values, [name]: next })}
           />
         ),
       )}
@@ -606,20 +628,17 @@ export function ActionParamsDialog({
   readonly onClose: (done: boolean) => void;
 }): JSX.Element {
   const fields = action.params ?? {};
-  const [values, setValues] = useState<Values>(() =>
-    Object.fromEntries(
+  const form = useForm<FieldValues>({
+    defaultValues: Object.fromEntries(
       Object.entries(fields)
         .filter(([, field]) => field.default !== undefined)
         .map(([name, field]) => [name, field.default]),
     ),
-  );
-  const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
+  });
   const [failure, setFailure] = useState('');
-  const [busy, setBusy] = useState(false);
+  const busy = form.formState.isSubmitting;
 
-  const run = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    setBusy(true);
+  const run = form.handleSubmit(async (values) => {
     setFailure('');
     try {
       await api(
@@ -628,13 +647,12 @@ export function ActionParamsDialog({
       );
       onClose(true);
     } catch (caught) {
-      setErrors(caught instanceof ApiError ? caught.fields : {});
+      showServerErrors(form.setError, caught);
       setFailure(
         caught instanceof ApiError ? caught.message : 'The action failed.',
       );
-      setBusy(false);
     }
-  };
+  });
 
   const count = ids.length;
   return (
@@ -654,12 +672,11 @@ export function ActionParamsDialog({
       {Object.entries(fields).map(([name, field]) => (
         <ScalarField
           key={name}
+          control={form.control}
           idPrefix={`action-${pluginId}-${action.id}`}
+          namePrefix=""
           name={name}
           field={field}
-          value={values[name]}
-          error={errors[name]}
-          onChange={(next) => setValues({ ...values, [name]: next })}
         />
       ))}
       {failure === '' ? null : (

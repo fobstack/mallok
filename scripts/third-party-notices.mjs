@@ -135,9 +135,14 @@ async function completeViteLicense(entry) {
     }
     const root = join(rootsDir, child);
     const parent = await manifestAt(root);
+    // A package can carry sub-path packages of its own, each with a
+    // package.json but no licence file: `@hookform/resolvers/zod` lives in
+    // `@hookform/resolvers` and is under its licence.
     if (
       typeof parent?.name !== 'string' ||
-      (parent.name !== entry.name && !entry.name.startsWith(`${parent.name}-`))
+      (parent.name !== entry.name &&
+        !entry.name.startsWith(`${parent.name}-`) &&
+        !entry.name.startsWith(`${parent.name}/`))
     ) {
       continue;
     }

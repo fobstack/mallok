@@ -13,6 +13,7 @@
 
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { type FieldValues, useForm } from 'react-hook-form';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -158,6 +159,11 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
   // --- front matter <-> form ------------------------------------------
   const parsed = useMemo(() => splitFrontmatter(markdown), [markdown]);
   const frontmatter = parsed.data;
+  // The form is a view of the front matter, as the Markdown pane is of the
+  // whole document: `values` resets it whenever the text changes underneath
+  // it, and every field edit is written back into the text by `setField`.
+  // Whether the item is unsaved is the text's question, not the form's.
+  const fieldsForm = useForm<FieldValues>({ values: frontmatter });
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: active is read below (active?.kinds[...]).
   const specs = useMemo(() => {
@@ -423,9 +429,11 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
           <aside className="min-h-0 min-w-0 overflow-auto border-b bg-muted/20 p-4 lg:border-r lg:border-b-0">
             <SchemaForm
               specs={specs}
-              values={frontmatter}
+              control={fieldsForm.control}
               idPrefix="fm"
-              onChange={setField}
+              // The Worker checks front matter on save; the form only shows it.
+              validateHere={false}
+              onFieldChange={setField}
               pickMedia={pickMedia}
               previewUrl={(path) => {
                 const sha = assets[path];

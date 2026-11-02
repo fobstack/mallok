@@ -6,7 +6,6 @@ import {
   optionSpecs,
   toSpecs,
   validate,
-  validateAll,
 } from '../../src/admin/form/types.js';
 import { match, toHref, toRoute } from '../../src/admin/routes.js';
 
@@ -98,18 +97,6 @@ describe('validation', () => {
     expect(
       validate(spec('l', { type: 'string[]', max: 1 }), ['a', 'b']),
     ).toContain('At most 1');
-  });
-
-  it('reports every failing field at once', () => {
-    const specs = [
-      spec('a', { required: true }),
-      spec('b', { type: 'number' }),
-      spec('c', {}),
-    ];
-    expect(validateAll(specs, { b: 'not a number', c: 'fine' })).toEqual({
-      a: 'This field is required.',
-      b: 'Enter a number.',
-    });
   });
 });
 

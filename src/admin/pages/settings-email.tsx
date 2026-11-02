@@ -7,9 +7,12 @@
  * can never show it.
  */
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,11 +31,25 @@ import type { SiteEmail } from '../types.js';
 /** Mirrors the server's check, so a typo is caught before the request. */
 const SENDER_PATTERN = /^(?:[^\s@<>]+@[^\s@<>]+|[^<>]*<[^\s@<>]+@[^\s@<>]+>)$/;
 
+/** Empty clears the sender; anything else has to be an address. */
+const senderSchema = z.object({
+  from: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === '' || SENDER_PATTERN.test(value),
+      'Use an address such as hello@example.com or Acme <hello@example.com>.',
+    ),
+});
+
 export function EmailSettingsPage(): JSX.Element {
   const current = settings.value;
-  const [from, setFrom] = useState(current?.email.fromAddress ?? '');
-  const [fromError, setFromError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const form = useForm({
+    resolver: zodResolver(senderSchema),
+    defaultValues: { from: current?.email.fromAddress ?? '' },
+  });
+  const fromError = form.formState.errors.from?.message;
+  const busy = form.formState.isSubmitting;
   const [saved, setSaved] = useState(false);
   const [checking, setChecking] = useState(false);
   const [verdict, setVerdict] = useState<{
@@ -63,23 +80,10 @@ export function EmailSettingsPage(): JSX.Element {
     }
   };
 
-  const saveSender = async (event: {
-    preventDefault(): void;
-  }): Promise<void> => {
-    event.preventDefault();
-    const value = from.trim();
-    if (value !== '' && !SENDER_PATTERN.test(value)) {
-      setFromError(
-        'Use an address such as hello@example.com or Acme <hello@example.com>.',
-      );
-      return;
-    }
-    setFromError('');
-    setBusy(true);
+  const saveSender = form.handleSubmit(async ({ from }) => {
     setSaved(false);
-    setSaved(await store({ fromAddress: value === '' ? null : value }));
-    setBusy(false);
-  };
+    setSaved(await store({ fromAddress: from === '' ? null : from }));
+  });
 
   const writeKey = async (value: string | null): Promise<void> => {
     // A verdict describes the key that was checked, not the one stored now.
@@ -126,26 +130,26 @@ export function EmailSettingsPage(): JSX.Element {
           </>
         }
       >
-        <Field data-invalid={fromError !== ''}>
+        <Field data-invalid={fromError !== undefined}>
           <FieldLabel htmlFor="email-from">From address</FieldLabel>
           <Input
             id="email-from"
             type="text"
-            value={from}
             maxLength={320}
             placeholder="Acme <hello@example.com>"
-            aria-invalid={fromError !== ''}
-            aria-describedby="email-from-help"
-            onInput={(event) => {
-              setFrom(event.currentTarget.value);
-              setSaved(false);
-            }}
+            aria-invalid={fromError !== undefined}
+            aria-describedby={
+              fromError === undefined
+                ? 'email-from-help'
+                : 'email-from-help email-from-error'
+            }
+            {...form.register('from', { onChange: () => setSaved(false) })}
           />
           <FieldDescription id="email-from-help">
             Must be on a domain you have verified in Resend. A plugin may set
             its own sender; this one is used whenever it does not.
           </FieldDescription>
-          {fromError === '' ? null : <FieldError>{fromError}</FieldError>}
+          <FieldError id="email-from-error">{fromError}</FieldError>
         </Field>
       </Section>
 

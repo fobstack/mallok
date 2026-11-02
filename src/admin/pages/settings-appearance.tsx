@@ -10,6 +10,7 @@
 import { Info } from 'lucide-react';
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { type FieldValues, useForm } from 'react-hook-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
@@ -28,56 +29,44 @@ import {
   StatusBadge,
 } from '../components/page.js';
 import { SavedNote } from '../components/saved-note.js';
-import { SchemaForm } from '../form/form.js';
-import { optionSpecs, validateAll } from '../form/types.js';
+import { SchemaForm, showServerErrors } from '../form/form.js';
+import { optionSpecs } from '../form/types.js';
 import { notice, saveSettings, settings, theme } from '../state.js';
 
 export function AppearancePage(): JSX.Element {
   const active = theme.value;
   const current = settings.value;
-  const [draft, setDraft] = useState<Record<string, unknown>>({});
-  const [touched, setTouched] = useState(false);
   const [editingLocale, setEditingLocale] = useState(
     settings.value?.defaultLocale ?? 'en',
   );
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const specs = active === null ? [] : optionSpecs(active.options);
+  // Options resolve the way the renderer resolves them: the override for the
+  // locale being edited, then the site-wide value, then the manifest default
+  // (docs/THEME_FORMAT.md §6.1).
+  const overrides =
+    (current?.themeOptions[LOCALE_OPTIONS_KEY] as
+      | Record<string, Record<string, unknown>>
+      | undefined) ?? {};
+  const editingDefault = editingLocale === current?.defaultLocale;
+  const resolved: FieldValues = {};
+  for (const spec of specs) {
+    resolved[spec.name] = editingDefault
+      ? (current?.themeOptions[spec.name] ?? spec.field.default)
+      : (overrides[editingLocale]?.[spec.name] ??
+        current?.themeOptions[spec.name] ??
+        spec.field.default);
+  }
+  // `values`, not `defaultValues`: switching the language being edited, or
+  // a save coming back, resets the form to what is now stored.
+  const form = useForm<FieldValues>({ values: resolved });
 
   if (active === null || current === null) {
     return <p>Loading…</p>;
   }
 
-  const specs = optionSpecs(active.options);
-  // Options resolve the way the renderer resolves them: the override for the
-  // locale being edited, then the site-wide value, then the manifest default
-  // (docs/THEME_FORMAT.md §6.1).
-  const overrides =
-    (current.themeOptions[LOCALE_OPTIONS_KEY] as
-      | Record<string, Record<string, unknown>>
-      | undefined) ?? {};
-  const editingDefault = editingLocale === current.defaultLocale;
-  const values: Record<string, unknown> = {};
-  for (const spec of specs) {
-    if (touched) {
-      values[spec.name] = draft[spec.name];
-      continue;
-    }
-    values[spec.name] = editingDefault
-      ? (current.themeOptions[spec.name] ?? spec.field.default)
-      : (overrides[editingLocale]?.[spec.name] ??
-        current.themeOptions[spec.name] ??
-        spec.field.default);
-  }
-
-  const submit = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    const found = validateAll(specs, values);
-    setErrors(found);
-    if (Object.keys(found).length > 0) {
-      return;
-    }
-    setBusy(true);
+  const submit = form.handleSubmit(async (values) => {
     setSaved(false);
     try {
       const next: Record<string, unknown> = { ...current.themeOptions };
@@ -97,15 +86,14 @@ export function AppearancePage(): JSX.Element {
         next[LOCALE_OPTIONS_KEY] = { ...overrides, [editingLocale]: locale };
       }
       await saveSettings({ themeOptions: next });
-      setTouched(false);
       setSaved(true);
     } catch (caught) {
+      showServerErrors(form.setError, caught);
       notice.value =
         caught instanceof ApiError ? caught.message : 'Could not save.';
-    } finally {
-      setBusy(false);
     }
-  };
+  });
+  const busy = form.formState.isSubmitting;
 
   const kinds = Object.entries(active.kinds);
 
@@ -204,10 +192,9 @@ export function AppearancePage(): JSX.Element {
               <NativeSelect
                 id="theme-editing-locale"
                 value={editingLocale}
-                onChange={(event) => {
-                  setEditingLocale(event.currentTarget.value);
-                  setTouched(false);
-                }}
+                onChange={(event) =>
+                  setEditingLocale(event.currentTarget.value)
+                }
               >
                 {current.locales.map((locale) => (
                   <NativeSelectOption key={locale} value={locale}>
@@ -223,16 +210,7 @@ export function AppearancePage(): JSX.Element {
               </FieldDescription>
             </Field>
           ) : null}
-          <SchemaForm
-            specs={specs}
-            values={values}
-            errors={errors}
-            idPrefix="theme"
-            onChange={(name, value) => {
-              setDraft({ ...values, [name]: value });
-              setTouched(true);
-            }}
-          />
+          <SchemaForm specs={specs} control={form.control} idPrefix="theme" />
         </Section>
       )}
     </Page>

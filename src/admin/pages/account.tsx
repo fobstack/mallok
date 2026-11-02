@@ -5,16 +5,20 @@
  * is stated plainly rather than hidden (docs/SECURITY.md §3.1).
  */
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { cn } from 'cn';
 import { Info, KeyRound } from 'lucide-react';
 import type { JSX } from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Field,
+  FieldError,
   FieldLabel,
   FieldLegend,
   FieldSet,
@@ -28,6 +32,8 @@ import {
   Section,
   StatusBadge,
 } from '../components/page.js';
+import { invalid, showServerErrors } from '../form/form.js';
+import { REQUIRED_MESSAGE } from '../form/types.js';
 import { notice, session } from '../state.js';
 import {
   describeToken,
@@ -42,13 +48,31 @@ const SCOPES = [
   'settings:write',
 ] as const;
 
+/** A token needs a name; which scopes it may have is the server's rule. */
+const tokenSchema = z.object({
+  name: z.string().trim().min(1, REQUIRED_MESSAGE),
+  scopes: z.array(z.string()),
+});
+
+/**
+ * The new password's length is checked here too, so the rule is read before
+ * the round trip; the server enforces it either way.
+ */
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, REQUIRED_MESSAGE),
+  newPassword: z.string().min(12, 'At least 12 characters.'),
+});
+
 export function AccountPage(): JSX.Element {
   const current = session.value;
   const [tokens, setTokens] = useState<readonly TokenSummary[]>([]);
   const [minted, setMinted] = useState('');
-  const [name, setName] = useState('');
-  const [chosen, setChosen] = useState<string[]>(['content:write']);
-  const [busy, setBusy] = useState(false);
+  const tokenForm = useForm({
+    resolver: zodResolver(tokenSchema),
+    defaultValues: { name: '', scopes: ['content:write'] },
+  });
+  const busy = tokenForm.formState.isSubmitting;
+  const nameError = tokenForm.formState.errors.name?.message;
 
   const reload = useCallback(async (): Promise<void> => {
     try {
@@ -64,24 +88,22 @@ export function AccountPage(): JSX.Element {
     void reload();
   }, [reload]);
 
-  const create = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    setBusy(true);
+  const create = tokenForm.handleSubmit(async ({ name, scopes }) => {
     try {
       const result = await api<{ token: string }>('/tokens', {
         method: 'POST',
-        body: { name, scopes: chosen },
+        body: { name, scopes },
       });
       setMinted(result.token);
-      setName('');
+      // The scopes stay ticked: the next token is often a sibling.
+      tokenForm.resetField('name');
       await reload();
     } catch (caught) {
+      showServerErrors(tokenForm.setError, caught);
       notice.value =
         caught instanceof ApiError ? caught.message : 'Could not create.';
-    } finally {
-      setBusy(false);
     }
-  };
+  });
 
   const revoke = async (id: string): Promise<void> => {
     try {
@@ -217,43 +239,54 @@ export function AccountPage(): JSX.Element {
         )}
         <form
           className="flex flex-col gap-4"
+          noValidate
           onSubmit={(event) => void create(event)}
         >
-          <Field>
+          <Field data-invalid={nameError !== undefined}>
             <FieldLabel htmlFor="token-name">New token name</FieldLabel>
             <Input
               id="token-name"
               className="max-w-sm"
-              required
-              value={name}
-              onInput={(event) => setName(event.currentTarget.value)}
+              {...invalid('token-name', nameError)}
+              {...tokenForm.register('name')}
             />
+            <FieldError id="token-name-error">{nameError}</FieldError>
           </Field>
           <FieldSet>
             <FieldLegend variant="label">Scopes</FieldLegend>
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
-              {SCOPES.map((scope) => (
-                <Field key={scope} orientation="horizontal" className="w-auto">
-                  <Checkbox
-                    id={`token-scope-${scope}`}
-                    checked={chosen.includes(scope)}
-                    onCheckedChange={(checked) =>
-                      setChosen(
-                        checked === true
-                          ? [...chosen, scope]
-                          : chosen.filter((entry) => entry !== scope),
-                      )
-                    }
-                  />
-                  <FieldLabel
-                    htmlFor={`token-scope-${scope}`}
-                    className="font-mono font-normal"
-                  >
-                    {scope}
-                  </FieldLabel>
-                </Field>
-              ))}
-            </div>
+            <Controller
+              control={tokenForm.control}
+              name="scopes"
+              render={({ field }) => (
+                <div className="flex flex-wrap gap-x-6 gap-y-3">
+                  {SCOPES.map((scope) => (
+                    <Field
+                      key={scope}
+                      orientation="horizontal"
+                      className="w-auto"
+                    >
+                      <Checkbox
+                        id={`token-scope-${scope}`}
+                        checked={field.value.includes(scope)}
+                        onCheckedChange={(checked) =>
+                          field.onChange(
+                            checked === true
+                              ? [...field.value, scope]
+                              : field.value.filter((entry) => entry !== scope),
+                          )
+                        }
+                      />
+                      <FieldLabel
+                        htmlFor={`token-scope-${scope}`}
+                        className="font-mono font-normal"
+                      >
+                        {scope}
+                      </FieldLabel>
+                    </Field>
+                  ))}
+                </div>
+              )}
+            />
           </FieldSet>
           <div>
             <Button type="submit" disabled={busy}>
@@ -267,32 +300,28 @@ export function AccountPage(): JSX.Element {
 }
 
 function PasswordSection(): JSX.Element {
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [nextPassword, setNextPassword] = useState('');
+  const form = useForm({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { currentPassword: '', newPassword: '' },
+  });
   const [done, setDone] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const busy = form.formState.isSubmitting;
+  const { errors } = form.formState;
 
-  const submit = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    setBusy(true);
+  const submit = form.handleSubmit(async (values) => {
     setDone(false);
     try {
-      await api('/auth/password', {
-        method: 'POST',
-        body: { currentPassword, newPassword: nextPassword },
-      });
-      setCurrentPassword('');
-      setNextPassword('');
+      await api('/auth/password', { method: 'POST', body: values });
+      form.reset();
       setDone(true);
     } catch (caught) {
+      showServerErrors(form.setError, caught);
       notice.value =
         caught instanceof ApiError
           ? caught.message
           : 'Could not change the password.';
-    } finally {
-      setBusy(false);
     }
-  };
+  });
 
   return (
     <Section
@@ -308,28 +337,31 @@ function PasswordSection(): JSX.Element {
         </>
       }
     >
-      <Field>
+      <Field data-invalid={errors.currentPassword !== undefined}>
         <FieldLabel htmlFor="pw-current">Current password</FieldLabel>
         <Input
           id="pw-current"
           type="password"
           autoComplete="current-password"
-          required
-          value={currentPassword}
-          onInput={(event) => setCurrentPassword(event.currentTarget.value)}
+          {...invalid('pw-current', errors.currentPassword?.message)}
+          {...form.register('currentPassword')}
         />
+        <FieldError id="pw-current-error">
+          {errors.currentPassword?.message}
+        </FieldError>
       </Field>
-      <Field>
+      <Field data-invalid={errors.newPassword !== undefined}>
         <FieldLabel htmlFor="pw-next">New password</FieldLabel>
         <Input
           id="pw-next"
           type="password"
           autoComplete="new-password"
-          required
-          minLength={12}
-          value={nextPassword}
-          onInput={(event) => setNextPassword(event.currentTarget.value)}
+          {...invalid('pw-next', errors.newPassword?.message)}
+          {...form.register('newPassword')}
         />
+        <FieldError id="pw-next-error">
+          {errors.newPassword?.message}
+        </FieldError>
       </Field>
     </Section>
   );

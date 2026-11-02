@@ -8,7 +8,7 @@
  */
 
 import { cn } from 'cn';
-import type { JSX, ReactNode } from 'react';
+import type { FormEventHandler, JSX, ReactNode } from 'react';
 import { useId } from 'react';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -81,7 +81,7 @@ export function Section({
   readonly footer?: ReactNode;
   readonly children?: ReactNode;
   readonly as?: 'section' | 'form';
-  readonly onSubmit?: (event: { preventDefault(): void }) => void;
+  readonly onSubmit?: FormEventHandler<HTMLFormElement>;
   readonly className?: string;
 }): JSX.Element {
   const titleId = useId();

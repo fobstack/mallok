@@ -2,8 +2,11 @@ import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-// @ts-expect-error -- a build script, plain JavaScript with no declarations.
-import { stylesheetPackages } from '../../scripts/third-party-notices.mjs';
+import {
+  stylesheetPackages,
+  thirdPartyNotices,
+  // @ts-expect-error -- a build script, plain JavaScript with no declarations.
+} from '../../scripts/third-party-notices.mjs';
 
 /**
  * What the admin stylesheet inlines with `@import` is attributed in
@@ -51,5 +54,33 @@ describe('stylesheetPackages', () => {
     expect(entries.map((entry) => entry.name)).toEqual(
       expect.arrayContaining(['tailwindcss', 'tw-animate-css', 'shadcn']),
     );
+  });
+});
+
+/**
+ * Vite lists a package's sub-path package (`@hookform/resolvers/zod`) as a
+ * package of its own, with a manifest but no licence file. Its licence is
+ * the package's it lives in; the notice has to carry that text rather than
+ * stop the build.
+ */
+describe('thirdPartyNotices', () => {
+  it('gives a sub-path package the licence text of the package it lives in', async () => {
+    const { packages } = (await thirdPartyNotices(
+      [],
+      [
+        {
+          name: '@hookform/resolvers/zod',
+          version: '1.0.0',
+          identifier: 'MIT',
+        },
+      ],
+    )) as {
+      packages: { name: string; license: string; text: string | null }[];
+    };
+    const entry = packages.find(
+      (pkg) => pkg.name === '@hookform/resolvers/zod',
+    );
+    expect(entry?.license).toBe('MIT');
+    expect(entry?.text).toContain('MIT License');
   });
 });

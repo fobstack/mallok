@@ -139,6 +139,7 @@ export default defineConfig({
           include: [
             'test/core/**/*.test.ts',
             'test/admin/**/*.test.ts',
+            'test/admin/**/*.test.tsx',
             'test/cli/**/*.test.ts',
           ],
           // Its own project below: it builds two real tarballs, serves them

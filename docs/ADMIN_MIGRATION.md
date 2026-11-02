@@ -616,6 +616,58 @@ run one by one.
 - **Not done here:** the plan's real-site check at the end of phase 3 — the
   gate site, deployed by the maintainer. Nothing has been deployed.
 
+### Phase 4 — Forms on React Hook Form, 2026-11-03
+
+- **Dependencies:** `react-hook-form` 7.89.0 and `@hookform/resolvers`
+  5.9.1, both released more than two weeks before they were added (the
+  newer 7.91.0 and 7.0.1 were not). Zod was already a dependency.
+- **The generator** (`form/form.tsx`) renders each declared field through
+  React Hook Form's `Controller` and checks it against its declaration with
+  the same `validate()` as before, now as the field's rule; a failed submit
+  marks every failing field at once. `validateAll` went with the hand-kept
+  error maps that used it. It takes a name prefix, so a record's repeatable
+  rows bind as `variants.0.sku`, and can leave checking to the server.
+- **Callers:** site settings, theme options (bound with `values`, so
+  switching the language being edited reloads them), plugin settings, the
+  record editor and action parameters, and the content editor's front
+  matter. The record editor's rows are a `useFieldArray`, whose ids replace
+  the keys it used to mint itself.
+- **Server errors** (`ApiError.fields`) are set on the fields they name with
+  `setError`, beside the request's own message, which is still said where it
+  was: a field the form does not show would otherwise swallow it.
+- **Zod** checks the fixed-shape forms: sign-in, the password change, a new
+  token and the email sender. They are `noValidate`; the message is the
+  generator's ("This field is required.", or the rule the help text already
+  states) and is the field's description, as the generated fields' are.
+- **Not as the plan said:**
+  - Site settings are checked through their field declarations rather than
+    a Zod schema: they are declared like theme fields, and the declaration
+    is their one source of rules.
+  - Unsaved-changes interception stays on the Markdown text, not the
+    form's dirty state. The text is the truth (docs/ADMIN.md §6.2), the
+    form is a view of its front matter, and `13-editor-untouched` is the
+    test of exactly that; no other page intercepts leaving.
+  - The setup wizard's forms were not put on Zod; the plan did not list
+    them.
+- **The licence notices** (`scripts/third-party-notices.mjs`) learned that
+  a package can ship sub-path packages: `@hookform/resolvers/zod` has its own
+  manifest and no licence file, and stopped the package build until its
+  parent's licence was found for it.
+- **Tests:** `test/admin/schema-form.test.tsx` renders the generator into a
+  DOM (every failing field reported with its message as its description,
+  values submitted when valid, checks left to the server when asked, a
+  server message put on its field, a nested group read and written), and
+  the notices test covers the sub-path licence. Each was seen to fail with
+  its fix reverted.
+- **Size. First load: 125.0 KiB**, unchanged: React Hook Form and Zod are in
+  page chunks. Zod is 17.9 KiB gzip and its resolver 1.3 KiB, loaded with
+  the sign-in, account and email pages — so the sign-in screen, the first
+  thing a signed-out operator sees, now loads about 19 KiB more. Loaded on
+  demand: 445.1 KiB, from 429.6.
+- **Checked:** the browser suite (44) twice; axe clean on the sign-in and
+  account pages with their messages showing, in light and dark; unit tests,
+  lint, typecheck, build and bundle size pass.
+
 ### D7 — The first-load budget, raised by phase 0
 
 150 KiB is the project's own number (`ADMIN.md §13`), not a platform limit:

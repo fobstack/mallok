@@ -7,6 +7,7 @@
 
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { type FieldValues, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -20,9 +21,8 @@ import {
   StatusBadge,
 } from '../components/page.js';
 import { SavedNote } from '../components/saved-note.js';
-import { SchemaForm } from '../form/form.js';
+import { SchemaForm, showServerErrors } from '../form/form.js';
 import type { FieldSpec } from '../form/types.js';
-import { validateAll } from '../form/types.js';
 import { loadWorkspace, notice, saveSettings, settings } from '../state.js';
 
 const SITE_FIELDS: readonly FieldSpec[] = [
@@ -73,27 +73,27 @@ export function SiteSettingsPage(): JSX.Element {
   const otherLocales = (current?.locales ?? []).filter(
     (locale) => locale !== current?.defaultLocale,
   );
-  const [draft, setDraft] = useState<Record<string, unknown>>(() => {
-    // One string, or one per language keyed by locale.
-    const stored = current?.tagline ?? '';
-    const byLocale = typeof stored === 'string' ? {} : stored;
-    return {
-      name: current?.name ?? '',
-      tagline:
-        typeof stored === 'string'
-          ? stored
-          : (stored[current?.defaultLocale ?? ''] ?? ''),
-      ...Object.fromEntries(
-        Object.entries(byLocale)
-          .filter(([locale]) => locale !== current?.defaultLocale)
-          .map(([locale, text]) => [taglineField(locale), text]),
-      ),
-      domain: current?.domain ?? '',
-      mediaBaseUrl: current?.mediaBaseUrl ?? '',
-    };
+  const form = useForm<FieldValues>({
+    defaultValues: (() => {
+      // One string, or one per language keyed by locale.
+      const stored = current?.tagline ?? '';
+      const byLocale = typeof stored === 'string' ? {} : stored;
+      return {
+        name: current?.name ?? '',
+        tagline:
+          typeof stored === 'string'
+            ? stored
+            : (stored[current?.defaultLocale ?? ''] ?? ''),
+        ...Object.fromEntries(
+          Object.entries(byLocale)
+            .filter(([locale]) => locale !== current?.defaultLocale)
+            .map(([locale, text]) => [taglineField(locale), text]),
+        ),
+        domain: current?.domain ?? '',
+        mediaBaseUrl: current?.mediaBaseUrl ?? '',
+      };
+    })(),
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
   if (current === null) {
@@ -122,7 +122,9 @@ export function SiteSettingsPage(): JSX.Element {
   );
 
   /** One string when no language has its own tagline, otherwise the map. */
-  const taglineValue = (): string | Record<string, string> | null => {
+  const taglineValue = (
+    draft: FieldValues,
+  ): string | Record<string, string> | null => {
     const own = String(draft.tagline ?? '');
     const others = Object.fromEntries(
       otherLocales
@@ -135,31 +137,24 @@ export function SiteSettingsPage(): JSX.Element {
     return { [current.defaultLocale]: own, ...others };
   };
 
-  const submit = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    const found = validateAll(fields, draft);
-    setErrors(found);
-    if (Object.keys(found).length > 0) {
-      return;
-    }
-    setBusy(true);
+  const submit = form.handleSubmit(async (draft) => {
     setSaved(false);
     try {
       await saveSettings({
         name: String(draft.name ?? ''),
-        tagline: taglineValue(),
+        tagline: taglineValue(draft),
         domain: draft.domain === '' ? null : String(draft.domain ?? ''),
         mediaBaseUrl:
           draft.mediaBaseUrl === '' ? null : String(draft.mediaBaseUrl ?? ''),
       });
       setSaved(true);
     } catch (caught) {
+      showServerErrors(form.setError, caught);
       notice.value =
         caught instanceof ApiError ? caught.message : 'Could not save.';
-    } finally {
-      setBusy(false);
     }
-  };
+  });
+  const busy = form.formState.isSubmitting;
 
   return (
     <Page>
@@ -179,15 +174,7 @@ export function SiteSettingsPage(): JSX.Element {
           </>
         }
       >
-        <SchemaForm
-          specs={fields}
-          values={draft}
-          errors={errors}
-          idPrefix="site"
-          onChange={(name, value) =>
-            setDraft((previous) => ({ ...previous, [name]: value }))
-          }
-        />
+        <SchemaForm specs={fields} control={form.control} idPrefix="site" />
       </Section>
 
       <LocaleSection />
