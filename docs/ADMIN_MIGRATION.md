@@ -532,6 +532,24 @@ out there with uncommitted files.
   pass. Screenshots of the page in both schemes, with a freshly minted
   token and a revoked one, were reviewed and not committed.
 
+### Phase 3, step 3 — Content list, 2026-11-02
+
+- **The content list** is a shadcn/ui table in a bordered frame, its
+  filters native selects with labels, its statuses badges (published in
+  the success colour, scheduled in the warning one, draft plain), and its
+  pager two outline buttons. No copy changed.
+- **Departure from the plan:** no pagination component. shadcn's is a row
+  of page links; this list pages by offset with only Previous and Next,
+  because the API answers `hasNext`, not a total.
+- **On a phone** the table scrolls sideways inside its frame; the title and
+  path columns keep a minimum width so a path is not broken a few
+  characters at a time.
+- **Added from the registry, as generated:** table.
+- **Size. First load: 126.5 KiB** (the table is in the content list's own
+  chunk).
+- **Checked:** the browser suite (44); screenshots in light and dark at a
+  desktop and a phone width, reviewed and not committed.
+
 ### D7 — The first-load budget, raised by phase 0
 
 150 KiB is the project's own number (`ADMIN.md §13`), not a platform limit:
