@@ -7,7 +7,6 @@ import {
   toSpecs,
   validate,
 } from '../../src/admin/form/types.js';
-import { match, toHref, toRoute } from '../../src/admin/routes.js';
 
 function spec(name: string, field: Partial<FieldSpec['field']>): FieldSpec {
   return {
@@ -97,33 +96,6 @@ describe('validation', () => {
     expect(
       validate(spec('l', { type: 'string[]', max: 1 }), ['a', 'b']),
     ).toContain('At most 1');
-  });
-});
-
-describe('routes', () => {
-  it('maps browser paths to in-app routes and back', () => {
-    expect(toRoute('/_mallok/app/')).toBe('/');
-    expect(toRoute('/_mallok/app')).toBe('/');
-    expect(toRoute('/_mallok/app/settings/appearance')).toBe(
-      '/settings/appearance',
-    );
-    expect(toRoute('/_mallok/app/settings/')).toBe('/settings');
-    expect(toHref('/')).toBe('/_mallok/app/');
-    expect(toHref('/settings')).toBe('/_mallok/app/settings');
-  });
-
-  it('captures parameters and rejects mismatches', () => {
-    expect(match('/content/:id', '/content/abc-123')).toEqual({
-      id: 'abc-123',
-    });
-    expect(match('/content/:id', '/content')).toBeNull();
-    expect(match('/content/:id', '/content/a/b')).toBeNull();
-    expect(match('/settings', '/settings')).toEqual({});
-    expect(match('/settings', '/plugins')).toBeNull();
-  });
-
-  it('decodes an encoded segment', () => {
-    expect(match('/content/:id', '/content/a%2Fb')).toEqual({ id: 'a/b' });
   });
 });
 

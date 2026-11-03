@@ -668,6 +668,69 @@ run one by one.
   account pages with their messages showing, in light and dark; unit tests,
   lint, typecheck, build and bundle size pass.
 
+### Phase 5 — Routing and data, 2026-11-03
+
+- **Dependencies:** `react-router` 8.5.0 and `@tanstack/react-query`
+  5.104.4. React Router's current major is 8 (`RouterProvider` now comes
+  from `react-router/dom`, `react-router-dom` is gone); 8.5.0 is the newest
+  release older than two weeks. Removed: `@preact/signals-react`, its Babel
+  transform, the `vite.config.ts` guard around it, and `@babel/core`, which
+  only that transform used.
+- **Routing.** React Router in data mode replaces `router.ts`, `routes.ts`
+  and `components/lazy.tsx`. The basename is `/_mallok/app/` with its slash,
+  so the admin's home stays at the address it always had; the entry point
+  adds the slash to a bare `/_mallok/app`, which the Worker also serves.
+  The root route's loader settles the session and, signed in, loads the
+  workspace before the first render (the skeleton shows meanwhile); it does
+  not run again on navigation. Signed out, any address shows the sign-in
+  form, and signing in leaves the operator on the page they asked for —
+  not a redirect, so the address is kept. Each route group has an error
+  element; an unknown address is the not-found page. The setup wizard runs
+  before there is a session and is its own small app in `main.tsx`.
+- **Pages load with `React.lazy` inside the route's element, not with the
+  route's own `lazy`.** React Router holds the previous page on screen until
+  a lazy route's code arrives, so "New" left the content list up, live, while
+  the editor loaded; `03-publish` then picked the list's own Type filter and
+  its change cancelled the navigation. The admin moves at once and shows a
+  still outline, as before. Still, not pulsing: `17-shell` waits for every
+  animation to finish, and an endless one cut off as the page arrives reads
+  as aborted.
+- **Data.** `queries.ts` holds one key scheme (`session`, `settings`,
+  `theme`, `health`, `content`, `media`, `plugins` with each panel's rows,
+  records and related rows under it, `tokens`, `diagnostics`, `setup`).
+  Every read is a query, and no `useEffect` fetches any more; writes stay
+  plain calls that then invalidate or replace what they changed. Retries and
+  refetch-on-focus are off: a failure is said, not hidden behind a retry.
+- **The signals** became queries — session, settings, theme and health,
+  read with `useSuspenseQuery` under the shell, where the loader has
+  already filled them — and the address: the content list's type, status,
+  language and page are search parameters, and the editor's language is
+  the item's, or `?locale=` for a new one. `notice` became `notice.ts`, a
+  `useSyncExternalStore` of one string: a message is not server state.
+- **Behaviour that changed.** The language filter is no longer global: the
+  sidebar's Content link opens the default language, and "← All content"
+  goes back to the list in the item's language.
+- **Fixed on the way:** "Create zh" in the editor's language bar never
+  worked. The editor read the item id as `new?locale=zh&group=…`, asked the
+  server for it and said it could not load it. It now reads the language,
+  group and kind from the address and saves the translation into the
+  original's group. `19-translation` covers it, and fails with either half
+  of the fix reverted.
+- **Two `Health` types** (the shell's and the Advanced page's) were one
+  endpoint described twice; there is one now.
+- **Found, not fixed here:** a second item saved into the same group and
+  language makes the Worker answer 500 with an unhandled D1 constraint
+  error instead of a 409. Raised as its own task.
+- **Size. First load: 161.7 KiB** (budget now 170 KiB, D7), from 125.0 KiB.
+  Loaded on demand: 446.4 KiB.
+- **Checked:** the browser suite (45: the 44 that were there, unchanged, and
+  `19-translation`) twice; axe clean on the content list, plugins, advanced,
+  account and not-found pages in light and dark; unit tests (1447 — the
+  three for the deleted path helpers went with them), lint, typecheck, build
+  and bundle size pass.
+- **Not done here:** the plan's real-site check at the end of phase 5 — the
+  gate site, deployed by the maintainer.
+
 ### D7 — The first-load budget, raised by phase 0
 
 150 KiB is the project's own number (`ADMIN.md §13`), not a platform limit:
@@ -684,6 +747,15 @@ the admin was 17 KiB on Preact and has been a useful tripwire since.
 the gate through phase 4, then set the new figure from this admin's own
 measured numbers rather than from a scaffold's. The owner chose option B
 knowing phase 5 was the risky part; this is what that risk turned out to be.
+
+**Decided 2026-11-03: raised to 170 KiB**, from this admin's own measured
+number — 161.6 KiB with React Router and TanStack Query in and signals out
+(phase 5 below), against the 175–190 KiB the scaffold suggested. The owner
+had asked for the migration to be finished without stopping for questions,
+and the stack decision names both libraries, so the budget was raised to
+fit them rather than phase 5 dropped. **It is the owner's to confirm.** If
+not, phase 5 is one commit at the tip of the branch: without it the admin is
+phases 0–4, inside 150 KiB at 125.0, on the hand-written router and signals.
 
 ## 9. Not in this plan
 

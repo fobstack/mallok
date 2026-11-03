@@ -7,9 +7,10 @@
  * plugin declares — takes effect immediately.
  */
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Info, TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { type FieldValues, useForm } from 'react-hook-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -36,28 +37,20 @@ import { PluginPanelView } from '../components/plugin-panel.js';
 import { SecretControl } from '../form/controls.js';
 import { SchemaForm, showServerErrors } from '../form/form.js';
 import { toSpecs } from '../form/types.js';
-import { notice } from '../state.js';
+import { notify, useReportError } from '../notice.js';
+import { pluginsQuery } from '../queries.js';
 import type { PluginInfo } from '../types.js';
 
 export function PluginsPage(): JSX.Element {
-  const [plugins, setPlugins] = useState<readonly PluginInfo[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const reload = useCallback(async (): Promise<void> => {
-    try {
-      const result = await api<{ plugins: PluginInfo[] }>('/plugins');
-      setPlugins(result.plugins);
-    } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not load plugins.';
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const client = useQueryClient();
+  const listed = useQuery(pluginsQuery);
+  useReportError(listed.error, 'Could not load plugins.');
+  const plugins = listed.data?.plugins ?? [];
+  const loading = listed.isPending;
+  const reload = useCallback(
+    () => client.invalidateQueries({ queryKey: pluginsQuery.queryKey }),
+    [client],
+  );
 
   return (
     <Page>
@@ -122,8 +115,7 @@ function PluginCard({
       });
       await onChanged();
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not change.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not change.');
     } finally {
       setBusy(false);
     }
@@ -141,8 +133,7 @@ function PluginCard({
       await onChanged();
     } catch (caught) {
       showServerErrors(form.setError, caught);
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
     } finally {
       setBusy(false);
     }
@@ -159,8 +150,7 @@ function PluginCard({
       });
       await onChanged();
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
     }
   };
 

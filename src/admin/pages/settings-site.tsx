@@ -23,7 +23,8 @@ import {
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm, showServerErrors } from '../form/form.js';
 import type { FieldSpec } from '../form/types.js';
-import { loadWorkspace, notice, saveSettings, settings } from '../state.js';
+import { notify } from '../notice.js';
+import { reloadWorkspace, saveSettings, useSettings } from '../queries.js';
 
 const SITE_FIELDS: readonly FieldSpec[] = [
   {
@@ -68,37 +69,33 @@ function taglineField(locale: string): string {
 }
 
 export function SiteSettingsPage(): JSX.Element {
-  const current = settings.value;
+  const current = useSettings();
   /** The languages that can have a tagline of their own. */
-  const otherLocales = (current?.locales ?? []).filter(
-    (locale) => locale !== current?.defaultLocale,
+  const otherLocales = (current.locales ?? []).filter(
+    (locale) => locale !== current.defaultLocale,
   );
   const form = useForm<FieldValues>({
     defaultValues: (() => {
       // One string, or one per language keyed by locale.
-      const stored = current?.tagline ?? '';
+      const stored = current.tagline ?? '';
       const byLocale = typeof stored === 'string' ? {} : stored;
       return {
-        name: current?.name ?? '',
+        name: current.name,
         tagline:
           typeof stored === 'string'
             ? stored
-            : (stored[current?.defaultLocale ?? ''] ?? ''),
+            : (stored[current.defaultLocale ?? ''] ?? ''),
         ...Object.fromEntries(
           Object.entries(byLocale)
-            .filter(([locale]) => locale !== current?.defaultLocale)
+            .filter(([locale]) => locale !== current.defaultLocale)
             .map(([locale, text]) => [taglineField(locale), text]),
         ),
-        domain: current?.domain ?? '',
-        mediaBaseUrl: current?.mediaBaseUrl ?? '',
+        domain: current.domain ?? '',
+        mediaBaseUrl: current.mediaBaseUrl ?? '',
       };
     })(),
   });
   const [saved, setSaved] = useState(false);
-
-  if (current === null) {
-    return <p>Loading…</p>;
-  }
 
   // A tagline field per further language, right under the tagline itself.
   const fields: readonly FieldSpec[] = SITE_FIELDS.flatMap((spec) =>
@@ -150,8 +147,7 @@ export function SiteSettingsPage(): JSX.Element {
       setSaved(true);
     } catch (caught) {
       showServerErrors(form.setError, caught);
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
     }
   });
   const busy = form.formState.isSubmitting;
@@ -191,20 +187,16 @@ export function SiteSettingsPage(): JSX.Element {
  * (docs/DATA_MODEL.md §2.2).
  */
 function LocaleSection(): JSX.Element {
-  const current = settings.value;
+  const current = useSettings();
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState('');
-  if (current === null) {
-    return <p>Loading…</p>;
-  }
 
   const setLocales = async (locales: string[]): Promise<void> => {
     setBusy(true);
     try {
       await saveSettings({ locales });
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
     } finally {
       setBusy(false);
     }
@@ -223,11 +215,12 @@ function LocaleSection(): JSX.Element {
         method: 'POST',
         body: { locale, confirm: true },
       });
-      await loadWorkspace();
-      notice.value = `Default language is now "${locale}". ${result.moved} URLs moved, each with a redirect.`;
+      await reloadWorkspace();
+      notify(
+        `Default language is now "${locale}". ${result.moved} URLs moved, each with a redirect.`,
+      );
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not switch.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not switch.');
     } finally {
       setBusy(false);
     }
@@ -248,11 +241,12 @@ function LocaleSection(): JSX.Element {
         method: 'POST',
         body: { enabled, confirm: true },
       });
-      await loadWorkspace();
-      notice.value = `${result.moved} URLs moved, each with a redirect; navigation links rewritten.`;
+      await reloadWorkspace();
+      notify(
+        `${result.moved} URLs moved, each with a redirect; navigation links rewritten.`,
+      );
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not switch.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not switch.');
     } finally {
       setBusy(false);
     }

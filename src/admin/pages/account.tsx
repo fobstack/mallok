@@ -6,10 +6,11 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { Info, KeyRound } from 'lucide-react';
 import type { JSX } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -34,7 +35,8 @@ import {
 } from '../components/page.js';
 import { invalid, showServerErrors } from '../form/form.js';
 import { REQUIRED_MESSAGE } from '../form/types.js';
-import { notice, session } from '../state.js';
+import { notify, useReportError } from '../notice.js';
+import { keys, useSession } from '../queries.js';
 import {
   describeToken,
   revokeFailureMessage,
@@ -64,8 +66,8 @@ const passwordSchema = z.object({
 });
 
 export function AccountPage(): JSX.Element {
-  const current = session.value;
-  const [tokens, setTokens] = useState<readonly TokenSummary[]>([]);
+  const activeSession = useSession();
+  const client = useQueryClient();
   const [minted, setMinted] = useState('');
   const tokenForm = useForm({
     resolver: zodResolver(tokenSchema),
@@ -74,19 +76,14 @@ export function AccountPage(): JSX.Element {
   const busy = tokenForm.formState.isSubmitting;
   const nameError = tokenForm.formState.errors.name?.message;
 
-  const reload = useCallback(async (): Promise<void> => {
-    try {
-      const result = await api<{ tokens: TokenSummary[] }>('/tokens');
-      setTokens(result.tokens);
-    } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not load tokens.';
-    }
-  }, []);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const listed = useQuery({
+    queryKey: keys.tokens,
+    queryFn: () => api<{ tokens: TokenSummary[] }>('/tokens'),
+  });
+  useReportError(listed.error, 'Could not load tokens.');
+  const tokens = listed.data?.tokens ?? [];
+  const reload = (): Promise<void> =>
+    client.invalidateQueries({ queryKey: keys.tokens });
 
   const create = tokenForm.handleSubmit(async ({ name, scopes }) => {
     try {
@@ -100,8 +97,7 @@ export function AccountPage(): JSX.Element {
       await reload();
     } catch (caught) {
       showServerErrors(tokenForm.setError, caught);
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not create.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not create.');
     }
   });
 
@@ -109,17 +105,15 @@ export function AccountPage(): JSX.Element {
     try {
       await api(`/tokens/${id}`, { method: 'DELETE' });
     } catch (caught) {
-      notice.value = revokeFailureMessage(caught);
+      notify(revokeFailureMessage(caught));
     }
     // Reloaded either way: after a 404 the list is what is out of date.
     await reload();
   };
 
-  const activeSession = current === null || current === false ? null : current;
   const weakPassword =
-    activeSession !== null &&
     activeSession.passwordIterations <
-      activeSession.passwordRecommendedIterations;
+    activeSession.passwordRecommendedIterations;
 
   return (
     <Page>
@@ -127,7 +121,7 @@ export function AccountPage(): JSX.Element {
 
       <PasswordSection />
 
-      {weakPassword && activeSession !== null ? (
+      {weakPassword ? (
         <Alert role="note">
           <Info />
           <AlertTitle role="heading" aria-level={2}>
@@ -316,10 +310,11 @@ function PasswordSection(): JSX.Element {
       setDone(true);
     } catch (caught) {
       showServerErrors(form.setError, caught);
-      notice.value =
+      notify(
         caught instanceof ApiError
           ? caught.message
-          : 'Could not change the password.';
+          : 'Could not change the password.',
+      );
     }
   });
 

@@ -3,7 +3,7 @@
  *
  * A collapsible sidebar holds the sections and, at its foot, the account
  * menu; on a narrow screen it becomes a sheet. The bar above the page says
- * where you are. Errors a page reports through `notice` appear as toasts;
+ * where you are. Errors a page reports with `notify` appear as toasts;
  * the standing no-purge-token warning stays as an alert above the page,
  * because it is true until someone configures the token.
  */
@@ -19,7 +19,8 @@ import {
   Wrench,
 } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
+import { Link, useLocation } from 'react-router';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -46,9 +47,8 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { navigate, route } from '../router.js';
-import { notice, session, settings } from '../state.js';
-import { lazyRoute } from './lazy.js';
+import { clearNotice, useNotice } from '../notice.js';
+import { useSession, useSettings } from '../queries.js';
 import { PurgeNotice } from './saved-note.js';
 
 interface NavItem {
@@ -124,21 +124,11 @@ function AppLink({
 }: {
   readonly href: string;
   readonly children: ReactNode;
-} & Omit<JSX.IntrinsicElements['a'], 'href' | 'onClick'>): JSX.Element {
+} & Omit<JSX.IntrinsicElements['a'], 'href'>): JSX.Element {
   return (
-    <a
-      {...props}
-      href={`/_mallok/app${href === '/' ? '/' : href}`}
-      onClick={(event) => {
-        if (event.metaKey || event.ctrlKey || event.shiftKey) {
-          return;
-        }
-        event.preventDefault();
-        navigate(href);
-      }}
-    >
+    <Link {...props} to={href}>
       {children}
-    </a>
+    </Link>
   );
 }
 
@@ -183,9 +173,10 @@ function NavGroup({
 }
 
 /** Loaded on the first click: a closed menu is a button and nothing more. */
-const LazyAccountMenu = lazyRoute<{ email: string }>(
-  () => import('./account-menu.js').then((module) => module.AccountMenu),
-  { placeholder: <AccountButton email="" busy /> },
+const AccountMenu = lazy(() =>
+  import('./account-menu.js').then((module) => ({
+    default: module.AccountMenu,
+  })),
 );
 
 /** The menu's trigger, before the menu itself has been asked for. */
@@ -214,25 +205,20 @@ function AccountButton({
 
 function AccountEntry(): JSX.Element {
   const [wanted, setWanted] = useState(false);
-  const current = session.value;
-  const email =
-    current === false || current === null ? '' : (current.email ?? '');
+  const email = useSession().email ?? '';
   return wanted ? (
-    <LazyAccountMenu email={email} />
+    <Suspense fallback={<AccountButton email="" busy />}>
+      <AccountMenu email={email} />
+    </Suspense>
   ) : (
     <AccountButton email={email} onOpen={() => setWanted(true)} />
   );
 }
 
-const LazyToastHost = lazyRoute<{ message: string; onShown: () => void }>(
-  () => import('./toast-host.js').then((module) => module.ToastHost),
-  { placeholder: null },
+/** Loaded with the first toast: most sessions report no failure. */
+const ToastHost = lazy(() =>
+  import('./toast-host.js').then((module) => ({ default: module.ToastHost })),
 );
-
-/** Clears a notice once its toast is up, so the same one can show again. */
-function clearNotice(): void {
-  notice.value = '';
-}
 
 /** Set once a page has reported something; the toasts stay loaded after. */
 let toastsWanted = false;
@@ -292,9 +278,11 @@ export function Shell({
 }: {
   readonly children: ReactNode;
 }): JSX.Element {
-  const path = route.value;
-  // A page reports a failure by setting `notice`; it is shown as a toast.
-  const message = notice.value;
+  // In-app, trailing slash or not: `/settings/` is the Site page too.
+  const path = useLocation().pathname.replace(/\/+$/, '') || '/';
+  // A page reports a failure with `notify`; it is shown as a toast.
+  const message = useNotice();
+  const siteName = useSettings().name;
   if (message !== '') {
     toastsWanted = true;
   }
@@ -316,9 +304,7 @@ export function Shell({
                     >
                       M
                     </span>
-                    <span className="truncate font-medium">
-                      {settings.value?.name ?? 'Mallok'}
-                    </span>
+                    <span className="truncate font-medium">{siteName}</span>
                   </AppLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -351,7 +337,9 @@ export function Shell({
           </div>
         </SidebarInset>
         {toastsWanted ? (
-          <LazyToastHost message={message} onShown={clearNotice} />
+          <Suspense fallback={null}>
+            <ToastHost message={message} onShown={clearNotice} />
+          </Suspense>
         ) : null}
       </SidebarProvider>
     </TooltipProvider>

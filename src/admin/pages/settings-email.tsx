@@ -8,6 +8,7 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
 import { TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
 import { useState } from 'react';
@@ -25,7 +26,8 @@ import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
 import { Page, PageHeader, Section, StatusBadge } from '../components/page.js';
 import { SecretControl } from '../form/controls.js';
-import { notice, settings } from '../state.js';
+import { notify } from '../notice.js';
+import { keys, useSettings } from '../queries.js';
 import type { SiteEmail } from '../types.js';
 
 /** Mirrors the server's check, so a typo is caught before the request. */
@@ -43,10 +45,11 @@ const senderSchema = z.object({
 });
 
 export function EmailSettingsPage(): JSX.Element {
-  const current = settings.value;
+  const current = useSettings();
+  const client = useQueryClient();
   const form = useForm({
     resolver: zodResolver(senderSchema),
-    defaultValues: { from: current?.email.fromAddress ?? '' },
+    defaultValues: { from: current.email.fromAddress ?? '' },
   });
   const fromError = form.formState.errors.from?.message;
   const busy = form.formState.isSubmitting;
@@ -57,9 +60,6 @@ export function EmailSettingsPage(): JSX.Element {
     message: string;
   } | null>(null);
 
-  if (current === null) {
-    return <p>Loading…</p>;
-  }
   const email = current.email;
 
   const store = async (body: {
@@ -71,11 +71,10 @@ export function EmailSettingsPage(): JSX.Element {
         method: 'PUT',
         body,
       });
-      settings.value = { ...current, email: stored };
+      client.setQueryData(keys.settings, { ...current, email: stored });
       return true;
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
       return false;
     }
   };

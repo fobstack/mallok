@@ -31,7 +31,7 @@ import { Input } from '@/components/ui/input';
 import { ApiError } from '../api.js';
 import { invalid } from '../form/form.js';
 import { REQUIRED_MESSAGE } from '../form/types.js';
-import { settings, signIn } from '../state.js';
+import { signIn, useKnownSettings } from '../queries.js';
 
 /** Both are needed; whether they match is the server's to say. */
 const signInSchema = z.object({
@@ -45,6 +45,7 @@ export function LoginPage(): JSX.Element {
     defaultValues: { email: '', password: '' },
   });
   const [error, setError] = useState('');
+  const siteName = useKnownSettings()?.name;
   const busy = form.formState.isSubmitting;
   const { errors } = form.formState;
 
@@ -64,9 +65,7 @@ export function LoginPage(): JSX.Element {
           <CardTitle>
             <h1 className="text-xl">Sign in</h1>
           </CardTitle>
-          <CardDescription>
-            {settings.value?.name ?? "The site's admin"}
-          </CardDescription>
+          <CardDescription>{siteName ?? "The site's admin"}</CardDescription>
         </CardHeader>
         <CardContent>
           <form noValidate onSubmit={(event) => void submit(event)}>

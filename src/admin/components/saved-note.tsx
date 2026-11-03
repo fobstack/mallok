@@ -10,7 +10,7 @@
 import { Clock } from 'lucide-react';
 import type { JSX } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { liveDelay } from '../state.js';
+import { useLiveDelay } from '../queries.js';
 import { Code, StatusBadge } from './page.js';
 
 /** Human-readable form of a cache lifetime. */
@@ -27,7 +27,7 @@ function humanize(seconds: number): string {
 }
 
 export function SavedNote(): JSX.Element {
-  const delay = liveDelay.value;
+  const delay = useLiveDelay();
   if (delay.instant) {
     return <StatusBadge tone="ok">Saved — live now</StatusBadge>;
   }
@@ -47,7 +47,7 @@ export function SavedNote(): JSX.Element {
  * someone configures the token.
  */
 export function PurgeNotice(): JSX.Element | null {
-  const delay = liveDelay.value;
+  const delay = useLiveDelay();
   if (delay.instant) {
     return null;
   }

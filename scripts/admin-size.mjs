@@ -12,8 +12,12 @@ import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 const APP_DIR = 'dist/assets/_mallok/app';
-/** First-load budget in bytes, gzipped. */
-const BUDGET = 150 * 1024;
+/**
+ * First-load budget in bytes, gzipped. 170 KiB since 2026-11-03, from 150:
+ * React Router and TanStack Query, the admin stack's decision, measured at
+ * 161.6 KiB with them in (docs/ADMIN_MIGRATION.md, D7).
+ */
+const BUDGET = 170 * 1024;
 
 const html = await readFile(join(APP_DIR, 'index.html'), 'utf8');
 // Every script and stylesheet the page asks for before it runs: the entry,

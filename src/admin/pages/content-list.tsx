@@ -6,8 +6,9 @@
  * (docs/THEME_FORMAT.md §5.3).
  */
 
+import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
-import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Field, FieldLabel } from '@/components/ui/field';
 import {
@@ -22,10 +23,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ApiError, api } from '../api.js';
+import { api } from '../api.js';
 import { Page, PageHeader, StatusBadge } from '../components/page.js';
-import { navigate } from '../router.js';
-import { activeLocale, notice, settings, theme } from '../state.js';
+import { useReportError } from '../notice.js';
+import { keys, useSettings, useTheme } from '../queries.js';
 import type { ContentListItem } from '../types.js';
 
 const PAGE = 25;
@@ -37,54 +38,65 @@ const STATUS_TONE: Readonly<Record<string, 'ok' | 'warn'>> = {
 };
 
 export function ContentListPage(): JSX.Element {
-  const site = settings.value;
-  const active = theme.value;
-  const [items, setItems] = useState<readonly ContentListItem[]>([]);
-  const [hasNext, setHasNext] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const [kind, setKind] = useState('');
-  const [status, setStatus] = useState('');
-  const [loading, setLoading] = useState(true);
-  const locale = activeLocale.value;
+  const site = useSettings();
+  const active = useTheme();
+  const navigate = useNavigate();
+  // The filters live in the address: a reload, a link or Back keeps them,
+  // and the language chosen here is the one a new item is written in.
+  const [search, setSearch] = useSearchParams();
+  const kind = search.get('kind') ?? '';
+  const status = search.get('status') ?? '';
+  const locale = search.get('locale') ?? site.defaultLocale;
+  const offset = Number(search.get('offset') ?? 0) || 0;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: locale is read below (query.set('locale', locale)).
-  useEffect(() => {
-    void (async () => {
-      setLoading(true);
-      const query = new URLSearchParams({
-        limit: String(PAGE),
-        offset: String(offset),
-      });
-      if (kind !== '') {
-        query.set('kind', kind);
+  /** Changes one filter and goes back to the first page. */
+  const filter = (name: string, value: string): void => {
+    setSearch((previous) => {
+      const next = new URLSearchParams(previous);
+      if (value === '') {
+        next.delete(name);
+      } else {
+        next.set(name, value);
       }
-      if (status !== '') {
-        query.set('status', status);
+      next.delete('offset');
+      return next;
+    });
+  };
+  const page = (to: number): void => {
+    setSearch((previous) => {
+      const next = new URLSearchParams(previous);
+      if (to === 0) {
+        next.delete('offset');
+      } else {
+        next.set('offset', String(to));
       }
-      if (locale !== '') {
-        query.set('locale', locale);
-      }
-      try {
-        const result = await api<{
-          items: ContentListItem[];
-          hasNext: boolean;
-        }>(`/content?${query.toString()}`);
-        setItems(result.items);
-        setHasNext(result.hasNext);
-      } catch (caught) {
-        notice.value =
-          caught instanceof ApiError
-            ? caught.message
-            : 'Could not load content.';
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [kind, status, locale, offset]);
+      return next;
+    });
+  };
 
-  if (site === null || active === null) {
-    return <p>Loading…</p>;
+  const query = new URLSearchParams({
+    limit: String(PAGE),
+    offset: String(offset),
+    locale,
+  });
+  if (kind !== '') {
+    query.set('kind', kind);
   }
+  if (status !== '') {
+    query.set('status', status);
+  }
+  const listed = useQuery({
+    queryKey: [...keys.content, 'list', query.toString()],
+    queryFn: () =>
+      api<{ items: ContentListItem[]; hasNext: boolean }>(
+        `/content?${query.toString()}`,
+      ),
+  });
+  useReportError(listed.error, 'Could not load content.');
+  const items = listed.data?.items ?? [];
+  const hasNext = listed.data?.hasNext ?? false;
+  const loading = listed.isPending;
+
   const kinds = Object.keys(site.kinds);
 
   return (
@@ -100,7 +112,10 @@ export function ContentListPage(): JSX.Element {
             >
               Media
             </Button>
-            <Button type="button" onClick={() => navigate('/content/new')}>
+            <Button
+              type="button"
+              onClick={() => navigate(`/content/new?locale=${locale}`)}
+            >
               New
             </Button>
           </>
@@ -113,10 +128,7 @@ export function ContentListPage(): JSX.Element {
           <NativeSelect
             id="filter-kind"
             value={kind}
-            onChange={(event) => {
-              setKind(event.currentTarget.value);
-              setOffset(0);
-            }}
+            onChange={(event) => filter('kind', event.currentTarget.value)}
           >
             <NativeSelectOption value="">All</NativeSelectOption>
             {kinds.map((entry) => (
@@ -131,10 +143,7 @@ export function ContentListPage(): JSX.Element {
           <NativeSelect
             id="filter-locale"
             value={locale}
-            onChange={(event) => {
-              activeLocale.value = event.currentTarget.value;
-              setOffset(0);
-            }}
+            onChange={(event) => filter('locale', event.currentTarget.value)}
           >
             {site.locales.map((entry) => (
               <NativeSelectOption key={entry} value={entry}>
@@ -148,10 +157,7 @@ export function ContentListPage(): JSX.Element {
           <NativeSelect
             id="filter-status"
             value={status}
-            onChange={(event) => {
-              setStatus(event.currentTarget.value);
-              setOffset(0);
-            }}
+            onChange={(event) => filter('status', event.currentTarget.value)}
           >
             <NativeSelectOption value="">All</NativeSelectOption>
             <NativeSelectOption value="published">Published</NativeSelectOption>
@@ -189,16 +195,12 @@ export function ContentListPage(): JSX.Element {
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="min-w-40 pl-3 whitespace-normal">
-                      <a
+                      <Link
                         className="font-medium text-primary underline-offset-4 hover:underline"
-                        href={`/_mallok/app/content/${item.id}`}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          navigate(`/content/${item.id}`);
-                        }}
+                        to={`/content/${item.id}`}
                       >
                         {item.title}
-                      </a>
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <span className="flex flex-wrap items-center gap-1.5">
@@ -242,7 +244,7 @@ export function ContentListPage(): JSX.Element {
           type="button"
           variant="outline"
           disabled={offset === 0}
-          onClick={() => setOffset(Math.max(0, offset - PAGE))}
+          onClick={() => page(Math.max(0, offset - PAGE))}
         >
           Previous
         </Button>
@@ -250,7 +252,7 @@ export function ContentListPage(): JSX.Element {
           type="button"
           variant="outline"
           disabled={!hasNext}
-          onClick={() => setOffset(offset + PAGE)}
+          onClick={() => page(offset + PAGE)}
         >
           Next
         </Button>

@@ -6,8 +6,9 @@
  * and has to be stated once, plainly (docs/ARCHITECTURE.md §15).
  */
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JSX, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -22,26 +23,8 @@ import {
   StatusBadge,
 } from '../components/page.js';
 import type { ExportProgress } from '../export.js';
-import { notice, saveSettings, settings } from '../state.js';
-
-interface Health {
-  readonly ok: boolean;
-  readonly site: string | null;
-  readonly theme: string;
-  readonly pipeline: string;
-  readonly purgeConfigured: boolean;
-  /** The last purge Cloudflare did not carry out, until the site is purged. */
-  readonly lastPurgeFailure: {
-    readonly at: string;
-    readonly source: string;
-    readonly status?: number;
-    readonly detail: string;
-    /** What to check, from the status Cloudflare answered with. */
-    readonly advice: string;
-  } | null;
-  readonly customDomain: string | null;
-  readonly mediaBaseUrl: string | null;
-}
+import { notify, useReportError } from '../notice.js';
+import { healthQuery, keys, saveSettings, useSettings } from '../queries.js';
 
 interface Diagnostics {
   readonly counts: Readonly<Record<string, number>>;
@@ -97,8 +80,7 @@ function BackupSection(): JSX.Element {
         `${built.counts.content} items and ${built.counts.media} files in ${built.fileName}.`,
       );
     } catch (caught) {
-      notice.value =
-        caught instanceof Error ? caught.message : 'The export failed.';
+      notify(caught instanceof Error ? caught.message : 'The export failed.');
     } finally {
       setBusy(false);
       setProgress(null);
@@ -148,35 +130,25 @@ function describePurgeSource(source: string): string {
 }
 
 export function AdvancedPage(): JSX.Element {
-  const [health, setHealth] = useState<Health | null>(null);
-  const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
-  const current = settings.value;
+  const current = useSettings();
+  const client = useQueryClient();
+  // Fresh on every visit: this page is where an operator comes to check.
+  const healthNow = useQuery({ ...healthQuery, refetchOnMount: 'always' });
+  const loadedDiagnostics = useQuery({
+    queryKey: keys.diagnostics,
+    queryFn: () => api<Diagnostics>('/diagnostics'),
+  });
+  useReportError(
+    healthNow.error ?? loadedDiagnostics.error,
+    'Could not load diagnostics.',
+  );
+  const health = healthNow.data ?? null;
+  const diagnostics = loadedDiagnostics.data ?? null;
   const [ttl, setTtl] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [clearing, setClearing] = useState('');
   const [cacheResult, setCacheResult] = useState('');
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const [loadedHealth, loadedDiagnostics] = await Promise.all([
-          api<Health>('/health'),
-          api<Diagnostics>('/diagnostics'),
-        ]);
-        setHealth(loadedHealth);
-        setDiagnostics(loadedDiagnostics);
-      } catch (caught) {
-        notice.value =
-          caught instanceof ApiError
-            ? caught.message
-            : 'Could not load diagnostics.';
-      }
-    })();
-  }, []);
-
-  if (current === null) {
-    return <p>Loading…</p>;
-  }
   const effectiveTtl = ttl ?? current.cacheTtl;
 
   const saveTtl = async (): Promise<void> => {
@@ -185,8 +157,7 @@ export function AdvancedPage(): JSX.Element {
       await saveSettings({ cacheTtl: effectiveTtl });
       setTtl(null);
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
     } finally {
       setBusy(false);
     }
@@ -204,10 +175,11 @@ export function AdvancedPage(): JSX.Element {
       // claiming success (docs/ADMIN.md §5).
       setCacheResult(result.note ?? done);
       // A whole-site purge that worked clears a recorded failure; show that.
-      setHealth(await api<Health>('/health'));
+      await client.invalidateQueries({ queryKey: keys.health });
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'That did not work.';
+      notify(
+        caught instanceof ApiError ? caught.message : 'That did not work.',
+      );
     } finally {
       setClearing('');
     }
@@ -271,11 +243,11 @@ export function AdvancedPage(): JSX.Element {
         ]),
     [
       'Email (Resend)',
-      settings.value?.email.resendConfigured !== true ? (
+      current.email.resendConfigured !== true ? (
         <StatusBadge key="v" tone="warn">
           No key — no email is sent
         </StatusBadge>
-      ) : settings.value.email.fromAddress === '' ? (
+      ) : current.email.fromAddress === '' ? (
         <StatusBadge key="v" tone="warn">
           Key set, no site sender — only plugins with their own send
         </StatusBadge>

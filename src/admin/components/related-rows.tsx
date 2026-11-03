@@ -4,8 +4,8 @@
  * table shares.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
-import { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -15,6 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ApiError, api } from '../api.js';
+import { panelKey } from '../queries.js';
 import type { PluginPanel } from '../types.js';
 import { StatusBadge } from './page.js';
 
@@ -61,41 +62,31 @@ export function cell(value: unknown, type: ColumnType): JSX.Element | string {
 }
 
 function RelatedTable({
-  base,
+  pluginId,
+  panelId,
   related,
   parentId,
 }: {
-  readonly base: string;
+  readonly pluginId: string;
+  readonly panelId: string;
   readonly related: PluginPanel['related'][number];
   readonly parentId: string;
 }): JSX.Element {
-  const [rows, setRows] = useState<readonly Row[] | null>(null);
-  const [more, setMore] = useState(false);
-  const [failure, setFailure] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    void api<{ rows: Row[]; hasMore: boolean }>(
-      `${base}/related/${related.id}?parent=${encodeURIComponent(parentId)}`,
-    ).then(
-      (result) => {
-        if (!cancelled) {
-          setRows(result.rows);
-          setMore(result.hasMore);
-        }
-      },
-      (caught: unknown) => {
-        if (!cancelled) {
-          setFailure(
-            caught instanceof ApiError ? caught.message : 'Could not load.',
-          );
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [base, related.id, parentId]);
+  const loaded = useQuery({
+    queryKey: panelKey(pluginId, panelId, 'related', related.id, parentId),
+    queryFn: () =>
+      api<{ rows: Row[]; hasMore: boolean }>(
+        `/plugins/${pluginId}/panels/${panelId}/related/${related.id}?parent=${encodeURIComponent(parentId)}`,
+      ),
+  });
+  const rows = loaded.data?.rows ?? null;
+  const more = loaded.data?.hasMore ?? false;
+  const failure =
+    loaded.error === null
+      ? ''
+      : loaded.error instanceof ApiError
+        ? loaded.error.message
+        : 'Could not load.';
 
   return (
     <section className="flex flex-col gap-2" aria-label={related.label}>
@@ -165,13 +156,13 @@ export function RelatedRows({
   if (panel.related.length === 0) {
     return null;
   }
-  const base = `/plugins/${pluginId}/panels/${panel.id}`;
   return (
     <>
       {panel.related.map((related) => (
         <RelatedTable
           key={related.id}
-          base={base}
+          pluginId={pluginId}
+          panelId={panel.id}
           related={related}
           parentId={parentId}
         />

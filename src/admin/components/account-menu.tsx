@@ -5,6 +5,7 @@
 
 import { ChevronsUpDown } from 'lucide-react';
 import type { JSX } from 'react';
+import { useNavigate } from 'react-router';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,8 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenuButton } from '@/components/ui/sidebar';
-import { navigate } from '../router.js';
-import { signOut } from '../state.js';
+import { signOut } from '../queries.js';
 import {
   setThemeMode,
   THEME_MODES,
@@ -37,6 +37,7 @@ export function AccountMenu({
   readonly email: string;
 }): JSX.Element {
   const scheme = useThemeMode();
+  const navigate = useNavigate();
   return (
     // Not modal: a modal menu marks the rest of the page `aria-hidden` while
     // it is open, which the accessibility gate rightly flags, and a menu has

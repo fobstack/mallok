@@ -12,6 +12,7 @@
  * only the plugin can produce, such as "this code is already taken".
  */
 
+import { useQuery } from '@tanstack/react-query';
 import type { FormEventHandler, JSX, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import {
@@ -47,7 +48,8 @@ import {
 import { ApiError, api } from '../api.js';
 import { SchemaForm, showServerErrors } from '../form/form.js';
 import type { FieldSpec } from '../form/types.js';
-import { notice } from '../state.js';
+import { messageOf, notify } from '../notice.js';
+import { panelKey } from '../queries.js';
 import type {
   PluginPanel,
   RecordRowsField,
@@ -407,7 +409,21 @@ export function RecordEditor({
 }): JSX.Element {
   const fields = panel.fields ?? {};
   const base = `/plugins/${pluginId}/panels/${panel.id}/records`;
-  const [values, setValues] = useState<Values | null>(() =>
+  const stored = useQuery({
+    queryKey: panelKey(pluginId, panel.id, 'record', recordId ?? ''),
+    queryFn: () =>
+      api<{ values: Values }>(`${base}/${encodeURIComponent(recordId ?? '')}`),
+    enabled: recordId !== null,
+    // Opened to be edited: always as stored now, never as last seen.
+    gcTime: 0,
+  });
+  useEffect(() => {
+    if (stored.error !== null) {
+      notify(messageOf(stored.error, 'Could not load the record.'));
+      onClose(false);
+    }
+  }, [stored.error, onClose]);
+  const values: Values | null =
     recordId === null
       ? Object.fromEntries(
           Object.entries(fields)
@@ -420,36 +436,7 @@ export function RecordEditor({
               (field as RecordScalarField).default,
             ]),
         )
-      : null,
-  );
-
-  useEffect(() => {
-    if (recordId === null) {
-      return;
-    }
-    let cancelled = false;
-    void api<{ values: Values }>(
-      `${base}/${encodeURIComponent(recordId)}`,
-    ).then(
-      (loaded) => {
-        if (!cancelled) {
-          setValues(loaded.values);
-        }
-      },
-      (caught: unknown) => {
-        if (!cancelled) {
-          notice.value =
-            caught instanceof ApiError
-              ? caught.message
-              : 'Could not load the record.';
-          onClose(false);
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [base, recordId, onClose]);
+      : (stored.data?.values ?? null);
 
   const title = `${recordId === null ? 'New' : 'Edit'}: ${panel.label}`;
   if (values === null) {

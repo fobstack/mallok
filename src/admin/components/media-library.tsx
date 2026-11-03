@@ -6,10 +6,11 @@
  * stores URLs cannot be exported and moved (docs/CONTENT_FORMAT.md §4).
  */
 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { Upload } from 'lucide-react';
 import type { JSX } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,7 +21,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
 import { relativePathFor, type UploadProgress, uploadFile } from '../media.js';
-import { notice, settings, theme } from '../state.js';
+import { messageOf, notify } from '../notice.js';
+import { keys, useSettings, useTheme } from '../queries.js';
 import type { MediaItem } from '../types.js';
 
 export interface MediaLibraryProps {
@@ -32,37 +34,34 @@ export interface MediaLibraryProps {
 }
 
 export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
-  const [items, setItems] = useState<readonly MediaItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [altDraft, setAltDraft] = useState('');
-  const active = theme.value;
-  const site = settings.value;
+  const active = useTheme();
+  const site = useSettings();
+  const client = useQueryClient();
 
-  const reload = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    try {
-      const query = props.kind === undefined ? '' : `?kind=${props.kind}`;
-      const result = await api<{ items: MediaItem[] }>(`/media${query}`);
-      setItems(result.items);
-    } catch (caught) {
-      setError(
-        caught instanceof ApiError ? caught.message : 'Could not load media.',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [props.kind]);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const listed = useQuery({
+    queryKey: [...keys.media, 'list', props.kind ?? 'all'],
+    queryFn: () =>
+      api<{ items: MediaItem[] }>(
+        `/media${props.kind === undefined ? '' : `?kind=${props.kind}`}`,
+      ),
+  });
+  const items = listed.data?.items ?? [];
+  const loading = listed.isPending;
+  const loadError =
+    listed.error === null
+      ? ''
+      : messageOf(listed.error, 'Could not load media.');
+  /** The library changed: every list of it, and every item's row. */
+  const reload = (): Promise<void> =>
+    client.invalidateQueries({ queryKey: keys.media });
 
   const onFiles = async (files: FileList | null): Promise<void> => {
-    if (files === null || active === null) {
+    if (files === null) {
       return;
     }
     setError('');
@@ -70,7 +69,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
       try {
         await uploadFile(file, {
           widths: active.imageWidths,
-          maxEdge: site?.maxImageEdge ?? null,
+          maxEdge: site.maxImageEdge,
           onProgress: setProgress,
         });
       } catch (caught) {
@@ -85,15 +84,16 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
 
   const remove = async (item: MediaItem): Promise<void> => {
     if (item.refCount > 0) {
-      notice.value = `"${item.originalName}" is used by ${item.refCount} item${item.refCount === 1 ? '' : 's'}. Remove the references first.`;
+      notify(
+        `"${item.originalName}" is used by ${item.refCount} item${item.refCount === 1 ? '' : 's'}. Remove the references first.`,
+      );
       return;
     }
     try {
       await api(`/media/${item.sha256}`, { method: 'DELETE' });
       await reload();
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not delete.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not delete.');
     }
   };
 
@@ -106,8 +106,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
       setEditing(null);
       await reload();
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
     }
   };
 
@@ -154,17 +153,17 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
         </label>
         <p className="text-sm text-muted-foreground">
           Images are converted to WebP in your browser and uploaded at{' '}
-          {active?.imageWidths.join(', ') ?? ''} pixels wide. SVG is not
-          accepted — it can carry script.
+          {active.imageWidths.join(', ')} pixels wide. SVG is not accepted — it
+          can carry script.
         </p>
         {progress === null ? null : (
           <p className="text-sm text-muted-foreground" role="status">
             {progress.file}: {progress.stage}
           </p>
         )}
-        {error === '' ? null : (
+        {error === '' && loadError === '' ? null : (
           <p className="text-sm text-destructive" role="alert">
-            {error}
+            {error === '' ? loadError : error}
           </p>
         )}
       </div>

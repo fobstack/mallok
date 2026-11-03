@@ -31,40 +31,35 @@ import {
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm, showServerErrors } from '../form/form.js';
 import { optionSpecs } from '../form/types.js';
-import { notice, saveSettings, settings, theme } from '../state.js';
+import { notify } from '../notice.js';
+import { saveSettings, useSettings, useTheme } from '../queries.js';
 
 export function AppearancePage(): JSX.Element {
-  const active = theme.value;
-  const current = settings.value;
-  const [editingLocale, setEditingLocale] = useState(
-    settings.value?.defaultLocale ?? 'en',
-  );
+  const active = useTheme();
+  const current = useSettings();
+  const [editingLocale, setEditingLocale] = useState(current.defaultLocale);
   const [saved, setSaved] = useState(false);
 
-  const specs = active === null ? [] : optionSpecs(active.options);
+  const specs = optionSpecs(active.options);
   // Options resolve the way the renderer resolves them: the override for the
   // locale being edited, then the site-wide value, then the manifest default
   // (docs/THEME_FORMAT.md §6.1).
   const overrides =
-    (current?.themeOptions[LOCALE_OPTIONS_KEY] as
+    (current.themeOptions[LOCALE_OPTIONS_KEY] as
       | Record<string, Record<string, unknown>>
       | undefined) ?? {};
-  const editingDefault = editingLocale === current?.defaultLocale;
+  const editingDefault = editingLocale === current.defaultLocale;
   const resolved: FieldValues = {};
   for (const spec of specs) {
     resolved[spec.name] = editingDefault
-      ? (current?.themeOptions[spec.name] ?? spec.field.default)
+      ? (current.themeOptions[spec.name] ?? spec.field.default)
       : (overrides[editingLocale]?.[spec.name] ??
-        current?.themeOptions[spec.name] ??
+        current.themeOptions[spec.name] ??
         spec.field.default);
   }
   // `values`, not `defaultValues`: switching the language being edited, or
   // a save coming back, resets the form to what is now stored.
   const form = useForm<FieldValues>({ values: resolved });
-
-  if (active === null || current === null) {
-    return <p>Loading…</p>;
-  }
 
   const submit = form.handleSubmit(async (values) => {
     setSaved(false);
@@ -89,8 +84,7 @@ export function AppearancePage(): JSX.Element {
       setSaved(true);
     } catch (caught) {
       showServerErrors(form.setError, caught);
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
     }
   });
   const busy = form.formState.isSubmitting;

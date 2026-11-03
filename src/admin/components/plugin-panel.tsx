@@ -8,9 +8,14 @@
  * boundary intact while still letting a plugin have a real interface.
  */
 
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { JSX } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel } from '@/components/ui/field';
@@ -30,33 +35,26 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ApiError, api, csrf } from '../api.js';
-import { notice } from '../state.js';
+import { notify, useReportError } from '../notice.js';
+import { panelKey } from '../queries.js';
 import type { PluginPanel } from '../types.js';
-import { lazyRoute } from './lazy.js';
 import { Facts } from './page.js';
 import { cell, RelatedRows } from './related-rows.js';
 
 /**
  * The form arrives with the first record that is opened, not with the list:
- * most visits to a panel only read it.
+ * most visits to a panel only read it. The action form shares its code, and
+ * its chunk.
  */
-const RecordEditor = lazyRoute<{
-  pluginId: string;
-  panel: PluginPanel;
-  recordId: string | null;
-  onClose: (changed: boolean) => void;
-  attachedTo?: string;
-}>(() => import('./record-editor.js').then((module) => module.RecordEditor));
-
-/** Asks for an action's parameters; shares the form's code, and its chunk. */
-const ActionParams = lazyRoute<{
-  pluginId: string;
-  panel: PluginPanel;
-  action: PluginPanel['actions'][number];
-  ids: readonly string[];
-  onClose: (done: boolean) => void;
-}>(() =>
-  import('./record-editor.js').then((module) => module.ActionParamsDialog),
+const RecordEditor = lazy(() =>
+  import('./record-editor.js').then((module) => ({
+    default: module.RecordEditor,
+  })),
+);
+const ActionParams = lazy(() =>
+  import('./record-editor.js').then((module) => ({
+    default: module.ActionParamsDialog,
+  })),
 );
 
 type Row = Record<string, unknown>;
@@ -77,13 +75,10 @@ export function PluginPanelView({
    */
   readonly attachedTo?: string;
 }): JSX.Element {
-  const [rows, setRows] = useState<readonly Row[]>([]);
-  const [hasNext, setHasNext] = useState(false);
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [open, setOpen] = useState<Row | null>(null);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<{
     field: string;
@@ -99,52 +94,43 @@ export function PluginPanelView({
 
   const base = `/plugins/${pluginId}/panels/${panel.id}`;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filters and sort are new objects every render; their stringified form is the real "did it change" check.
-  const reload = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    const query = new URLSearchParams({
-      limit: String(PAGE),
-      offset: String(offset),
-    });
-    for (const [field, value] of Object.entries(filters)) {
-      if (value !== '') {
-        query.set(field, value);
-      }
+  const query = new URLSearchParams({
+    limit: String(PAGE),
+    offset: String(offset),
+  });
+  for (const [field, value] of Object.entries(filters)) {
+    if (value !== '') {
+      query.set(field, value);
     }
-    if (attachedTo !== undefined) {
-      query.set('attached', attachedTo);
-    }
-    if (search.trim() !== '') {
-      query.set('q', search.trim());
-    }
-    if (sort !== null) {
-      query.set('sort', sort.field);
-      query.set('dir', sort.descending ? 'desc' : 'asc');
-    }
-    try {
-      const result = await api<{ rows: Row[]; hasNext: boolean }>(
-        `${base}?${query.toString()}`,
-      );
-      setRows(result.rows);
-      setHasNext(result.hasNext);
-    } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not load rows.';
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    offset,
-    base,
-    JSON.stringify(filters),
-    search,
-    JSON.stringify(sort),
-    attachedTo,
-  ]);
+  }
+  if (attachedTo !== undefined) {
+    query.set('attached', attachedTo);
+  }
+  if (search.trim() !== '') {
+    query.set('q', search.trim());
+  }
+  if (sort !== null) {
+    query.set('sort', sort.field);
+    query.set('dir', sort.descending ? 'desc' : 'asc');
+  }
+  const client = useQueryClient();
+  const listed = useQuery({
+    queryKey: panelKey(pluginId, panel.id, 'rows', query.toString()),
+    queryFn: () =>
+      api<{ rows: Row[]; hasNext: boolean }>(`${base}?${query.toString()}`),
+    // A new filter or page keeps the rows on screen until the next arrive.
+    placeholderData: keepPreviousData,
+  });
+  useReportError(listed.error, 'Could not load rows.');
+  const rows = listed.data?.rows ?? [];
+  const hasNext = listed.data?.hasNext ?? false;
+  const loading = listed.isPending;
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  /** Everything under this panel is out of date: its rows and its records. */
+  const reload = useCallback(
+    () => client.invalidateQueries({ queryKey: panelKey(pluginId, panel.id) }),
+    [client, pluginId, panel.id],
+  );
 
   // Stable, because the form's loading effect depends on it.
   const closeEditor = useCallback(
@@ -172,7 +158,7 @@ export function PluginPanelView({
         body: JSON.stringify({ ids: selected }),
       });
       if (!response.ok) {
-        notice.value = `"${action.label}" failed.`;
+        notify(`"${action.label}" failed.`);
         return;
       }
       const blob = await response.blob();
@@ -189,7 +175,7 @@ export function PluginPanelView({
     }
 
     if (selected.length === 0) {
-      notice.value = 'Select at least one row first.';
+      notify('Select at least one row first.');
       return;
     }
     if (action.params !== undefined) {
@@ -205,8 +191,9 @@ export function PluginPanelView({
       setSelected([]);
       await reload();
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'The action failed.';
+      notify(
+        caught instanceof ApiError ? caught.message : 'The action failed.',
+      );
     }
   };
 
@@ -423,34 +410,36 @@ export function PluginPanelView({
           onClose={() => setOpen(null)}
         />
       )}
-      {asking === null ? null : (
-        <ActionParams
-          key={asking.id}
-          pluginId={pluginId}
-          panel={panel}
-          action={asking}
-          ids={selected}
-          onClose={(done) => {
-            setAsking(null);
-            if (done) {
-              setSelected([]);
-              void reload();
-            }
-          }}
-        />
-      )}
-      {editing === undefined ? null : (
-        <RecordEditor
-          // A different record is a different form, not the same one with
-          // new props: its typed-in state must not carry over.
-          key={editing ?? 'new'}
-          pluginId={pluginId}
-          panel={panel}
-          recordId={editing}
-          onClose={closeEditor}
-          {...(attachedTo === undefined ? {} : { attachedTo })}
-        />
-      )}
+      <Suspense fallback={null}>
+        {asking === null ? null : (
+          <ActionParams
+            key={asking.id}
+            pluginId={pluginId}
+            panel={panel}
+            action={asking}
+            ids={selected}
+            onClose={(done) => {
+              setAsking(null);
+              if (done) {
+                setSelected([]);
+                void reload();
+              }
+            }}
+          />
+        )}
+        {editing === undefined ? null : (
+          <RecordEditor
+            // A different record is a different form, not the same one with
+            // new props: its typed-in state must not carry over.
+            key={editing ?? 'new'}
+            pluginId={pluginId}
+            panel={panel}
+            recordId={editing}
+            onClose={closeEditor}
+            {...(attachedTo === undefined ? {} : { attachedTo })}
+          />
+        )}
+      </Suspense>
     </section>
   );
 }

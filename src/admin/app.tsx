@@ -1,8 +1,23 @@
 /**
- * Route table and the signed-in/signed-out split.
+ * The route table (React Router, data mode) and the signed-in/signed-out
+ * split.
+ *
+ * The root route's loader settles who is signed in, and for a signed-in
+ * operator loads the workspace, before anything renders; the skeleton shows
+ * meanwhile. Signed out, every address shows the sign-in form, and after
+ * signing in the operator is on the page they asked for.
  */
 
-import type { JSX } from 'react';
+import { useSuspenseQuery } from '@tanstack/react-query';
+import type { ComponentType, JSX } from 'react';
+import { lazy, Suspense } from 'react';
+import {
+  createBrowserRouter,
+  isRouteErrorResponse,
+  Link,
+  Outlet,
+  useRouteError,
+} from 'react-router';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,144 +27,193 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { lazyRoute } from './components/lazy.js';
 import { Shell } from './components/shell.js';
-import { match, navigate, route } from './router.js';
-import { ready, session } from './state.js';
+import { loadShell, sessionQuery } from './queries.js';
 
 /**
- * The editor and the media library load on demand: the editor carries the
- * rendering pipeline (its preview is the real renderer) and the library
- * carries the image conversion path. Neither belongs in the first paint.
+ * Where Static Assets serves the admin from. The trailing slash is kept on
+ * purpose: React Router then writes the admin's home as `/_mallok/app/`,
+ * the address every link and bookmark has always used.
  */
-// Every page loads with its route: the first load is the shell and the page
-// you land on, not every page in the admin (docs/ADMIN_MIGRATION.md §8).
-const AccountPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/account.js').then((module) => module.AccountPage),
-);
-const ContentListPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/content-list.js').then((module) => module.ContentListPage),
-);
-const LoginPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/login.js').then((module) => module.LoginPage),
-);
-const AdvancedPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/settings-advanced.js').then((module) => module.AdvancedPage),
-);
-const AppearancePage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/settings-appearance.js').then(
-    (module) => module.AppearancePage,
-  ),
-);
-const EmailSettingsPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/settings-email.js').then(
-    (module) => module.EmailSettingsPage,
-  ),
-);
-const SiteSettingsPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/settings-site.js').then((module) => module.SiteSettingsPage),
-);
-const EditorPage = lazyRoute<{ id: string }>(() =>
-  import('./pages/editor.js').then((module) => module.EditorPage),
-);
-const MediaPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/media.js').then((module) => module.MediaPage),
-);
-const PluginsPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/plugins.js').then((module) => module.PluginsPage),
-);
-const SetupPage = lazyRoute<Record<string, never>>(() =>
-  import('./pages/setup.js').then((module) => module.SetupPage),
-);
+export const APP_BASE = '/_mallok/app/';
 
 /**
- * A settings page. The sections are in the sidebar now; this only keeps the
- * call sites below readable while the pages move (docs/ADMIN_MIGRATION.md).
+ * A page whose code loads when it is first visited: the first load is the
+ * shell and the page you land on, not every page in the admin
+ * (docs/ADMIN_MIGRATION.md §8). The editor carries the rendering pipeline
+ * and the media library the image conversion path; neither belongs in the
+ * first paint.
+ *
+ * `React.lazy` inside the route's element rather than the route's own
+ * `lazy`: React Router holds the previous page on screen until a lazy
+ * route's code has arrived, so a click on "New" left the list up, live, for
+ * as long as the editor took to load. The admin moves at once and shows the
+ * page's outline meanwhile, as it always has. A chunk that fails to load
+ * still reaches the route's error element.
  */
-function SettingsLayout({
-  children,
-}: {
-  readonly children: JSX.Element;
-}): JSX.Element {
-  return children;
+function page(load: () => Promise<ComponentType>): JSX.Element {
+  const Page = lazy(async () => ({ default: await load() }));
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <Page />
+    </Suspense>
+  );
 }
 
-function NotFound(): JSX.Element {
+/**
+ * A page's outline while its code arrives. Still, not pulsing: it is up for
+ * a moment, and an endless animation that is then cut off mid-cycle is what
+ * anything waiting for the page to settle sees as an aborted one.
+ */
+function PageLoading(): JSX.Element {
   return (
-    <div className="w-full">
-      <Card className="mx-auto mt-8 max-w-md">
-        <CardHeader>
-          <CardTitle>
-            <h1>Not found</h1>
-          </CardTitle>
-          <CardDescription>
-            There is no page at this address in the admin.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild>
-            <a
-              href="/_mallok/app/"
-              onClick={(event) => {
-                event.preventDefault();
-                navigate('/');
-              }}
-            >
-              Back to content
-            </a>
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="mx-auto w-full max-w-4xl" aria-busy="true">
+      <span className="sr-only">Loading…</span>
+      <div className="h-8 w-48 rounded-md bg-muted" />
+      <div className="mt-6 h-40 w-full rounded-md bg-muted" />
     </div>
   );
 }
 
-function resolve(path: string): JSX.Element {
-  if (path === '/' || path === '/content') {
-    return <ContentListPage />;
+/**
+ * Creates the admin's router. A function, not a module constant: creating
+ * one starts its loaders, and the setup wizard, which has no session to
+ * load, must not.
+ */
+export function createAdminRouter(): ReturnType<typeof createBrowserRouter> {
+  return createBrowserRouter(
+    [
+      {
+        id: 'root',
+        path: '/',
+        loader: loadShell,
+        // The shell's data is loaded once; after that the queries keep it
+        // current, and a navigation must not wait on it.
+        shouldRevalidate: () => false,
+        element: <Root />,
+        hydrateFallbackElement: <Booting />,
+        errorElement: <RouteError />,
+        children: [
+          {
+            // A page that fails says so inside the shell, which keeps working.
+            errorElement: <RouteError />,
+            children: [
+              {
+                index: true,
+                element: page(() =>
+                  import('./pages/content-list.js').then(
+                    (module) => module.ContentListPage,
+                  ),
+                ),
+              },
+              {
+                path: 'content',
+                element: page(() =>
+                  import('./pages/content-list.js').then(
+                    (module) => module.ContentListPage,
+                  ),
+                ),
+              },
+              {
+                path: 'content/:id',
+                element: page(() =>
+                  import('./pages/editor.js').then(
+                    (module) => module.EditorRoute,
+                  ),
+                ),
+              },
+              {
+                path: 'media',
+                element: page(() =>
+                  import('./pages/media.js').then((module) => module.MediaPage),
+                ),
+              },
+              {
+                path: 'plugins',
+                element: page(() =>
+                  import('./pages/plugins.js').then(
+                    (module) => module.PluginsPage,
+                  ),
+                ),
+              },
+              {
+                path: 'settings',
+                element: page(() =>
+                  import('./pages/settings-site.js').then(
+                    (module) => module.SiteSettingsPage,
+                  ),
+                ),
+              },
+              {
+                path: 'settings/appearance',
+                element: page(() =>
+                  import('./pages/settings-appearance.js').then(
+                    (module) => module.AppearancePage,
+                  ),
+                ),
+              },
+              {
+                path: 'settings/email',
+                element: page(() =>
+                  import('./pages/settings-email.js').then(
+                    (module) => module.EmailSettingsPage,
+                  ),
+                ),
+              },
+              {
+                path: 'settings/advanced',
+                element: page(() =>
+                  import('./pages/settings-advanced.js').then(
+                    (module) => module.AdvancedPage,
+                  ),
+                ),
+              },
+              {
+                path: 'account',
+                element: page(() =>
+                  import('./pages/account.js').then(
+                    (module) => module.AccountPage,
+                  ),
+                ),
+              },
+              { path: '*', element: <NotFound /> },
+            ],
+          },
+        ],
+      },
+    ],
+    { basename: APP_BASE },
+  );
+}
+
+/** Signed in, the shell around the page; signed out, the sign-in form. */
+function Root(): JSX.Element {
+  const session = useSuspenseQuery(sessionQuery).data;
+  if (session === null) {
+    return <LoginRoute />;
   }
-  if (path === '/settings') {
-    return (
-      <SettingsLayout>
-        <SiteSettingsPage />
-      </SettingsLayout>
-    );
-  }
-  if (path === '/settings/appearance') {
-    return (
-      <SettingsLayout>
-        <AppearancePage />
-      </SettingsLayout>
-    );
-  }
-  if (path === '/settings/email') {
-    return (
-      <SettingsLayout>
-        <EmailSettingsPage />
-      </SettingsLayout>
-    );
-  }
-  if (path === '/settings/advanced') {
-    return (
-      <SettingsLayout>
-        <AdvancedPage />
-      </SettingsLayout>
-    );
-  }
-  if (path === '/account') {
-    return <AccountPage />;
-  }
-  if (path === '/media') {
-    return <MediaPage />;
-  }
-  if (path === '/plugins') {
-    return <PluginsPage />;
-  }
-  const editing = match('/content/:id', path);
-  if (editing !== null) {
-    return <EditorPage id={editing.id ?? 'new'} key={editing.id} />;
-  }
-  return <NotFound />;
+  return (
+    <Shell>
+      <Outlet />
+    </Shell>
+  );
+}
+
+/**
+ * The sign-in form, loaded the first time it is needed. Not a route of its
+ * own: that would move the address away from the page the operator asked
+ * for.
+ */
+const LoginPage = lazy(() =>
+  import('./pages/login.js').then((module) => ({ default: module.LoginPage })),
+);
+
+function LoginRoute(): JSX.Element {
+  return (
+    <Suspense fallback={<Booting />}>
+      <LoginPage />
+    </Suspense>
+  );
 }
 
 /** What shows while the session and settings load: the shell's outline. */
@@ -171,17 +235,48 @@ function Booting(): JSX.Element {
   );
 }
 
-export function App(): JSX.Element {
-  // The wizard runs before there is a session to restore, so it is checked
-  // before the signed-in/signed-out split (docs/ADMIN.md §5).
-  if (route.value === '/setup') {
-    return <SetupPage />;
-  }
-  if (!ready.value) {
-    return <Booting />;
-  }
-  if (session.value === false) {
-    return <LoginPage />;
-  }
-  return <Shell>{resolve(route.value)}</Shell>;
+function NotFound(): JSX.Element {
+  return (
+    <div className="w-full">
+      <Card className="mx-auto mt-8 max-w-md">
+        <CardHeader>
+          <CardTitle>
+            <h1>Not found</h1>
+          </CardTitle>
+          <CardDescription>
+            There is no page at this address in the admin.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link to="/">Back to content</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/**
+ * A route that failed: its code did not arrive, or it threw while loading
+ * or rendering. Said plainly, with the way out.
+ */
+function RouteError(): JSX.Element {
+  const error = useRouteError();
+  const detail = isRouteErrorResponse(error)
+    ? `${error.status} ${error.statusText}`
+    : error instanceof Error
+      ? error.message
+      : '';
+  return (
+    <div className="mx-auto w-full max-w-4xl p-6">
+      <p className="text-sm text-destructive" role="alert">
+        This part of the admin could not be loaded. Check your connection and
+        reload.
+      </p>
+      {detail === '' ? null : (
+        <p className="mt-2 font-mono text-xs text-muted-foreground">{detail}</p>
+      )}
+    </div>
+  );
 }

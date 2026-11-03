@@ -8,10 +8,11 @@
  * wording keeps them distinct from failures.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { Check, CircleAlert, Info } from 'lucide-react';
 import type { JSX } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,7 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ApiError, api, setCsrf } from '../api.js';
 import { Code, Section } from '../components/page.js';
+import { keys } from '../queries.js';
 
 interface SetupStatus {
   readonly completed: boolean;
@@ -77,11 +79,24 @@ const STEP_LABELS: Readonly<Record<Step, string>> = {
 };
 
 export function SetupPage(): JSX.Element {
-  const [status, setStatus] = useState<SetupStatus | null>(null);
-  const [step, setStep] = useState<Step>('admin');
+  const loaded = useQuery({
+    queryKey: keys.setup,
+    queryFn: () => api<SetupStatus>('/setup'),
+    // Read once: the wizard's own steps change what it would say next.
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const status = loaded.data ?? null;
+  // A 404 means setup already ran; the wizard closes for good.
+  const gone = loaded.error instanceof ApiError && loaded.error.status === 404;
+  const loadError =
+    loaded.error === null || gone
+      ? ''
+      : loaded.error instanceof ApiError
+        ? loaded.error.message
+        : 'Could not start setup.';
+  const [chosen, setStep] = useState<Step | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [gone, setGone] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -89,7 +104,6 @@ export function SetupPage(): JSX.Element {
   const [name, setName] = useState('');
   const [locale, setLocale] = useState('en');
   const [extraLocales, setExtraLocales] = useState('');
-  const [starter, setStarter] = useState('');
   const [ttlLowered, setTtlLowered] = useState(false);
   const [installed, setInstalled] = useState(0);
   /** Sample plugin records the starter imported. */
@@ -97,29 +111,11 @@ export function SetupPage(): JSX.Element {
   /** What the starter could not import, said rather than swallowed. */
   const [notInstalled, setNotInstalled] = useState<readonly string[]>([]);
 
-  useEffect(() => {
-    void (async () => {
-      try {
-        const loaded = await api<SetupStatus>('/setup');
-        setStatus(loaded);
-        setStarter(loaded.starters[0]?.id ?? '');
-        if (loaded.hasAdmin) {
-          setStep('site');
-        }
-      } catch (caught) {
-        // A 404 means setup already ran; the wizard closes for good.
-        if (caught instanceof ApiError && caught.status === 404) {
-          setGone(true);
-          return;
-        }
-        setError(
-          caught instanceof ApiError
-            ? caught.message
-            : 'Could not start setup.',
-        );
-      }
-    })();
-  }, []);
+  // Until a step is taken, the wizard starts where the site is: an
+  // administrator already made means the site step is next.
+  const step: Step = chosen ?? (status?.hasAdmin === true ? 'site' : 'admin');
+  const [starterChoice, setStarter] = useState<string | null>(null);
+  const starter = starterChoice ?? status?.starters[0]?.id ?? '';
 
   const run = async (
     path: string,
@@ -189,7 +185,7 @@ export function SetupPage(): JSX.Element {
   if (status === null) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-muted p-6 text-sm text-muted-foreground">
-        {error === '' ? 'Loading…' : error}
+        {loadError === '' ? 'Loading…' : loadError}
       </div>
     );
   }

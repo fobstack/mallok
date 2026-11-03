@@ -5,7 +5,7 @@
  * require the notices to travel with the redistributed code. The `mallok`
  * tarball is redistributed code: `worker/index.js` and `cli/index.js` are
  * bundles with dozens of libraries inlined, while `assets/_mallok/app` is a
- * third Vite build graph with React, CodeMirror and signals.
+ * third Vite build graph with React, React Router, CodeMirror and the rest.
  *
  * The list is built from esbuild's own metafiles and Vite 8's generated
  * licence metadata rather than from `package.json` — a dependency list is
@@ -88,10 +88,10 @@ const SHIPPED_WITHOUT_TEXT = new Map([
 /**
  * Completes a Vite licence entry whose nested package.json omits metadata.
  *
- * `@preact/signals-react/runtime/package.json`, for example, deliberately has
- * no version, licence or licence file; Vite therefore reports its private
- * name at `0.0.0`. The redistributed code is still covered by the parent
- * package's version and MIT text. This lookup discovers that relationship
+ * `@hookform/resolvers/zod/package.json`, for example, has its own name and
+ * version but no licence file; a sub-path package can also omit the version,
+ * which Vite then reports as `0.0.0`. The redistributed code is still covered
+ * by the parent package's licence text. This lookup discovers that relationship
  * from the installed manifests — no hand-maintained dependency table.
  */
 async function completeViteLicense(entry) {
