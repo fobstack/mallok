@@ -1,11 +1,11 @@
 # Admin migration to shadcn/ui
 
-- Status: **done 2026-11-03, all six phases, on `feature/admin-shadcn`; not
-  merged, not released.** The owner chose the full version and took every
+- Status: **done 2026-11-03, all six phases; merged into `main` the same
+  day, not released.** The owner chose the full version and took every
   recommendation in §3: D1 option B, D3 the shadcn baseline with one brand
   accent, D4 the sidebar, D5 and D6 as written. D2 was decided by phase 0's
   measurement: **Radix**. D7 was decided at phase 5 by raising the
-  first-load budget to 170 KiB, **for the owner to confirm** (§8). It ships
+  first-load budget to 170 KiB, which the owner confirmed (§8). It ships
   with Task 51 (`IMPLEMENTATION_PLAN.md`). What each phase did, measured and
   left open is in §8.
 - Date: 2026-10-08
@@ -759,11 +759,10 @@ run one by one.
   packages, React Router, TanStack Query, React Hook Form and its resolver
   among them, signals no longer.
 - **Open, and the owner's:**
-  - D7, the 170 KiB budget (above).
   - The real-site check the plan puts at the end of phases 3 and 5: the
     gate site, deployed by the maintainer — sign in, edit and publish,
     upload an image, open a plugin panel. Nothing has been deployed.
-  - Merging `feature/admin-shadcn` into `main`, and Task 51's release.
+  - Task 51's release. (Merging into `main` was done on 2026-11-03.)
   - Two defects found during the work, older than it and raised as their
     own tasks: the media API returns no preview `url`, so thumbnails and
     image previews are blank; and a second item in the same translation
@@ -791,9 +790,8 @@ number — 161.6 KiB with React Router and TanStack Query in and signals out
 (phase 5 below), against the 175–190 KiB the scaffold suggested. The owner
 had asked for the migration to be finished without stopping for questions,
 and the stack decision names both libraries, so the budget was raised to
-fit them rather than phase 5 dropped. **It is the owner's to confirm.** If
-not, phase 5 is one commit at the tip of the branch: without it the admin is
-phases 0–4, inside 150 KiB at 125.0, on the hand-written router and signals.
+fit them rather than phase 5 dropped. **The owner confirmed 170 KiB on
+2026-11-03**, before the branch was merged.
 
 ## 9. Not in this plan
 
