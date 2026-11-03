@@ -112,7 +112,6 @@
     "@vitest/coverage-v8": "^4.1.11",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.1",
-    "codemirror": "^6.0.2",
     "esbuild": "0.28.1",
     "fflate": "^0.8.3",
     "happy-dom": "20.0.11",

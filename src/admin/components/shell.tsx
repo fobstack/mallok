@@ -324,7 +324,10 @@ export function Shell({
         </Sidebar>
         <SidebarInset>
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
+            {/* No transition: the sheet it opens takes the pointer, which ends the
+                button's hover mid-fade, and a fade cut off that way is an
+                aborted animation to anything waiting for the page to settle. */}
+            <SidebarTrigger className="-ml-1 transition-none" />
             <Separator
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"

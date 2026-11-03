@@ -37,12 +37,14 @@ From `TECH_STACK §6`, not re-argued here:
 
 | Area | Choice |
 | --- | --- |
-| UI | `react` + `react-dom`, state on `@preact/signals-react` (switched from Preact 2026-09-06, `TECH_STACK.md §6`) |
+| UI | `react` + `react-dom` (switched from Preact 2026-09-06, `TECH_STACK.md §6`) |
 | Build | `vite` + `@vitejs/plugin-react` |
-| Markdown editing | `codemirror` + `@codemirror/lang-markdown` |
-| Forms | The in-repository schema-driven generator (§7) |
+| Routing | React Router in data mode: the root route's loader settles the session and loads the workspace before the first render; each page's code loads when it is first visited (`ADMIN_MIGRATION.md`, phase 5) |
+| Server state | TanStack Query, under one key scheme (`src/admin/queries.ts`); a write invalidates what it changed. The one piece of client state shared across pages is the last error, shown as a toast (`src/admin/notice.ts`) |
+| Markdown editing | CodeMirror 6 (`@codemirror/view`, `state`, `commands`, `lang-markdown`), themed from the design tokens |
+| Forms | The in-repository schema-driven generator (§7), on React Hook Form; Zod for the few forms with a fixed shape |
 | Preview | Reuses `src/core/`, rendering in the browser |
-| Styling | Tailwind CSS 4 with shadcn/ui's design tokens and, as pages move, its components on Radix; light, dark or the system's, chosen per browser. Pages not yet moved still use hand-written classes that read the same tokens (`ADMIN_MIGRATION.md`) |
+| Styling | Tailwind CSS 4 with shadcn/ui's design tokens and components on Radix; light, dark or the system's, chosen per browser. `styles.css` holds the tokens and nothing else |
 | Image processing | The browser's Canvas API |
 
 **0.1 does not include Tiptap.** Visual editing belongs to 0.2
@@ -54,6 +56,11 @@ CodeMirror.
 Three top-level sections plus a user menu. **A new feature must fit one of
 them**; when it does not, the first question is whether it is internal
 complexity that should not be surfaced at all.
+
+On screen they are a collapsible sidebar — Content, Media and Plugins under
+"Site"; Site, Appearance, Email and Advanced under "Settings" — with the user
+menu at its foot, and a breadcrumb above each page. On a narrow screen the
+sidebar is a sheet.
 
 ```
 Content     ├ All content (filter by kind, filter by language, search)
@@ -72,8 +79,8 @@ Plugins     ├ Installed plugins (switch, version, what each affects)
             ├ Each plugin's settings and secrets form
             └ Each panel a plugin declares, such as Inquiries
 
-User menu   ├ Change password
-            ├ API token management
+User menu   ├ Account: change password, API token management
+            ├ Colour scheme (the system's, light or dark)
             └ Sign out
 ```
 
@@ -265,6 +272,11 @@ it:
 **The consequence: neither theme authors nor plugin authors write admin
 code.** The moment they can, the admin's size budget and its security boundary
 are both gone.
+
+It renders each field on React Hook Form and checks the value against its
+declaration before the form submits; a plugin's record form leaves checking
+to the Worker, its one validator. Whatever the server says about a field is
+shown on that field, as its description.
 
 The field-type-to-control mapping is the table in `THEME_FORMAT.md §5.2`.
 Three cases are special:

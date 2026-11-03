@@ -9,7 +9,10 @@ Notable changes to Mallok. The format follows
 Purges that take effect and say when they do not, the default language under
 a prefix too, slugs of several segments, and heading ids for a linked table of
 contents (Tasks 47–50). Two schema migrations run on the first request after
-deploying, and every stored page body is rendered again once.
+deploying, and every stored page body is rendered again once. The admin is
+rebuilt on shadcn/ui, React Router, TanStack Query and React Hook Form
+(`docs/ADMIN_MIGRATION.md`); what it does and says is unchanged except where
+listed below.
 
 ### Added
 
@@ -36,6 +39,14 @@ deploying, and every stored page body is rendered again once.
 - **A failed purge is shown**: when, from where and what Cloudflare answered,
   under Settings → Advanced and in `GET /health`, until a later purge of the
   whole site succeeds. A refused token is told which permission it lacks.
+- **The admin, rebuilt** (`docs/ADMIN_MIGRATION.md`): a collapsible sidebar
+  with a breadcrumb, light and dark schemes (the system's by default, chosen
+  in the account menu), and every page on shadcn/ui. Plugin records and
+  action parameters open in a sheet; the media picker is a dialog. Forms
+  report every failing field at once, beside the field, and so do the
+  server's own messages.
+- The content list's filters and page are in the address, so a reload, a
+  link or Back keeps them.
 
 ### Fixed
 
@@ -53,6 +64,9 @@ deploying, and every stored page body is rendered again once.
 - **`mallok build` refuses the slugs the Worker refuses**, before writing
   anything. It took any slug: `../../x` wrote outside the output, `page/2`
   over a list's second page.
+- **"Create <language>" in the editor makes the translation.** It opened an
+  editor that could not load and said so; it now opens a new item in that
+  language, in the original's translation group.
 
 ### Changed
 
@@ -66,6 +80,11 @@ deploying, and every stored page body is rendered again once.
 - Enabling a language, or giving a kind a base, that matches the first
   segment of a saved slug is refused with 409 and a `stranded` list.
 - Atelier 2.5.2, Gazette 2.0.1.
+- The admin's language filter is no longer global: the sidebar's Content
+  opens the default language, and leaving the editor returns to the list in
+  the item's language.
+- The admin's first load is 161.7 KiB gzip, inside a budget raised from 150
+  to 170 KiB. It is served by Static Assets and never enters the Worker.
 
 ### Upgrade notes
 
