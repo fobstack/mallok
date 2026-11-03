@@ -72,9 +72,9 @@ test('writes and publishes a page that is immediately public', async ({
   await page.getByRole('button', { name: 'New' }).click();
 
   // `page` is one of the two kinds the core always has (docs/ARCHITECTURE §8).
-  await page.locator('.editor-bar select').selectOption('page');
-  await page.locator('#fm-title').fill(TITLE);
-  await page.locator('.editor-bar input').fill(SLUG);
+  await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
+  await page.getByRole('textbox', { name: 'Title', exact: true }).fill(TITLE);
+  await page.getByLabel('Slug', { exact: true }).fill(SLUG);
   await appendBody(page, BODY);
 
   await saveWith(page, 'Publish');
@@ -120,9 +120,11 @@ test('keeps a draft off the public site', async ({ page }) => {
   await signIn(page);
   await page.getByRole('button', { name: 'New' }).click();
 
-  await page.locator('.editor-bar select').selectOption('page');
-  await page.locator('#fm-title').fill('Not for readers');
-  await page.locator('.editor-bar input').fill('not-for-readers');
+  await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
+  await page
+    .getByRole('textbox', { name: 'Title', exact: true })
+    .fill('Not for readers');
+  await page.getByLabel('Slug', { exact: true }).fill('not-for-readers');
   await appendBody(page, 'This page is a draft and must stay invisible.');
   await saveWith(page, 'Save draft');
 

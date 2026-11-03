@@ -2,18 +2,16 @@
 
 import type { JSX } from 'react';
 import { MediaLibrary } from '../components/media-library.js';
+import { Page, PageHeader } from '../components/page.js';
 
 export function MediaPage(): JSX.Element {
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1>Media</h1>
-        <p className="lede">
-          Files are stored by the hash of the original, so uploading the same
-          image twice costs nothing and never creates a duplicate.
-        </p>
-      </header>
+    <Page className="max-w-6xl">
+      <PageHeader
+        title="Media"
+        lede="Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate."
+      />
       <MediaLibrary />
-    </div>
+    </Page>
   );
 }

@@ -76,6 +76,9 @@ export function labelFor(spec: FieldSpec): string {
     .replace(/^./, (character) => character.toUpperCase());
 }
 
+/** What every form says about an empty required field. */
+export const REQUIRED_MESSAGE = 'This field is required.';
+
 /**
  * Validates one value against its declaration and returns an error message,
  * or `null`. This mirrors the server's zod checks so the user hears about a
@@ -89,7 +92,7 @@ export function validate(spec: FieldSpec, value: unknown): string | null {
     value === '' ||
     (Array.isArray(value) && value.length === 0);
   if (field.required && empty) {
-    return 'This field is required.';
+    return REQUIRED_MESSAGE;
   }
   if (empty) {
     return null;
@@ -127,19 +130,4 @@ export function validate(spec: FieldSpec, value: unknown): string | null {
     return `At most ${field.max} entries.`;
   }
   return null;
-}
-
-/** Validates a whole value map, returning per-field messages. */
-export function validateAll(
-  specs: readonly FieldSpec[],
-  values: Readonly<Record<string, unknown>>,
-): Record<string, string> {
-  const errors: Record<string, string> = {};
-  for (const spec of specs) {
-    const message = validate(spec, values[spec.name]);
-    if (message !== null) {
-      errors[spec.name] = message;
-    }
-  }
-  return errors;
 }

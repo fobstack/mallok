@@ -16,12 +16,14 @@ test('a revoked token is shown as revoked and offers no Revoke', async ({
   await signIn(page);
   await page.goto('/_mallok/app/account');
 
-  await page.locator('#token-name').fill(name);
+  await page.getByLabel('New token name').fill(name);
   await page.getByRole('button', { name: 'Create token' }).click();
-  await expect(page.locator('.token-reveal code')).toContainText('mlk_live_');
+  await expect(page.getByRole('alert').locator('code')).toContainText(
+    'mlk_live_',
+  );
   await page.getByRole('button', { name: 'Done' }).click();
 
-  const row = page.locator('.rows li', { hasText: name });
+  const row = page.getByRole('listitem').filter({ hasText: name });
   await expect(row).toContainText('Never used');
   const revoked = page.waitForResponse(
     (response) =>

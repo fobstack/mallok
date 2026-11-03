@@ -7,69 +7,107 @@
  * fine (docs/SECURITY.md §3.1).
  */
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { ApiError } from '../api.js';
-import { signIn } from '../state.js';
+import { invalid } from '../form/form.js';
+import { REQUIRED_MESSAGE } from '../form/types.js';
+import { signIn, useKnownSettings } from '../queries.js';
+
+/** Both are needed; whether they match is the server's to say. */
+const signInSchema = z.object({
+  email: z.string().trim().min(1, REQUIRED_MESSAGE),
+  password: z.string().min(1, REQUIRED_MESSAGE),
+});
 
 export function LoginPage(): JSX.Element {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const form = useForm({
+    resolver: zodResolver(signInSchema),
+    defaultValues: { email: '', password: '' },
+  });
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const siteName = useKnownSettings()?.name;
+  const busy = form.formState.isSubmitting;
+  const { errors } = form.formState;
 
-  const submit = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    setBusy(true);
+  const submit = form.handleSubmit(async ({ email, password }) => {
     setError('');
     try {
       await signIn(email, password);
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Sign-in failed.');
-    } finally {
-      setBusy(false);
     }
-  };
+  });
 
   return (
-    <div className="login">
-      <form className="card" onSubmit={(event) => void submit(event)}>
-        <h1>Sign in</h1>
-        <div className="field">
-          <label htmlFor="login-email">Email</label>
-          <div className="control">
-            <input
-              id="login-email"
-              type="email"
-              autoComplete="username"
-              required
-              value={email}
-              onInput={(event) => setEmail(event.currentTarget.value)}
-            />
-          </div>
-        </div>
-        <div className="field">
-          <label htmlFor="login-password">Password</label>
-          <div className="control">
-            <input
-              id="login-password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onInput={(event) => setPassword(event.currentTarget.value)}
-            />
-          </div>
-        </div>
-        {error === '' ? null : (
-          <p className="error" role="alert">
-            {error}
-          </p>
-        )}
-        <button type="submit" className="primary" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+    <div className="flex min-h-svh items-center justify-center bg-muted p-6">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>
+            <h1 className="text-xl">Sign in</h1>
+          </CardTitle>
+          <CardDescription>{siteName ?? "The site's admin"}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form noValidate onSubmit={(event) => void submit(event)}>
+            <FieldGroup>
+              <Field data-invalid={errors.email !== undefined}>
+                <FieldLabel htmlFor="login-email">Email</FieldLabel>
+                <Input
+                  id="login-email"
+                  type="email"
+                  autoComplete="username"
+                  {...invalid('login-email', errors.email?.message)}
+                  {...form.register('email')}
+                />
+                <FieldError id="login-email-error">
+                  {errors.email?.message}
+                </FieldError>
+              </Field>
+              <Field data-invalid={errors.password !== undefined}>
+                <FieldLabel htmlFor="login-password">Password</FieldLabel>
+                <Input
+                  id="login-password"
+                  type="password"
+                  autoComplete="current-password"
+                  {...invalid('login-password', errors.password?.message)}
+                  {...form.register('password')}
+                />
+                <FieldError id="login-password-error">
+                  {errors.password?.message}
+                </FieldError>
+              </Field>
+              {error === '' ? null : (
+                <Alert variant="destructive" role="alert">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? 'Signing in…' : 'Sign in'}
+              </Button>
+            </FieldGroup>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

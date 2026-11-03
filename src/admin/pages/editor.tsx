@@ -11,8 +11,19 @@
  *    look-alike, so it cannot drift from what visitors get.
  */
 
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { type FieldValues, useForm } from 'react-hook-form';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
 import {
   buildPublicPath,
   joinFrontmatter,
@@ -21,15 +32,16 @@ import {
 import { ApiError, api } from '../api.js';
 import { MarkdownEditor } from '../components/markdown-editor.js';
 import { MediaPicker } from '../components/media-library.js';
+import { StatusBadge } from '../components/page.js';
 import { PluginPanelView } from '../components/plugin-panel.js';
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm } from '../form/form.js';
 import { toSpecs } from '../form/types.js';
+import { notify, useReportError } from '../notice.js';
 import { renderPreview } from '../preview.js';
-import { navigate } from '../router.js';
+import { keys, pluginsQuery, useSettings, useTheme } from '../queries.js';
 import { normalizeSlugInput } from '../slug.js';
-import { activeLocale, notice, settings, theme } from '../state.js';
-import type { MediaItem, PluginInfo } from '../types.js';
+import type { MediaItem } from '../types.js';
 
 /** One translation slot, whether or not it exists yet. */
 interface TranslationSlot {
@@ -56,103 +68,135 @@ interface LoadedContent {
 
 const PREVIEW_DEBOUNCE_MS = 250;
 
-export function EditorPage({ id }: { readonly id: string }): JSX.Element {
-  const site = settings.value;
-  const active = theme.value;
-  const isNew = id === 'new';
+/** What a new item starts from when it is a translation of another. */
+interface NewItem {
+  readonly locale: string | null;
+  readonly group: string | null;
+  readonly kind: string | null;
+}
 
-  const [loaded, setLoaded] = useState<LoadedContent | null>(null);
-  const [markdown, setMarkdown] = useState('');
-  const [kind, setKind] = useState('page');
-  const [slug, setSlug] = useState('');
-  const [assets, setAssets] = useState<Record<string, string>>({});
-  const [media, setMedia] = useState<Record<string, MediaItem>>({});
+/**
+ * The editor's route: `content/:id`, or `content/new` with the language,
+ * translation group and kind a new translation belongs to in the address.
+ * A different item, or a different new one, is a different editor.
+ */
+export function EditorRoute(): JSX.Element {
+  const { id = 'new' } = useParams();
+  const [search] = useSearchParams();
+  const fresh: NewItem = {
+    locale: search.get('locale'),
+    group: search.get('group'),
+    kind: search.get('kind'),
+  };
+  return (
+    <EditorPage key={`${id}?${search.toString()}`} id={id} fresh={fresh} />
+  );
+}
+
+/** Loads the item, then opens the editor on it. */
+function EditorPage({
+  id,
+  fresh,
+}: {
+  readonly id: string;
+  readonly fresh: NewItem;
+}): JSX.Element {
+  const isNew = id === 'new';
+  const item = useQuery({
+    queryKey: [...keys.content, 'item', id],
+    queryFn: () => api<LoadedContent>(`/content/${id}`),
+    enabled: !isNew,
+    // Opened to be edited: always as stored now, never as last seen.
+    gcTime: 0,
+  });
+  useReportError(item.error, 'Could not load.');
+  if (!isNew && item.data === undefined) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
+  return <Editor loaded={item.data ?? null} fresh={fresh} />;
+}
+
+function Editor({
+  loaded,
+  fresh,
+}: {
+  /** The stored item, or `null` for a new one. */
+  readonly loaded: LoadedContent | null;
+  readonly fresh: NewItem;
+}): JSX.Element {
+  const site = useSettings();
+  const active = useTheme();
+  const navigate = useNavigate();
+  const client = useQueryClient();
+
+  const [markdown, setMarkdown] = useState(
+    loaded?.markdown ?? '---\ntitle: Untitled\n---\n\n',
+  );
+  const [kind, setKind] = useState(
+    loaded?.kind ??
+      (fresh.kind !== null && site.kinds[fresh.kind] !== undefined
+        ? fresh.kind
+        : (Object.keys(site.kinds)[0] ?? 'page')),
+  );
+  /** The language this item is written in. */
+  const locale =
+    loaded?.locale ??
+    (fresh.locale !== null && site.locales.includes(fresh.locale)
+      ? fresh.locale
+      : site.defaultLocale);
+  /** The group a new translation joins; a stored item already has its own. */
+  const group = loaded?.translationGroup ?? fresh.group;
+  const [slug, setSlug] = useState(loaded?.slug ?? '');
+  const [assets, setAssets] = useState<Record<string, string>>(
+    loaded === null ? {} : { ...loaded.assets },
+  );
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [preview, setPreview] = useState('');
   const [missing, setMissing] = useState<readonly string[]>([]);
-  const [plugins, setPlugins] = useState<readonly PluginInfo[]>([]);
   const [picker, setPicker] = useState<{
     kind: 'image' | 'file';
     resolve: (path: string | null) => void;
   } | null>(null);
 
-  // --- load -----------------------------------------------------------
-  useEffect(() => {
-    void (async () => {
-      if (isNew) {
-        const firstKind = Object.keys(site?.kinds ?? { page: {} })[0] ?? 'page';
-        setKind(firstKind);
-        setMarkdown('---\ntitle: Untitled\n---\n\n');
-        return;
-      }
-      try {
-        const item = await api<LoadedContent>(`/content/${id}`);
-        setLoaded(item);
-        setMarkdown(item.markdown);
-        setKind(item.kind);
-        setSlug(item.slug);
-        setAssets(item.assets);
-        activeLocale.value = item.locale;
-      } catch (caught) {
-        notice.value =
-          caught instanceof ApiError ? caught.message : 'Could not load.';
-      }
-    })();
-  }, [id, isNew]);
-
-  // The plugins, for the panels they attach to this kind of content. Loaded
-  // once the item exists: an attached record needs an item to belong to.
-  const loadedId = loaded?.id;
-  useEffect(() => {
-    if (loadedId === undefined) {
-      return;
-    }
-    let cancelled = false;
-    void api<{ plugins: PluginInfo[] }>('/plugins').then(
-      (result) => {
-        if (!cancelled) {
-          setPlugins(result.plugins);
-        }
-      },
-      // The editor works without them; the panels are simply not shown.
-      () => undefined,
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [loadedId]);
+  // The plugins, for the panels they attach to this kind of content. Asked
+  // for once the item exists: an attached record needs an item to belong
+  // to. The editor works without them; the panels are simply not shown.
+  const plugins =
+    useQuery({ ...pluginsQuery, enabled: loaded !== null }).data?.plugins ?? [];
 
   // Media rows for whatever the item references, so the preview can resolve
-  // relative paths exactly as the server does.
-  useEffect(() => {
-    const hashes = [...new Set(Object.values(assets))];
-    if (hashes.length === 0) {
-      setMedia({});
-      return;
-    }
-    void (async () => {
-      const rows = await Promise.all(
-        hashes.map((sha) => api<MediaItem>(`/media/${sha}`).catch(() => null)),
-      );
+  // relative paths exactly as the server does. One that cannot be loaded is
+  // left out, and the preview marks its path missing.
+  const hashes = [...new Set(Object.values(assets))].sort();
+  const media = useQueries({
+    queries: hashes.map((sha) => ({
+      queryKey: [...keys.media, 'item', sha],
+      queryFn: () => api<MediaItem>(`/media/${sha}`),
+    })),
+    combine: (results) => {
       const map: Record<string, MediaItem> = {};
-      for (const row of rows) {
-        if (row !== null) {
-          map[row.sha256] = row;
+      for (const result of results) {
+        if (result.data !== undefined) {
+          map[result.data.sha256] = result.data;
         }
       }
-      setMedia(map);
-    })();
-  }, [assets]);
+      return map;
+    },
+  });
 
   // --- front matter <-> form ------------------------------------------
   const parsed = useMemo(() => splitFrontmatter(markdown), [markdown]);
   const frontmatter = parsed.data;
+  // The form is a view of the front matter, as the Markdown pane is of the
+  // whole document: `values` resets it whenever the text changes underneath
+  // it, and every field edit is written back into the text by `setField`.
+  // Whether the item is unsaved is the text's question, not the form's.
+  const fieldsForm = useForm<FieldValues>({ values: frontmatter });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: active is read below (active?.kinds[...]).
   const specs = useMemo(() => {
-    const declared = active?.kinds[kind]?.fields ?? {};
+    const declared = active.kinds[kind]?.fields ?? {};
     // The always-present fields come first, then whatever the theme declares
     // for this kind (docs/THEME_FORMAT.md §5.2).
     return [
@@ -188,11 +232,8 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
 
   // --- preview ---------------------------------------------------------
   const previewTimer = useRef<number>(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: site and active are read on the next line and both start out null.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `media` is a new object whenever any of its queries settles; its rows are what matter.
   useEffect(() => {
-    if (site === null || active === null) {
-      return;
-    }
     window.clearTimeout(previewTimer.current);
     previewTimer.current = window.setTimeout(() => {
       void (async () => {
@@ -202,7 +243,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
             settings: site,
             markdown,
             kind,
-            locale: activeLocale.value,
+            locale,
             slug: slug === '' ? 'preview' : slug,
             path: loaded?.path ?? '/preview',
             assets,
@@ -220,7 +261,17 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
       })();
     }, PREVIEW_DEBOUNCE_MS);
     return () => window.clearTimeout(previewTimer.current);
-  }, [markdown, kind, slug, assets, media, site, active, loaded?.path]);
+  }, [
+    markdown,
+    kind,
+    slug,
+    assets,
+    JSON.stringify(Object.keys(media)),
+    site,
+    active,
+    locale,
+    loaded?.path,
+  ]);
 
   // Leaving with unsaved work must be deliberate (docs/ADMIN.md §13).
   useEffect(() => {
@@ -232,10 +283,6 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
     window.addEventListener('beforeunload', guard);
     return () => window.removeEventListener('beforeunload', guard);
   }, [dirty]);
-
-  if (site === null || active === null) {
-    return <p>Loading…</p>;
-  }
 
   const pickMedia = (mediaKind: 'image' | 'file'): Promise<string | null> =>
     new Promise((resolve) => setPicker({ kind: mediaKind, resolve }));
@@ -249,7 +296,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
       setSlug(canonical.slug);
     }
     if (!canonical.usable) {
-      notice.value = canonical.notice;
+      notify(canonical.notice);
       return;
     }
 
@@ -265,12 +312,12 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
         body: {
           ...(loaded === null ? {} : { id: loaded.id }),
           kind,
-          locale: activeLocale.value,
+          locale,
           // `canonical`, not `slug`: `setSlug` above has not landed yet.
           ...(canonical.slug === '' ? {} : { slug: canonical.slug }),
-          ...(loaded === null
+          ...(group === null || group === ''
             ? {}
-            : { translationGroup: loaded.translationGroup }),
+            : { translationGroup: group }),
           markdown,
           assets,
           status,
@@ -278,17 +325,18 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
       });
       setDirty(false);
       setSaved(true);
+      // Every list it appears in, and its own record, are out of date.
+      void client.invalidateQueries({ queryKey: keys.content });
       // The save still succeeded — this is the server saying it skipped
       // rendering and stored a draft instead, not a failure to report as one.
       if (result.warning !== undefined) {
-        notice.value = result.warning;
+        notify(result.warning);
       }
       if (loaded === null) {
-        navigate(`/content/${result.id}`, true);
+        navigate(`/content/${result.id}`, { replace: true });
       }
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
     } finally {
       setBusy(false);
     }
@@ -299,7 +347,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
     loaded?.path ??
     buildPublicPath({
       kind,
-      locale: activeLocale.value,
+      locale,
       defaultLocale: site.defaultLocale,
       prefixDefaultLocale: site.prefixDefaultLocale,
       slug: slug === '' ? 'preview' : slug,
@@ -320,14 +368,25 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
 
   return (
     <>
-      <div className="editor">
-        <div className="editor-bar">
-          <button type="button" className="ghost" onClick={() => navigate('/')}>
+      <div className="flex flex-col overflow-hidden rounded-xl border bg-card lg:h-[calc(100svh-8rem)] lg:min-h-[36rem]">
+        <div className="flex flex-wrap items-end gap-3 border-b bg-muted/40 p-3">
+          <Button
+            type="button"
+            variant="ghost"
+            // Back to the list in this item's language, as it was left.
+            onClick={() =>
+              navigate(
+                locale === site.defaultLocale ? '/' : `/?locale=${locale}`,
+              )
+            }
+          >
             ← All content
-          </button>
-          <label className="filter">
-            <span>Type</span>
-            <select
+          </Button>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="editor-kind">Type</FieldLabel>
+            <NativeSelect
+              id="editor-kind"
+              className="min-w-32"
               value={kind}
               disabled={loaded !== null}
               onChange={(event) => {
@@ -336,15 +395,17 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
               }}
             >
               {kinds.map((entry) => (
-                <option key={entry} value={entry}>
+                <NativeSelectOption key={entry} value={entry}>
                   {active.kinds[entry]?.label ?? entry}
-                </option>
+                </NativeSelectOption>
               ))}
-            </select>
-          </label>
-          <label className="filter">
-            <span>Slug</span>
-            <input
+            </NativeSelect>
+          </Field>
+          <Field className="w-auto">
+            <FieldLabel htmlFor="editor-slug">Slug</FieldLabel>
+            <Input
+              id="editor-slug"
+              className="min-w-40"
               value={slug}
               placeholder="derived from the title"
               onInput={(event) => {
@@ -359,43 +420,39 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
                   return;
                 }
                 setSlug(result.slug);
-                notice.value = result.notice;
+                notify(result.notice);
               }}
             />
-          </label>
-          <span className="grow" />
-          {attached.map(({ plugin, panel }) => (
-            <a
-              className="pill"
-              href="#attached-panels"
-              key={`${plugin.id}/${panel.id}`}
+          </Field>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {attached.map(({ plugin, panel }) => (
+              <Badge variant="outline" asChild key={`${plugin.id}/${panel.id}`}>
+                <a href="#attached-panels">{panel.label} ↓</a>
+              </Badge>
+            ))}
+            {missing.length === 0 ? null : (
+              <StatusBadge tone="warn" title={missing.join(', ')}>
+                {missing.length} image{missing.length === 1 ? '' : 's'} missing
+              </StatusBadge>
+            )}
+            {dirty ? <StatusBadge tone="neutral">Unsaved</StatusBadge> : null}
+            {saved && !dirty ? <SavedNote /> : null}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void save('draft')}
             >
-              {panel.label} ↓
-            </a>
-          ))}
-          {missing.length === 0 ? null : (
-            <span className="pill warn" title={missing.join(', ')}>
-              {missing.length} image{missing.length === 1 ? '' : 's'} missing
-            </span>
-          )}
-          {dirty ? <span className="pill">Unsaved</span> : null}
-          {saved && !dirty ? <SavedNote /> : null}
-          <button
-            type="button"
-            className="ghost"
-            disabled={busy}
-            onClick={() => void save('draft')}
-          >
-            Save draft
-          </button>
-          <button
-            type="button"
-            className="primary"
-            disabled={busy}
-            onClick={() => void save('published')}
-          >
-            {busy ? 'Saving…' : 'Publish'}
-          </button>
+              Save draft
+            </Button>
+            <Button
+              type="button"
+              disabled={busy}
+              onClick={() => void save('published')}
+            >
+              {busy ? 'Saving…' : 'Publish'}
+            </Button>
+          </div>
         </div>
 
         {loaded === null ? null : (
@@ -407,13 +464,18 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
           />
         )}
 
-        <div className="editor-panes">
-          <aside className="pane pane-fields">
+        <section
+          className="grid min-h-0 flex-1 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)_minmax(0,1fr)]"
+          aria-label="Fields, Markdown and preview"
+        >
+          <aside className="min-h-0 min-w-0 overflow-auto border-b bg-muted/20 p-4 lg:border-r lg:border-b-0">
             <SchemaForm
               specs={specs}
-              values={frontmatter}
+              control={fieldsForm.control}
               idPrefix="fm"
-              onChange={setField}
+              // The Worker checks front matter on save; the form only shows it.
+              validateHere={false}
+              onFieldChange={setField}
               pickMedia={pickMedia}
               previewUrl={(path) => {
                 const sha = assets[path];
@@ -421,7 +483,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
               }}
             />
           </aside>
-          <section className="pane pane-source">
+          <section className="flex min-h-96 min-w-0 overflow-hidden border-b lg:min-h-0 lg:border-r lg:border-b-0">
             <MarkdownEditor
               value={markdown}
               missing={missing}
@@ -431,7 +493,7 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
               }}
             />
           </section>
-          <section className="pane pane-preview">
+          <section className="flex min-h-96 min-w-0 flex-col bg-muted lg:min-h-0">
             {/*
             `allow-same-origin` **without** `allow-scripts` is the safe
             combination: the frame can load the theme's stylesheet (a fully
@@ -443,15 +505,17 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
           */}
             <iframe
               title="Preview"
-              className="preview-frame"
+              // A theme's page is designed on white; the frame keeps it so in
+              // the admin's dark scheme too.
+              className="w-full flex-1 border-0 bg-white"
               sandbox="allow-same-origin"
               srcDoc={preview}
             />
-            <p className="help preview-note">
+            <p className="border-t px-3 py-1.5 text-xs text-muted-foreground">
               Rendered by the same code the site runs — {previewPath}
             </p>
           </section>
-        </div>
+        </section>
 
         {picker === null ? null : (
           <MediaPicker
@@ -473,13 +537,13 @@ export function EditorPage({ id }: { readonly id: string }): JSX.Element {
         written. The bar above links down to these.
       */}
       {loaded === null || attached.length === 0 ? null : (
-        <div className="attached-panels" id="attached-panels">
+        <div className="mt-6 flex flex-col gap-4" id="attached-panels">
           {attached.map(({ plugin, panel }) => (
             <section
-              className="card attached-panel"
+              className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground"
               key={`${plugin.id}/${panel.id}`}
             >
-              <p className="help">
+              <p className="text-sm text-muted-foreground">
                 From the {plugin.name} plugin. Shared by every language of this
                 item, and saved on its own — not with Publish.
               </p>
@@ -507,36 +571,42 @@ function TranslationBar(props: {
   readonly group: string;
   readonly kind: string;
 }): JSX.Element | null {
+  const navigate = useNavigate();
   if (props.translations.length < 2) {
     return null;
   }
   return (
-    <nav className="translations" aria-label="Translations">
+    <nav
+      className="flex flex-wrap items-center gap-2 border-b px-3 py-2"
+      aria-label="Translations"
+    >
       {props.translations.map((slot) => {
         if (slot.locale === props.current) {
           return (
-            <span key={slot.locale} className="pill ok">
+            <StatusBadge key={slot.locale} tone="ok">
               {slot.locale}
-            </span>
+            </StatusBadge>
           );
         }
         if (slot.exists && slot.id !== undefined) {
           return (
-            <button
+            <Button
               key={slot.locale}
               type="button"
-              className="ghost"
+              variant="outline"
+              size="sm"
               onClick={() => navigate(`/content/${slot.id}`)}
             >
               {slot.locale}
-            </button>
+            </Button>
           );
         }
         return (
-          <button
+          <Button
             key={slot.locale}
             type="button"
-            className="ghost"
+            variant="outline"
+            size="sm"
             onClick={() =>
               navigate(
                 `/content/new?locale=${slot.locale}&group=${props.group}&kind=${props.kind}`,
@@ -544,7 +614,7 @@ function TranslationBar(props: {
             }
           >
             Create {slot.locale}
-          </button>
+          </Button>
         );
       })}
     </nav>

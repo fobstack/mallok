@@ -12,14 +12,22 @@ import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 
 const APP_DIR = 'dist/assets/_mallok/app';
-/** First-load budget in bytes, gzipped. */
-const BUDGET = 150 * 1024;
+/**
+ * First-load budget in bytes, gzipped. 170 KiB since 2026-11-03, from 150:
+ * React Router and TanStack Query, the admin stack's decision, measured at
+ * 161.6 KiB with them in (docs/ADMIN_MIGRATION.md, D7).
+ */
+const BUDGET = 170 * 1024;
 
 const html = await readFile(join(APP_DIR, 'index.html'), 'utf8');
+// Every script and stylesheet the page asks for before it runs: the entry,
+// its CSS, and the shared chunks Vite splits out and lists as
+// `<link rel="modulepreload">`. Those are downloaded with the first load as
+// surely as the entry is; counting only `<script src>` would let a split move
+// bytes out of the number without moving them out of the download.
 const referenced = [
-  ...[...html.matchAll(/src="([^"]+\.js)"/g)].map((match) => match[1]),
-  ...[...html.matchAll(/href="([^"]+\.css)"/g)].map((match) => match[1]),
-].map((href) => href.replace('/_mallok/app/', ''));
+  ...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g),
+].map((match) => (match[1] ?? '').replace('/_mallok/app/', ''));
 
 let firstLoad = 0;
 const rows = [];

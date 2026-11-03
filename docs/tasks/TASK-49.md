@@ -81,7 +81,7 @@ From an independent review, 2026-10-31:
 
 `test/worker/locale-prefix.test.ts`, the two golden tests, `test/core/
 paths.test.ts`, `test/core/view.test.ts`, `test/core/themes.test.ts`, and the
-browser test `test/e2e/16-locale-prefix.spec.ts`, which switches the setting
+browser test `test/e2e/18-locale-prefix.spec.ts`, which switches the setting
 in the admin and waits for the root to redirect (60 seconds at most there:
 the browser tests' site has no purge token). Every fix in §4 was red-green
 checked by reverting it.

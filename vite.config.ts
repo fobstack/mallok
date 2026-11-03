@@ -1,8 +1,7 @@
 import { fileURLToPath } from 'node:url';
-import { transformAsync } from '@babel/core';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig } from 'vite';
 
 /**
  * The admin single-page app.
@@ -11,67 +10,8 @@ import { defineConfig, type Plugin } from 'vite';
  * serves directly — the bundle never enters the Worker script, so the admin's
  * size cannot eat into the rendering pipeline's 3 MB budget
  * (docs/TECH_STACK.md §6).
- *
- * State stays on `@preact/signals-react` (module-level `signal()`/`computed()`
- * values read as `.value`) rather than Context or a store library — the admin
- * has a handful of globals and everything else is page-local, so a store
- * would be more machinery than the app has state. The Babel transform below
- * is what makes a bare `.value` read inside JSX subscribe automatically,
- * matching how the Preact build already used signals.
  */
 
-/**
- * Applies `@preact/signals-react-transform`.
- *
- * It used to be passed to `@vitejs/plugin-react` as `babel.plugins`. That
- * plugin is **oxc-only** since v6 and ignores the option without a warning,
- * so the transform silently stopped running: every component still compiled,
- * and none of them subscribed to a signal any more. The admin shipped stuck
- * on "Loading…" — the sign-in screen never replaced it, because the signal
- * that says "the session is known" no longer re-rendered anything. Found by
- * the end-to-end run, invisible to every unit test.
- *
- * The build now **fails** if no component came out subscribed, so this cannot
- * come undone quietly a second time. Checking the bundle instead would not
- * work: minification renames the import.
- */
-function signalsTransform(): Plugin {
-  let subscribed = 0;
-  return {
-    name: 'mallok:signals-transform',
-    enforce: 'pre',
-    async transform(code, id) {
-      if (!/\.tsx$/.test(id) || id.includes('node_modules')) {
-        return null;
-      }
-      const result = await transformAsync(code, {
-        filename: id,
-        babelrc: false,
-        configFile: false,
-        sourceMaps: true,
-        parserOpts: { plugins: ['typescript', 'jsx'] },
-        plugins: ['module:@preact/signals-react-transform'],
-      });
-      if (result?.code === undefined || result.code === null) {
-        return null;
-      }
-      if (result.code.includes('useSignals')) {
-        subscribed++;
-      }
-      return { code: result.code, map: result.map };
-    },
-    buildEnd() {
-      if (subscribed === 0) {
-        this.error(
-          'The signals transform produced no subscriptions. Every component ' +
-            'would render once and never update again — that is the bug that ' +
-            'shipped an admin stuck on "Loading…". Check that ' +
-            '@preact/signals-react-transform still applies.',
-        );
-      }
-    },
-  };
-}
 export default defineConfig(({ command }) => {
   if (command === 'build') {
     // Vite computes `isProduction` after loading this file and explicitly
@@ -83,7 +23,7 @@ export default defineConfig(({ command }) => {
   return {
     root: 'src/admin',
     base: '/_mallok/app/',
-    plugins: [signalsTransform(), react(), tailwindcss()],
+    plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         // shadcn/ui's own import convention (`@/components/ui/button`).

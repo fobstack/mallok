@@ -219,6 +219,15 @@ export interface Health {
    * rather than claiming the edit is live (docs/ADMIN.md §5).
    */
   readonly purgeConfigured: boolean;
+  /** The last purge Cloudflare did not carry out, until the site is purged. */
+  readonly lastPurgeFailure: {
+    readonly at: string;
+    readonly source: string;
+    readonly status?: number;
+    readonly detail: string;
+    /** What to check, from the status Cloudflare answered with. */
+    readonly advice: string;
+  } | null;
   readonly customDomain: string | null;
   readonly mediaBaseUrl: string | null;
 }

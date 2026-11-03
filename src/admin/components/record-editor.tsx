@@ -12,12 +12,44 @@
  * only the plugin can produce, such as "this code is already taken".
  */
 
-import type { JSX } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import type { FormEventHandler, JSX, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
+import {
+  type Control,
+  Controller,
+  type FieldValues,
+  get,
+  useFieldArray,
+  useForm,
+  useFormState,
+} from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { ApiError, api } from '../api.js';
-import { SchemaForm } from '../form/form.js';
+import { SchemaForm, showServerErrors } from '../form/form.js';
 import type { FieldSpec } from '../form/types.js';
-import { notice } from '../state.js';
+import { messageOf, notify } from '../notice.js';
+import { panelKey } from '../queries.js';
 import type {
   PluginPanel,
   RecordRowsField,
@@ -123,20 +155,24 @@ function MoneyField({
   };
   const label = labelOf(name, field);
   return (
-    <div className={`field${error === undefined ? '' : ' has-error'}`}>
-      <label htmlFor={id}>
+    <Field data-invalid={error === undefined ? undefined : true}>
+      <FieldLabel htmlFor={id}>
         {label}
         {field.required ? (
-          <span className="req" aria-hidden="true">
+          <span className="text-destructive" aria-hidden="true">
             *
           </span>
         ) : null}
-      </label>
-      <div className="control money-control">
-        <input
+      </FieldLabel>
+      <div className="flex gap-2">
+        <Input
           id={id}
           type="text"
           inputMode="decimal"
+          className="max-w-48 min-w-0"
+          {...(error === undefined
+            ? {}
+            : { 'aria-invalid': true, 'aria-describedby': `${id}-error` })}
           value={text}
           placeholder={fromMinor(0, currency)}
           onInput={(event) => {
@@ -144,53 +180,59 @@ function MoneyField({
             emit(event.currentTarget.value, currency);
           }}
         />
-        <select
+        <NativeSelect
+          className="shrink-0"
           aria-label={`${label}: currency`}
           value={currency}
           onChange={(event) => emit(text, event.currentTarget.value)}
         >
           {currencies.map((code) => (
-            <option key={code} value={code}>
+            <NativeSelectOption key={code} value={code}>
               {code}
-            </option>
+            </NativeSelectOption>
           ))}
-        </select>
+        </NativeSelect>
       </div>
-      {field.help === undefined ? null : <p className="help">{field.help}</p>}
-      {error === undefined ? null : (
-        <p className="error" role="alert">
-          {error}
-        </p>
+      {field.help === undefined ? null : (
+        <FieldDescription>{field.help}</FieldDescription>
       )}
-    </div>
+      {error === undefined ? null : (
+        <FieldError id={`${id}-error`}>{error}</FieldError>
+      )}
+    </Field>
   );
 }
 
 /** One scalar field: `money` here, everything else through the generator. */
 function ScalarField({
+  control,
   idPrefix,
+  namePrefix,
   name,
   field,
-  value,
-  error,
-  onChange,
 }: {
+  readonly control: Control<FieldValues>;
   readonly idPrefix: string;
+  /** Where the field sits in the form's values: `variants.0.` in a row. */
+  readonly namePrefix: string;
   readonly name: string;
   readonly field: RecordScalarField;
-  readonly value: unknown;
-  readonly error: string | undefined;
-  readonly onChange: (value: unknown) => void;
 }): JSX.Element {
   if (field.type === 'money') {
     return (
-      <MoneyField
-        id={`${idPrefix}-${name}`}
-        name={name}
-        field={field}
-        value={value}
-        error={error}
-        onChange={onChange}
+      <Controller
+        control={control}
+        name={`${namePrefix}${name}`}
+        render={({ field: bound, fieldState }) => (
+          <MoneyField
+            id={`${idPrefix}-${name}`}
+            name={name}
+            field={field}
+            value={bound.value}
+            error={fieldState.error?.message}
+            onChange={bound.onChange}
+          />
+        )}
       />
     );
   }
@@ -198,105 +240,154 @@ function ScalarField({
   return (
     <SchemaForm
       specs={[spec]}
-      values={{ [name]: value ?? undefined }}
-      errors={error === undefined ? {} : { [name]: error }}
+      control={control}
       idPrefix={idPrefix}
-      onChange={(_name, next) => onChange(next)}
+      namePrefix={namePrefix}
+      // The Worker is this form's one validator (see the top of this file).
+      validateHere={false}
     />
   );
 }
 
 function RowsField({
+  control,
   idPrefix,
   name,
   field,
-  value,
-  errors,
-  onChange,
 }: {
+  readonly control: Control<FieldValues>;
   readonly idPrefix: string;
   readonly name: string;
   readonly field: RecordRowsField;
-  readonly value: unknown;
-  readonly errors: Readonly<Record<string, string>>;
-  readonly onChange: (value: unknown) => void;
 }): JSX.Element {
-  const rows = Array.isArray(value) ? (value as Values[]) : [];
-  // Rows have no id of their own, so each gets a key for as long as the
-  // form is open: without one, removing the first row would leave its
-  // typed-in amount showing on the second.
-  const [keys, setKeys] = useState<readonly string[]>(() =>
-    rows.map(() => crypto.randomUUID()),
-  );
+  // Each row keeps its own id for as long as the form is open: without one,
+  // removing the first row would leave its typed-in amount showing on the
+  // second.
+  const { fields: rows, append, remove } = useFieldArray({ control, name });
+  const { errors } = useFormState({ control, name });
+  const fault = get(errors, name) as { message?: unknown } | undefined;
+  const message = typeof fault?.message === 'string' ? fault.message : '';
   const limit = field.max ?? ROWS_MAX;
   const label = labelOf(name, field);
   return (
-    <fieldset className="rows-field">
-      <legend>
+    <FieldSet className="gap-3">
+      <FieldLegend variant="label">
         {label}
         {field.required ? (
-          <span className="req" aria-hidden="true">
+          <span className="text-destructive" aria-hidden="true">
+            {' '}
             *
           </span>
         ) : null}
-      </legend>
-      {field.help === undefined ? null : <p className="help">{field.help}</p>}
-      {errors[name] === undefined ? null : (
-        <p className="error" role="alert">
-          {errors[name]}
+      </FieldLegend>
+      {field.help === undefined ? null : (
+        <FieldDescription>{field.help}</FieldDescription>
+      )}
+      {message === '' ? null : (
+        <p className="text-sm text-destructive" role="alert">
+          {message}
         </p>
       )}
-      {rows.length === 0 ? <p className="empty">No rows yet.</p> : null}
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No rows yet.</p>
+      ) : null}
       {rows.map((row, index) => (
         <fieldset
-          className="rows-field-row"
-          key={keys[index] ?? index}
+          className="flex flex-col gap-3 rounded-lg border p-3"
+          key={row.id}
           aria-label={`${label} ${index + 1}`}
         >
           {Object.entries(field.fields).map(([subName, subField]) => (
             <ScalarField
               key={subName}
-              idPrefix={`${idPrefix}-${name}-${keys[index] ?? index}`}
+              control={control}
+              idPrefix={`${idPrefix}-${name}-${row.id}`}
+              namePrefix={`${name}.${index}.`}
               name={subName}
               field={subField}
-              value={row[subName]}
-              error={errors[`${name}.${index}.${subName}`]}
-              onChange={(next) =>
-                onChange(
-                  rows.map((existing, at) =>
-                    at === index ? { ...existing, [subName]: next } : existing,
-                  ),
-                )
-              }
             />
           ))}
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => {
-              setKeys(keys.filter((_key, at) => at !== index));
-              onChange(rows.filter((_row, at) => at !== index));
-            }}
-          >
-            Remove {label.toLowerCase()} {index + 1}
-          </button>
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => remove(index)}
+            >
+              Remove {label.toLowerCase()} {index + 1}
+            </Button>
+          </div>
         </fieldset>
       ))}
-      <button
-        type="button"
-        className="ghost"
-        disabled={rows.length >= limit}
-        onClick={() => {
-          setKeys([...keys, crypto.randomUUID()]);
-          onChange([...rows, {}]);
-        }}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={rows.length >= limit}
+          onClick={() => append({})}
+        >
+          Add a row
+        </Button>
+        {rows.length >= limit ? (
+          <p className="text-sm text-muted-foreground">At most {limit} rows.</p>
+        ) : null}
+      </div>
+    </FieldSet>
+  );
+}
+
+/**
+ * A form in a sheet from the right: the record editor and an action's
+ * parameters. Escape and the close button close it; a click outside does
+ * not, as with the native `<dialog>` it replaced — a stray click must not
+ * throw away what was typed.
+ */
+function FormSheet({
+  title,
+  onClose,
+  onSubmit,
+  children,
+  footer,
+}: {
+  readonly title: string;
+  readonly onClose: () => void;
+  readonly onSubmit?: FormEventHandler<HTMLFormElement>;
+  readonly children: ReactNode;
+  readonly footer?: ReactNode;
+}): JSX.Element {
+  return (
+    <Sheet
+      open
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose();
+        }
+      }}
+    >
+      <SheetContent
+        className="w-full gap-0 data-[side=right]:sm:max-w-xl"
+        aria-describedby={undefined}
+        onInteractOutside={(event) => event.preventDefault()}
       >
-        Add a row
-      </button>
-      {rows.length >= limit ? (
-        <p className="help">At most {limit} rows.</p>
-      ) : null}
-    </fieldset>
+        <SheetHeader className="border-b pr-12">
+          <SheetTitle>{title}</SheetTitle>
+        </SheetHeader>
+        {onSubmit === undefined ? (
+          <div className="flex-1 overflow-y-auto p-4">{children}</div>
+        ) : (
+          <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
+            <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-4">
+              {children}
+            </div>
+            {footer === undefined ? null : (
+              <SheetFooter className="mt-0 flex-row flex-wrap items-center border-t">
+                {footer}
+              </SheetFooter>
+            )}
+          </form>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -318,7 +409,21 @@ export function RecordEditor({
 }): JSX.Element {
   const fields = panel.fields ?? {};
   const base = `/plugins/${pluginId}/panels/${panel.id}/records`;
-  const [values, setValues] = useState<Values | null>(() =>
+  const stored = useQuery({
+    queryKey: panelKey(pluginId, panel.id, 'record', recordId ?? ''),
+    queryFn: () =>
+      api<{ values: Values }>(`${base}/${encodeURIComponent(recordId ?? '')}`),
+    enabled: recordId !== null,
+    // Opened to be edited: always as stored now, never as last seen.
+    gcTime: 0,
+  });
+  useEffect(() => {
+    if (stored.error !== null) {
+      notify(messageOf(stored.error, 'Could not load the record.'));
+      onClose(false);
+    }
+  }, [stored.error, onClose]);
+  const values: Values | null =
     recordId === null
       ? Object.fromEntries(
           Object.entries(fields)
@@ -331,47 +436,56 @@ export function RecordEditor({
               (field as RecordScalarField).default,
             ]),
         )
-      : null,
-  );
-  const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
-  const [failure, setFailure] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+      : (stored.data?.values ?? null);
 
-  useEffect(() => {
-    if (recordId === null) {
-      return;
-    }
-    let cancelled = false;
-    void api<{ values: Values }>(
-      `${base}/${encodeURIComponent(recordId)}`,
-    ).then(
-      (loaded) => {
-        if (!cancelled) {
-          setValues(loaded.values);
-        }
-      },
-      (caught: unknown) => {
-        if (!cancelled) {
-          notice.value =
-            caught instanceof ApiError
-              ? caught.message
-              : 'Could not load the record.';
-          onClose(false);
-        }
-      },
+  const title = `${recordId === null ? 'New' : 'Edit'}: ${panel.label}`;
+  if (values === null) {
+    return (
+      <FormSheet title={title} onClose={() => onClose(false)}>
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </FormSheet>
     );
-    return () => {
-      cancelled = true;
-    };
-  }, [base, recordId, onClose]);
+  }
+  return (
+    <RecordForm
+      pluginId={pluginId}
+      panel={panel}
+      recordId={recordId}
+      initial={values}
+      title={title}
+      onClose={onClose}
+      {...(attachedTo === undefined ? {} : { attachedTo })}
+    />
+  );
+}
 
-  const save = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    if (values === null) {
-      return;
-    }
-    setBusy(true);
+/** The record's form, once its stored values are in hand. */
+function RecordForm({
+  pluginId,
+  panel,
+  recordId,
+  initial,
+  title,
+  onClose,
+  attachedTo,
+}: {
+  readonly pluginId: string;
+  readonly panel: PluginPanel;
+  readonly recordId: string | null;
+  readonly initial: Values;
+  readonly title: string;
+  readonly onClose: (changed: boolean) => void;
+  readonly attachedTo?: string;
+}): JSX.Element {
+  const fields = panel.fields ?? {};
+  const base = `/plugins/${pluginId}/panels/${panel.id}/records`;
+  const form = useForm<FieldValues>({ defaultValues: initial });
+  const [failure, setFailure] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const busy = form.formState.isSubmitting || deleting;
+
+  const save = form.handleSubmit(async (values) => {
     setFailure('');
     try {
       await api(
@@ -383,21 +497,18 @@ export function RecordEditor({
       );
       onClose(true);
     } catch (caught) {
-      const fieldErrors = caught instanceof ApiError ? caught.fields : {};
-      setErrors(fieldErrors);
+      showServerErrors(form.setError, caught);
       setFailure(
         caught instanceof ApiError ? caught.message : 'Could not save.',
       );
-    } finally {
-      setBusy(false);
     }
-  };
+  });
 
   const remove = async (): Promise<void> => {
     if (recordId === null) {
       return;
     }
-    setBusy(true);
+    setDeleting(true);
     try {
       await api(`${base}/${encodeURIComponent(recordId)}`, {
         method: 'DELETE',
@@ -407,104 +518,80 @@ export function RecordEditor({
       setFailure(
         caught instanceof ApiError ? caught.message : 'Could not delete.',
       );
-      setBusy(false);
+      setDeleting(false);
     }
   };
 
   const idPrefix = `record-${pluginId}-${panel.id}`;
-  const title = `${recordId === null ? 'New' : 'Edit'}: ${panel.label}`;
   return (
-    <dialog
-      className="modal record-editor"
-      aria-label={title}
-      ref={(element) => {
-        if (element !== null && !element.open) {
-          element.showModal();
-        }
-      }}
+    <FormSheet
+      title={title}
       onClose={() => onClose(false)}
-      onCancel={() => onClose(false)}
-    >
-      <header className="modal-head">
-        <h2>{title}</h2>
-        <button type="button" className="ghost" onClick={() => onClose(false)}>
-          Close
-        </button>
-      </header>
-      {values === null ? (
-        <p>Loading…</p>
-      ) : (
-        <form onSubmit={(event) => void save(event)}>
-          {Object.entries(fields).map(([name, field]) =>
-            field.type === 'rows' ? (
-              <RowsField
-                key={name}
-                idPrefix={idPrefix}
-                name={name}
-                field={field}
-                value={values[name]}
-                errors={errors}
-                onChange={(next) => setValues({ ...values, [name]: next })}
-              />
-            ) : (
-              <ScalarField
-                key={name}
-                idPrefix={idPrefix}
-                name={name}
-                field={field}
-                value={values[name]}
-                error={errors[name]}
-                onChange={(next) => setValues({ ...values, [name]: next })}
-              />
-            ),
-          )}
-          {recordId === null ? null : (
-            <RelatedRows
-              pluginId={pluginId}
-              panel={panel}
-              parentId={recordId}
-            />
-          )}
-          {failure === '' ? null : (
-            <p className="error" role="alert">
-              {failure}
-            </p>
-          )}
-          <div className="actions">
-            <button type="submit" className="primary" disabled={busy}>
-              {busy ? 'Saving…' : 'Save'}
-            </button>
-            {recordId === null || !panel.canRemove ? null : confirming ? (
-              <>
-                <button
-                  type="button"
-                  className="ghost"
-                  disabled={busy}
-                  onClick={() => void remove()}
-                >
-                  Delete it
-                </button>
-                <button
-                  type="button"
-                  className="ghost"
-                  onClick={() => setConfirming(false)}
-                >
-                  Keep it
-                </button>
-              </>
-            ) : (
-              <button
+      onSubmit={(event) => void save(event)}
+      footer={
+        <>
+          <Button type="submit" disabled={busy}>
+            {busy ? 'Saving…' : 'Save'}
+          </Button>
+          {recordId === null || !panel.canRemove ? null : confirming ? (
+            <>
+              <Button
                 type="button"
-                className="ghost"
-                onClick={() => setConfirming(true)}
+                variant="destructive"
+                disabled={busy}
+                onClick={() => void remove()}
               >
-                Delete…
-              </button>
-            )}
-          </div>
-        </form>
+                Delete it
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirming(false)}
+              >
+                Keep it
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(true)}
+            >
+              Delete…
+            </Button>
+          )}
+        </>
+      }
+    >
+      {Object.entries(fields).map(([name, field]) =>
+        field.type === 'rows' ? (
+          <RowsField
+            key={name}
+            control={form.control}
+            idPrefix={idPrefix}
+            name={name}
+            field={field}
+          />
+        ) : (
+          <ScalarField
+            key={name}
+            control={form.control}
+            idPrefix={idPrefix}
+            namePrefix=""
+            name={name}
+            field={field}
+          />
+        ),
       )}
-    </dialog>
+      {recordId === null ? null : (
+        <RelatedRows pluginId={pluginId} panel={panel} parentId={recordId} />
+      )}
+      {failure === '' ? null : (
+        <p className="text-sm text-destructive" role="alert">
+          {failure}
+        </p>
+      )}
+    </FormSheet>
   );
 }
 
@@ -528,20 +615,17 @@ export function ActionParamsDialog({
   readonly onClose: (done: boolean) => void;
 }): JSX.Element {
   const fields = action.params ?? {};
-  const [values, setValues] = useState<Values>(() =>
-    Object.fromEntries(
+  const form = useForm<FieldValues>({
+    defaultValues: Object.fromEntries(
       Object.entries(fields)
         .filter(([, field]) => field.default !== undefined)
         .map(([name, field]) => [name, field.default]),
     ),
-  );
-  const [errors, setErrors] = useState<Readonly<Record<string, string>>>({});
+  });
   const [failure, setFailure] = useState('');
-  const [busy, setBusy] = useState(false);
+  const busy = form.formState.isSubmitting;
 
-  const run = async (event: { preventDefault(): void }): Promise<void> => {
-    event.preventDefault();
-    setBusy(true);
+  const run = form.handleSubmit(async (values) => {
     setFailure('');
     try {
       await api(
@@ -550,59 +634,43 @@ export function ActionParamsDialog({
       );
       onClose(true);
     } catch (caught) {
-      setErrors(caught instanceof ApiError ? caught.fields : {});
+      showServerErrors(form.setError, caught);
       setFailure(
         caught instanceof ApiError ? caught.message : 'The action failed.',
       );
-      setBusy(false);
     }
-  };
+  });
 
   const count = ids.length;
   return (
-    <dialog
-      className="modal record-editor"
-      aria-label={action.label}
-      ref={(element) => {
-        if (element !== null && !element.open) {
-          element.showModal();
-        }
-      }}
+    <FormSheet
+      title={action.label}
       onClose={() => onClose(false)}
-      onCancel={() => onClose(false)}
+      onSubmit={(event) => void run(event)}
+      footer={
+        <Button type="submit" disabled={busy}>
+          {busy ? 'Working…' : action.label}
+        </Button>
+      }
     >
-      <header className="modal-head">
-        <h2>{action.label}</h2>
-        <button type="button" className="ghost" onClick={() => onClose(false)}>
-          Close
-        </button>
-      </header>
-      <form onSubmit={(event) => void run(event)}>
-        <p className="help">
-          Applies to {count} selected row{count === 1 ? '' : 's'}.
+      <p className="text-sm text-muted-foreground">
+        Applies to {count} selected row{count === 1 ? '' : 's'}.
+      </p>
+      {Object.entries(fields).map(([name, field]) => (
+        <ScalarField
+          key={name}
+          control={form.control}
+          idPrefix={`action-${pluginId}-${action.id}`}
+          namePrefix=""
+          name={name}
+          field={field}
+        />
+      ))}
+      {failure === '' ? null : (
+        <p className="text-sm text-destructive" role="alert">
+          {failure}
         </p>
-        {Object.entries(fields).map(([name, field]) => (
-          <ScalarField
-            key={name}
-            idPrefix={`action-${pluginId}-${action.id}`}
-            name={name}
-            field={field}
-            value={values[name]}
-            error={errors[name]}
-            onChange={(next) => setValues({ ...values, [name]: next })}
-          />
-        ))}
-        {failure === '' ? null : (
-          <p className="error" role="alert">
-            {failure}
-          </p>
-        )}
-        <div className="actions">
-          <button type="submit" className="primary" disabled={busy}>
-            {busy ? 'Working…' : action.label}
-          </button>
-        </div>
-      </form>
-    </dialog>
+      )}
+    </FormSheet>
   );
 }

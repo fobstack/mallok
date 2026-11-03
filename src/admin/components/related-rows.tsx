@@ -4,13 +4,35 @@
  * table shares.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
-import { useEffect, useState } from 'react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { ApiError, api } from '../api.js';
+import { panelKey } from '../queries.js';
 import type { PluginPanel } from '../types.js';
+import { StatusBadge } from './page.js';
 
 type Row = Record<string, unknown>;
 type ColumnType = PluginPanel['columns'][number]['type'];
+
+/**
+ * The badge values that carry a colour. A plugin's own values ("active",
+ * "shipped") are shown plain: only these words have a meaning the admin
+ * knows.
+ */
+const BADGE_TONE: Readonly<Record<string, 'ok' | 'warn'>> = {
+  ok: 'ok',
+  published: 'ok',
+  warn: 'warn',
+  scheduled: 'warn',
+};
 
 /** Formats one cell by its declared column type. */
 export function cell(value: unknown, type: ColumnType): JSX.Element | string {
@@ -19,92 +41,104 @@ export function cell(value: unknown, type: ColumnType): JSX.Element | string {
   }
   const text = String(value);
   if (type === 'email') {
-    return <a href={`mailto:${text}`}>{text}</a>;
+    return (
+      <a
+        className="text-primary underline-offset-4 hover:underline"
+        href={`mailto:${text}`}
+      >
+        {text}
+      </a>
+    );
   }
   if (type === 'datetime') {
     return text.slice(0, 16).replace('T', ' ');
   }
   if (type === 'badge') {
-    return <span className={`pill ${text}`}>{text}</span>;
+    return (
+      <StatusBadge tone={BADGE_TONE[text] ?? 'neutral'}>{text}</StatusBadge>
+    );
   }
   return text;
 }
 
 function RelatedTable({
-  base,
+  pluginId,
+  panelId,
   related,
   parentId,
 }: {
-  readonly base: string;
+  readonly pluginId: string;
+  readonly panelId: string;
   readonly related: PluginPanel['related'][number];
   readonly parentId: string;
 }): JSX.Element {
-  const [rows, setRows] = useState<readonly Row[] | null>(null);
-  const [more, setMore] = useState(false);
-  const [failure, setFailure] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    void api<{ rows: Row[]; hasMore: boolean }>(
-      `${base}/related/${related.id}?parent=${encodeURIComponent(parentId)}`,
-    ).then(
-      (result) => {
-        if (!cancelled) {
-          setRows(result.rows);
-          setMore(result.hasMore);
-        }
-      },
-      (caught: unknown) => {
-        if (!cancelled) {
-          setFailure(
-            caught instanceof ApiError ? caught.message : 'Could not load.',
-          );
-        }
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [base, related.id, parentId]);
+  const loaded = useQuery({
+    queryKey: panelKey(pluginId, panelId, 'related', related.id, parentId),
+    queryFn: () =>
+      api<{ rows: Row[]; hasMore: boolean }>(
+        `/plugins/${pluginId}/panels/${panelId}/related/${related.id}?parent=${encodeURIComponent(parentId)}`,
+      ),
+  });
+  const rows = loaded.data?.rows ?? null;
+  const more = loaded.data?.hasMore ?? false;
+  const failure =
+    loaded.error === null
+      ? ''
+      : loaded.error instanceof ApiError
+        ? loaded.error.message
+        : 'Could not load.';
 
   return (
-    <section className="related-rows" aria-label={related.label}>
-      <h3>{related.label}</h3>
+    <section className="flex flex-col gap-2" aria-label={related.label}>
+      <h3 className="font-heading text-sm font-semibold">{related.label}</h3>
       {failure !== '' ? (
-        <p className="error" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {failure}
         </p>
       ) : rows === null ? (
-        <p>Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="empty">None.</p>
+        <p className="text-sm text-muted-foreground">None.</p>
       ) : (
-        <table className="rows-table">
-          <thead>
-            <tr>
-              {related.columns.map((column) => (
-                <th scope="col" key={column.field}>
-                  {column.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => (
-              // Child rows are shown, never addressed: position is their key.
-              // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list that is replaced whole, never reordered.
-              <tr key={index}>
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {related.columns.map((column) => (
-                  <td key={column.field}>
-                    {cell(row[column.field], column.type)}
-                  </td>
+                  <TableHead
+                    scope="col"
+                    key={column.field}
+                    className="first:pl-3 last:pr-3"
+                  >
+                    {column.label}
+                  </TableHead>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row, index) => (
+                // Child rows are shown, never addressed: position is their key.
+                // biome-ignore lint/suspicious/noArrayIndexKey: a read-only list that is replaced whole, never reordered.
+                <TableRow key={index}>
+                  {related.columns.map((column) => (
+                    <TableCell
+                      key={column.field}
+                      className="first:pl-3 last:pr-3"
+                    >
+                      {cell(row[column.field], column.type)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
-      {more ? <p className="help">Only the first rows are shown.</p> : null}
+      {more ? (
+        <p className="text-sm text-muted-foreground">
+          Only the first rows are shown.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -122,13 +156,13 @@ export function RelatedRows({
   if (panel.related.length === 0) {
     return null;
   }
-  const base = `/plugins/${pluginId}/panels/${panel.id}`;
   return (
     <>
       {panel.related.map((related) => (
         <RelatedTable
           key={related.id}
-          base={base}
+          pluginId={pluginId}
+          panelId={panel.id}
           related={related}
           parentId={parentId}
         />

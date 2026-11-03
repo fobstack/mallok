@@ -8,35 +8,53 @@
  * boundary intact while still letting a plugin have a real interface.
  */
 
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import type { JSX } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Field, FieldLabel } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { ApiError, api, csrf } from '../api.js';
-import { notice } from '../state.js';
+import { notify, useReportError } from '../notice.js';
+import { panelKey } from '../queries.js';
 import type { PluginPanel } from '../types.js';
-import { lazyRoute } from './lazy.js';
+import { Facts } from './page.js';
 import { cell, RelatedRows } from './related-rows.js';
 
 /**
  * The form arrives with the first record that is opened, not with the list:
- * most visits to a panel only read it.
+ * most visits to a panel only read it. The action form shares its code, and
+ * its chunk.
  */
-const RecordEditor = lazyRoute<{
-  pluginId: string;
-  panel: PluginPanel;
-  recordId: string | null;
-  onClose: (changed: boolean) => void;
-  attachedTo?: string;
-}>(() => import('./record-editor.js').then((module) => module.RecordEditor));
-
-/** Asks for an action's parameters; shares the form's code, and its chunk. */
-const ActionParams = lazyRoute<{
-  pluginId: string;
-  panel: PluginPanel;
-  action: PluginPanel['actions'][number];
-  ids: readonly string[];
-  onClose: (done: boolean) => void;
-}>(() =>
-  import('./record-editor.js').then((module) => module.ActionParamsDialog),
+const RecordEditor = lazy(() =>
+  import('./record-editor.js').then((module) => ({
+    default: module.RecordEditor,
+  })),
+);
+const ActionParams = lazy(() =>
+  import('./record-editor.js').then((module) => ({
+    default: module.ActionParamsDialog,
+  })),
 );
 
 type Row = Record<string, unknown>;
@@ -57,13 +75,10 @@ export function PluginPanelView({
    */
   readonly attachedTo?: string;
 }): JSX.Element {
-  const [rows, setRows] = useState<readonly Row[]>([]);
-  const [hasNext, setHasNext] = useState(false);
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<readonly string[]>([]);
   const [open, setOpen] = useState<Row | null>(null);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<{
     field: string;
@@ -79,52 +94,43 @@ export function PluginPanelView({
 
   const base = `/plugins/${pluginId}/panels/${panel.id}`;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: filters and sort are new objects every render; their stringified form is the real "did it change" check.
-  const reload = useCallback(async (): Promise<void> => {
-    setLoading(true);
-    const query = new URLSearchParams({
-      limit: String(PAGE),
-      offset: String(offset),
-    });
-    for (const [field, value] of Object.entries(filters)) {
-      if (value !== '') {
-        query.set(field, value);
-      }
+  const query = new URLSearchParams({
+    limit: String(PAGE),
+    offset: String(offset),
+  });
+  for (const [field, value] of Object.entries(filters)) {
+    if (value !== '') {
+      query.set(field, value);
     }
-    if (attachedTo !== undefined) {
-      query.set('attached', attachedTo);
-    }
-    if (search.trim() !== '') {
-      query.set('q', search.trim());
-    }
-    if (sort !== null) {
-      query.set('sort', sort.field);
-      query.set('dir', sort.descending ? 'desc' : 'asc');
-    }
-    try {
-      const result = await api<{ rows: Row[]; hasNext: boolean }>(
-        `${base}?${query.toString()}`,
-      );
-      setRows(result.rows);
-      setHasNext(result.hasNext);
-    } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not load rows.';
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    offset,
-    base,
-    JSON.stringify(filters),
-    search,
-    JSON.stringify(sort),
-    attachedTo,
-  ]);
+  }
+  if (attachedTo !== undefined) {
+    query.set('attached', attachedTo);
+  }
+  if (search.trim() !== '') {
+    query.set('q', search.trim());
+  }
+  if (sort !== null) {
+    query.set('sort', sort.field);
+    query.set('dir', sort.descending ? 'desc' : 'asc');
+  }
+  const client = useQueryClient();
+  const listed = useQuery({
+    queryKey: panelKey(pluginId, panel.id, 'rows', query.toString()),
+    queryFn: () =>
+      api<{ rows: Row[]; hasNext: boolean }>(`${base}?${query.toString()}`),
+    // A new filter or page keeps the rows on screen until the next arrive.
+    placeholderData: keepPreviousData,
+  });
+  useReportError(listed.error, 'Could not load rows.');
+  const rows = listed.data?.rows ?? [];
+  const hasNext = listed.data?.hasNext ?? false;
+  const loading = listed.isPending;
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  /** Everything under this panel is out of date: its rows and its records. */
+  const reload = useCallback(
+    () => client.invalidateQueries({ queryKey: panelKey(pluginId, panel.id) }),
+    [client, pluginId, panel.id],
+  );
 
   // Stable, because the form's loading effect depends on it.
   const closeEditor = useCallback(
@@ -152,7 +158,7 @@ export function PluginPanelView({
         body: JSON.stringify({ ids: selected }),
       });
       if (!response.ok) {
-        notice.value = `"${action.label}" failed.`;
+        notify(`"${action.label}" failed.`);
         return;
       }
       const blob = await response.blob();
@@ -169,7 +175,7 @@ export function PluginPanelView({
     }
 
     if (selected.length === 0) {
-      notice.value = 'Select at least one row first.';
+      notify('Select at least one row first.');
       return;
     }
     if (action.params !== undefined) {
@@ -185,19 +191,32 @@ export function PluginPanelView({
       setSelected([]);
       await reload();
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'The action failed.';
+      notify(
+        caught instanceof ApiError ? caught.message : 'The action failed.',
+      );
     }
   };
 
+  const titleId = `panel-${pluginId}-${panel.id}`;
   return (
-    <div className="panel">
-      <div className="panel-head">
-        <h3>{panel.label}</h3>
+    <section aria-labelledby={titleId} className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <h3
+          id={titleId}
+          className="mr-auto self-center font-heading text-sm font-semibold"
+        >
+          {panel.label}
+        </h3>
         {panel.filters.map((field) => (
-          <label className="filter" key={field}>
-            <span>{field.replace(/_/g, ' ')}</span>
-            <input
+          <Field key={field} className="w-40">
+            <FieldLabel
+              htmlFor={`${titleId}-filter-${field}`}
+              className="capitalize"
+            >
+              {field.replace(/_/g, ' ')}
+            </FieldLabel>
+            <Input
+              id={`${titleId}-filter-${field}`}
               value={filters[field] ?? ''}
               placeholder="any"
               onChange={(event) => {
@@ -208,12 +227,13 @@ export function PluginPanelView({
                 }));
               }}
             />
-          </label>
+          </Field>
         ))}
         {panel.search.length === 0 ? null : (
-          <label className="filter">
-            <span>Search</span>
-            <input
+          <Field className="w-56">
+            <FieldLabel htmlFor={`${titleId}-search`}>Search</FieldLabel>
+            <Input
+              id={`${titleId}-search`}
               type="search"
               value={search}
               placeholder={panel.search
@@ -224,145 +244,162 @@ export function PluginPanelView({
                 setSearch(event.currentTarget.value);
               }}
             />
-          </label>
+          </Field>
         )}
-        <span className="grow" />
         {editable ? (
-          <button
-            type="button"
-            className="primary"
-            onClick={() => setEditing(null)}
-          >
+          <Button type="button" onClick={() => setEditing(null)}>
             New
-          </button>
+          </Button>
         ) : null}
         {panel.actions.map((action) => (
-          <button
+          <Button
             key={action.id}
             type="button"
-            className="ghost"
+            variant="outline"
             onClick={() => void runAction(action)}
           >
             {action.label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {loading ? (
-        <p>Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="empty">Nothing here yet.</p>
+        <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+          Nothing here yet.
+        </p>
       ) : (
-        <table className="rows-table">
-          <thead>
-            <tr>
-              <th scope="col">
-                <span className="visually-hidden">Select</span>
-              </th>
-              {panel.columns.map((column) => {
-                const sorted = sort?.field === column.field;
+        <div className="rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col" className="w-10 pl-3">
+                  <span className="sr-only">Select</span>
+                </TableHead>
+                {panel.columns.map((column) => {
+                  const sorted = sort?.field === column.field;
+                  return (
+                    <TableHead
+                      scope="col"
+                      key={column.field}
+                      {...(sorted
+                        ? {
+                            'aria-sort': sort.descending
+                              ? ('descending' as const)
+                              : ('ascending' as const),
+                          }
+                        : {})}
+                    >
+                      {column.sortable ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="-ml-2.5 font-medium"
+                          onClick={() => {
+                            setOffset(0);
+                            setSort({
+                              field: column.field,
+                              descending: sorted && !sort.descending,
+                            });
+                          }}
+                        >
+                          {column.label}
+                          {sorted ? (
+                            sort.descending ? (
+                              <ArrowDown aria-hidden="true" />
+                            ) : (
+                              <ArrowUp aria-hidden="true" />
+                            )
+                          ) : (
+                            <ArrowUpDown
+                              aria-hidden="true"
+                              className="text-muted-foreground"
+                            />
+                          )}
+                        </Button>
+                      ) : (
+                        column.label
+                      )}
+                    </TableHead>
+                  );
+                })}
+                <TableHead scope="col" className="pr-3">
+                  <span className="sr-only">Details</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => {
+                const id = String(row.id ?? '');
                 return (
-                  <th
-                    scope="col"
-                    key={column.field}
-                    {...(sorted
-                      ? {
-                          'aria-sort': sort.descending
-                            ? ('descending' as const)
-                            : ('ascending' as const),
-                        }
-                      : {})}
+                  <TableRow
+                    key={id}
+                    data-state={selected.includes(id) ? 'selected' : undefined}
                   >
-                    {column.sortable ? (
-                      <button
+                    <TableCell className="pl-3">
+                      <Checkbox
+                        aria-label={`Select ${id}`}
+                        checked={selected.includes(id)}
+                        onCheckedChange={(checked) =>
+                          setSelected(
+                            checked === true
+                              ? [...selected, id]
+                              : selected.filter((entry) => entry !== id),
+                          )
+                        }
+                      />
+                    </TableCell>
+                    {panel.columns.map((column) => (
+                      <TableCell key={column.field}>
+                        {cell(row[column.field], column.type)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="pr-3 text-right">
+                      <Button
                         type="button"
-                        className="sort"
-                        onClick={() => {
-                          setOffset(0);
-                          setSort({
-                            field: column.field,
-                            descending: sorted && !sort.descending,
-                          });
-                        }}
+                        variant="outline"
+                        size="sm"
+                        aria-label={
+                          editable
+                            ? `Edit ${String(row[panel.columns[0]?.field ?? 'id'] ?? id)}`
+                            : `Open ${id}`
+                        }
+                        onClick={() =>
+                          editable ? setEditing(id) : setOpen(row)
+                        }
                       >
-                        {column.label}
-                        <span aria-hidden="true">
-                          {sorted ? (sort.descending ? ' ↓' : ' ↑') : ' ↕'}
-                        </span>
-                      </button>
-                    ) : (
-                      column.label
-                    )}
-                  </th>
+                        {editable ? 'Edit' : 'Open'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-              <th scope="col">
-                <span className="visually-hidden">Details</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => {
-              const id = String(row.id ?? '');
-              return (
-                <tr key={id}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${id}`}
-                      checked={selected.includes(id)}
-                      onChange={(event) =>
-                        setSelected(
-                          event.currentTarget.checked
-                            ? [...selected, id]
-                            : selected.filter((entry) => entry !== id),
-                        )
-                      }
-                    />
-                  </td>
-                  {panel.columns.map((column) => (
-                    <td key={column.field}>
-                      {cell(row[column.field], column.type)}
-                    </td>
-                  ))}
-                  <td>
-                    <button
-                      type="button"
-                      className="ghost"
-                      aria-label={
-                        editable
-                          ? `Edit ${String(row[panel.columns[0]?.field ?? 'id'] ?? id)}`
-                          : `Open ${id}`
-                      }
-                      onClick={() => (editable ? setEditing(id) : setOpen(row))}
-                    >
-                      {editable ? 'Edit' : 'Open'}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+            </TableBody>
+          </Table>
+        </div>
       )}
 
-      <nav className="pager" aria-label="Pagination">
-        <button
+      <nav className="flex gap-2" aria-label="Pagination">
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
+          size="sm"
           disabled={offset === 0}
           onClick={() => setOffset(Math.max(0, offset - PAGE))}
         >
           Previous
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          className="ghost"
+          variant="outline"
+          size="sm"
           disabled={!hasNext}
           onClick={() => setOffset(offset + PAGE)}
         >
           Next
-        </button>
+        </Button>
       </nav>
 
       {open === null ? null : (
@@ -373,35 +410,37 @@ export function PluginPanelView({
           onClose={() => setOpen(null)}
         />
       )}
-      {asking === null ? null : (
-        <ActionParams
-          key={asking.id}
-          pluginId={pluginId}
-          panel={panel}
-          action={asking}
-          ids={selected}
-          onClose={(done) => {
-            setAsking(null);
-            if (done) {
-              setSelected([]);
-              void reload();
-            }
-          }}
-        />
-      )}
-      {editing === undefined ? null : (
-        <RecordEditor
-          // A different record is a different form, not the same one with
-          // new props: its typed-in state must not carry over.
-          key={editing ?? 'new'}
-          pluginId={pluginId}
-          panel={panel}
-          recordId={editing}
-          onClose={closeEditor}
-          {...(attachedTo === undefined ? {} : { attachedTo })}
-        />
-      )}
-    </div>
+      <Suspense fallback={null}>
+        {asking === null ? null : (
+          <ActionParams
+            key={asking.id}
+            pluginId={pluginId}
+            panel={panel}
+            action={asking}
+            ids={selected}
+            onClose={(done) => {
+              setAsking(null);
+              if (done) {
+                setSelected([]);
+                void reload();
+              }
+            }}
+          />
+        )}
+        {editing === undefined ? null : (
+          <RecordEditor
+            // A different record is a different form, not the same one with
+            // new props: its typed-in state must not carry over.
+            key={editing ?? 'new'}
+            pluginId={pluginId}
+            panel={panel}
+            recordId={editing}
+            onClose={closeEditor}
+            {...(attachedTo === undefined ? {} : { attachedTo })}
+          />
+        )}
+      </Suspense>
+    </section>
   );
 }
 
@@ -421,32 +460,41 @@ function RowDetail({
     ...panel.detail,
   ];
   return (
-    <dialog
-      className="modal"
-      aria-label={`${panel.label} detail`}
-      ref={(element) => element?.showModal()}
-      onClose={onClose}
-      onCancel={onClose}
+    <Sheet
+      open
+      onOpenChange={(next) => {
+        if (!next) {
+          onClose();
+        }
+      }}
     >
-      <header className="modal-head">
-        <h2>{panel.label}</h2>
-        <button type="button" className="ghost" onClick={onClose}>
-          Close
-        </button>
-      </header>
-      <dl className="detail-list">
-        {fields.map((field) => (
-          <div key={field}>
-            <dt>{field.replace(/_/g, ' ')}</dt>
-            <dd>{String(row[field] ?? '—')}</dd>
-          </div>
-        ))}
-      </dl>
-      <RelatedRows
-        pluginId={pluginId}
-        panel={panel}
-        parentId={String(row.id ?? '')}
-      />
-    </dialog>
+      <SheetContent
+        className="w-full overflow-y-auto data-[side=right]:sm:max-w-xl"
+        // The dialog keeps the name it had: the panel's label is the title,
+        // and "detail" says which view of it this is.
+        aria-labelledby={undefined}
+        aria-label={`${panel.label} detail`}
+        aria-describedby={undefined}
+      >
+        <SheetHeader>
+          <SheetTitle>{panel.label}</SheetTitle>
+        </SheetHeader>
+        <div className="flex flex-col gap-6 px-4 pb-4">
+          <Facts
+            items={fields.map((field) => [
+              <span key="t" className="capitalize">
+                {field.replace(/_/g, ' ')}
+              </span>,
+              String(row[field] ?? '—'),
+            ])}
+          />
+          <RelatedRows
+            pluginId={pluginId}
+            panel={panel}
+            parentId={String(row.id ?? '')}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -600,7 +600,9 @@ describe('the notices for what the bundles inlined', () => {
       // Admin (Vite 8's generated build graph).
       'react',
       'react-dom',
-      '@preact/signals-react',
+      'react-router',
+      '@tanstack/react-query',
+      'react-hook-form',
       '@codemirror/state',
       '@codemirror/view',
     ]) {

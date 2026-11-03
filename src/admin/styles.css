@@ -1,1142 +1,163 @@
 /*
- * The admin's styles: Tailwind CSS (the Fobstack group's standard base,
- * `~/.claude/CLAUDE.md`) plus the CSS variables shadcn/ui's components read,
- * plus a handful of hand-written components older pages still use.
+ * The admin's styles: Tailwind CSS with shadcn/ui's design tokens
+ * (docs/ADMIN_MIGRATION.md).
  *
- * Design language: this runs a trade company's back office — entering
- * products with technical specs, publishing news, reading buyer inquiries.
- * The people using it already trust spec sheets, manifests and technical
- * drawings, not soft consumer software, so the admin borrows from that
- * vocabulary: flat surfaces instead of shadowed cards, hairline rules
- * instead of rounded tints, and a monospace face used deliberately wherever
- * there is real structure to show (identifiers, counts, dates, table
- * headers) rather than as a decorative label font. One accent (blueprint)
- * marks anything actionable; one reserved accent (oxide) marks anything
- * that needs attention. They never compete on the same element.
+ * The tokens below are shadcn/ui's `neutral` set as `shadcn init` generates
+ * it, with two changes: `--primary` is the brand blue, and the light
+ * `--muted-foreground` is a shade darker to meet WCAG AA contrast. Light and dark follow
+ * the `.dark` class on `<html>`, which `theme-mode.ts` sets from the
+ * operator's choice or, by default, from the system.
+ *
+ * Nothing else lives here: every page is built from shadcn/ui components
+ * and Tailwind utilities (docs/ADMIN_MIGRATION.md, phase 3).
  */
 
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: var(--body);
+  --font-mono: var(--mono);
+  --font-heading: var(--body);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
 
 :root {
-  --bg: #f4f6f8;
-  --bg-surface: #ffffff;
-  --bg-sunken: #e7ebee;
-  --ink: #12181f;
-  --muted: #55626d;
-  --faint: #5a6570;
-  --line: #d7dee4;
-  --line-strong: #b7c1cb;
-  --blueprint: #1f4e79;
-  --blueprint-deep: #163a5c;
-  --blueprint-tint: #e4ecf3;
-  --oxide: #a8461f;
-  --oxide-tint: #f6e7de;
-  --danger: #a5311f;
-  --danger-tint: #f7e5e1;
-  --radius: 3px;
-  --radius-sm: 2px;
+  color-scheme: light;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  /* The brand blue, the one colour the admin adds to the neutral set. */
+  --primary: oklch(0.414 0.088 249.1);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  /* shadcn's 0.556 is 4.35:1 on its own `--muted` surface, under WCAG AA's
+     4.5:1 for body text; 0.53 is 4.82:1 there and 5.25:1 on white. */
+  --muted-foreground: oklch(0.53 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  /* Status text for "saved", "set", "live"; `--warning` below is its
+     opposite. Dark enough on a tint of itself to keep axe's contrast check. */
+  --success: oklch(0.47 0.12 150);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.414 0.088 249.1);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  /* Something needs attention without being an error. shadcn/ui has no
+     token for it; the admin keeps the one it had. */
+  --warning: oklch(0.518 0.139 40.4);
   --body:
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
-  --mono: ui-monospace, "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1417;
-    --bg-surface: #161c20;
-    --bg-sunken: #0a0d0f;
-    --ink: #e7edf1;
-    --muted: #a2afb9;
-    --faint: #7a8894;
-    --line: #2a343b;
-    --line-strong: #3c4750;
-    --blueprint: #6fa8d8;
-    --blueprint-deep: #8fc0ea;
-    --blueprint-tint: #1b2c3b;
-    --oxide: #d9895f;
-    --oxide-tint: #302219;
-    --danger: #e08877;
-    --danger-tint: #301c18;
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.711 0.092 245);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --success: oklch(0.8 0.15 150);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.711 0.092 245);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --warning: oklch(0.704 0.113 48);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-}
-
-html {
-  color-scheme: light dark;
-}
-
-body {
-  background: var(--bg);
-  color: var(--ink);
-  font: 400 0.9375rem / 1.55 var(--body);
-  -webkit-font-smoothing: antialiased;
-}
-
-h1,
-h2,
-h3 {
-  font-weight: 650;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
-}
-
-a {
-  color: var(--blueprint);
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-
-code,
-.code {
-  font-family: var(--mono);
-  font-size: 0.85em;
-  color: var(--muted);
-  word-break: break-all;
-}
-
-:focus-visible {
-  outline: 2px solid var(--blueprint);
-  outline-offset: 2px;
-}
-
-/* A small mono label used wherever text stands in for structure rather than
-   prose: table headers, field captions, fact terms. Sentence case, not
-   tracked-out caps — the monospace face is what marks it as structural. */
-.structure-label {
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--faint);
-  letter-spacing: 0.01em;
-}
-
-/* Buttons */
-button {
-  font: inherit;
-  cursor: pointer;
-  border-radius: var(--radius);
-  border: 1px solid transparent;
-  padding: 0.45rem 0.9rem;
-}
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-button.primary {
-  background: var(--blueprint);
-  color: #fff;
-  font-weight: 600;
-}
-button.primary:hover:not(:disabled) {
-  background: var(--blueprint-deep);
-}
-button.ghost {
-  background: transparent;
-  border-color: var(--line-strong);
-  color: var(--muted);
-}
-button.ghost:hover:not(:disabled) {
-  border-color: var(--blueprint);
-  color: var(--blueprint);
-}
-
-/* Inputs */
-input,
-select,
-textarea {
-  font: inherit;
-  width: 100%;
-  padding: 0.45rem 0.6rem;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-  color: var(--ink);
-}
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: none;
-  border-color: var(--blueprint);
-  box-shadow: 0 0 0 1px var(--blueprint);
-}
-input[type="checkbox"] {
-  width: auto;
-  accent-color: var(--blueprint);
-}
-input[type="color"] {
-  padding: 0.2rem;
-  height: 2.2rem;
-}
-textarea {
-  resize: vertical;
-  font-family: var(--body);
-}
-
-/* Shell */
-.booting {
-  padding: 4rem;
-  color: var(--muted);
-  text-align: center;
-}
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  padding: 0.65rem clamp(1rem, 3vw, 2rem);
-  border-bottom: 1px solid var(--line-strong);
-  background: var(--bg-surface);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  color: var(--ink);
-  font-weight: 650;
-  letter-spacing: -0.005em;
-}
-.brand:hover {
-  text-decoration: none;
-}
-.brand .mark {
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--radius-sm);
-  background: var(--blueprint);
-  color: #fff;
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-.topbar nav {
-  display: flex;
-  gap: 1.4rem;
-}
-.topbar nav a {
-  color: var(--muted);
-  padding: 0.2rem 0;
-  border-bottom: 2px solid transparent;
-  font-size: 0.9rem;
-}
-.topbar nav a[aria-current] {
-  color: var(--ink);
-  border-bottom-color: var(--blueprint);
-  text-decoration: none;
-}
-.user {
-  margin-inline-start: auto;
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-@media (max-width: 40rem) {
-  .topbar {
-    flex-wrap: wrap;
-    gap: 0.6rem 1.2rem;
+  body {
+    @apply bg-background text-foreground antialiased;
   }
-  .brand span:last-child {
-    max-width: 11rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  html {
+    @apply font-sans;
   }
-  .topbar nav {
-    order: 3;
-    flex-basis: 100%;
-    gap: 1rem;
-  }
-}
-
-.banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.6rem clamp(1rem, 3vw, 2rem);
-  background: var(--oxide-tint);
-  color: var(--oxide);
-  border-bottom: 1px solid var(--line);
-  font-size: 0.9rem;
-}
-
-main {
-  max-width: 68rem;
-  margin-inline: auto;
-  padding: clamp(1.2rem, 3vw, 2.2rem);
-}
-
-/* Page furniture */
-.page-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.6rem;
-}
-.page-head h1 {
-  font-size: 1.75rem;
-}
-.lede {
-  color: var(--muted);
-  flex-basis: 100%;
-}
-.card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-  padding: clamp(1rem, 2.5vw, 1.5rem);
-  margin-bottom: 1.2rem;
-}
-.card h2 {
-  font-size: 1.1875rem;
-  margin-bottom: 0.8rem;
-}
-.card h3 {
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
-}
-.card.note {
-  border-inline-start: 3px solid var(--line-strong);
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
-.card.note p + p {
-  margin-top: 0.6rem;
-}
-.actions {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  margin-top: 1rem;
-}
-.empty {
-  color: var(--faint);
-  padding: 2rem 0;
-}
-.two-col {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-}
-.bullets {
-  padding-inline-start: 1.1rem;
-  color: var(--muted);
-}
-.bullets li + li {
-  margin-top: 0.3rem;
-}
-
-/* Tabs */
-.tabs {
-  display: flex;
-  gap: 1.2rem;
-  border-bottom: 1px solid var(--line-strong);
-  margin-bottom: 1.5rem;
-}
-.tabs a {
-  color: var(--muted);
-  padding: 0 0 0.6rem;
-  border-bottom: 2px solid transparent;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: topbar and tabs are unrelated components */
-.tabs a[aria-current] {
-  color: var(--ink);
-  border-bottom-color: var(--blueprint);
-  text-decoration: none;
-}
-
-/* Forms */
-.schema-form fieldset {
-  border: 0;
-  padding: 0;
-  margin: 0 0 0.4rem;
-}
-.schema-form legend {
-  padding: 0.6rem 0 0.4rem;
-}
-.field {
-  margin-bottom: 0.9rem;
-}
-.field > label {
-  display: block;
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--faint);
-  letter-spacing: 0.01em;
-  margin-bottom: 0.35rem;
-}
-.field-inline {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-.field-inline > label {
-  margin: 0;
-  order: 2;
-}
-.field-inline .control {
-  order: 1;
-  width: auto;
-}
-.field .req {
-  color: var(--oxide);
-  margin-inline-start: 0.2rem;
-}
-.field.has-error input,
-.field.has-error select,
-.field.has-error textarea {
-  border-color: var(--danger);
-}
-.help {
-  font-size: 0.83rem;
-  color: var(--faint);
-  margin-top: 0.3rem;
-}
-.error {
-  font-size: 0.83rem;
-  color: var(--danger);
-  margin-top: 0.3rem;
-}
-.inline-form {
-  border-top: 1px solid var(--line);
-  margin-top: 1rem;
-  padding-top: 1rem;
-}
-.scopes {
-  border: 0;
-  padding: 0;
-  margin-bottom: 0.9rem;
-}
-.scopes legend {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 0.3rem;
-}
-.check {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-inline-end: 1rem;
-}
-
-/* List-shaped controls */
-.list-control {
-  display: grid;
-  gap: 0.4rem;
-}
-.list-row {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-}
-.list-row button {
-  flex: none;
-}
-.media-control {
-  display: flex;
-  gap: 0.4rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.media-control .path {
-  flex: 1 1 12rem;
-}
-.media-thumb {
-  width: 3.2rem;
-  height: 3.2rem;
-  object-fit: cover;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-}
-.media-thumb.small {
-  width: 2.2rem;
-  height: 2.2rem;
-}
-.secret-control {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-/* Rows and tables */
-.rows {
-  list-style: none;
-  padding: 0;
-  display: grid;
-  gap: 0.1rem;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: bullets and rows are unrelated components */
-.rows li {
-  display: flex;
-  align-items: center;
-  gap: 0.8rem;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid var(--line);
-  flex-wrap: wrap;
-}
-.rows li:last-child {
-  border-bottom: 0;
-}
-/* A revoked token stays listed as history. Colour and a strike, not opacity,
-   so the text keeps its contrast. */
-.rows li.revoked > span:first-child {
-  color: var(--muted);
-  text-decoration: line-through;
-}
-.rows-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.92rem;
-  font-variant-numeric: tabular-nums;
-}
-.rows-table th {
-  text-align: start;
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--faint);
-  letter-spacing: 0.01em;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--line-strong);
-}
-.rows-table td {
-  padding: 0.65rem 0.6rem 0.65rem 0;
-  border-bottom: 1px solid var(--line);
-  vertical-align: top;
-}
-@media (max-width: 40rem) {
-  /* A path column full of monospace URLs has no good break points; scroll
-     the table sideways instead of wrapping it into a single-character
-     column. */
-  .rows-table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-}
-.facts {
-  display: grid;
-  gap: 0.8rem;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-}
-.facts dt {
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--faint);
-  letter-spacing: 0.01em;
-  margin-bottom: 0.25rem;
-}
-.facts dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-.filters {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.2rem;
-}
-.filter {
-  display: grid;
-  gap: 0.25rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-}
-.filter select {
-  min-width: 9rem;
-}
-.pager {
-  display: flex;
-  gap: 0.6rem;
-  margin-top: 1.2rem;
-}
-
-/* Pills: a stamped tag, not a rounded chip — square corners, a hairline
-   frame in the status colour rather than a filled tint, matching how a
-   status stamp reads on a shipping document. */
-.pill {
-  display: inline-block;
-  padding: 0.1rem 0.45rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line-strong);
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--muted);
-}
-.pill.ok,
-.pill.published {
-  border-color: var(--blueprint);
-  color: var(--blueprint);
-}
-.pill.warn,
-.pill.scheduled {
-  border-color: var(--oxide);
-  color: var(--oxide);
-}
-
-.token-reveal {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  padding: 0.7rem;
-  border: 1px solid var(--blueprint);
-  border-radius: var(--radius);
-  background: var(--blueprint-tint);
-  margin-bottom: 1rem;
-}
-.token-reveal code {
-  flex: 1 1 18rem;
-  color: var(--ink);
-}
-
-/* Login */
-.login {
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  padding: 1.5rem;
-  background: var(--bg);
-}
-.login .card {
-  width: min(23rem, 100%);
-  margin: 0;
-}
-.login h1 {
-  font-size: 1.375rem;
-  margin-bottom: 1.2rem;
-}
-.login button {
-  width: 100%;
-}
-
-.banner.soft {
-  background: var(--bg-sunken);
-  color: var(--muted);
-  border-bottom: 1px solid var(--line);
-}
-.banner.soft code {
-  color: var(--ink);
-}
-
-/* ---------------------------------------------------------------------------
-   Editor — three panes on a wide screen, stacked below 64rem.
---------------------------------------------------------------------------- */
-.editor {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 3.4rem);
-}
-.editor-bar {
-  display: flex;
-  align-items: end;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-  padding: 0.6rem clamp(0.8rem, 2vw, 1.4rem);
-  border-bottom: 1px solid var(--line-strong);
-  background: var(--bg-surface);
-}
-.editor-bar .grow {
-  flex: 1;
-}
-.editor-bar .filter input,
-.editor-bar .filter select {
-  min-width: 8rem;
-}
-.head-actions {
-  display: flex;
-  gap: 0.6rem;
-}
-.translations {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  padding: 0.5rem clamp(0.8rem, 2vw, 1.4rem);
-  border-bottom: 1px solid var(--line);
-}
-.editor-panes {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr) minmax(0, 1fr);
-  min-height: 0;
-}
-.pane {
-  min-width: 0;
-  min-height: 0;
-  overflow: auto;
-  border-inline-end: 1px solid var(--line);
-}
-.pane:last-child {
-  border-inline-end: 0;
-}
-.pane-fields {
-  padding: 1rem;
-  background: var(--bg-surface);
-}
-.pane-source {
-  display: flex;
-  overflow: hidden;
-}
-.markdown-pane {
-  flex: 1;
-  display: flex;
-  min-width: 0;
-}
-.cm-host {
-  flex: 1;
-  overflow: auto;
-}
-.cm-host.hidden {
-  display: none;
-}
-.cm-host .cm-editor {
-  height: 100%;
-  font-size: 14px;
-}
-.cm-host .cm-editor.cm-focused {
-  outline: none;
-}
-.cm-host .cm-scroller {
-  font-family: var(--mono);
-}
-/* A line referencing a file the bundle does not contain. Missing media is a
-   normal state, so this is a signpost, not an error (docs/ADMIN.md §6.4). */
-.cm-host .cm-missing-asset {
-  background: var(--oxide-tint);
-  box-shadow: inset 3px 0 0 var(--oxide);
-}
-.markdown-fallback {
-  flex: 1;
-  border: 0;
-  border-radius: 0;
-  padding: 0.8rem;
-  font-family: var(--mono);
-  font-size: 14px;
-  resize: none;
-}
-.pane-preview {
-  display: flex;
-  flex-direction: column;
-  background: var(--bg-sunken);
-}
-.preview-frame {
-  flex: 1;
-  width: 100%;
-  border: 0;
-  background: #fff;
-}
-.preview-note {
-  padding: 0.4rem 0.7rem;
-  border-top: 1px solid var(--line);
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--faint);
-}
-
-@media (max-width: 64rem) {
-  .editor {
-    height: auto;
-  }
-  .editor-panes {
-    grid-template-columns: 1fr;
-  }
-  .pane {
-    border-inline-end: 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .pane-source,
-  .pane-preview {
-    min-height: 24rem;
-  }
-}
-
-/* Media */
-.upload-drop {
-  display: block;
-  padding: 1.2rem;
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius);
-  text-align: center;
-  color: var(--muted);
-  cursor: pointer;
-}
-.upload-drop:hover {
-  border-color: var(--blueprint);
-  color: var(--blueprint);
-}
-.upload-drop input {
-  display: block;
-  margin: 0 auto 0.6rem;
-  width: auto;
-}
-.uploader {
-  margin-bottom: 1.2rem;
-}
-.media-grid {
-  list-style: none;
-  padding: 0;
-  display: grid;
-  gap: 0.9rem;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-}
-.media-card {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
-  background: var(--bg-surface);
-  display: flex;
-  flex-direction: column;
-}
-.media-card img {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  background: var(--bg-sunken);
-}
-.file-badge {
-  display: grid;
-  place-items: center;
-  aspect-ratio: 4 / 3;
-  background: var(--bg-sunken);
-  color: var(--faint);
-  font-family: var(--mono);
-  font-weight: 500;
-}
-.media-meta {
-  padding: 0.5rem 0.6rem;
-  display: grid;
-  gap: 0.1rem;
-  min-width: 0;
-}
-.media-meta .name {
-  font-size: 0.85rem;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.media-actions {
-  display: flex;
-  gap: 0.3rem;
-  padding: 0 0.6rem 0.6rem;
-}
-.media-actions button {
-  flex: 1;
-  padding: 0.3rem;
-  font-size: 0.82rem;
-}
-
-/* Modal — a native <dialog>, so the backdrop is the UA's own. */
-.modal {
-  width: min(56rem, 92vw);
-  max-height: 85vh;
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--bg-surface);
-  color: var(--ink);
-  padding: 1.2rem;
-}
-.modal::backdrop {
-  background: rgb(18 24 31 / 0.5);
-}
-.modal-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-/* Plugin panels attached to the content editor */
-.attached-panels {
-  padding: 1rem clamp(0.8rem, 2vw, 1.4rem) 3rem;
-  display: grid;
-  gap: 1rem;
-}
-
-/* Record forms of plugin panels */
-.related-rows {
-  margin-top: 1.2rem;
-}
-.related-rows h3 {
-  margin: 0 0 0.4rem;
-}
-.record-editor .actions {
-  margin-top: 1rem;
-}
-.money-control {
-  display: flex;
-  gap: 0.5rem;
-}
-.money-control input {
-  flex: 1;
-}
-.money-control select {
-  width: auto;
-}
-.rows-field {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0.8rem;
-  margin: 0 0 1rem;
-}
-.rows-field-row {
-  border: 0;
-  border-top: 1px solid var(--line);
-  padding: 0.8rem 0;
-  margin: 0;
-}
-.rows-table th button.sort {
-  all: unset;
-  cursor: pointer;
-  font: inherit;
-}
-.rows-table th button.sort:focus-visible {
-  outline: 2px solid currentcolor;
-  outline-offset: 2px;
-}
-
-/* Plugins */
-.plugin-head {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.plugin-head h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.3rem;
-}
-.switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--muted);
-  flex: none;
-}
-.warning-line {
-  margin-top: 0.8rem;
-  padding: 0.6rem 0.8rem;
-  border-inline-start: 3px solid var(--oxide);
-  background: var(--oxide-tint);
-  color: var(--oxide);
-  font-size: 0.9rem;
-}
-.plugin h3,
-.secrets h3 {
-  margin-top: 1.2rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
-}
-.panel {
-  margin-top: 1.2rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
-}
-.panel-head {
-  display: flex;
-  align-items: end;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-  margin-bottom: 0.8rem;
-}
-.panel-head h3 {
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.panel-head .grow {
-  flex: 1;
-}
-.panel-head .filter input {
-  min-width: 7rem;
-}
-.detail-list {
-  display: grid;
-  gap: 0.8rem;
-}
-.detail-list dt {
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--faint);
-  letter-spacing: 0.01em;
-}
-.detail-list dd {
-  margin: 0;
-  white-space: pre-wrap;
-}
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-/* ---------------------------------------------------------------------------
-   First-run wizard — a real sequence, so it earns a numbered treatment: a
-   ledger rule spanning the page, each step a mark on the line rather than a
-   row of pill tabs.
---------------------------------------------------------------------------- */
-.setup {
-  max-width: 40rem;
-  margin-inline: auto;
-  padding: clamp(1.5rem, 5vw, 3rem) 1.25rem;
-}
-.setup-head h1 {
-  font-size: 1.75rem;
-  margin-bottom: 1.25rem;
-}
-.steps {
-  display: flex;
-  list-style: none;
-  padding: 0;
-  margin-bottom: 2rem;
-  counter-reset: step;
-}
-/* biome-ignore lint/style/noDescendingSpecificity: bullets and setup steps are unrelated components */
-.steps li {
-  counter-increment: step;
-  flex: 1;
-  position: relative;
-  padding-top: 1.6rem;
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  color: var(--faint);
-  text-align: center;
-}
-.steps li::before {
-  content: counter(step);
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: grid;
-  place-items: center;
-  width: 1.3rem;
-  height: 1.3rem;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 1px solid var(--line-strong);
-  color: var(--faint);
-  font-size: 0.7rem;
-}
-.steps li::after {
-  content: "";
-  position: absolute;
-  top: 0.65rem;
-  left: -50%;
-  width: 100%;
-  height: 1px;
-  background: var(--line-strong);
-  z-index: -1;
-}
-.steps li:first-child::after {
-  display: none;
-}
-.steps li.current {
-  color: var(--ink);
-  font-weight: 600;
-}
-.steps li.current::before {
-  border-color: var(--blueprint);
-  background: var(--blueprint);
-  color: #fff;
-}
-.steps li.done {
-  color: var(--muted);
-}
-.steps li.done::before {
-  content: "✓";
-  border-color: var(--blueprint);
-  color: var(--blueprint);
-}
-.steps li.done::after {
-  background: var(--blueprint);
-}
-.starter-option {
-  display: flex;
-  gap: 0.6rem;
-  align-items: start;
-  padding: 0.8rem;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  margin-bottom: 0.6rem;
-  cursor: pointer;
-}
-.starter-option:hover {
-  border-color: var(--blueprint);
-}
-.starter-option input {
-  width: auto;
-  margin-top: 0.25rem;
-}
-.starter-option > span {
-  display: grid;
-  gap: 0.15rem;
-}
-.button-link {
-  display: inline-block;
-  padding: 0.45rem 0.9rem;
-  border-radius: var(--radius);
-  background: var(--blueprint);
-  color: #fff;
-  font-weight: 600;
-}
-.button-link:hover {
-  background: var(--blueprint-deep);
-  text-decoration: none;
-}
-.button-link.ghost-link {
-  background: transparent;
-  border: 1px solid var(--line-strong);
-  color: var(--muted);
-}
-.button-link.ghost-link:hover {
-  border-color: var(--blueprint);
-  color: var(--blueprint);
-}
-
-.upload-drop.dragging {
-  border-color: var(--blueprint);
-  border-style: solid;
-  background: var(--blueprint-tint);
-  color: var(--blueprint);
-}
-.alt-button {
-  border: 0;
-  background: none;
-  padding: 0;
-  font-size: 0.8rem;
-  color: var(--faint);
-  text-align: start;
-  text-decoration: underline dotted;
-}
-.alt-button:hover {
-  color: var(--blueprint);
 }

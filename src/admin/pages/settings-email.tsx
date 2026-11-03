@@ -7,21 +7,52 @@
  * can never show it.
  */
 
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQueryClient } from '@tanstack/react-query';
+import { TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
+import { Page, PageHeader, Section, StatusBadge } from '../components/page.js';
 import { SecretControl } from '../form/controls.js';
-import { notice, settings } from '../state.js';
+import { notify } from '../notice.js';
+import { keys, useSettings } from '../queries.js';
 import type { SiteEmail } from '../types.js';
 
 /** Mirrors the server's check, so a typo is caught before the request. */
 const SENDER_PATTERN = /^(?:[^\s@<>]+@[^\s@<>]+|[^<>]*<[^\s@<>]+@[^\s@<>]+>)$/;
 
+/** Empty clears the sender; anything else has to be an address. */
+const senderSchema = z.object({
+  from: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === '' || SENDER_PATTERN.test(value),
+      'Use an address such as hello@example.com or Acme <hello@example.com>.',
+    ),
+});
+
 export function EmailSettingsPage(): JSX.Element {
-  const current = settings.value;
-  const [from, setFrom] = useState(current?.email.fromAddress ?? '');
-  const [fromError, setFromError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const current = useSettings();
+  const client = useQueryClient();
+  const form = useForm({
+    resolver: zodResolver(senderSchema),
+    defaultValues: { from: current.email.fromAddress ?? '' },
+  });
+  const fromError = form.formState.errors.from?.message;
+  const busy = form.formState.isSubmitting;
   const [saved, setSaved] = useState(false);
   const [checking, setChecking] = useState(false);
   const [verdict, setVerdict] = useState<{
@@ -29,9 +60,6 @@ export function EmailSettingsPage(): JSX.Element {
     message: string;
   } | null>(null);
 
-  if (current === null) {
-    return <p>Loading…</p>;
-  }
   const email = current.email;
 
   const store = async (body: {
@@ -43,32 +71,18 @@ export function EmailSettingsPage(): JSX.Element {
         method: 'PUT',
         body,
       });
-      settings.value = { ...current, email: stored };
+      client.setQueryData(keys.settings, { ...current, email: stored });
       return true;
     } catch (caught) {
-      notice.value =
-        caught instanceof ApiError ? caught.message : 'Could not save.';
+      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
       return false;
     }
   };
 
-  const saveSender = async (event: {
-    preventDefault(): void;
-  }): Promise<void> => {
-    event.preventDefault();
-    const value = from.trim();
-    if (value !== '' && !SENDER_PATTERN.test(value)) {
-      setFromError(
-        'Use an address such as hello@example.com or Acme <hello@example.com>.',
-      );
-      return;
-    }
-    setFromError('');
-    setBusy(true);
+  const saveSender = form.handleSubmit(async ({ from }) => {
     setSaved(false);
-    setSaved(await store({ fromAddress: value === '' ? null : value }));
-    setBusy(false);
-  };
+    setSaved(await store({ fromAddress: from === '' ? null : from }));
+  });
 
   const writeKey = async (value: string | null): Promise<void> => {
     // A verdict describes the key that was checked, not the one stored now.
@@ -96,59 +110,55 @@ export function EmailSettingsPage(): JSX.Element {
   };
 
   return (
-    <div className="page">
-      <header className="page-head">
-        <h1>Email</h1>
-        <p className="lede">
-          One Resend key and one sender address for the whole site. Every plugin
-          that sends email uses them, and a change applies to the next message —
-          no rebuild, no deploy.
-        </p>
-      </header>
+    <Page>
+      <PageHeader
+        title="Email"
+        lede="One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+      />
 
-      <form className="card" onSubmit={(event) => void saveSender(event)}>
-        <h2>Sender</h2>
-        <div className="field">
-          <label htmlFor="email-from">From address</label>
-          <input
+      <Section
+        as="form"
+        title="Sender"
+        onSubmit={(event) => void saveSender(event)}
+        footer={
+          <>
+            <Button type="submit" disabled={busy}>
+              {busy ? 'Saving…' : 'Save sender'}
+            </Button>
+            {saved ? <StatusBadge tone="ok">Saved</StatusBadge> : null}
+          </>
+        }
+      >
+        <Field data-invalid={fromError !== undefined}>
+          <FieldLabel htmlFor="email-from">From address</FieldLabel>
+          <Input
             id="email-from"
             type="text"
-            value={from}
             maxLength={320}
             placeholder="Acme <hello@example.com>"
-            aria-invalid={fromError !== ''}
-            aria-describedby="email-from-help"
-            onInput={(event) => {
-              setFrom(event.currentTarget.value);
-              setSaved(false);
-            }}
+            aria-invalid={fromError !== undefined}
+            aria-describedby={
+              fromError === undefined
+                ? 'email-from-help'
+                : 'email-from-help email-from-error'
+            }
+            {...form.register('from', { onChange: () => setSaved(false) })}
           />
-          <p className="help" id="email-from-help">
+          <FieldDescription id="email-from-help">
             Must be on a domain you have verified in Resend. A plugin may set
             its own sender; this one is used whenever it does not.
-          </p>
-          {fromError === '' ? null : (
-            <p className="error" role="alert">
-              {fromError}
-            </p>
-          )}
-        </div>
-        <div className="actions">
-          <button type="submit" className="primary" disabled={busy}>
-            {busy ? 'Saving…' : 'Save sender'}
-          </button>
-          {saved ? <span className="pill ok">Saved</span> : null}
-        </div>
-      </form>
+          </FieldDescription>
+          <FieldError id="email-from-error">{fromError}</FieldError>
+        </Field>
+      </Section>
 
-      <section className="card secrets">
-        <h2>Resend API key</h2>
-        <p className="help">
-          Stored encrypted. It is never shown again, here or anywhere else.
-        </p>
-        <div className="field field-inline">
-          <label htmlFor="email-resend-key">Resend API key</label>
-          <div className="control">
+      <Section
+        title="Resend API key"
+        description="Stored encrypted. It is never shown again, here or anywhere else."
+      >
+        <Field>
+          <FieldLabel htmlFor="email-resend-key">Resend API key</FieldLabel>
+          <div className="flex flex-wrap items-center gap-2">
             <SecretControl
               id="email-resend-key"
               label="Resend API key"
@@ -157,32 +167,32 @@ export function EmailSettingsPage(): JSX.Element {
               onClear={() => void writeKey(null)}
             />
             {email.resendConfigured ? (
-              <button
+              <Button
                 type="button"
-                className="ghost"
+                variant="outline"
                 disabled={checking}
                 onClick={() => void check()}
               >
                 {checking ? 'Checking…' : 'Test'}
-              </button>
+              </Button>
             ) : null}
             {verdict === null ? null : (
-              <span
-                className={verdict.ok ? 'pill ok' : 'pill warn'}
-                role="status"
-              >
+              <StatusBadge tone={verdict.ok ? 'ok' : 'warn'} role="status">
                 {verdict.message}
-              </span>
+              </StatusBadge>
             )}
           </div>
-        </div>
+        </Field>
         {email.resendConfigured ? null : (
-          <p className="warning-line">
-            Without a key no email is sent. A message queued meanwhile is
-            retried for about 30 minutes and then marked failed.
-          </p>
+          <Alert role="note">
+            <TriangleAlert />
+            <AlertDescription>
+              Without a key no email is sent. A message queued meanwhile is
+              retried for about 30 minutes and then marked failed.
+            </AlertDescription>
+          </Alert>
         )}
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }

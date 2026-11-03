@@ -5,7 +5,7 @@
  * require the notices to travel with the redistributed code. The `mallok`
  * tarball is redistributed code: `worker/index.js` and `cli/index.js` are
  * bundles with dozens of libraries inlined, while `assets/_mallok/app` is a
- * third Vite build graph with React, CodeMirror and signals.
+ * third Vite build graph with React, React Router, CodeMirror and the rest.
  *
  * The list is built from esbuild's own metafiles and Vite 8's generated
  * licence metadata rather than from `package.json` — a dependency list is
@@ -70,15 +70,45 @@ async function manifestAt(dir) {
 }
 
 /**
+ * Packages that are bundled but whose npm tarball carries no licence file,
+ * only a `license` field in `package.json`.
+ *
+ * Failing on a missing text is deliberate (below), so each exception is named
+ * here, one by one, with where the licence text actually lives. The notices
+ * then say exactly that rather than reproducing a text the package did not
+ * ship. Add an entry only after checking the upstream repository.
+ */
+const SHIPPED_WITHOUT_TEXT = new Map([
+  [
+    'react-remove-scroll-bar',
+    'https://github.com/theKashey/react-remove-scroll-bar/blob/master/LICENSE',
+  ],
+]);
+
+/**
  * Completes a Vite licence entry whose nested package.json omits metadata.
  *
- * `@preact/signals-react/runtime/package.json`, for example, deliberately has
- * no version, licence or licence file; Vite therefore reports its private
- * name at `0.0.0`. The redistributed code is still covered by the parent
- * package's version and MIT text. This lookup discovers that relationship
+ * `@hookform/resolvers/zod/package.json`, for example, has its own name and
+ * version but no licence file; a sub-path package can also omit the version,
+ * which Vite then reports as `0.0.0`. The redistributed code is still covered
+ * by the parent package's licence text. This lookup discovers that relationship
  * from the installed manifests — no hand-maintained dependency table.
  */
 async function completeViteLicense(entry) {
+  // A package that ships no text has nothing to complete it from, wherever
+  // it is installed; say where the text is instead.
+  const elsewhere = SHIPPED_WITHOUT_TEXT.get(entry.name);
+  if (
+    elsewhere !== undefined &&
+    entry.version !== '0.0.0' &&
+    typeof entry.identifier === 'string' &&
+    (typeof entry.text !== 'string' || entry.text === '')
+  ) {
+    return {
+      ...entry,
+      text: `The npm package ships no licence file. Its package.json declares ${entry.identifier}; the licence text is at ${elsewhere}`,
+    };
+  }
   if (
     entry.version !== '0.0.0' &&
     entry.identifier !== undefined &&
@@ -105,9 +135,14 @@ async function completeViteLicense(entry) {
     }
     const root = join(rootsDir, child);
     const parent = await manifestAt(root);
+    // A package can carry sub-path packages of its own, each with a
+    // package.json but no licence file: `@hookform/resolvers/zod` lives in
+    // `@hookform/resolvers` and is under its licence.
     if (
       typeof parent?.name !== 'string' ||
-      (parent.name !== entry.name && !entry.name.startsWith(`${parent.name}-`))
+      (parent.name !== entry.name &&
+        !entry.name.startsWith(`${parent.name}-`) &&
+        !entry.name.startsWith(`${parent.name}/`))
     ) {
       continue;
     }
@@ -233,6 +268,47 @@ export async function thirdPartyNotices(builds, viteLicenses = []) {
   );
 
   return { packages, text: render(packages) };
+}
+
+/**
+ * Packages the admin stylesheet inlines with `@import`, as licence entries.
+ *
+ * Vite's licence list is built from the modules that reach a chunk, and a
+ * stylesheet `@import` resolved by Tailwind never becomes one: Tailwind's
+ * own reset, `tw-animate-css` and shadcn/ui's stylesheet were all bundled
+ * into the admin's CSS without being attributed. They are read here from the
+ * stylesheet itself, so an import added later is attributed without anyone
+ * remembering to list it.
+ */
+export async function stylesheetPackages(cssFile) {
+  const css = await readFile(cssFile, 'utf8');
+  const names = new Set();
+  for (const match of css.matchAll(/@import\s+["']([^"'./][^"']*)["']/g)) {
+    const parts = (match[1] ?? '').split('/');
+    names.add(
+      parts[0]?.startsWith('@')
+        ? parts.slice(0, 2).join('/')
+        : (parts[0] ?? ''),
+    );
+  }
+  const entries = [];
+  for (const name of [...names].sort()) {
+    const dir = join('node_modules', name);
+    const manifest = JSON.parse(
+      await readFile(join(dir, 'package.json'), 'utf8'),
+    );
+    const text = await licenseText(dir);
+    entries.push({
+      name,
+      version: manifest.version,
+      identifier:
+        typeof manifest.license === 'string'
+          ? manifest.license
+          : manifest.license?.type,
+      ...(text === null ? {} : { text }),
+    });
+  }
+  return entries;
 }
 
 /** The file itself. */

@@ -100,13 +100,15 @@ with **no vendor SDK entering the Worker**:
 
 | Area | Choice | Notes |
 | --- | --- | --- |
-| UI framework | `react` + `react-dom`, state on `@preact/signals-react` | Switched from Preact 2026-09-06: contributor familiarity outweighed the size difference, measured at real ~54 KiB gzip (`ADMIN.md §13`) — still well inside the 150 KB first-load budget. Signals stayed: the app's state is a handful of globals, not enough to justify a store library, and `@preact/signals-react` keeps the same `signal()`/`computed()`/`.value` API the Preact build used |
-| Build | `vite` + `@vitejs/plugin-react` (with the `@preact/signals-react-transform` Babel plugin, so a bare `.value` read in JSX still subscribes automatically) | A build-time dependency only |
-| Markdown editing | `codemirror` + `@codemirror/lang-markdown` | The only body editor in 0.1. It runs in the browser and never enters the Worker |
-| Field forms | Generated in-repository from zod/JSON schemas | Content-kind fields, theme options, plugin settings and plugin panels are all schema-driven; no bespoke forms |
+| UI framework | `react` + `react-dom` | Switched from Preact 2026-09-06: contributor familiarity outweighed the size difference, measured at real ~54 KiB gzip (`ADMIN.md §13`) |
+| Routing | `react-router` 8, data mode | Replaced a hand-written history router on 2026-11-03 (`ADMIN_MIGRATION.md`, phase 5): loaders settle the session before the first render, error elements per route |
+| Server state | `@tanstack/react-query` 5 | Replaced `@preact/signals-react` and per-page `useEffect` loading on 2026-11-03. The first-load budget went from 150 to 170 KiB to fit the two (`ADMIN_MIGRATION.md`, D7) |
+| Build | `vite` + `@vitejs/plugin-react` | A build-time dependency only. The Babel transform signals needed is gone with them |
+| Markdown editing | `@codemirror/view`, `@codemirror/state`, `@codemirror/commands` and `@codemirror/lang-markdown` | The only body editor in 0.1. It runs in the browser and never enters the Worker |
+| Field forms | Generated in-repository from the declared fields, on `react-hook-form`; `zod` through `@hookform/resolvers` for the few forms with a fixed shape (sign-in, password, tokens, sender) | Content-kind fields, theme options, plugin settings and plugin panels are all schema-driven; no bespoke forms for them |
 | Live preview | Reuses `src/core/` in the browser | Byte-identical to production |
 | Visual editing | `@tiptap/core` + `@tiptap/pm` (**0.2**) | Not in 0.1. Tiptap's DOM is never the truth about content |
-| Styling | In-repository CSS variables and components | No Tailwind, no CSS-in-JS, no third-party component library |
+| Styling | Tailwind CSS 4 and shadcn/ui on Radix | Decided 2026-10-08 and done by 2026-11-03 (`ADMIN_MIGRATION.md`): every page is built from shadcn/ui components, and `styles.css` holds only the design tokens |
 | Image processing | The browser's Canvas API | On upload the client computes sha256, converts to WebP and generates width variants; see ARCHITECTURE §8 |
 
 **The admin build is served through Cloudflare Workers Static Assets and is

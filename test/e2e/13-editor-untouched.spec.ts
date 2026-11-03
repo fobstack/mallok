@@ -31,7 +31,9 @@ async function openInSession(page: Page, id: string): Promise<void> {
   await expect(page.locator('.cm-content')).toBeVisible();
   // The preview is debounced behind the document; once it has rendered,
   // everything that reacts to the item arriving has run.
-  await expect(page.locator('.preview-note')).toContainText('/');
+  await expect(
+    page.getByText(/Rendered by the same code the site runs/),
+  ).toContainText('/');
   await page.waitForTimeout(600);
 }
 
@@ -42,10 +44,10 @@ test('an item that is opened and not edited is not unsaved, and saves as unchang
 
   // A token, to create an item whose bytes the test controls exactly.
   await page.goto('/_mallok/app/account');
-  await page.locator('#token-name').fill(`e2e-untouched-${Date.now()}`);
+  await page.getByLabel('New token name').fill(`e2e-untouched-${Date.now()}`);
   await page.getByRole('button', { name: 'Create token' }).click();
   const token = (
-    await page.locator('.token-reveal code').textContent()
+    await page.getByRole('alert').locator('code').textContent()
   )?.trim();
   await page.getByRole('button', { name: 'Done' }).click();
   const created = await page.request.post('/_mallok/api/content', {

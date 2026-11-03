@@ -37,12 +37,14 @@ From `TECH_STACK §6`, not re-argued here:
 
 | Area | Choice |
 | --- | --- |
-| UI | `react` + `react-dom`, state on `@preact/signals-react` (switched from Preact 2026-09-06, `TECH_STACK.md §6`) |
+| UI | `react` + `react-dom` (switched from Preact 2026-09-06, `TECH_STACK.md §6`) |
 | Build | `vite` + `@vitejs/plugin-react` |
-| Markdown editing | `codemirror` + `@codemirror/lang-markdown` |
-| Forms | The in-repository schema-driven generator (§7) |
+| Routing | React Router in data mode: the root route's loader settles the session and loads the workspace before the first render; each page's code loads when it is first visited (`ADMIN_MIGRATION.md`, phase 5) |
+| Server state | TanStack Query, under one key scheme (`src/admin/queries.ts`); a write invalidates what it changed. The one piece of client state shared across pages is the last error, shown as a toast (`src/admin/notice.ts`) |
+| Markdown editing | CodeMirror 6 (`@codemirror/view`, `state`, `commands`, `lang-markdown`), themed from the design tokens |
+| Forms | The in-repository schema-driven generator (§7), on React Hook Form; Zod for the few forms with a fixed shape |
 | Preview | Reuses `src/core/`, rendering in the browser |
-| Styling | In-repository CSS variables and components; **no Tailwind, no CSS-in-JS, no component library** |
+| Styling | Tailwind CSS 4 with shadcn/ui's design tokens and components on Radix; light, dark or the system's, chosen per browser. `styles.css` holds the tokens and nothing else |
 | Image processing | The browser's Canvas API |
 
 **0.1 does not include Tiptap.** Visual editing belongs to 0.2
@@ -54,6 +56,11 @@ CodeMirror.
 Three top-level sections plus a user menu. **A new feature must fit one of
 them**; when it does not, the first question is whether it is internal
 complexity that should not be surfaced at all.
+
+On screen they are a collapsible sidebar — Content, Media and Plugins under
+"Site"; Site, Appearance, Email and Advanced under "Settings" — with the user
+menu at its foot, and a breadcrumb above each page. On a narrow screen the
+sidebar is a sheet.
 
 ```
 Content     ├ All content (filter by kind, filter by language, search)
@@ -72,8 +79,8 @@ Plugins     ├ Installed plugins (switch, version, what each affects)
             ├ Each plugin's settings and secrets form
             └ Each panel a plugin declares, such as Inquiries
 
-User menu   ├ Change password
-            ├ API token management
+User menu   ├ Account: change password, API token management
+            ├ Colour scheme (the system's, light or dark)
             └ Sign out
 ```
 
@@ -266,6 +273,11 @@ it:
 code.** The moment they can, the admin's size budget and its security boundary
 are both gone.
 
+It renders each field on React Hook Form and checks the value against its
+declaration before the form submits; a plugin's record form leaves checking
+to the Worker, its one validator. Whatever the server says about a field is
+shown on that field, as its description.
+
 The field-type-to-control mapping is the table in `THEME_FORMAT.md §5.2`.
 Three cases are special:
 
@@ -408,7 +420,7 @@ The complete rules are in `SECURITY.md`. On the interface side:
 | Item | Requirement |
 | --- | --- |
 | Accessibility | Fully keyboard operable; every form control has a label; focus is visible; `@axe-core/playwright` reports nothing serious or critical |
-| First load | Admin first-load JS ≤ 150 KB gzip (React, signals, the router, the form generator). **Asserted by `pnpm admin:size`**, counting only what `index.html` references; measured at 72.0 KB on 2026-09-06, up from 17.3 KB on Preact — real React+ReactDOM cost is ≈ 54 KB gzip in this project's own Vite build, not the ≈ 45 KB estimated from memory before switching |
+| First load | Admin first-load JS ≤ 170 KiB gzip (React, React Router, TanStack Query, the shell; raised from 150 on 2026-11-03, `ADMIN_MIGRATION.md` D7). **Asserted by `pnpm admin:size`**, counting every script and stylesheet `index.html` references, the `modulepreload` chunks included (they were left out until 2026-10-31, `ADMIN_MIGRATION.md §8`); 161.7 KiB on React Router and TanStack Query on 2026-11-03; 124.1 KiB with the shadcn/ui shell on 2026-10-31; measured at 72.0 KB on 2026-09-06, up from 17.3 KB on Preact — real React+ReactDOM cost is ≈ 54 KB gzip in this project's own Vite build, not the ≈ 45 KB estimated from memory before switching |
 | CodeMirror | Chunked and loaded only when the editor opens. **The render pipeline — unified, remark, rehype, LiquidJS — is equally on demand**: the preview uses the real renderer, so it loads with the editor rather than on first load |
 | Importing from core | **A page on the first-load path must not import from the `src/core/index.ts` barrel**, not even for a single constant — the barrel drags the whole render pipeline into the first load. This happened once, on 2026-08-31: the Appearance page imported the barrel for one string constant and the first load went from 17 KB to 137 KB, caught by `pnpm admin:size`. Dependency-free constants live in `src/core/constants.ts` |
 | Offline | No offline support. A network failure produces a clear error and never silently discards a change |

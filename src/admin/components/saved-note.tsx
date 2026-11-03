@@ -7,8 +7,11 @@
  * (docs/ADMIN.md §5, docs/ARCHITECTURE.md §6.2).
  */
 
+import { Clock } from 'lucide-react';
 import type { JSX } from 'react';
-import { liveDelay } from '../state.js';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useLiveDelay } from '../queries.js';
+import { Code, StatusBadge } from './page.js';
 
 /** Human-readable form of a cache lifetime. */
 function humanize(seconds: number): string {
@@ -24,17 +27,17 @@ function humanize(seconds: number): string {
 }
 
 export function SavedNote(): JSX.Element {
-  const delay = liveDelay.value;
+  const delay = useLiveDelay();
   if (delay.instant) {
-    return <span className="pill ok">Saved — live now</span>;
+    return <StatusBadge tone="ok">Saved — live now</StatusBadge>;
   }
   return (
-    <span
-      className="pill warn"
+    <StatusBadge
+      tone="warn"
       title="Configure a cache-purge token to make saves appear immediately."
     >
       Saved — visitors see it within {humanize(delay.seconds)}
-    </span>
+    </StatusBadge>
   );
 }
 
@@ -44,18 +47,26 @@ export function SavedNote(): JSX.Element {
  * someone configures the token.
  */
 export function PurgeNotice(): JSX.Element | null {
-  const delay = liveDelay.value;
+  const delay = useLiveDelay();
   if (delay.instant) {
     return null;
   }
   return (
-    <div className="banner soft">
-      <span>
-        No cache-purge token is configured, so a saved change reaches visitors
-        only after the cached page expires (up to {humanize(delay.seconds)}).
-        This is a working site, not a broken one — add <code>CF_API_TOKEN</code>{' '}
-        and <code>CF_ZONE_ID</code> as Worker secrets to get instant publishing.
-      </span>
-    </div>
+    // A standing note, not an alert: it is true from the first render until
+    // someone configures the token, and must not interrupt a screen reader.
+    <Alert role="note" className="mx-4 mt-4 w-auto">
+      <Clock />
+      <AlertTitle>
+        Changes reach visitors within {humanize(delay.seconds)}
+      </AlertTitle>
+      <AlertDescription>
+        <p>
+          No cache-purge token is configured, so a saved change reaches visitors
+          only after the cached page expires. This is a working site, not a
+          broken one — add <Code>CF_API_TOKEN</Code> and <Code>CF_ZONE_ID</Code>{' '}
+          as Worker secrets to get instant publishing.
+        </p>
+      </AlertDescription>
+    </Alert>
   );
 }

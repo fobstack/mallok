@@ -33,7 +33,10 @@ import {
 import { promisify } from 'node:util';
 import { build } from 'esbuild';
 import { resetCompiledAssets, stageTemplate } from './package-inputs.mjs';
-import { thirdPartyNotices } from './third-party-notices.mjs';
+import {
+  stylesheetPackages,
+  thirdPartyNotices,
+} from './third-party-notices.mjs';
 
 const run = promisify(execFile);
 
@@ -239,7 +242,10 @@ await copyFile('NOTICE', `${OUT}/NOTICE`);
 // esbuild's metafiles, and the separately built admin from Vite 8's licence
 // inventory. Redistributing a bundle without the notices of what is inside it
 // is a licence breach, not a documentation gap.
-const notices = await thirdPartyNotices([worker, cli], adminLicenses);
+const notices = await thirdPartyNotices(
+  [worker, cli],
+  [...adminLicenses, ...(await stylesheetPackages('src/admin/styles.css'))],
+);
 await writeFile(`${OUT}/THIRD_PARTY_NOTICES`, notices.text, 'utf8');
 await writeFile(`${OUT}/README.md`, packageReadme(version));
 

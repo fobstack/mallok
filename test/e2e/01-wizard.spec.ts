@@ -24,8 +24,8 @@ test('creates the administrator, the site and the starter content', async ({
   await expect(
     page.getByRole('heading', { name: 'Create the administrator' }),
   ).toBeVisible();
-  await page.locator('#setup-email').fill(ADMIN.email);
-  await page.locator('#setup-password').fill(ADMIN.password);
+  await page.getByLabel('Email', { exact: true }).fill(ADMIN.email);
+  await page.getByLabel('Password', { exact: true }).fill(ADMIN.password);
 
   // The key is typed in, exactly as a site owner types the one `mallok
   // create` printed. A site with no setup key refuses to create an
@@ -34,14 +34,14 @@ test('creates the administrator, the site and the starter content', async ({
   // `MALLOK_DEV_ALLOW_SETUP_WITHOUT_KEY` would be exercising a configuration
   // nobody ships. The field is only rendered when the site asks for one, so
   // its presence is itself part of the assertion.
-  await expect(page.locator('#setup-key')).toBeVisible();
-  await page.locator('#setup-key').fill(SETUP_KEY);
+  await expect(page.getByLabel('Setup key')).toBeVisible();
+  await page.getByLabel('Setup key').fill(SETUP_KEY);
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // ---- Step 2: the site --------------------------------------------------
-  await expect(page.locator('#setup-name')).toBeVisible();
-  await page.locator('#setup-name').fill('Titanium E2E');
-  await page.locator('#setup-extra').fill('zh');
+  await expect(page.getByLabel('Site name')).toBeVisible();
+  await page.getByLabel('Site name').fill('Titanium E2E');
+  await page.getByLabel('Other languages').fill('zh');
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // ---- Step 3: the starter ----------------------------------------------
@@ -50,15 +50,22 @@ test('creates the administrator, the site and the starter content', async ({
   ).toBeVisible();
   // The site's own starter is offered first and is the one preselected,
   // with what it brings said next to it.
-  const options = page.locator('.starter-option');
+  // Each option is a radio whose name carries everything said about it.
+  const options = page.getByRole('radio');
   await expect(options).toHaveCount(2);
-  await expect(options.first()).toContainText('A shop this site brought');
-  await expect(options.first()).toContainText('1 pages · 1 sample records');
-  await expect(options.first().getByRole('radio')).toBeChecked();
+  await expect(options.first()).toHaveAccessibleName(
+    /A shop this site brought/,
+  );
+  await expect(options.first()).toHaveAccessibleName(
+    /1 pages · 1 sample records/,
+  );
+  await expect(options.first()).toBeChecked();
   // The official one is what the rest of the suite expects to find.
-  const official = options.filter({ hasText: 'Foreign-trade company site' });
-  await expect(official).not.toContainText('sample records');
-  await official.getByRole('radio').check();
+  const official = page.getByRole('radio', {
+    name: /Foreign-trade company site/,
+  });
+  await expect(official).not.toHaveAccessibleName(/sample records/);
+  await official.check();
   await page.getByRole('button', { name: 'Install' }).click();
 
   // ---- Step 4: the domain, and what it honestly cannot do ----------------

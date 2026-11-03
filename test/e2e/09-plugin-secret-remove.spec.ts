@@ -17,10 +17,10 @@ test('a removed plugin secret is shown as not set without a reload', async ({
   await signIn(page);
   await page.goto('/_mallok/app/plugins');
 
-  const control = page.locator('#secret-inquiry-turnstile_secret');
+  const control = page.getByRole('group', { name: 'Turnstile secret key' });
   await control.getByLabel('Turnstile secret key').fill(VALUE);
   await control.getByRole('button', { name: 'Save' }).click();
-  await expect(control.locator('.pill.ok')).toHaveText('Set');
+  await expect(control.getByText('Set', { exact: true })).toHaveText('Set');
 
   const removed = page.waitForResponse(
     (response) =>
@@ -31,6 +31,6 @@ test('a removed plugin secret is shown as not set without a reload', async ({
   expect((await removed).status()).toBe(200);
 
   await expect(control.getByLabel('Turnstile secret key')).toBeVisible();
-  await expect(control.locator('.pill.ok')).toHaveCount(0);
+  await expect(control.getByText('Set', { exact: true })).toHaveCount(0);
   await expect(control.getByRole('button', { name: 'Remove' })).toHaveCount(0);
 });
