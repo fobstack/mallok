@@ -110,6 +110,10 @@ Constraints and notes:
 
 - `markdown` is checked on save against D1's 2 MB row limit, returning a clear
   error when it does not fit.
+- A group holds one item per locale. A save that would add a second one —
+  joining a group with a locale it already has, or moving an item to such a
+  locale — is refused with 409 naming the item that holds it, before anything
+  is written.
 - `path` is computed from `site.kinds[kind].base`, the locale prefix and the
   slug; the `page` kind has no base. A changed `path` writes a `redirect`.
 - Changing `site.default_locale`, or `site.prefix_default_locale`, recomputes

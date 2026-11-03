@@ -296,6 +296,28 @@ export async function findPathHolder(
     .first();
 }
 
+/**
+ * Which item is a translation group's version in one locale, if any: for
+ * saying whose it is when a save would add a second one.
+ */
+export async function findTranslationHolder(
+  db: D1Database,
+  translationGroup: string,
+  locale: string,
+): Promise<{
+  readonly id: string;
+  readonly kind: string;
+  readonly slug: string;
+  readonly path: string;
+} | null> {
+  return db
+    .prepare(
+      'SELECT id, kind, slug, path FROM content WHERE translation_group = ? AND locale = ?',
+    )
+    .bind(translationGroup, locale)
+    .first();
+}
+
 /** Input for {@link upsertContent}. */
 export interface ContentUpsert {
   readonly row: ContentRow;

@@ -29,6 +29,7 @@ import {
   findContentById,
   findContentByKey,
   findPathHolder,
+  findTranslationHolder,
   listContent,
   listTranslationsOf,
   loadSite,
@@ -236,6 +237,21 @@ export async function saveContent(
       409,
       `"${slug}" already exists in ${locale}. Remove --create-only to update it.`,
     );
+  }
+
+  // A group holds one item per language (docs/DATA_MODEL.md §2.2). Joining a
+  // group, or moving an item to another language, can ask for a slot that is
+  // taken; say whose it is, rather than fail on the constraint. An item that
+  // keeps its language keeps its own slot, so an update pays no extra read.
+  const group = existing?.translation_group ?? input.translationGroup;
+  if (group !== undefined && existing?.locale !== locale) {
+    const sibling = await findTranslationHolder(env.DB, group, locale);
+    if (sibling !== null && sibling.id !== existing?.id) {
+      return problem(
+        409,
+        `This translation group already has an item in ${locale}: the ${sibling.kind} "${sibling.slug}" at ${sibling.path} (id ${sibling.id}). Edit that item instead.`,
+      );
+    }
   }
 
   const now = new Date().toISOString();

@@ -59,6 +59,9 @@ listed below.
 - **Renaming an item by its slug alone is saved.** A save with the same
   Markdown, status and date was answered "unchanged" even when the slug, kind
   or language differed, and the new slug was dropped.
+- **Saving a language a translation group already has answers 409**, naming
+  the item that holds it (kind, slug, path and id), and writes nothing. It
+  failed on the database constraint and answered 500.
 - **Atelier linked a translated article's tags to the default language's
   archive, and Gazette its footer to the default feed.**
 - **`mallok build` refuses the slugs the Worker refuses**, before writing
