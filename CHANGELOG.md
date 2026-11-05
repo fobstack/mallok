@@ -4,7 +4,7 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0-rc.12] — 2026-11-05
 
 Purges that take effect and say when they do not, the default language under
 a prefix too, slugs of several segments, and heading ids for a linked table of
@@ -12,7 +12,8 @@ contents (Tasks 47–50). Two schema migrations run on the first request after
 deploying, and every stored page body is rendered again once. The admin is
 rebuilt on shadcn/ui, React Router, TanStack Query and React Hook Form
 (`docs/ADMIN_MIGRATION.md`); what it does and says is unchanged except where
-listed below.
+listed below. Among the fixes: creating a translation from the editor no
+longer overwrites the original, and the media library shows its images.
 
 ### Added
 
