@@ -249,7 +249,10 @@ succeeded** (`AC-CONTENT-10`, `docs/ACCEPTANCE.md §14.2` item 7).
 
 - The language switcher sits at the top of the editor, and switching to a
   translation that does not exist yet offers "create the `<language>`
-  version".
+  version". That opens a new item in that language, in the original's
+  translation group and of its kind (`/content/new?locale=…&group=…&kind=…`,
+  kept across a reload). If the group has that language by the time it is
+  saved, the save is refused with 409 naming the item that holds it.
 - A translation is an independent content row with its own Markdown, status
   and slug (`ARCHITECTURE §9`).
 - Members of one `translation_group` are visible to each other in the editor

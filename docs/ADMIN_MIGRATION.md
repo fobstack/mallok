@@ -713,16 +713,20 @@ run one by one.
   sidebar's Content link opens the default language, and "← All content"
   goes back to the list in the item's language.
 - **Fixed on the way:** "Create zh" in the editor's language bar never
-  worked. The editor read the item id as `new?locale=zh&group=…`, asked the
-  server for it and said it could not load it. It now reads the language,
-  group and kind from the address and saves the translation into the
-  original's group. `19-translation` covers it, and fails with either half
+  worked. The editor took the link's query for part of the item id, so it
+  never opened a new item, and Publish saved in the original's language and,
+  with the original's slug, overwrote the original (found by the separate
+  fix on `fix/duplicate-translation-409`, whose own version of this fix was
+  for the old router and was not merged). It now reads the language, group
+  and kind from the address and saves the translation into the original's
+  group. `19-translation` covers it, and fails with either half
   of the fix reverted.
 - **Two `Health` types** (the shell's and the Advanced page's) were one
   endpoint described twice; there is one now.
 - **Found, not fixed here:** a second item saved into the same group and
   language makes the Worker answer 500 with an unhandled D1 constraint
-  error instead of a 409. Raised as its own task.
+  error instead of a 409. Raised as its own task, and fixed on `main` on
+  2026-11-05.
 - **Size. First load: 161.7 KiB** (budget now 170 KiB, D7), from 125.0 KiB.
   Loaded on demand: 446.4 KiB.
 - **Checked:** the browser suite (45: the 44 that were there, unchanged, and
@@ -765,8 +769,9 @@ run one by one.
   - Task 51's release. (Merging into `main` was done on 2026-11-03.)
   - Two defects found during the work, older than it and raised as their
     own tasks: the media API returns no preview `url`, so thumbnails and
-    image previews are blank; and a second item in the same translation
-    group and language answers 500 instead of 409.
+    image previews are blank (open); and a second item in the same
+    translation group and language answered 500 instead of 409 (fixed on
+    `main` on 2026-11-05).
 
 ### D7 — The first-load budget, raised by phase 0
 

@@ -67,9 +67,11 @@ listed below.
 - **`mallok build` refuses the slugs the Worker refuses**, before writing
   anything. It took any slug: `../../x` wrote outside the output, `page/2`
   over a list's second page.
-- **"Create <language>" in the editor makes the translation.** It opened an
-  editor that could not load and said so; it now opens a new item in that
-  language, in the original's translation group.
+- **"Create zh" in the editor creates the Chinese version.** The admin took
+  the link's `?locale=…&group=…` for part of the item's id, so the editor
+  never opened a new item: Publish saved in the original's language, and
+  with the original's slug it overwrote the original. The new item now has
+  the link's language, group and kind, also after a reload.
 
 ### Changed
 

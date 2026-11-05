@@ -21,9 +21,9 @@ async function read(page: Page, id: string): Promise<Stored> {
  * Creating a translation from the editor's language bar (docs/ADMIN.md §6).
  *
  * "Create zh" opens a new item in that language and the original's
- * translation group, carried in the address. The editor used to ignore the
- * address: it asked the server for an item called `new?locale=…`, said it
- * could not load it, and a translation could only be made by hand.
+ * translation group, carried in the address. The editor used to take the
+ * query for part of the item id: it never opened a new item, and Publish
+ * saved in the original's language, over the original.
  */
 test('a translation made from the language bar joins the original', async ({
   page,
