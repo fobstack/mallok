@@ -607,7 +607,7 @@ run one by one.
 - **Found, not fixed here:** the media API never returns the `url` the
   admin's `MediaItem` declares, so library thumbnails and the editor's image
   previews are blank — on `main` too, so it predates this work. Raised as
-  its own task.
+  its own task, and fixed on `main` on 2026-11-05.
 - **Size. First load: 125.0 KiB**, from 126.5 KiB: the stylesheet lost its
   legacy rules.
 - **Checked:** the browser suite (44) passed in each of the eight runs of
@@ -768,10 +768,9 @@ run one by one.
     upload an image, open a plugin panel. Nothing has been deployed.
   - Task 51's release. (Merging into `main` was done on 2026-11-03.)
   - Two defects found during the work, older than it and raised as their
-    own tasks: the media API returns no preview `url`, so thumbnails and
-    image previews are blank (open); and a second item in the same
-    translation group and language answered 500 instead of 409 (fixed on
-    `main` on 2026-11-05).
+    own tasks, both fixed on `main` on 2026-11-05: the media API returned
+    no preview `url`, so thumbnails and image previews were blank; and a second item in the same
+    translation group and language answered 500 instead of 409.
 
 ### D7 — The first-load budget, raised by phase 0
 

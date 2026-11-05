@@ -164,6 +164,48 @@ describe('media', () => {
     expect(response.status).toBe(415);
   });
 
+  it('gives each object an address the admin can show it from', async () => {
+    // The admin's library and the editor's image fields read `url`; it was
+    // declared by the admin and never sent, so every thumbnail was blank.
+    const listed = await SELF.fetch(`${ORIGIN}/_mallok/api/media`, {
+      headers: authHeaders(),
+    });
+    const items = (
+      (await listed.json()) as {
+        items: { sha256: string; kind: string; ext: string; url: string }[];
+      }
+    ).items;
+    const hero = items.find((item) => item.sha256 === heroSha);
+    // An image with variants: its smallest, as a thumbnail.
+    expect(hero?.url).toBe(`/media/${heroSha}_480.webp`);
+    const shown = await SELF.fetch(`${ORIGIN}${hero?.url ?? ''}`);
+    expect(shown.status).toBe(200);
+    expect(shown.headers.get('content-type')).toBe('image/webp');
+    // A file: the original.
+    const file = items.find((item) => item.kind === 'file');
+    expect(file?.url).toBe(`/media/${file?.sha256}.${file?.ext}`);
+  });
+
+  it("follows the site's media domain when one is set", async () => {
+    const set = await env.DB.prepare(
+      "UPDATE site SET media_base_url = 'https://media.example.com' WHERE id = 1",
+    ).run();
+    expect(set.meta.changes).toBe(1);
+    try {
+      const detail = await SELF.fetch(
+        `${ORIGIN}/_mallok/api/media/${heroSha}`,
+        { headers: authHeaders() },
+      );
+      expect(((await detail.json()) as { url: string }).url).toBe(
+        `https://media.example.com/media/${heroSha}_480.webp`,
+      );
+    } finally {
+      await env.DB.prepare(
+        'UPDATE site SET media_base_url = NULL WHERE id = 1',
+      ).run();
+    }
+  });
+
   it('serves the object through the proxy with an immutable cache', async () => {
     const response = await SELF.fetch(`${ORIGIN}/media/${heroSha}.png`);
     expect(response.status).toBe(200);

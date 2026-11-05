@@ -13,10 +13,12 @@ import { z } from 'zod';
 import {
   findType,
   mediaObjectKey,
+  mediaUrl,
   readImageSize,
   sha256HexOfBytes,
   sniffMediaType,
   variantObjectKey,
+  variantUrl,
 } from '../core/index.js';
 import {
   deleteUnreferencedMedia,
@@ -27,6 +29,7 @@ import {
   setMediaAlt,
   setVariants,
 } from '../db/media.js';
+import { loadSite } from '../db/queries.js';
 import type { Env } from './env.js';
 import { json, problem, readJson } from './http.js';
 
@@ -108,7 +111,10 @@ export async function putMedia(
 
   const existing = await findMedia(env.DB, sha256);
   if (existing !== null) {
-    return json({ ...describe(existing), deduplicated: true });
+    return json({
+      ...describe(existing, await mediaBase(env)),
+      deduplicated: true,
+    });
   }
 
   const size = type.kind === 'image' ? readImageSize(body) : null;
@@ -129,9 +135,12 @@ export async function putMedia(
   });
 
   const stored = await findMedia(env.DB, sha256);
-  return json(stored === null ? { sha256 } : describe(stored), {
-    status: 201,
-  });
+  return json(
+    stored === null ? { sha256 } : describe(stored, await mediaBase(env)),
+    {
+      status: 201,
+    },
+  );
 }
 
 /** Stores one WebP variant of an existing image. */
@@ -179,7 +188,11 @@ export async function putVariant(
   await setVariants(env.DB, sha256, widths);
 
   const updated = await findMedia(env.DB, sha256);
-  return json(updated === null ? { sha256, width } : describe(updated));
+  return json(
+    updated === null
+      ? { sha256, width }
+      : describe(updated, await mediaBase(env)),
+  );
 }
 
 /** Lists the media library. */
@@ -194,14 +207,17 @@ export async function getMediaList(env: Env, url: URL): Promise<Response> {
     MAX_PAGE_SIZE,
   );
   const offset = clamp(Number(url.searchParams.get('offset') ?? 0), 0, 1e6);
-  const result = await listMedia(env.DB, {
-    ...(kind === null ? {} : { kind }),
-    ...(url.searchParams.get('unused') === '1' ? { unusedOnly: true } : {}),
-    limit,
-    offset,
-  });
+  const [result, base] = await Promise.all([
+    listMedia(env.DB, {
+      ...(kind === null ? {} : { kind }),
+      ...(url.searchParams.get('unused') === '1' ? { unusedOnly: true } : {}),
+      limit,
+      offset,
+    }),
+    mediaBase(env),
+  ]);
   return json({
-    items: result.items.map(describe),
+    items: result.items.map((item) => describe(item, base)),
     hasNext: result.hasNext,
     limit,
     offset,
@@ -217,7 +233,7 @@ export async function getMediaItem(
   if (row === null) {
     return problem(404, 'Not found.');
   }
-  return json(describe(row));
+  return json(describe(row, await mediaBase(env)));
 }
 
 /** Sets the default alt text of an image. */
@@ -276,21 +292,39 @@ export async function deleteObjects(
 }
 
 /** Shapes a media row for the API. */
-function describe(row: {
-  readonly sha256: string;
-  readonly kind: string;
-  readonly mime: string;
-  readonly ext: string;
-  readonly bytes: number;
-  readonly width: number | null;
-  readonly height: number | null;
-  readonly variants: string;
-  readonly original_name: string;
-  readonly alt: string | null;
-  readonly ref_count: number;
-  readonly unreferenced_since: string | null;
-  readonly created_at: string;
-}) {
+/**
+ * One media object as the API reports it, with the address a browser can
+ * show it from: the smallest WebP variant of an image that has them, as a
+ * thumbnail, otherwise the original. Built with the same functions the
+ * public pages use, so it follows the site's media domain, or the Worker's
+ * own `/media/` route when there is none.
+ */
+function describe(
+  row: {
+    readonly sha256: string;
+    readonly kind: string;
+    readonly mime: string;
+    readonly ext: string;
+    readonly bytes: number;
+    readonly width: number | null;
+    readonly height: number | null;
+    readonly variants: string;
+    readonly original_name: string;
+    readonly alt: string | null;
+    readonly ref_count: number;
+    readonly unreferenced_since: string | null;
+    readonly created_at: string;
+  },
+  mediaBaseUrl: string,
+) {
+  const variants = parseWidths(row.variants);
+  const asset = {
+    sha256: row.sha256,
+    kind: row.kind === 'image' ? ('image' as const) : ('file' as const),
+    ext: row.ext,
+    variants,
+  };
+  const smallest = Math.min(...variants);
   return {
     sha256: row.sha256,
     kind: row.kind,
@@ -299,13 +333,22 @@ function describe(row: {
     bytes: row.bytes,
     width: row.width,
     height: row.height,
-    variants: parseWidths(row.variants),
+    variants,
     originalName: row.original_name,
     alt: row.alt,
     refCount: row.ref_count,
     unreferencedSince: row.unreferenced_since,
     createdAt: row.created_at,
+    url:
+      asset.kind === 'image' && variants.length > 0
+        ? variantUrl(mediaBaseUrl, asset, smallest)
+        : mediaUrl(mediaBaseUrl, asset),
   };
+}
+
+/** The site's media domain, or `''` for the Worker's own `/media/` route. */
+async function mediaBase(env: Env): Promise<string> {
+  return (await loadSite(env.DB))?.media_base_url ?? '';
 }
 
 async function readBody(request: Request): Promise<Uint8Array | null> {

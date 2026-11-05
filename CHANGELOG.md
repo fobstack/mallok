@@ -59,6 +59,11 @@ listed below.
 - **Renaming an item by its slug alone is saved.** A save with the same
   Markdown, status and date was answered "unchanged" even when the slug, kind
   or language differed, and the new slug was dropped.
+- **The media library shows its images again.** The admin read a `url` the
+  media API never sent, so every thumbnail and every image field's preview
+  was blank. Each media object now carries one: an image's smallest WebP
+  variant, otherwise the original, on the site's media domain when it has
+  one.
 - **Saving a language a translation group already has answers 409**, naming
   the item that holds it (kind, slug, path and id), and writes nothing. It
   failed on the database constraint and answered 500.
