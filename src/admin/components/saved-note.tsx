@@ -10,21 +10,9 @@
 import { Clock } from 'lucide-react';
 import type { JSX } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { formatDuration } from '../format.js';
 import { useLiveDelay } from '../queries.js';
 import { Code, StatusBadge } from './page.js';
-
-/** Human-readable form of a cache lifetime. */
-function humanize(seconds: number): string {
-  if (seconds >= 3600) {
-    const hours = Math.round(seconds / 3600);
-    return `${hours} hour${hours === 1 ? '' : 's'}`;
-  }
-  if (seconds >= 60) {
-    const minutes = Math.round(seconds / 60);
-    return `${minutes} minute${minutes === 1 ? '' : 's'}`;
-  }
-  return `${seconds} seconds`;
-}
 
 export function SavedNote(): JSX.Element {
   const delay = useLiveDelay();
@@ -36,7 +24,7 @@ export function SavedNote(): JSX.Element {
       tone="warn"
       title="Configure a cache-purge token to make saves appear immediately."
     >
-      Saved — visitors see it within {humanize(delay.seconds)}
+      Saved — visitors see it within {formatDuration(delay.seconds)}
     </StatusBadge>
   );
 }
@@ -57,7 +45,7 @@ export function PurgeNotice(): JSX.Element | null {
     <Alert role="note" className="mx-4 mt-4 w-auto">
       <Clock />
       <AlertTitle>
-        Changes reach visitors within {humanize(delay.seconds)}
+        Changes reach visitors within {formatDuration(delay.seconds)}
       </AlertTitle>
       <AlertDescription>
         <p>

@@ -35,6 +35,7 @@ import {
 } from '../components/page.js';
 import { invalid, showServerErrors } from '../form/form.js';
 import { REQUIRED_MESSAGE } from '../form/types.js';
+import { formatNumber } from '../format.js';
 import { notify, useReportError } from '../notice.js';
 import { keys, useSession } from '../queries.js';
 import {
@@ -130,11 +131,11 @@ export function AccountPage(): JSX.Element {
           <AlertDescription>
             <p>
               Passwords are hashed with PBKDF2-SHA256 at{' '}
-              {activeSession.passwordIterations.toLocaleString()} iterations.
+              {formatNumber(activeSession.passwordIterations)} iterations.
               Current guidance is{' '}
-              {activeSession.passwordRecommendedIterations.toLocaleString()},
-              but a sign-in has to finish inside the Cloudflare Free plan's 10
-              ms CPU budget, so the cost is capped.
+              {formatNumber(activeSession.passwordRecommendedIterations)}, but a
+              sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU
+              budget, so the cost is capped.
             </p>
             <p>
               Use a long, unique password. For stronger protection, put

@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '../api.js';
+import { LanguagePicker } from '../components/language-picker.js';
 import { invalid } from '../form/form.js';
 import { REQUIRED_MESSAGE } from '../form/types.js';
 import { signIn, useKnownSettings } from '../queries.js';
@@ -63,7 +64,9 @@ export function LoginPage(): JSX.Element {
   });
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-muted p-6">
+    <div className="relative flex min-h-svh items-center justify-center bg-muted p-6">
+      {/* Before a session the language is chosen here (D7). */}
+      <LanguagePicker className="absolute top-4 right-4" />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>

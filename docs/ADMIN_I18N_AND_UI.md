@@ -530,9 +530,14 @@ Phase 1 as built:
   radio group is now named by its label, which `16-appearance` relied on
   not needing — its selector changed and says why.
 - `playwright.config.ts` pins `locale: 'en-US'`.
-- Not yet done from phase 1's list: the language control on the sign-in
-  page and in the wizard (the sign-in page already follows the browser), and
-  the formatter module of §5.4. Both land at the start of phase 2.
+- Finished at the start of phase 2: a language control (a native
+  `<select>`, `components/language-picker.tsx`) on the sign-in page and in
+  the wizard's header, and `src/admin/format.ts` (§5.4). The three call
+  sites that formatted with the browser's locale use it; `saved-note.tsx`'s
+  hand-built "1 minute" / "N minutes" is `Intl`'s unit format. The fourth
+  site in §2.1, `decimalsOf` in `record-editor.tsx`, keeps `'en'`: it reads
+  how many decimals a currency has, which no locale changes. First load
+  165.5 KiB.
 
 ## 9. Risks and open questions
 
