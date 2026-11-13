@@ -8,6 +8,9 @@
  * because it is true until someone configures the token.
  */
 
+import type { MessageDescriptor } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
+import { useLingui } from '@lingui/react/macro';
 import {
   ChevronsUpDown,
   FileText,
@@ -52,7 +55,7 @@ import { useSession, useSettings } from '../queries.js';
 import { PurgeNotice } from './saved-note.js';
 
 interface NavItem {
-  readonly label: string;
+  readonly label: MessageDescriptor;
   readonly href: string;
   readonly icon: typeof FileText;
   /** Whether the item is the current section for `path`. */
@@ -61,19 +64,19 @@ interface NavItem {
 
 const SITE: readonly NavItem[] = [
   {
-    label: 'Content',
+    label: msg`Content`,
     href: '/',
     icon: FileText,
     active: (path) => path === '/' || path.startsWith('/content'),
   },
   {
-    label: 'Media',
+    label: msg`Media`,
     href: '/media',
     icon: Image,
     active: (path) => path === '/media',
   },
   {
-    label: 'Plugins',
+    label: msg`Plugins`,
     href: '/plugins',
     icon: Plug,
     active: (path) => path === '/plugins',
@@ -82,25 +85,25 @@ const SITE: readonly NavItem[] = [
 
 const SETTINGS: readonly NavItem[] = [
   {
-    label: 'Site',
+    label: msg`Site`,
     href: '/settings',
     icon: Settings2,
     active: (path) => path === '/settings',
   },
   {
-    label: 'Appearance',
+    label: msg`Appearance`,
     href: '/settings/appearance',
     icon: Palette,
     active: (path) => path === '/settings/appearance',
   },
   {
-    label: 'Email',
+    label: msg`Email`,
     href: '/settings/email',
     icon: Mail,
     active: (path) => path === '/settings/email',
   },
   {
-    label: 'Advanced',
+    label: msg`Advanced`,
     href: '/settings/advanced',
     icon: Wrench,
     active: (path) => path === '/settings/advanced',
@@ -141,6 +144,7 @@ function NavGroup({
   readonly items: readonly NavItem[];
   readonly path: string;
 }): JSX.Element {
+  const { i18n } = useLingui();
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
@@ -148,19 +152,16 @@ function NavGroup({
         <SidebarMenu>
           {items.map((item) => {
             const active = item.active(path);
+            const label = i18n._(item.label);
             return (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={active}
-                  tooltip={item.label}
-                >
+                <SidebarMenuButton asChild isActive={active} tooltip={label}>
                   <AppLink
                     href={item.href}
                     {...(active ? { 'aria-current': 'page' as const } : {})}
                   >
                     <item.icon />
-                    <span>{item.label}</span>
+                    <span>{label}</span>
                   </AppLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -189,15 +190,16 @@ function AccountButton({
   readonly busy?: boolean;
   readonly onOpen?: () => void;
 }): JSX.Element {
+  const { t } = useLingui();
   return (
     <SidebarMenuButton
       size="lg"
-      aria-label="Account menu"
+      aria-label={t`Account menu`}
       aria-haspopup="menu"
       {...(busy ? { 'aria-busy': true } : {})}
       onClick={onOpen}
     >
-      <span className="truncate">{email === '' ? 'Account' : email}</span>
+      <span className="truncate">{email === '' ? t`Account` : email}</span>
       <ChevronsUpDown className="ml-auto" />
     </SidebarMenuButton>
   );
@@ -225,45 +227,49 @@ let toastsWanted = false;
 
 /** Where the current page sits: a section, and the page within it. */
 function crumbsFor(path: string): readonly {
-  readonly label: string;
+  readonly label: MessageDescriptor;
   readonly href?: string;
 }[] {
   if (path === '/' || path === '/content') {
-    return [{ label: 'Content' }];
+    return [{ label: msg`Content` }];
   }
   if (path.startsWith('/content/')) {
     return [
-      { label: 'Content', href: '/' },
-      { label: path === '/content/new' ? 'New item' : 'Edit' },
+      { label: msg`Content`, href: '/' },
+      { label: path === '/content/new' ? msg`New item` : msg`Edit` },
     ];
   }
   const setting = SETTINGS.find((item) => item.href === path);
   if (setting !== undefined) {
-    return [{ label: 'Settings', href: '/settings' }, { label: setting.label }];
+    return [
+      { label: msg`Settings`, href: '/settings' },
+      { label: setting.label },
+    ];
   }
   const area = SITE.find((item) => item.href === path);
   if (area !== undefined) {
     return [{ label: area.label }];
   }
   if (path === '/account') {
-    return [{ label: 'Account' }];
+    return [{ label: msg`Account` }];
   }
-  return [{ label: 'Not found' }];
+  return [{ label: msg`Not found` }];
 }
 
 function PageBreadcrumb({ path }: { readonly path: string }): JSX.Element {
+  const { i18n } = useLingui();
   const crumbs = crumbsFor(path);
   return (
     <Breadcrumb>
       <BreadcrumbList>
         {crumbs.map((crumb, index) => (
-          <BreadcrumbItem key={crumb.label}>
+          <BreadcrumbItem key={crumb.href ?? index}>
             {index > 0 ? <BreadcrumbSeparator /> : null}
             {crumb.href === undefined || index === crumbs.length - 1 ? (
-              <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+              <BreadcrumbPage>{i18n._(crumb.label)}</BreadcrumbPage>
             ) : (
               <BreadcrumbLink asChild>
-                <AppLink href={crumb.href}>{crumb.label}</AppLink>
+                <AppLink href={crumb.href}>{i18n._(crumb.label)}</AppLink>
               </BreadcrumbLink>
             )}
           </BreadcrumbItem>
@@ -283,6 +289,7 @@ export function Shell({
   // A page reports a failure with `notify`; it is shown as a toast.
   const message = useNotice();
   const siteName = useSettings().name;
+  const { t } = useLingui();
   if (message !== '') {
     toastsWanted = true;
   }
@@ -311,8 +318,8 @@ export function Shell({
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
-            <NavGroup label="Site" items={SITE} path={path} />
-            <NavGroup label="Settings" items={SETTINGS} path={path} />
+            <NavGroup label={t`Site`} items={SITE} path={path} />
+            <NavGroup label={t`Settings`} items={SETTINGS} path={path} />
           </SidebarContent>
           <SidebarFooter>
             <SidebarMenu>

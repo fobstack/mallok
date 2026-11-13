@@ -37,6 +37,7 @@ async function buildCheckout(name: string): Promise<string> {
     cp('src/admin', join(checkout, 'src/admin'), { recursive: true }),
     cp('src/core', join(checkout, 'src/core'), { recursive: true }),
     cp('vite.config.ts', join(checkout, 'vite.config.ts')),
+    cp('lingui.config.ts', join(checkout, 'lingui.config.ts')),
     cp('package.json', join(checkout, 'package.json')),
     cp('tsconfig.json', join(checkout, 'tsconfig.json')),
     cp('tsconfig.base.json', join(checkout, 'tsconfig.base.json')),

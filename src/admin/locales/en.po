@@ -1,0 +1,111 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-13 04:16-0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/shell.tsx
+msgid "Account"
+msgstr "Account"
+
+#: src/admin/components/account-menu.tsx
+msgid "Account and API tokens"
+msgstr "Account and API tokens"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/shell.tsx
+msgid "Account menu"
+msgstr "Account menu"
+
+#: src/admin/components/shell.tsx
+msgid "Advanced"
+msgstr "Advanced"
+
+#: src/admin/components/shell.tsx
+msgid "Appearance"
+msgstr "Appearance"
+
+#: src/admin/components/account-menu.tsx
+msgid "Colour scheme"
+msgstr "Colour scheme"
+
+#: src/admin/components/shell.tsx
+msgid "Content"
+msgstr "Content"
+
+#: src/admin/components/account-menu.tsx
+msgid "Dark"
+msgstr "Dark"
+
+#: src/admin/components/shell.tsx
+msgid "Edit"
+msgstr "Edit"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/login.tsx
+msgid "Email"
+msgstr "Email"
+
+#: src/admin/components/account-menu.tsx
+msgid "Interface language"
+msgstr "Interface language"
+
+#: src/admin/components/account-menu.tsx
+msgid "Light"
+msgstr "Light"
+
+#: src/admin/components/shell.tsx
+msgid "Media"
+msgstr "Media"
+
+#: src/admin/components/shell.tsx
+msgid "New item"
+msgstr "New item"
+
+#: src/admin/components/shell.tsx
+msgid "Not found"
+msgstr "Not found"
+
+#: src/admin/pages/login.tsx
+msgid "Password"
+msgstr "Password"
+
+#: src/admin/components/shell.tsx
+msgid "Plugins"
+msgstr "Plugins"
+
+#: src/admin/components/account-menu.tsx
+msgid "Same as the system"
+msgstr "Same as the system"
+
+#: src/admin/components/shell.tsx
+msgid "Settings"
+msgstr "Settings"
+
+#: src/admin/pages/login.tsx
+msgid "Sign in"
+msgstr "Sign in"
+
+#: src/admin/components/account-menu.tsx
+msgid "Sign out"
+msgstr "Sign out"
+
+#: src/admin/pages/login.tsx
+msgid "Sign-in failed."
+msgstr "Sign-in failed."
+
+#: src/admin/pages/login.tsx
+msgid "Signing in…"
+msgstr "Signing in…"
+
+#: src/admin/components/shell.tsx
+msgid "Site"
+msgstr "Site"
+
+#: src/admin/pages/login.tsx
+msgid "The site's admin"
+msgstr "The site's admin"

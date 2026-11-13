@@ -461,6 +461,7 @@ describe('the generated browser environment', () => {
       'NOTICE',
       'site.json',
       'vite.config.ts',
+      'lingui.config.ts',
       'tsconfig.json',
       'tsconfig.base.json',
       'text-modules.d.ts',
