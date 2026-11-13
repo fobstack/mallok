@@ -36,6 +36,7 @@ rest are the contracts for individual subsystems.
 | [ADMIN.md](ADMIN.md) | Admin information architecture, the setup wizard, the content editor, the schema-driven form generator, the media library, the quality gates |
 | [CLI.md](CLI.md) | Commands, arguments, authentication, idempotence rules, exit codes, error-message rules |
 | [SEO_PERFORMANCE.md](SEO_PERFORMANCE.md) | The SEO output built into the core, hreflang, structured data, the performance budget and how it is measured |
+| [ADMIN_I18N_AND_UI.md](ADMIN_I18N_AND_UI.md) | Proposal: a selectable interface language for the admin and the setup wizard (English and Simplified Chinese first), the measured cost of the candidate libraries, how theme, plugin and Worker strings are covered, and a page-by-page review of the admin's interface with the decisions left to the owner |
 | [SECURITY.md](SECURITY.md) | Trust levels, credential handling and the encryption format, authentication, sanitisation, upload validation, error hygiene, and **what is deliberately not defended against** |
 
 ## Process documents
