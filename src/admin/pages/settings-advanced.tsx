@@ -23,6 +23,7 @@ import {
   StatusBadge,
 } from '../components/page.js';
 import type { ExportProgress } from '../export.js';
+import { formatDateTime } from '../format.js';
 import { notify, useReportError } from '../notice.js';
 import { healthQuery, keys, saveSettings, useSettings } from '../queries.js';
 
@@ -228,7 +229,7 @@ export function AdvancedPage(): JSX.Element {
             'Last failed purge',
             <div key="v" className="flex flex-col items-start gap-1">
               <StatusBadge tone="warn">
-                {new Date(purgeFailure.at).toLocaleString()} — after{' '}
+                {formatDateTime(purgeFailure.at)} — after{' '}
                 {describePurgeSource(purgeFailure.source)}
                 {purgeFailure.status === undefined
                   ? ', Cloudflare could not be reached'

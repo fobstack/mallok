@@ -51,6 +51,7 @@ msgid "Email"
 msgstr "Email"
 
 #: src/admin/components/account-menu.tsx
+#: src/admin/components/language-picker.tsx
 msgid "Interface language"
 msgstr "Interface language"
 

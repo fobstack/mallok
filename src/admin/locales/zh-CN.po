@@ -51,6 +51,7 @@ msgid "Email"
 msgstr "邮箱"
 
 #: src/admin/components/account-menu.tsx
+#: src/admin/components/language-picker.tsx
 msgid "Interface language"
 msgstr "界面语言"
 

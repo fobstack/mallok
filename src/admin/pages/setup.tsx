@@ -26,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ApiError, api, setCsrf } from '../api.js';
+import { LanguagePicker } from '../components/language-picker.js';
 import { Code, Section } from '../components/page.js';
 import { keys } from '../queries.js';
 
@@ -197,9 +198,13 @@ export function SetupPage(): JSX.Element {
     <div className="flex min-h-svh justify-center bg-muted p-4 sm:p-6">
       <div className="flex w-full max-w-2xl flex-col gap-6 py-6">
         <header className="flex flex-col gap-4">
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Set up your site
-          </h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="font-heading text-2xl font-semibold tracking-tight">
+              Set up your site
+            </h1>
+            {/* The interface language, not the site's languages (D7). */}
+            <LanguagePicker />
+          </div>
           <ol className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
             {steps.map((entry, index) => (
               <li

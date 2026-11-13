@@ -52,3 +52,17 @@ test.describe('a browser that prefers Chinese', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
   });
 });
+
+test('can be chosen on the sign-in page, before there is a session', async ({
+  page,
+}) => {
+  await page.goto('/_mallok/app/');
+  await page
+    .getByRole('combobox', { name: 'Interface language' })
+    .selectOption('zh-CN');
+  await expect(page.getByRole('heading', { name: '登录' })).toBeVisible();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+
+  await page.getByRole('combobox', { name: '界面语言' }).selectOption('en');
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+});
