@@ -1,0 +1,111 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-13 04:16-0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: zh-CN\n"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/shell.tsx
+msgid "Account"
+msgstr "账号"
+
+#: src/admin/components/account-menu.tsx
+msgid "Account and API tokens"
+msgstr "账号与 API 令牌"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/shell.tsx
+msgid "Account menu"
+msgstr "账号菜单"
+
+#: src/admin/components/shell.tsx
+msgid "Advanced"
+msgstr "高级"
+
+#: src/admin/components/shell.tsx
+msgid "Appearance"
+msgstr "外观"
+
+#: src/admin/components/account-menu.tsx
+msgid "Colour scheme"
+msgstr "配色"
+
+#: src/admin/components/shell.tsx
+msgid "Content"
+msgstr "内容"
+
+#: src/admin/components/account-menu.tsx
+msgid "Dark"
+msgstr "深色"
+
+#: src/admin/components/shell.tsx
+msgid "Edit"
+msgstr "编辑"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/login.tsx
+msgid "Email"
+msgstr "邮箱"
+
+#: src/admin/components/account-menu.tsx
+msgid "Interface language"
+msgstr "界面语言"
+
+#: src/admin/components/account-menu.tsx
+msgid "Light"
+msgstr "浅色"
+
+#: src/admin/components/shell.tsx
+msgid "Media"
+msgstr "媒体"
+
+#: src/admin/components/shell.tsx
+msgid "New item"
+msgstr "新建"
+
+#: src/admin/components/shell.tsx
+msgid "Not found"
+msgstr "未找到"
+
+#: src/admin/pages/login.tsx
+msgid "Password"
+msgstr "密码"
+
+#: src/admin/components/shell.tsx
+msgid "Plugins"
+msgstr "插件"
+
+#: src/admin/components/account-menu.tsx
+msgid "Same as the system"
+msgstr "跟随系统"
+
+#: src/admin/components/shell.tsx
+msgid "Settings"
+msgstr "设置"
+
+#: src/admin/pages/login.tsx
+msgid "Sign in"
+msgstr "登录"
+
+#: src/admin/components/account-menu.tsx
+msgid "Sign out"
+msgstr "退出登录"
+
+#: src/admin/pages/login.tsx
+msgid "Sign-in failed."
+msgstr "登录失败。"
+
+#: src/admin/pages/login.tsx
+msgid "Signing in…"
+msgstr "正在登录…"
+
+#: src/admin/components/shell.tsx
+msgid "Site"
+msgstr "站点"
+
+#: src/admin/pages/login.tsx
+msgid "The site's admin"
+msgstr "站点后台"

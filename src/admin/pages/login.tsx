@@ -8,6 +8,7 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Trans, useLingui } from '@lingui/react/macro';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -46,6 +47,7 @@ export function LoginPage(): JSX.Element {
   });
   const [error, setError] = useState('');
   const siteName = useKnownSettings()?.name;
+  const { t } = useLingui();
   const busy = form.formState.isSubmitting;
   const { errors } = form.formState;
 
@@ -54,7 +56,9 @@ export function LoginPage(): JSX.Element {
     try {
       await signIn(email, password);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Sign-in failed.');
+      setError(
+        caught instanceof ApiError ? caught.message : t`Sign-in failed.`,
+      );
     }
   });
 
@@ -63,15 +67,19 @@ export function LoginPage(): JSX.Element {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>
-            <h1 className="text-xl">Sign in</h1>
+            <h1 className="text-xl">
+              <Trans>Sign in</Trans>
+            </h1>
           </CardTitle>
-          <CardDescription>{siteName ?? "The site's admin"}</CardDescription>
+          <CardDescription>{siteName ?? t`The site's admin`}</CardDescription>
         </CardHeader>
         <CardContent>
           <form noValidate onSubmit={(event) => void submit(event)}>
             <FieldGroup>
               <Field data-invalid={errors.email !== undefined}>
-                <FieldLabel htmlFor="login-email">Email</FieldLabel>
+                <FieldLabel htmlFor="login-email">
+                  <Trans>Email</Trans>
+                </FieldLabel>
                 <Input
                   id="login-email"
                   type="email"
@@ -84,7 +92,9 @@ export function LoginPage(): JSX.Element {
                 </FieldError>
               </Field>
               <Field data-invalid={errors.password !== undefined}>
-                <FieldLabel htmlFor="login-password">Password</FieldLabel>
+                <FieldLabel htmlFor="login-password">
+                  <Trans>Password</Trans>
+                </FieldLabel>
                 <Input
                   id="login-password"
                   type="password"
@@ -102,7 +112,7 @@ export function LoginPage(): JSX.Element {
                 </Alert>
               )}
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? 'Signing in…' : 'Sign in'}
+                {busy ? t`Signing in…` : t`Sign in`}
               </Button>
             </FieldGroup>
           </form>

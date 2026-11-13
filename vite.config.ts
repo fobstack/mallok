@@ -1,7 +1,8 @@
 import { fileURLToPath } from 'node:url';
+import { lingui } from '@lingui/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 
 /**
  * The admin single-page app.
@@ -11,6 +12,32 @@ import { defineConfig } from 'vite';
  * size cannot eat into the rendering pipeline's 3 MB budget
  * (docs/TECH_STACK.md §6).
  */
+
+/**
+ * Fails the build when a Lingui macro survives to module resolution.
+ *
+ * The transform replaces every `@lingui/…/macro` import. If it ever stops
+ * running — a reordered plugin list, a changed option — the browser build of
+ * `@lingui/react/macro` is a set of empty functions, so `<Trans>` would
+ * render nothing and the build would pass. This turns that silent blank
+ * into a build error (docs/ADMIN_I18N_AND_UI.md §8).
+ */
+function refuseUntransformedMacros(): Plugin {
+  return {
+    name: 'mallok:refuse-untransformed-lingui-macros',
+    enforce: 'pre',
+    resolveId(source, importer) {
+      if (/^@lingui\/[^/]+\/macro$/.test(source)) {
+        throw new Error(
+          `${importer ?? 'A module'} imports ${source}, but Lingui's macro ` +
+            'transform did not replace it. Check the lingui() plugin in ' +
+            'vite.config.ts.',
+        );
+      }
+      return null;
+    },
+  };
+}
 
 export default defineConfig(({ command }) => {
   if (command === 'build') {
@@ -23,7 +50,21 @@ export default defineConfig(({ command }) => {
   return {
     root: 'src/admin',
     base: '/_mallok/app/',
-    plugins: [react(), tailwindcss()],
+    // Lingui's macros (`<Trans>`, `t`) compile to catalog lookups here, and
+    // `.po` catalogs compile on import. Its own transform, not Babel: the
+    // admin dropped a Babel step once because it could fail silently
+    // (docs/ADMIN_I18N_AND_UI.md §2.2).
+    plugins: [
+      react(),
+      lingui({
+        macroTransform: true,
+        configPath: fileURLToPath(
+          new URL('./lingui.config.ts', import.meta.url),
+        ),
+      }),
+      tailwindcss(),
+      refuseUntransformedMacros(),
+    ],
     resolve: {
       alias: {
         // shadcn/ui's own import convention (`@/components/ui/button`).
