@@ -8,10 +8,11 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQueryClient } from '@tanstack/react-query';
 import { TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -34,21 +35,29 @@ import type { SiteEmail } from '../types.js';
 const SENDER_PATTERN = /^(?:[^\s@<>]+@[^\s@<>]+|[^<>]*<[^\s@<>]+@[^\s@<>]+>)$/;
 
 /** Empty clears the sender; anything else has to be an address. */
-const senderSchema = z.object({
-  from: z
-    .string()
-    .trim()
-    .refine(
-      (value) => value === '' || SENDER_PATTERN.test(value),
-      'Use an address such as hello@example.com or Acme <hello@example.com>.',
-    ),
-});
+function senderSchema(message: string) {
+  return z.object({
+    from: z
+      .string()
+      .trim()
+      .refine((value) => value === '' || SENDER_PATTERN.test(value), message),
+  });
+}
 
 export function EmailSettingsPage(): JSX.Element {
   const current = useSettings();
   const client = useQueryClient();
+  const { t } = useLingui();
+  // Built in the interface language, so its message is too.
+  const schema = useMemo(
+    () =>
+      senderSchema(
+        t`Use an address such as hello@example.com or Acme <hello@example.com>.`,
+      ),
+    [t],
+  );
   const form = useForm({
-    resolver: zodResolver(senderSchema),
+    resolver: zodResolver(schema),
     defaultValues: { from: current.email.fromAddress ?? '' },
   });
   const fromError = form.formState.errors.from?.message;
@@ -74,7 +83,7 @@ export function EmailSettingsPage(): JSX.Element {
       client.setQueryData(keys.settings, { ...current, email: stored });
       return true;
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
       return false;
     }
   };
@@ -102,7 +111,7 @@ export function EmailSettingsPage(): JSX.Element {
       setVerdict({
         ok: false,
         message:
-          caught instanceof ApiError ? caught.message : 'The check failed.',
+          caught instanceof ApiError ? caught.message : t`The check failed.`,
       });
     } finally {
       setChecking(false);
@@ -112,25 +121,31 @@ export function EmailSettingsPage(): JSX.Element {
   return (
     <Page>
       <PageHeader
-        title="Email"
-        lede="One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+        title={t`Email`}
+        lede={t`One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy.`}
       />
 
       <Section
         as="form"
-        title="Sender"
+        title={t`Sender`}
         onSubmit={(event) => void saveSender(event)}
         footer={
           <>
             <Button type="submit" disabled={busy}>
-              {busy ? 'Saving…' : 'Save sender'}
+              {busy ? t`Saving…` : t`Save sender`}
             </Button>
-            {saved ? <StatusBadge tone="ok">Saved</StatusBadge> : null}
+            {saved ? (
+              <StatusBadge tone="ok">
+                <Trans>Saved</Trans>
+              </StatusBadge>
+            ) : null}
           </>
         }
       >
         <Field data-invalid={fromError !== undefined}>
-          <FieldLabel htmlFor="email-from">From address</FieldLabel>
+          <FieldLabel htmlFor="email-from">
+            <Trans>From address</Trans>
+          </FieldLabel>
           <Input
             id="email-from"
             type="text"
@@ -145,23 +160,27 @@ export function EmailSettingsPage(): JSX.Element {
             {...form.register('from', { onChange: () => setSaved(false) })}
           />
           <FieldDescription id="email-from-help">
-            Must be on a domain you have verified in Resend. A plugin may set
-            its own sender; this one is used whenever it does not.
+            <Trans>
+              Must be on a domain you have verified in Resend. A plugin may set
+              its own sender; this one is used whenever it does not.
+            </Trans>
           </FieldDescription>
           <FieldError id="email-from-error">{fromError}</FieldError>
         </Field>
       </Section>
 
       <Section
-        title="Resend API key"
-        description="Stored encrypted. It is never shown again, here or anywhere else."
+        title={t`Resend API key`}
+        description={t`Stored encrypted. It is never shown again, here or anywhere else.`}
       >
         <Field>
-          <FieldLabel htmlFor="email-resend-key">Resend API key</FieldLabel>
+          <FieldLabel htmlFor="email-resend-key">
+            <Trans>Resend API key</Trans>
+          </FieldLabel>
           <div className="flex flex-wrap items-center gap-2">
             <SecretControl
               id="email-resend-key"
-              label="Resend API key"
+              label={t`Resend API key`}
               configured={email.resendConfigured}
               onSet={(value) => void writeKey(value)}
               onClear={() => void writeKey(null)}
@@ -173,7 +192,7 @@ export function EmailSettingsPage(): JSX.Element {
                 disabled={checking}
                 onClick={() => void check()}
               >
-                {checking ? 'Checking…' : 'Test'}
+                {checking ? t`Checking…` : t`Test`}
               </Button>
             ) : null}
             {verdict === null ? null : (
@@ -187,8 +206,10 @@ export function EmailSettingsPage(): JSX.Element {
           <Alert role="note">
             <TriangleAlert />
             <AlertDescription>
-              Without a key no email is sent. A message queued meanwhile is
-              retried for about 30 minutes and then marked failed.
+              <Trans>
+                Without a key no email is sent. A message queued meanwhile is
+                retried for about 30 minutes and then marked failed.
+              </Trans>
             </AlertDescription>
           </Alert>
         )}

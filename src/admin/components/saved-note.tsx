@@ -7,6 +7,7 @@
  * (docs/ADMIN.md §5, docs/ARCHITECTURE.md §6.2).
  */
 
+import { Trans, useLingui } from '@lingui/react/macro';
 import { Clock } from 'lucide-react';
 import type { JSX } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -16,15 +17,21 @@ import { Code, StatusBadge } from './page.js';
 
 export function SavedNote(): JSX.Element {
   const delay = useLiveDelay();
+  const { t } = useLingui();
   if (delay.instant) {
-    return <StatusBadge tone="ok">Saved — live now</StatusBadge>;
+    return (
+      <StatusBadge tone="ok">
+        <Trans>Saved — live now</Trans>
+      </StatusBadge>
+    );
   }
+  const within = formatDuration(delay.seconds);
   return (
     <StatusBadge
       tone="warn"
-      title="Configure a cache-purge token to make saves appear immediately."
+      title={t`Configure a cache-purge token to make saves appear immediately.`}
     >
-      Saved — visitors see it within {formatDuration(delay.seconds)}
+      <Trans>Saved — visitors see it within {within}</Trans>
     </StatusBadge>
   );
 }
@@ -39,20 +46,23 @@ export function PurgeNotice(): JSX.Element | null {
   if (delay.instant) {
     return null;
   }
+  const within = formatDuration(delay.seconds);
   return (
     // A standing note, not an alert: it is true from the first render until
     // someone configures the token, and must not interrupt a screen reader.
     <Alert role="note" className="mx-4 mt-4 w-auto">
       <Clock />
       <AlertTitle>
-        Changes reach visitors within {formatDuration(delay.seconds)}
+        <Trans>Changes reach visitors within {within}</Trans>
       </AlertTitle>
       <AlertDescription>
         <p>
-          No cache-purge token is configured, so a saved change reaches visitors
-          only after the cached page expires. This is a working site, not a
-          broken one — add <Code>CF_API_TOKEN</Code> and <Code>CF_ZONE_ID</Code>{' '}
-          as Worker secrets to get instant publishing.
+          <Trans>
+            No cache-purge token is configured, so a saved change reaches
+            visitors only after the cached page expires. This is a working site,
+            not a broken one — add <Code>CF_API_TOKEN</Code> and{' '}
+            <Code>CF_ZONE_ID</Code> as Worker secrets to get instant publishing.
+          </Trans>
         </p>
       </AlertDescription>
     </Alert>
