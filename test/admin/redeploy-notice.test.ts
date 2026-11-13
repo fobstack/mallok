@@ -25,10 +25,15 @@ function flatten(text: string): string {
 }
 
 describe('AC-INV-10: the interface names what needs a deploy', () => {
+  // The lists are messages now (docs/ADMIN_I18N_AND_UI.md); their English is
+  // what the interface says when no other language is chosen.
+  const instant = INSTANT.map((line) => line.message);
+  const needsDeploy = NEEDS_DEPLOY.map((line) => line.message);
+
   it('says switching themes and installing plugins are not instant', () => {
-    expect(INSTANT).not.toContain('Switching to a different theme');
-    expect(NEEDS_DEPLOY).toContain('Switching to a different theme');
-    expect(NEEDS_DEPLOY).toContain('Installing, updating or removing a plugin');
+    expect(instant).not.toContain('Switching to a different theme');
+    expect(needsDeploy).toContain('Switching to a different theme');
+    expect(needsDeploy).toContain('Installing, updating or removing a plugin');
   });
 });
 

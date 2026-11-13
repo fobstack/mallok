@@ -7,6 +7,56 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: en\n"
 
+#. placeholder {0}: progress.done
+#. placeholder {1}: progress.total
+#: src/admin/pages/settings-advanced.tsx
+msgid "{0}/{1} files"
+msgstr "{0}/{1} files"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{items, plural, one {# item} other {# items}} and {files, plural, one {# file} other {# files}} in {fileName}."
+msgstr "{items, plural, one {# item} other {# items}} and {files, plural, one {# file} other {# files}} in {fileName}."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "{locale} (default)"
+msgstr "{locale} (default)"
+
+#: src/admin/pages/settings-site.tsx
+msgid "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
+msgstr "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "{scripts, plural, one {Injects # script} other {Injects # scripts}}"
+msgstr "{scripts, plural, one {Injects # script} other {Injects # scripts}}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{when} — after {cause}, Cloudflare answered HTTP {status}"
+msgstr "{when} — after {cause}, Cloudflare answered HTTP {status}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{when} — after {cause}, Cloudflare could not be reached"
+msgstr "{when} — after {cause}, Cloudflare could not be reached"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a content change"
+msgstr "a content change"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a plugin switch"
+msgstr "a plugin switch"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a scheduled publication"
+msgstr "a scheduled publication"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a settings change"
+msgstr "a settings change"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
+msgstr "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
+
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/shell.tsx
 msgid "Account"
@@ -21,71 +71,459 @@ msgstr "Account and API tokens"
 msgid "Account menu"
 msgstr "Account menu"
 
+#: src/admin/pages/settings-advanced.tsx
+msgid "Active"
+msgstr "Active"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Add language"
+msgstr "Add language"
+
 #: src/admin/components/shell.tsx
+#: src/admin/pages/settings-advanced.tsx
 msgid "Advanced"
 msgstr "Advanced"
 
+#: src/admin/pages/settings-site.tsx
+msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
+msgstr "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
+
 #: src/admin/components/shell.tsx
+#: src/admin/pages/settings-appearance.tsx
 msgid "Appearance"
 msgstr "Appearance"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Applied migrations"
+msgstr "Applied migrations"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Assets"
+msgstr "Assets"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Background jobs waiting"
+msgstr "Background jobs waiting"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Backup and export"
+msgstr "Backup and export"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Building…"
+msgstr "Building…"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
+msgstr "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cache"
+msgstr "Cache"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cache purge token"
+msgstr "Cache purge token"
+
+#: src/admin/components/saved-note.tsx
+msgid "Changes reach visitors within {within}"
+msgstr "Changes reach visitors within {within}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Changing anything else in the source tree"
+msgstr "Changing anything else in the source tree"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Changing the theme takes a deploy"
+msgstr "Changing the theme takes a deploy"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Checking…"
+msgstr "Checking…"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clear cached pages"
+msgstr "Clear cached pages"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cleared the fragment cache."
+msgstr "Cleared the fragment cache."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cleared the page cache."
+msgstr "Cleared the page cache."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clearing caches"
+msgstr "Clearing caches"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "clearing the fragment cache"
+msgstr "clearing the fragment cache"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clearing…"
+msgstr "Clearing…"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Client JavaScript"
+msgstr "Client JavaScript"
 
 #: src/admin/components/account-menu.tsx
 msgid "Colour scheme"
 msgstr "Colour scheme"
 
+#: src/admin/components/saved-note.tsx
+msgid "Configure a cache-purge token to make saves appear immediately."
+msgstr "Configure a cache-purge token to make saves appear immediately."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Configured"
+msgstr "Configured"
+
 #: src/admin/components/shell.tsx
 msgid "Content"
 msgstr "Content"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Content items"
+msgstr "Content items"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Content types"
+msgstr "Content types"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Content: create, edit, publish, delete"
+msgstr "Content: create, edit, publish, delete"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Could not load diagnostics."
+msgstr "Could not load diagnostics."
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-appearance.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Could not save."
+msgstr "Could not save."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Could not switch."
+msgstr "Could not switch."
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Custom domain"
+msgstr "Custom domain"
 
 #: src/admin/components/account-menu.tsx
 msgid "Dark"
 msgstr "Dark"
 
+#: src/admin/pages/settings-site.tsx
+msgid "Default"
+msgstr "Default"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Default language is now \"{locale}\". {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+msgstr "Default language is now \"{locale}\". {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Diagnostics"
+msgstr "Diagnostics"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Edge cache"
+msgstr "Edge cache"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Edge cache lifetime (seconds)"
+msgstr "Edge cache lifetime (seconds)"
+
 #: src/admin/components/shell.tsx
 msgid "Edit"
 msgstr "Edit"
 
+#: src/admin/pages/settings-appearance.tsx
+msgid "Editing"
+msgstr "Editing"
+
 #: src/admin/components/shell.tsx
 #: src/admin/pages/login.tsx
+#: src/admin/pages/settings-email.tsx
 msgid "Email"
 msgstr "Email"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Email (Resend)"
+msgstr "Email (Resend)"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
+msgstr "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Everything below is a platform detail. You do not need any of it to run the site."
+msgstr "Everything below is a platform detail. You do not need any of it to run the site."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Export everything"
+msgstr "Export everything"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Failed background jobs"
+msgstr "Failed background jobs"
+
+#: src/admin/pages/settings-email.tsx
+msgid "From address"
+msgstr "From address"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Inactive — a workers.dev URL is a preview, not a site"
+msgstr "Inactive — a workers.dev URL is a preview, not a site"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Installing, updating or removing a plugin"
+msgstr "Installing, updating or removing a plugin"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Instant"
+msgstr "Instant"
 
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/language-picker.tsx
 msgid "Interface language"
 msgstr "Interface language"
 
+#: src/admin/pages/settings-advanced.tsx
+msgid "Key set, no site sender — only plugins with their own send"
+msgstr "Key set, no site sender — only plugins with their own send"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Language code"
+msgstr "Language code"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Languages"
+msgstr "Languages"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Last failed purge"
+msgstr "Last failed purge"
+
 #: src/admin/components/account-menu.tsx
 msgid "Light"
 msgstr "Light"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Loading…"
+msgstr "Loading…"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Make \"{locale}\" the default language?\n"
+"\n"
+"Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
+msgstr "Make \"{locale}\" the default language?\n"
+"\n"
+"Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Make default"
+msgstr "Make default"
 
 #: src/admin/components/shell.tsx
 msgid "Media"
 msgstr "Media"
 
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Media domain"
+msgstr "Media domain"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Media files"
+msgstr "Media files"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
+msgstr "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Needs a rebuild and deploy"
+msgstr "Needs a rebuild and deploy"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Neither of these loses anything. Cached pages and fragments are both derived from your content and are rebuilt on the next request — the only cost is that the next visitor waits for a render."
+msgstr "Neither of these loses anything. Cached pages and fragments are both derived from your content and are rebuilt on the next request — the only cost is that the next visitor waits for a render."
+
 #: src/admin/components/shell.tsx
 msgid "New item"
 msgstr "New item"
+
+#: src/admin/components/saved-note.tsx
+msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
+msgstr "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No error was recorded."
+msgstr "No error was recorded."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No key — no email is sent"
+msgstr "No key — no email is sent"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "None"
+msgstr "None"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Not bound"
+msgstr "Not bound"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Not configured — edits go live after the cache expires"
+msgstr "Not configured — edits go live after the cache expires"
 
 #: src/admin/components/shell.tsx
 msgid "Not found"
 msgstr "Not found"
 
+#: src/admin/pages/settings-email.tsx
+msgid "One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+msgstr "One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Only this host is indexable. Without one, every page is served noindex and the edge cache does not apply."
+msgstr "Only this host is indexable. Without one, every page is served noindex and the edge cache does not apply."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Pages it named may still be served from the cache until they expire."
+msgstr "Pages it named may still be served from the cache until they expire."
+
 #: src/admin/pages/login.tsx
 msgid "Password"
 msgstr "Password"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Plugin on/off switches, settings and secrets"
+msgstr "Plugin on/off switches, settings and secrets"
 
 #: src/admin/components/shell.tsx
 msgid "Plugins"
 msgstr "Plugins"
 
+#: src/admin/pages/settings-site.tsx
+msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
+msgstr "Prefix the default language too (<0>/{prefix}/…</0>)"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Published"
+msgstr "Published"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Rebuild all pages"
+msgstr "Rebuild all pages"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Redirects"
+msgstr "Redirects"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Render pipeline"
+msgstr "Render pipeline"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Rendered fragments"
+msgstr "Rendered fragments"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Resend API key"
+msgstr "Resend API key"
+
 #: src/admin/components/account-menu.tsx
 msgid "Same as the system"
 msgstr "Same as the system"
 
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Save"
+msgstr "Save"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Save options"
+msgstr "Save options"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Save sender"
+msgstr "Save sender"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Saved"
+msgstr "Saved"
+
+#: src/admin/components/saved-note.tsx
+msgid "Saved — live now"
+msgstr "Saved — live now"
+
+#: src/admin/components/saved-note.tsx
+msgid "Saved — visitors see it within {within}"
+msgstr "Saved — visitors see it within {within}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
+msgstr "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-appearance.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Saving…"
+msgstr "Saving…"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Sender"
+msgstr "Sender"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Serve \"{prefix}\" at the root again?\n"
+"\n"
+"Every URL of the default language moves (/{prefix}/about becomes /about) and each old URL, lists, tags and /{prefix} included, redirects to its new one. The navigation's links to this site are rewritten to match."
+msgstr "Serve \"{prefix}\" at the root again?\n"
+"\n"
+"Every URL of the default language moves (/{prefix}/about becomes /about) and each old URL, lists, tags and /{prefix} included, redirects to its new one. The navigation's links to this site are rewritten to match."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Serve \"{prefix}\" under /{prefix}/ too?\n"
+"\n"
+"Every URL of the default language moves (/about becomes /{prefix}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /{prefix}."
+msgstr "Serve \"{prefix}\" under /{prefix}/ too?\n"
+"\n"
+"Every URL of the default language moves (/about becomes /{prefix}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /{prefix}."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Served through the Worker"
+msgstr "Served through the Worker"
+
 #: src/admin/components/shell.tsx
 msgid "Settings"
 msgstr "Settings"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "setup"
+msgstr "setup"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Shown by most themes under the site name, and as the home page description."
+msgstr "Shown by most themes under the site name, and as the home page description."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Shown on pages in {locale}. Empty uses the tagline above."
+msgstr "Shown on pages in {locale}. Empty uses the tagline above."
 
 #: src/admin/pages/login.tsx
 msgid "Sign in"
@@ -104,9 +542,114 @@ msgid "Signing in…"
 msgstr "Signing in…"
 
 #: src/admin/components/shell.tsx
+#: src/admin/pages/settings-site.tsx
 msgid "Site"
 msgstr "Site"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Site name"
+msgstr "Site name"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Site settings, languages, navigation"
+msgstr "Site settings, languages, navigation"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Storage"
+msgstr "Storage"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Stored encrypted. It is never shown again, here or anywhere else."
+msgstr "Stored encrypted. It is never shown again, here or anywhere else."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Switching to a different theme"
+msgstr "Switching to a different theme"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Tagline"
+msgstr "Tagline"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Tagline ({locale})"
+msgstr "Tagline ({locale})"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Test"
+msgstr "Test"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "That did not work."
+msgstr "That did not work."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "the {plugin} plugin"
+msgstr "the {plugin} plugin"
+
+#: src/admin/pages/settings-email.tsx
+msgid "The check failed."
+msgstr "The check failed."
+
+#: src/admin/pages/settings-site.tsx
+msgid "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
+msgstr "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "The export failed."
+msgstr "The export failed."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
+msgstr "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
 
 #: src/admin/pages/login.tsx
 msgid "The site's admin"
 msgstr "The site's admin"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Theme"
+msgstr "Theme"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Theme options"
+msgstr "Theme options"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Theme options this theme declares"
+msgstr "Theme options this theme declares"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
+msgstr "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
+
+#: src/admin/pages/settings-site.tsx
+msgid "These are stored the moment you save — no rebuild, no deploy."
+msgstr "These are stored the moment you save — no rebuild, no deploy."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "These values apply to every language unless a language overrides them below."
+msgstr "These values apply to every language unless a language overrides them below."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Upgrading Mallok itself"
+msgstr "Upgrading Mallok itself"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Use an address such as hello@example.com or Acme <hello@example.com>."
+msgstr "Use an address such as hello@example.com or Acme <hello@example.com>."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
+msgstr "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "What is instant, and what needs a deploy"
+msgstr "What is instant, and what needs a deploy"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."
+msgstr "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."
+msgstr "Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."

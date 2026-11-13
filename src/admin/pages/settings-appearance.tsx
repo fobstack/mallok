@@ -7,6 +7,7 @@
  * (docs/PRODUCT_VISION.md §4).
  */
 
+import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { Info } from 'lucide-react';
 import type { JSX } from 'react';
 import { useState } from 'react';
@@ -37,6 +38,7 @@ import { saveSettings, useSettings, useTheme } from '../queries.js';
 export function AppearancePage(): JSX.Element {
   const active = useTheme();
   const current = useSettings();
+  const { t } = useLingui();
   const [editingLocale, setEditingLocale] = useState(current.defaultLocale);
   const [saved, setSaved] = useState(false);
 
@@ -84,18 +86,21 @@ export function AppearancePage(): JSX.Element {
       setSaved(true);
     } catch (caught) {
       showServerErrors(form.setError, caught);
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     }
   });
   const busy = form.formState.isSubmitting;
 
   const kinds = Object.entries(active.kinds);
+  const scripts = active.clientScripts.length;
+  const builtIn = active.available.join(', ');
+  const editingDefaultLocale = current.defaultLocale;
 
   return (
     <Page>
       <PageHeader
-        title="Appearance"
-        lede="The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
+        title={t`Appearance`}
+        lede={t`The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code.`}
       />
 
       <Section
@@ -110,21 +115,24 @@ export function AppearancePage(): JSX.Element {
       >
         <Facts
           items={[
-            ['Content types', kinds.map(([kind]) => kind).join(', ')],
+            [t`Content types`, kinds.map(([kind]) => kind).join(', ')],
             [
-              'Client JavaScript',
-              active.clientScripts.length === 0 ? (
+              t`Client JavaScript`,
+              scripts === 0 ? (
                 <StatusBadge key="scripts" tone="ok">
-                  None
+                  <Trans>None</Trans>
                 </StatusBadge>
               ) : (
                 <StatusBadge key="scripts" tone="warn">
-                  Injects {active.clientScripts.length} script
-                  {active.clientScripts.length === 1 ? '' : 's'}
+                  <Plural
+                    value={scripts}
+                    one="Injects # script"
+                    other="Injects # scripts"
+                  />
                 </StatusBadge>
               ),
             ],
-            ['Assets', <Code key="assets">{active.assetBase}</Code>],
+            [t`Assets`, <Code key="assets">{active.assetBase}</Code>],
           ]}
         />
         {active.clientScripts.length === 0 ? null : (
@@ -151,17 +159,22 @@ export function AppearancePage(): JSX.Element {
       <Alert role="note">
         <Info />
         <AlertTitle role="heading" aria-level={2}>
-          Changing the theme takes a deploy
+          <Trans>Changing the theme takes a deploy</Trans>
         </AlertTitle>
         <AlertDescription>
           <p>
-            Themes live in the source tree, not the database — they are compiled
-            into the Worker. To switch, edit <Code>ACTIVE_THEME</Code> in{' '}
-            <Code>src/themes/index.ts</Code>, then build and deploy again.
+            <Trans>
+              Themes live in the source tree, not the database — they are
+              compiled into the Worker. To switch, edit{' '}
+              <Code>ACTIVE_THEME</Code> in <Code>src/themes/index.ts</Code>,
+              then build and deploy again.
+            </Trans>
           </p>
           <p>
-            Built into this deployment: {active.available.join(', ')}. Your
-            content, its ids and every URL stay exactly as they are.
+            <Trans>
+              Built into this deployment: {builtIn}. Your content, its ids and
+              every URL stay exactly as they are.
+            </Trans>
           </p>
         </AlertDescription>
       </Alert>
@@ -169,12 +182,12 @@ export function AppearancePage(): JSX.Element {
       {specs.length === 0 ? null : (
         <Section
           as="form"
-          title="Theme options"
+          title={t`Theme options`}
           onSubmit={(event) => void submit(event)}
           footer={
             <>
               <Button type="submit" disabled={busy}>
-                {busy ? 'Saving…' : 'Save options'}
+                {busy ? t`Saving…` : t`Save options`}
               </Button>
               {saved ? <SavedNote /> : null}
             </>
@@ -182,7 +195,9 @@ export function AppearancePage(): JSX.Element {
         >
           {current.locales.length > 1 ? (
             <Field>
-              <FieldLabel htmlFor="theme-editing-locale">Editing</FieldLabel>
+              <FieldLabel htmlFor="theme-editing-locale">
+                <Trans>Editing</Trans>
+              </FieldLabel>
               <NativeSelect
                 id="theme-editing-locale"
                 value={editingLocale}
@@ -192,15 +207,16 @@ export function AppearancePage(): JSX.Element {
               >
                 {current.locales.map((locale) => (
                   <NativeSelectOption key={locale} value={locale}>
-                    {locale}
-                    {locale === current.defaultLocale ? ' (default)' : ''}
+                    {locale === current.defaultLocale
+                      ? t`${locale} (default)`
+                      : locale}
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
               <FieldDescription>
                 {editingLocale === current.defaultLocale
-                  ? 'These values apply to every language unless a language overrides them below.'
-                  : `Values you change here apply only to ${editingLocale}. Anything you leave alone follows the ${current.defaultLocale} value.`}
+                  ? t`These values apply to every language unless a language overrides them below.`
+                  : t`Values you change here apply only to ${editingLocale}. Anything you leave alone follows the ${editingDefaultLocale} value.`}
               </FieldDescription>
             </Field>
           ) : null}

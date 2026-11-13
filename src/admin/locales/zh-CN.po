@@ -7,6 +7,56 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: zh-CN\n"
 
+#. placeholder {0}: progress.done
+#. placeholder {1}: progress.total
+#: src/admin/pages/settings-advanced.tsx
+msgid "{0}/{1} files"
+msgstr "{0}/{1} 个文件"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{items, plural, one {# item} other {# items}} and {files, plural, one {# file} other {# files}} in {fileName}."
+msgstr "{fileName} 中包含 {items, plural, other {# 项内容}}和 {files, plural, other {# 个文件}}。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "{locale} (default)"
+msgstr "{locale}（默认）"
+
+#: src/admin/pages/settings-site.tsx
+msgid "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
+msgstr "{moved, plural, other {已迁移 # 个 URL，均已设置重定向；导航链接已同步改写。}}"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "{scripts, plural, one {Injects # script} other {Injects # scripts}}"
+msgstr "{scripts, plural, other {注入 # 个脚本}}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{when} — after {cause}, Cloudflare answered HTTP {status}"
+msgstr "{when} — 由{cause}触发，Cloudflare 返回 HTTP {status}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{when} — after {cause}, Cloudflare could not be reached"
+msgstr "{when} — 由{cause}触发，无法连接 Cloudflare"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a content change"
+msgstr "内容修改"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a plugin switch"
+msgstr "插件开关"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a scheduled publication"
+msgstr "定时发布"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a settings change"
+msgstr "设置修改"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
+msgstr "一个 zip 压缩包，包含所有页面的 Markdown、图片、站点设置和询盘。它是一个完整的站点，在哪里都能读取——随时可以带去 Astro、Hugo 或 Obsidian。升级前请先导出。"
+
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/shell.tsx
 msgid "Account"
@@ -21,71 +71,459 @@ msgstr "账号与 API 令牌"
 msgid "Account menu"
 msgstr "账号菜单"
 
+#: src/admin/pages/settings-advanced.tsx
+msgid "Active"
+msgstr "已生效"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Add language"
+msgstr "添加语言"
+
 #: src/admin/components/shell.tsx
+#: src/admin/pages/settings-advanced.tsx
 msgid "Advanced"
 msgstr "高级"
 
+#: src/admin/pages/settings-site.tsx
+msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
+msgstr "R2 的自定义域名，例如 https://media.example.com。留空则由 Worker 提供图片。"
+
 #: src/admin/components/shell.tsx
+#: src/admin/pages/settings-appearance.tsx
 msgid "Appearance"
 msgstr "外观"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Applied migrations"
+msgstr "已执行的迁移"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Assets"
+msgstr "静态资源"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Background jobs waiting"
+msgstr "等待中的后台任务"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Backup and export"
+msgstr "备份与导出"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Building…"
+msgstr "正在生成…"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
+msgstr "本次部署内置的主题：{builtIn}。切换主题后，内容、内容 ID 和所有 URL 都保持不变。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cache"
+msgstr "缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cache purge token"
+msgstr "缓存清除令牌"
+
+#: src/admin/components/saved-note.tsx
+msgid "Changes reach visitors within {within}"
+msgstr "修改将在 {within}内对访客可见"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Changing anything else in the source tree"
+msgstr "修改源代码中的其他任何内容"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Changing the theme takes a deploy"
+msgstr "更换主题需要重新部署"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Checking…"
+msgstr "正在检测…"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clear cached pages"
+msgstr "清除页面缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cleared the fragment cache."
+msgstr "已清除片段缓存。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cleared the page cache."
+msgstr "已清除页面缓存。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clearing caches"
+msgstr "清除缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "clearing the fragment cache"
+msgstr "清除片段缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clearing…"
+msgstr "正在清除…"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Client JavaScript"
+msgstr "前台 JavaScript"
 
 #: src/admin/components/account-menu.tsx
 msgid "Colour scheme"
 msgstr "配色"
 
+#: src/admin/components/saved-note.tsx
+msgid "Configure a cache-purge token to make saves appear immediately."
+msgstr "配置缓存清除令牌后，保存即可立即生效。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Configured"
+msgstr "已配置"
+
 #: src/admin/components/shell.tsx
 msgid "Content"
 msgstr "内容"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Content items"
+msgstr "内容条目"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Content types"
+msgstr "内容类型"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Content: create, edit, publish, delete"
+msgstr "内容：新建、编辑、发布、删除"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Could not load diagnostics."
+msgstr "无法加载诊断信息。"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-appearance.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Could not save."
+msgstr "保存失败。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Could not switch."
+msgstr "切换失败。"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Custom domain"
+msgstr "自定义域名"
 
 #: src/admin/components/account-menu.tsx
 msgid "Dark"
 msgstr "深色"
 
+#: src/admin/pages/settings-site.tsx
+msgid "Default"
+msgstr "默认"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Default language is now \"{locale}\". {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+msgstr "默认语言已改为“{locale}”。{moved, plural, other {已迁移 # 个 URL，均已设置重定向。}}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Diagnostics"
+msgstr "诊断"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Edge cache"
+msgstr "边缘缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Edge cache lifetime (seconds)"
+msgstr "边缘缓存有效期（秒）"
+
 #: src/admin/components/shell.tsx
 msgid "Edit"
 msgstr "编辑"
 
+#: src/admin/pages/settings-appearance.tsx
+msgid "Editing"
+msgstr "正在编辑"
+
 #: src/admin/components/shell.tsx
 #: src/admin/pages/login.tsx
+#: src/admin/pages/settings-email.tsx
 msgid "Email"
 msgstr "邮箱"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Email (Resend)"
+msgstr "邮件（Resend）"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
+msgstr "所有语言（包括默认语言）都在 <0>/<locale>/</0> 下提供；站点根路径会重定向到 <1>/{prefix}</1>。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Everything below is a platform detail. You do not need any of it to run the site."
+msgstr "以下都是平台层面的细节，日常运营站点用不到。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Export everything"
+msgstr "全部导出"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Failed background jobs"
+msgstr "失败的后台任务"
+
+#: src/admin/pages/settings-email.tsx
+msgid "From address"
+msgstr "发件地址"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Inactive — a workers.dev URL is a preview, not a site"
+msgstr "未生效 — workers.dev 地址只是预览，不是正式站点"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Installing, updating or removing a plugin"
+msgstr "安装、更新或移除插件"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Instant"
+msgstr "立即生效"
 
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/language-picker.tsx
 msgid "Interface language"
 msgstr "界面语言"
 
+#: src/admin/pages/settings-advanced.tsx
+msgid "Key set, no site sender — only plugins with their own send"
+msgstr "已设置密钥，但没有站点发件地址 — 只有自带发件地址的插件能发送"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Language code"
+msgstr "语言代码"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Languages"
+msgstr "语言"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Last failed purge"
+msgstr "最近一次清除失败"
+
 #: src/admin/components/account-menu.tsx
 msgid "Light"
 msgstr "浅色"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Loading…"
+msgstr "正在加载…"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Make \"{locale}\" the default language?\n"
+"\n"
+"Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
+msgstr "将“{locale}”设为默认语言？\n"
+"\n"
+"所有公开 URL 都会改写，旧 URL 会重定向到新地址。此操作无法自动撤销。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Make default"
+msgstr "设为默认"
 
 #: src/admin/components/shell.tsx
 msgid "Media"
 msgstr "媒体"
 
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Media domain"
+msgstr "媒体域名"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Media files"
+msgstr "媒体文件"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
+msgstr "必须是已在 Resend 验证过的域名。插件可以设置自己的发件地址；没有设置时使用这里的地址。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Needs a rebuild and deploy"
+msgstr "需要重新构建并部署"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Neither of these loses anything. Cached pages and fragments are both derived from your content and are rebuilt on the next request — the only cost is that the next visitor waits for a render."
+msgstr "两者都不会丢失任何数据。页面缓存和片段缓存都由内容生成，下一次请求时会重新生成——唯一的代价是下一位访客需要等待一次渲染。"
+
 #: src/admin/components/shell.tsx
 msgid "New item"
 msgstr "新建"
+
+#: src/admin/components/saved-note.tsx
+msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
+msgstr "尚未配置缓存清除令牌，保存的修改要等页面缓存过期后访客才能看到。站点运行正常，并没有出错——将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No error was recorded."
+msgstr "没有记录到错误信息。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No key — no email is sent"
+msgstr "未设置密钥 — 不会发送任何邮件"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "None"
+msgstr "无"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Not bound"
+msgstr "未绑定"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Not configured — edits go live after the cache expires"
+msgstr "未配置 — 修改要等缓存过期后才生效"
 
 #: src/admin/components/shell.tsx
 msgid "Not found"
 msgstr "未找到"
 
+#: src/admin/pages/settings-email.tsx
+msgid "One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+msgstr "整个站点共用一个 Resend 密钥和一个发件地址。所有发送邮件的插件都使用它们，修改后对下一封邮件生效——无需重新构建或部署。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Only this host is indexable. Without one, every page is served noindex and the edge cache does not apply."
+msgstr "只有这个域名会被搜索引擎收录。未设置时，所有页面都带 noindex，且边缘缓存不生效。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Pages it named may still be served from the cache until they expire."
+msgstr "涉及的页面在缓存过期前，可能仍会显示旧内容。"
+
 #: src/admin/pages/login.tsx
 msgid "Password"
 msgstr "密码"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Plugin on/off switches, settings and secrets"
+msgstr "插件的启用开关、设置和密钥"
 
 #: src/admin/components/shell.tsx
 msgid "Plugins"
 msgstr "插件"
 
+#: src/admin/pages/settings-site.tsx
+msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
+msgstr "默认语言也加前缀（<0>/{prefix}/…</0>）"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Published"
+msgstr "已发布"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Rebuild all pages"
+msgstr "重新生成所有页面"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Redirects"
+msgstr "重定向"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Remove"
+msgstr "移除"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Render pipeline"
+msgstr "渲染管线"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Rendered fragments"
+msgstr "已渲染片段"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Resend API key"
+msgstr "Resend API 密钥"
+
 #: src/admin/components/account-menu.tsx
 msgid "Same as the system"
 msgstr "跟随系统"
 
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Save"
+msgstr "保存"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Save options"
+msgstr "保存选项"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Save sender"
+msgstr "保存发件人"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Saved"
+msgstr "已保存"
+
+#: src/admin/components/saved-note.tsx
+msgid "Saved — live now"
+msgstr "已保存 — 已生效"
+
+#: src/admin/components/saved-note.tsx
+msgid "Saved — visitors see it within {within}"
+msgstr "已保存 — 访客将在 {within}内看到"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
+msgstr "保存内容时会清除受影响页面的缓存，所以这是未被修改页面的缓存上限，而不是修改生效前的等待时间。"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-appearance.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Saving…"
+msgstr "正在保存…"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Sender"
+msgstr "发件人"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Serve \"{prefix}\" at the root again?\n"
+"\n"
+"Every URL of the default language moves (/{prefix}/about becomes /about) and each old URL, lists, tags and /{prefix} included, redirects to its new one. The navigation's links to this site are rewritten to match."
+msgstr "让“{prefix}”重新在根路径下提供？\n"
+"\n"
+"默认语言的所有 URL 都会迁移（/{prefix}/about 变为 /about），每个旧 URL（包括列表页、标签页和 /{prefix}）都会重定向到新地址。导航中指向本站的链接会同步改写。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Serve \"{prefix}\" under /{prefix}/ too?\n"
+"\n"
+"Every URL of the default language moves (/about becomes /{prefix}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /{prefix}."
+msgstr "让“{prefix}”也在 /{prefix}/ 下提供？\n"
+"\n"
+"默认语言的所有 URL 都会迁移（/about 变为 /{prefix}/about），每个旧 URL（包括列表页和标签页）都会重定向到新地址。导航中指向本站的链接会同步改写。之后站点根路径只会重定向到 /{prefix}。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Served through the Worker"
+msgstr "由 Worker 提供"
+
 #: src/admin/components/shell.tsx
 msgid "Settings"
 msgstr "设置"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "setup"
+msgstr "初始设置"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Shown by most themes under the site name, and as the home page description."
+msgstr "大多数主题会显示在站点名称下方，并用作首页描述。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Shown on pages in {locale}. Empty uses the tagline above."
+msgstr "显示在 {locale} 页面上。留空则使用上面的标语。"
 
 #: src/admin/pages/login.tsx
 msgid "Sign in"
@@ -104,9 +542,114 @@ msgid "Signing in…"
 msgstr "正在登录…"
 
 #: src/admin/components/shell.tsx
+#: src/admin/pages/settings-site.tsx
 msgid "Site"
 msgstr "站点"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Site name"
+msgstr "站点名称"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Site settings, languages, navigation"
+msgstr "站点设置、语言、导航"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Storage"
+msgstr "存储"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Stored encrypted. It is never shown again, here or anywhere else."
+msgstr "加密保存。之后在这里或任何地方都不会再显示。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Switching to a different theme"
+msgstr "更换为其他主题"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Tagline"
+msgstr "标语"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Tagline ({locale})"
+msgstr "标语（{locale}）"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Test"
+msgstr "检测"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "That did not work."
+msgstr "操作未成功。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "the {plugin} plugin"
+msgstr "{plugin} 插件"
+
+#: src/admin/pages/settings-email.tsx
+msgid "The check failed."
+msgstr "检测失败。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
+msgstr "默认语言不带 URL 前缀；其他语言都在 <0>/<locale>/</0> 下提供。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "The export failed."
+msgstr "导出失败。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
+msgstr "以下选项是运行时设置：保存后立即生效，无需重新构建。主题本身属于源代码。"
 
 #: src/admin/pages/login.tsx
 msgid "The site's admin"
 msgstr "站点后台"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Theme"
+msgstr "主题"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Theme options"
+msgstr "主题选项"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Theme options this theme declares"
+msgstr "当前主题提供的主题选项"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
+msgstr "主题位于源代码中，而不在数据库里——它们会被编译进 Worker。要更换主题，请修改 <1>src/themes/index.ts</1> 中的 <0>ACTIVE_THEME</0>，然后重新构建并部署。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "These are stored the moment you save — no rebuild, no deploy."
+msgstr "点击保存即生效——无需重新构建或部署。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "These values apply to every language unless a language overrides them below."
+msgstr "这些值适用于所有语言，除非某个语言在下面单独设置。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Upgrading Mallok itself"
+msgstr "升级 Mallok 本身"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Use an address such as hello@example.com or Acme <hello@example.com>."
+msgstr "请使用 hello@example.com 或 Acme <hello@example.com> 这样的地址。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
+msgstr "这里修改的值只对 {editingLocale} 生效。没有改动的选项沿用 {editingDefaultLocale} 的值。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "What is instant, and what needs a deploy"
+msgstr "哪些立即生效，哪些需要部署"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."
+msgstr "没有密钥时不会发送任何邮件。期间排队的邮件会重试约 30 分钟，之后标记为失败。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."
+msgstr "重试后已放弃的任务——例如发不出去的邮件、反复失败的插件任务。这里的任务不会再自动重试。"
