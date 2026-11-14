@@ -7,6 +7,7 @@
  * plugin declares — takes effect immediately.
  */
 
+import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Info, TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
@@ -42,9 +43,10 @@ import { pluginsQuery } from '../queries.js';
 import type { PluginInfo } from '../types.js';
 
 export function PluginsPage(): JSX.Element {
+  const { t } = useLingui();
   const client = useQueryClient();
   const listed = useQuery(pluginsQuery);
-  useReportError(listed.error, 'Could not load plugins.');
+  useReportError(listed.error, t`Could not load plugins.`);
   const plugins = listed.data?.plugins ?? [];
   const loading = listed.isPending;
   const reload = useCallback(
@@ -54,32 +56,38 @@ export function PluginsPage(): JSX.Element {
 
   return (
     <Page>
-      <PageHeader title="Plugins" />
+      <PageHeader title={t`Plugins`} />
 
       <Alert role="note">
         <Info />
         <AlertTitle role="heading" aria-level={2}>
-          Plugins ship with your source, not through this page
+          <Trans>Plugins ship with your source, not through this page</Trans>
         </AlertTitle>
         <AlertDescription>
           <p>
-            To add one, put its folder in <Code>src/plugins/</Code>, list it in{' '}
-            <Code>src/plugins/index.ts</Code>, then build and deploy. Removing
-            one is the reverse. There is no upload here because there is no way
-            to make an upload take effect without a new build.
+            <Trans>
+              To add one, put its folder in <Code>src/plugins/</Code>, list it
+              in <Code>src/plugins/index.ts</Code>, then build and deploy.
+              Removing one is the reverse. There is no upload here because there
+              is no way to make an upload take effect without a new build.
+            </Trans>
           </p>
           <p>
-            What you can change here — the switch below, settings and secrets —
-            is stored in the database and applies to the very next request.
+            <Trans>
+              What you can change here — the switch below, settings and secrets
+              — is stored in the database and applies to the very next request.
+            </Trans>
           </p>
         </AlertDescription>
       </Alert>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
+        </p>
       ) : plugins.length === 0 ? (
         <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          No plugins are compiled into this build.
+          <Trans>No plugins are compiled into this build.</Trans>
         </p>
       ) : (
         plugins.map((plugin) => (
@@ -97,6 +105,7 @@ function PluginCard({
   readonly plugin: PluginInfo;
   readonly onChanged: () => Promise<void>;
 }): JSX.Element {
+  const { t } = useLingui();
   const [busy, setBusy] = useState(false);
   const form = useForm<FieldValues>({ defaultValues: { ...plugin.values } });
   const [savedSettings, setSavedSettings] = useState(false);
@@ -115,7 +124,9 @@ function PluginCard({
       });
       await onChanged();
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not change.');
+      notify(
+        caught instanceof ApiError ? caught.message : t`Could not change.`,
+      );
     } finally {
       setBusy(false);
     }
@@ -133,7 +144,7 @@ function PluginCard({
       await onChanged();
     } catch (caught) {
       showServerErrors(form.setError, caught);
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     } finally {
       setBusy(false);
     }
@@ -150,7 +161,7 @@ function PluginCard({
       });
       await onChanged();
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     }
   };
 
@@ -168,7 +179,7 @@ function PluginCard({
         [name]: {
           ok: false,
           message:
-            caught instanceof ApiError ? caught.message : 'The check failed.',
+            caught instanceof ApiError ? caught.message : t`The check failed.`,
         },
       }));
     } finally {
@@ -177,6 +188,18 @@ function PluginCard({
   };
 
   const missingLayouts = plugin.pageLayouts.filter((entry) => !entry.provided);
+  const pluginName = plugin.name;
+  const listSeparator = t({
+    comment: 'Between items of a list',
+    message: ', ',
+  });
+  // Each layout name is code; the list around them is the language's own.
+  const layouts = missingLayouts.map((entry, index) => (
+    <span key={entry.layout}>
+      {index === 0 ? '' : listSeparator}
+      <Code>{entry.layout}</Code>
+    </span>
+  ));
   const nameId = `plugin-${plugin.id}-name`;
   return (
     <section aria-labelledby={nameId}>
@@ -193,7 +216,9 @@ function PluginCard({
               {plugin.version}
             </span>
             {plugin.official ? (
-              <Badge variant="secondary">Official</Badge>
+              <Badge variant="secondary">
+                <Trans>Official</Trans>
+              </Badge>
             ) : null}
           </CardTitle>
           {plugin.description === '' ? null : (
@@ -201,12 +226,12 @@ function PluginCard({
           )}
           <CardAction className="flex items-center gap-2 text-sm">
             <Switch
-              aria-label={`${plugin.name} enabled`}
+              aria-label={t`${pluginName} enabled`}
               checked={plugin.enabled}
               disabled={busy}
               onCheckedChange={(checked) => void toggle(checked)}
             />
-            <span aria-hidden="true">{plugin.enabled ? 'On' : 'Off'}</span>
+            <span aria-hidden="true">{plugin.enabled ? t`On` : t`Off`}</span>
           </CardAction>
         </CardHeader>
 
@@ -214,25 +239,28 @@ function PluginCard({
           <Facts
             items={[
               [
-                'Hooks',
-                plugin.hooks.length === 0 ? 'None' : plugin.hooks.join(', '),
+                t`Hooks`,
+                plugin.hooks.length === 0 ? t`None` : plugin.hooks.join(', '),
               ],
               [
-                'Client JavaScript',
+                t`Client JavaScript`,
                 plugin.clientScripts.length === 0 ? (
                   <StatusBadge key="v" tone="ok">
-                    None
+                    <Trans>None</Trans>
                   </StatusBadge>
                 ) : (
                   <StatusBadge key="v" tone="warn">
-                    {plugin.clientScripts.length} script
-                    {plugin.clientScripts.length === 1 ? '' : 's'}
+                    <Plural
+                      value={plugin.clientScripts.length}
+                      one="# script"
+                      other="# scripts"
+                    />
                   </StatusBadge>
                 ),
               ],
               [
-                'Affects cached pages',
-                plugin.affectsFragmentCache ? 'Yes' : 'Only at request time',
+                t`Affects cached pages`,
+                plugin.affectsFragmentCache ? t`Yes` : t`Only at request time`,
               ],
             ]}
           />
@@ -241,8 +269,10 @@ function PluginCard({
             <Alert role="note" className="border-warning/40 text-warning">
               <TriangleAlert />
               <AlertDescription className="text-foreground">
-                This plugin runs on <strong>every visitor request</strong>,
-                including ones the cache would otherwise answer for free.
+                <Trans>
+                  This plugin runs on <strong>every visitor request</strong>,
+                  including ones the cache would otherwise answer for free.
+                </Trans>
               </AlertDescription>
             </Alert>
           ) : null}
@@ -252,16 +282,12 @@ function PluginCard({
               <TriangleAlert />
               <AlertDescription className="text-foreground">
                 <p>
-                  The current theme has no layout for{' '}
-                  {missingLayouts.map((entry, index) => (
-                    <span key={entry.layout}>
-                      {index === 0 ? '' : ', '}
-                      <Code>{entry.layout}</Code>
-                    </span>
-                  ))}
-                  . Those pages are shown in a plain built-in layout, without
-                  the site’s design. Adding the layouts to the theme needs a new
-                  build and deploy.
+                  <Trans>
+                    The current theme has no layout for {layouts}. Those pages
+                    are shown in a plain built-in layout, without the site’s
+                    design. Adding the layouts to the theme needs a new build
+                    and deploy.
+                  </Trans>
                 </p>
               </AlertDescription>
             </Alert>
@@ -288,7 +314,9 @@ function PluginCard({
               className="flex flex-col gap-4"
               onSubmit={(event) => void saveSettings(event)}
             >
-              <h3 className="font-heading text-sm font-semibold">Settings</h3>
+              <h3 className="font-heading text-sm font-semibold">
+                <Trans>Settings</Trans>
+              </h3>
               <SchemaForm
                 specs={specs}
                 control={form.control}
@@ -296,10 +324,12 @@ function PluginCard({
               />
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="submit" disabled={busy}>
-                  Save settings
+                  <Trans>Save settings</Trans>
                 </Button>
                 {savedSettings ? (
-                  <StatusBadge tone="ok">Saved</StatusBadge>
+                  <StatusBadge tone="ok">
+                    <Trans>Saved</Trans>
+                  </StatusBadge>
                 ) : null}
               </div>
             </form>
@@ -308,10 +338,14 @@ function PluginCard({
           {plugin.secrets.length === 0 ? null : (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
-                <h3 className="font-heading text-sm font-semibold">Secrets</h3>
+                <h3 className="font-heading text-sm font-semibold">
+                  <Trans>Secrets</Trans>
+                </h3>
                 <p className="text-sm text-muted-foreground">
-                  Stored encrypted. They are never shown again, here or anywhere
-                  else.
+                  <Trans>
+                    Stored encrypted. They are never shown again, here or
+                    anywhere else.
+                  </Trans>
                 </p>
               </div>
               {plugin.secrets.map((secret) => (
@@ -339,7 +373,7 @@ function PluginCard({
                         disabled={checking !== ''}
                         onClick={() => void checkSecret(secret.name)}
                       >
-                        {checking === secret.name ? 'Checking…' : 'Test'}
+                        {checking === secret.name ? t`Checking…` : t`Test`}
                       </Button>
                     ) : null}
                     {checkResult[secret.name] === undefined ? null : (
@@ -355,24 +389,30 @@ function PluginCard({
             </div>
           )}
 
-          {plugin.panels.map((panel) =>
-            panel.attachTo === undefined ? (
-              <PluginPanelView
-                key={panel.id}
-                pluginId={plugin.id}
-                panel={panel}
-              />
-            ) : (
-              // Its records belong to one content item each; a list of all of
-              // them, with nothing to say whose they are, would only mislead.
+          {plugin.panels.map((panel) => {
+            if (panel.attachTo === undefined) {
+              return (
+                <PluginPanelView
+                  key={panel.id}
+                  pluginId={plugin.id}
+                  panel={panel}
+                />
+              );
+            }
+            const panelLabel = panel.label;
+            const kind = panel.attachTo.kind;
+            // Its records belong to one content item each; a list of all of
+            // them, with nothing to say whose they are, would only mislead.
+            return (
               <p className="text-sm text-muted-foreground" key={panel.id}>
-                <strong className="text-foreground">{panel.label}</strong> is
-                edited where it belongs: open any{' '}
-                <Code>{panel.attachTo.kind}</Code> in Content, and it is under
-                the editor.
+                <Trans>
+                  <strong className="text-foreground">{panelLabel}</strong> is
+                  edited where it belongs: open any <Code>{kind}</Code> in
+                  Content, and it is under the editor.
+                </Trans>
               </p>
-            ),
-          )}
+            );
+          })}
         </CardContent>
       </Card>
     </section>
