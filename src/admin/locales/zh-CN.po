@@ -443,7 +443,7 @@ msgstr "修改密码"
 msgid "Changed"
 msgstr "已修改"
 
-#: src/admin/components/saved-note.tsx
+#: src/admin/components/shell.tsx
 msgid "Changes reach visitors within {within}"
 msgstr "修改将在 {within}内对访客可见"
 
@@ -1182,7 +1182,7 @@ msgstr "下一页"
 msgid "server.plugins.attached_owner_missing"
 msgstr "不存在属于该翻译组的 {kind}。"
 
-#: src/admin/components/saved-note.tsx
+#: src/admin/pages/settings-advanced.tsx
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "尚未配置缓存清除令牌，保存的修改要等页面缓存过期后访客才能看到。站点运行正常，并没有出错——将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。"
 
@@ -2197,6 +2197,10 @@ msgstr "哪些立即生效，哪些需要部署"
 #: src/admin/pages/plugins.tsx
 msgid "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
 msgstr "这里能修改的内容——下面的开关、设置和密钥——都保存在数据库中，从下一次请求起生效。"
+
+#: src/admin/components/shell.tsx
+msgid "Why?"
+msgstr "为什么？"
 
 #: src/admin/pages/settings-email.tsx
 msgid "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."

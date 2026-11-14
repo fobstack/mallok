@@ -10,9 +10,10 @@
 
 import type { MessageDescriptor } from '@lingui/core';
 import { msg } from '@lingui/core/macro';
-import { useLingui } from '@lingui/react/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
 import {
   ChevronsUpDown,
+  Clock,
   FileText,
   Image,
   Mail,
@@ -24,6 +25,7 @@ import {
 import type { JSX, ReactNode } from 'react';
 import { lazy, Suspense, useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { Alert, AlertTitle } from '@/components/ui/alert';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -50,9 +52,9 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { formatDuration } from '../format.js';
 import { clearNotice, useNotice } from '../notice.js';
-import { useSession, useSettings } from '../queries.js';
-import { PurgeNotice } from './saved-note.js';
+import { useLiveDelay, useSession, useSettings } from '../queries.js';
 
 interface NavItem {
   readonly label: MessageDescriptor;
@@ -341,8 +343,10 @@ export function Shell({
             />
             <PageBreadcrumb path={path} />
           </header>
-          <PurgeNotice />
-          <div className="mx-auto w-full max-w-[68rem] p-[clamp(1.2rem,3vw,2.2rem)]">
+          {/* The notice inside the column, not across the window: it, the
+              page header and the page share one left edge (U2). */}
+          <div className="mx-auto flex w-full max-w-[68rem] flex-col gap-6 p-[clamp(1.2rem,3vw,2.2rem)]">
+            <PurgeNotice />
             {children}
           </div>
         </SidebarInset>
@@ -353,5 +357,38 @@ export function Shell({
         ) : null}
       </SidebarProvider>
     </TooltipProvider>
+  );
+}
+
+/**
+ * The standing note shown while no purge token is configured. It stays up
+ * rather than appearing once, because the condition is permanent until
+ * someone configures the token. One line, above every page: what it means
+ * for the operator, and a link to the infrastructure detail, which belongs
+ * on Advanced (docs/ADMIN.md §2; docs/ADMIN_I18N_AND_UI.md, U1).
+ */
+function PurgeNotice(): JSX.Element | null {
+  const delay = useLiveDelay();
+  if (delay.instant) {
+    return null;
+  }
+  const within = formatDuration(delay.seconds);
+  return (
+    // A standing note, not an alert: it is true from the first render until
+    // someone configures the token, and must not interrupt a screen reader.
+    <Alert role="note" className="py-2">
+      <Clock />
+      <AlertTitle className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-normal">
+        <span className="font-medium">
+          <Trans>Changes reach visitors within {within}</Trans>
+        </span>
+        <Link
+          to="/settings/advanced#diagnostics"
+          className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          <Trans>Why?</Trans>
+        </Link>
+      </AlertTitle>
+    </Alert>
   );
 }

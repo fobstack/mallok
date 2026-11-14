@@ -11,7 +11,7 @@ import { msg, plural } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JSX, ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -170,6 +170,14 @@ export function AdvancedPage(): JSX.Element {
   );
   const health = healthNow.data ?? null;
   const diagnostics = loadedDiagnostics.data ?? null;
+  // The standing note's "Why?" lands here (U1). The router does not scroll
+  // to an anchor, and the section has a height only once its data is in.
+  const loaded = diagnostics !== null;
+  useEffect(() => {
+    if (loaded && window.location.hash === '#diagnostics') {
+      document.getElementById('diagnostics')?.scrollIntoView();
+    }
+  }, [loaded]);
   const [ttl, setTtl] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [clearing, setClearing] = useState('');
@@ -335,8 +343,21 @@ export function AdvancedPage(): JSX.Element {
         </div>
       </Section>
 
-      <Section title={t`Diagnostics`}>
+      <Section title={t`Diagnostics`} id="diagnostics">
         <Facts items={diagnosticsFacts} />
+        {health?.purgeConfigured === false ? (
+          // What the standing note on every page links to (U1): the one
+          // place the secret names appear.
+          <p className="max-w-prose text-sm text-muted-foreground">
+            <Trans>
+              No cache-purge token is configured, so a saved change reaches
+              visitors only after the cached page expires. This is a working
+              site, not a broken one — add <Code>CF_API_TOKEN</Code> and{' '}
+              <Code>CF_ZONE_ID</Code> as Worker secrets to get instant
+              publishing.
+            </Trans>
+          </p>
+        ) : null}
       </Section>
 
       {diagnostics === null || diagnostics.failedJobs.length === 0 ? null : (
