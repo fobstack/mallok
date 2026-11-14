@@ -8,6 +8,9 @@
  * wording keeps them distinct from failures.
  */
 
+import { i18n, type MessageDescriptor } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
+import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { Check, CircleAlert, Info } from 'lucide-react';
@@ -71,15 +74,16 @@ function importFailures(result: Record<string, unknown>): string[] {
 
 type Step = 'admin' | 'site' | 'starter' | 'domain' | 'done';
 
-const STEP_LABELS: Readonly<Record<Step, string>> = {
-  admin: 'Administrator',
-  site: 'Site and languages',
-  starter: 'Starting content',
-  domain: 'Domain',
-  done: 'Finish',
+const STEP_LABELS: Readonly<Record<Step, MessageDescriptor>> = {
+  admin: msg`Administrator`,
+  site: msg`Site and languages`,
+  starter: msg`Starting content`,
+  domain: msg`Domain`,
+  done: msg`Finish`,
 };
 
 export function SetupPage(): JSX.Element {
+  const { t } = useLingui();
   const loaded = useQuery({
     queryKey: keys.setup,
     queryFn: () => api<SetupStatus>('/setup'),
@@ -94,7 +98,7 @@ export function SetupPage(): JSX.Element {
       ? ''
       : loaded.error instanceof ApiError
         ? loaded.error.message
-        : 'Could not start setup.';
+        : t`Could not start setup.`;
   const [chosen, setStep] = useState<Step | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -149,7 +153,7 @@ export function SetupPage(): JSX.Element {
       setStep(next);
     } catch (caught) {
       setError(
-        caught instanceof ApiError ? caught.message : 'That did not work.',
+        caught instanceof ApiError ? caught.message : t`That did not work.`,
       );
     } finally {
       setBusy(false);
@@ -162,20 +166,24 @@ export function SetupPage(): JSX.Element {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>
-              <h1 className="text-xl">Setup is finished</h1>
+              <h1 className="text-xl">
+                <Trans>Setup is finished</Trans>
+              </h1>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm">
-              This site has already been set up. Everything the wizard did can
-              be changed in{' '}
-              <a
-                className="text-primary underline underline-offset-4"
-                href="/_mallok/app/settings"
-              >
-                Settings
-              </a>
-              .
+              <Trans>
+                This site has already been set up. Everything the wizard did can
+                be changed in{' '}
+                <a
+                  className="text-primary underline underline-offset-4"
+                  href="/_mallok/app/settings"
+                >
+                  Settings
+                </a>
+                .
+              </Trans>
             </p>
           </CardContent>
         </Card>
@@ -186,12 +194,13 @@ export function SetupPage(): JSX.Element {
   if (status === null) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-muted p-6 text-sm text-muted-foreground">
-        {loadError === '' ? 'Loading…' : loadError}
+        {loadError === '' ? t`Loading…` : loadError}
       </div>
     );
   }
 
   const steps: Step[] = ['admin', 'site', 'starter', 'domain', 'done'];
+  const customDomain = status.customDomain;
   const at = steps.indexOf(step);
 
   return (
@@ -200,7 +209,7 @@ export function SetupPage(): JSX.Element {
         <header className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h1 className="font-heading text-2xl font-semibold tracking-tight">
-              Set up your site
+              <Trans>Set up your site</Trans>
             </h1>
             {/* The interface language, not the site's languages (D7). */}
             <LanguagePicker />
@@ -226,7 +235,7 @@ export function SetupPage(): JSX.Element {
                 >
                   {at > index ? <Check className="size-3.5" /> : index + 1}
                 </span>
-                {STEP_LABELS[entry]}
+                {i18n._(STEP_LABELS[entry])}
               </li>
             ))}
           </ol>
@@ -246,7 +255,7 @@ export function SetupPage(): JSX.Element {
         {step === 'admin' ? (
           <Section
             as="form"
-            title="Create the administrator"
+            title={t`Create the administrator`}
             onSubmit={(event) => {
               event.preventDefault();
               void run(
@@ -259,12 +268,14 @@ export function SetupPage(): JSX.Element {
             }}
             footer={
               <Button type="submit" disabled={busy}>
-                {busy ? 'Creating…' : 'Continue'}
+                {busy ? t`Creating…` : t`Continue`}
               </Button>
             }
           >
             <Field>
-              <FieldLabel htmlFor="setup-email">Email</FieldLabel>
+              <FieldLabel htmlFor="setup-email">
+                <Trans>Email</Trans>
+              </FieldLabel>
               <Input
                 id="setup-email"
                 type="email"
@@ -275,7 +286,9 @@ export function SetupPage(): JSX.Element {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="setup-password">Password</FieldLabel>
+              <FieldLabel htmlFor="setup-password">
+                <Trans>Password</Trans>
+              </FieldLabel>
               <Input
                 id="setup-password"
                 type="password"
@@ -286,12 +299,14 @@ export function SetupPage(): JSX.Element {
                 onInput={(event) => setPassword(event.currentTarget.value)}
               />
               <FieldDescription>
-                At least 12 characters. This is the only account.
+                <Trans>At least 12 characters. This is the only account.</Trans>
               </FieldDescription>
             </Field>
             {status.requiresSetupKey ? (
               <Field>
-                <FieldLabel htmlFor="setup-key">Setup key</FieldLabel>
+                <FieldLabel htmlFor="setup-key">
+                  <Trans>Setup key</Trans>
+                </FieldLabel>
                 <Input
                   id="setup-key"
                   type="password"
@@ -301,9 +316,11 @@ export function SetupPage(): JSX.Element {
                   onInput={(event) => setSetupKey(event.currentTarget.value)}
                 />
                 <FieldDescription>
-                  Printed once by <Code>mallok create</Code>. It proves this
-                  site is yours: without it, whoever found the address first
-                  could claim it. It stops working the moment setup succeeds.
+                  <Trans>
+                    Printed once by <Code>mallok create</Code>. It proves this
+                    site is yours: without it, whoever found the address first
+                    could claim it. It stops working the moment setup succeeds.
+                  </Trans>
                 </FieldDescription>
               </Field>
             ) : null}
@@ -313,7 +330,7 @@ export function SetupPage(): JSX.Element {
         {step === 'site' ? (
           <Section
             as="form"
-            title="Name your site"
+            title={t`Name your site`}
             onSubmit={(event) => {
               event.preventDefault();
               const extra = extraLocales
@@ -332,12 +349,14 @@ export function SetupPage(): JSX.Element {
             }}
             footer={
               <Button type="submit" disabled={busy}>
-                {busy ? 'Saving…' : 'Continue'}
+                {busy ? t`Saving…` : t`Continue`}
               </Button>
             }
           >
             <Field>
-              <FieldLabel htmlFor="setup-name">Site name</FieldLabel>
+              <FieldLabel htmlFor="setup-name">
+                <Trans>Site name</Trans>
+              </FieldLabel>
               <Input
                 id="setup-name"
                 required
@@ -346,7 +365,9 @@ export function SetupPage(): JSX.Element {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="setup-locale">Main language</FieldLabel>
+              <FieldLabel htmlFor="setup-locale">
+                <Trans>Main language</Trans>
+              </FieldLabel>
               <Input
                 id="setup-locale"
                 className="max-w-32"
@@ -355,12 +376,16 @@ export function SetupPage(): JSX.Element {
                 onInput={(event) => setLocale(event.currentTarget.value)}
               />
               <FieldDescription>
-                A language code such as <Code>en</Code> or <Code>zh</Code>. It
-                has no URL prefix; every other language does.
+                <Trans>
+                  A language code such as <Code>en</Code> or <Code>zh</Code>. It
+                  has no URL prefix; every other language does.
+                </Trans>
               </FieldDescription>
             </Field>
             <Field>
-              <FieldLabel htmlFor="setup-extra">Other languages</FieldLabel>
+              <FieldLabel htmlFor="setup-extra">
+                <Trans>Other languages</Trans>
+              </FieldLabel>
               <Input
                 id="setup-extra"
                 placeholder="zh, de"
@@ -368,7 +393,7 @@ export function SetupPage(): JSX.Element {
                 onInput={(event) => setExtraLocales(event.currentTarget.value)}
               />
               <FieldDescription>
-                Comma separated. You can add more later.
+                <Trans>Comma separated. You can add more later.</Trans>
               </FieldDescription>
             </Field>
           </Section>
@@ -376,8 +401,8 @@ export function SetupPage(): JSX.Element {
 
         {step === 'starter' ? (
           <Section
-            title="Start with example content?"
-            description="A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site."
+            title={t`Start with example content?`}
+            description={t`A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site.`}
             footer={
               <>
                 <Button
@@ -385,7 +410,7 @@ export function SetupPage(): JSX.Element {
                   disabled={busy || starter === ''}
                   onClick={() => void run('starter', { starter }, 'domain')}
                 >
-                  {busy ? 'Installing…' : 'Install'}
+                  {busy ? t`Installing…` : t`Install`}
                 </Button>
                 <Button
                   type="button"
@@ -393,91 +418,126 @@ export function SetupPage(): JSX.Element {
                   disabled={busy}
                   onClick={() => setStep('domain')}
                 >
-                  Skip
+                  <Trans>Skip</Trans>
                 </Button>
               </>
             }
           >
             <RadioGroup value={starter} onValueChange={setStarter}>
-              {status.starters.map((entry) => (
-                <FieldLabel
-                  key={entry.id}
-                  id={`starter-${entry.id}-label`}
-                  htmlFor={`starter-${entry.id}`}
-                >
-                  <Field orientation="horizontal">
-                    {/* Named by the whole option, said in so many words:
+              {status.starters.map((entry) => {
+                const records = entry.records ?? 0;
+                const starterTheme = entry.theme;
+                const activeTheme = status.theme.id;
+                return (
+                  <FieldLabel
+                    key={entry.id}
+                    id={`starter-${entry.id}-label`}
+                    htmlFor={`starter-${entry.id}`}
+                  >
+                    <Field orientation="horizontal">
+                      {/* Named by the whole option, said in so many words:
                         axe does not take a `<label for>` as a radio
                         button's name. */}
-                    <RadioGroupItem
-                      id={`starter-${entry.id}`}
-                      aria-labelledby={`starter-${entry.id}-label`}
-                      value={entry.id}
-                    />
-                    <FieldContent>
-                      <FieldTitle>{entry.name}</FieldTitle>
-                      <FieldDescription>{entry.description}</FieldDescription>
-                      <FieldDescription>
-                        {entry.documents} pages
-                        {(entry.records ?? 0) > 0
-                          ? ` · ${entry.records} sample records`
-                          : ''}
-                        {entry.matchesActiveTheme
-                          ? ''
-                          : ` · written for the "${entry.theme}" theme, but this build runs "${status.theme.id}", so some pages will use the plain page layout`}
-                      </FieldDescription>
-                    </FieldContent>
-                  </Field>
-                </FieldLabel>
-              ))}
+                      <RadioGroupItem
+                        id={`starter-${entry.id}`}
+                        aria-labelledby={`starter-${entry.id}-label`}
+                        value={entry.id}
+                      />
+                      <FieldContent>
+                        <FieldTitle>{entry.name}</FieldTitle>
+                        <FieldDescription>{entry.description}</FieldDescription>
+                        <FieldDescription>
+                          <Plural
+                            value={entry.documents}
+                            one="# page"
+                            other="# pages"
+                          />
+                          {records > 0 ? (
+                            <>
+                              {' · '}
+                              <Plural
+                                value={records}
+                                one="# sample record"
+                                other="# sample records"
+                              />
+                            </>
+                          ) : null}
+                          {entry.matchesActiveTheme ? null : (
+                            <>
+                              {' · '}
+                              <Trans>
+                                written for the "{starterTheme}" theme, but this
+                                build runs "{activeTheme}", so some pages will
+                                use the plain page layout
+                              </Trans>
+                            </>
+                          )}
+                        </FieldDescription>
+                      </FieldContent>
+                    </Field>
+                  </FieldLabel>
+                );
+              })}
             </RadioGroup>
           </Section>
         ) : null}
 
         {step === 'domain' ? (
           <Section
-            title="Your domain"
+            title={t`Your domain`}
             footer={
               <Button
                 type="button"
                 disabled={busy}
                 onClick={() => void run('complete', {}, 'done')}
               >
-                Finish setup
+                <Trans>Finish setup</Trans>
               </Button>
             }
           >
             {status.customDomain === null ? (
               <>
                 <p className="text-sm">
-                  This site has no custom domain yet, so it is running on a{' '}
-                  <Code>.workers.dev</Code> address. That address is a preview:{' '}
-                  <strong>Cloudflare's edge cache does not apply to it</strong>,
-                  so pages are rendered on every request and will feel slower
-                  than the real site.
+                  <Trans>
+                    This site has no custom domain yet, so it is running on a{' '}
+                    <Code>.workers.dev</Code> address. That address is a
+                    preview:{' '}
+                    <strong>
+                      Cloudflare's edge cache does not apply to it
+                    </strong>
+                    , so pages are rendered on every request and will feel
+                    slower than the real site.
+                  </Trans>
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Add a custom domain in the Cloudflare dashboard under Workers
-                  &amp; Pages → your Worker → Settings → Domains &amp; Routes,
-                  then enter it under Settings → Site. Nothing else changes:
-                  your content, its ids and every URL stay as they are.
+                  <Trans>
+                    Add a custom domain in the Cloudflare dashboard under
+                    Workers &amp; Pages → your Worker → Settings → Domains &amp;
+                    Routes, then enter it under Settings → Site. Nothing else
+                    changes: your content, its ids and every URL stay as they
+                    are.
+                  </Trans>
                 </p>
               </>
             ) : (
               <p className="text-sm">
-                Serving <Code>{status.customDomain}</Code>. The edge cache is
-                active.
+                <Trans>
+                  Serving <Code>{customDomain}</Code>. The edge cache is active.
+                </Trans>
               </p>
             )}
             {ttlLowered ? (
               <Alert role="note">
                 <Info />
                 <AlertDescription>
-                  No cache-purge token is configured, so the cache lifetime was
-                  set to 60 seconds — edits appear within a minute instead of
-                  immediately. Add <Code>CF_API_TOKEN</Code> and{' '}
-                  <Code>CF_ZONE_ID</Code> as Worker secrets for instant
-                  publishing. This is a working configuration, not a broken one.
+                  <Trans>
+                    No cache-purge token is configured, so the cache lifetime
+                    was set to 60 seconds — edits appear within a minute instead
+                    of immediately. Add <Code>CF_API_TOKEN</Code> and{' '}
+                    <Code>CF_ZONE_ID</Code> as Worker secrets for instant
+                    publishing. This is a working configuration, not a broken
+                    one.
+                  </Trans>
                 </AlertDescription>
               </Alert>
             ) : null}
@@ -486,26 +546,44 @@ export function SetupPage(): JSX.Element {
 
         {step === 'done' ? (
           <Section
-            title="Your site is ready"
+            title={t`Your site is ready`}
             footer={
               <>
                 <Button asChild>
-                  <a href="/_mallok/app/">Open the admin</a>
+                  <a href="/_mallok/app/">
+                    <Trans>Open the admin</Trans>
+                  </a>
                 </Button>
                 <Button variant="outline" asChild>
-                  <a href="/">View the site</a>
+                  <a href="/">
+                    <Trans>View the site</Trans>
+                  </a>
                 </Button>
               </>
             }
           >
             <p className="text-sm">
-              {installed > 0
-                ? `${installed} pages were installed. `
-                : 'The site is empty and waiting for its first page. '}
-              {installedRecords > 0
-                ? `${installedRecords} sample records were added. `
-                : ''}
-              Everything the wizard set can be changed later in Settings.
+              {installed > 0 ? (
+                <Plural
+                  value={installed}
+                  one="# page was installed."
+                  other="# pages were installed."
+                />
+              ) : (
+                <Trans>The site is empty and waiting for its first page.</Trans>
+              )}{' '}
+              {installedRecords > 0 ? (
+                <>
+                  <Plural
+                    value={installedRecords}
+                    one="# sample record was added."
+                    other="# sample records were added."
+                  />{' '}
+                </>
+              ) : null}
+              <Trans>
+                Everything the wizard set can be changed later in Settings.
+              </Trans>
             </p>
             {notInstalled.length === 0 ? null : (
               <Alert
@@ -516,8 +594,11 @@ export function SetupPage(): JSX.Element {
                 <CircleAlert />
                 <AlertDescription>
                   <p>
-                    {notInstalled.length} of the starter's items could not be
-                    imported:
+                    <Plural
+                      value={notInstalled.length}
+                      one="# of the starter's items could not be imported:"
+                      other="# of the starter's items could not be imported:"
+                    />
                   </p>
                   <ul className="list-disc pl-5">
                     {notInstalled.map((line) => (

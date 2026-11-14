@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
+import { i18n } from '@lingui/core';
 import { act, type JSX } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { type FieldValues, type UseFormReturn, useForm } from 'react-hook-form';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../src/admin/api.js';
 import { SchemaForm, showServerErrors } from '../../src/admin/form/form.js';
 import type { FieldSpec } from '../../src/admin/form/types.js';
@@ -32,6 +33,10 @@ const SPECS = [
 ];
 
 let root: Root | null = null;
+
+beforeAll(() => {
+  i18n.loadAndActivate({ locale: 'en', messages: {} });
+});
 
 afterEach(() => {
   act(() => root?.unmount());

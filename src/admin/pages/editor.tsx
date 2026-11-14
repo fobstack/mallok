@@ -11,6 +11,7 @@
  *    look-alike, so it cannot drift from what visitors get.
  */
 
+import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -102,6 +103,7 @@ function EditorPage({
   readonly fresh: NewItem;
 }): JSX.Element {
   const isNew = id === 'new';
+  const { t } = useLingui();
   const item = useQuery({
     queryKey: [...keys.content, 'item', id],
     queryFn: () => api<LoadedContent>(`/content/${id}`),
@@ -109,9 +111,13 @@ function EditorPage({
     // Opened to be edited: always as stored now, never as last seen.
     gcTime: 0,
   });
-  useReportError(item.error, 'Could not load.');
+  useReportError(item.error, t`Could not load.`);
   if (!isNew && item.data === undefined) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        <Trans>Loading…</Trans>
+      </p>
+    );
   }
   return <Editor loaded={item.data ?? null} fresh={fresh} />;
 }
@@ -128,6 +134,7 @@ function Editor({
   const active = useTheme();
   const navigate = useNavigate();
   const client = useQueryClient();
+  const { t } = useLingui();
 
   const [markdown, setMarkdown] = useState(
     loaded?.markdown ?? '---\ntitle: Untitled\n---\n\n',
@@ -202,20 +209,20 @@ function Editor({
     return [
       {
         name: 'title',
-        field: { type: 'string' as const, label: 'Title', required: true },
+        field: { type: 'string' as const, label: t`Title`, required: true },
       },
       {
         name: 'description',
         field: {
           type: 'text' as const,
-          label: 'Description',
+          label: t`Description`,
           required: false,
-          help: 'Used as the meta description and in listings. Derived from the body when empty.',
+          help: t`Used as the meta description and in listings. Derived from the body when empty.`,
         },
       },
       ...toSpecs(declared),
     ];
-  }, [active, kind]);
+  }, [active, kind, t]);
 
   const setField = (name: string, value: unknown): void => {
     const next = { ...frontmatter };
@@ -252,10 +259,10 @@ function Editor({
           setPreview(result.html);
           setMissing(result.missing);
         } catch (caught) {
+          const reason =
+            caught instanceof Error ? caught.message : t`unknown error`;
           setPreview(
-            `<p style="padding:1rem;color:#a11d33">Preview failed: ${
-              caught instanceof Error ? caught.message : 'unknown error'
-            }</p>`,
+            `<p style="padding:1rem;color:#a11d33">${t`Preview failed: ${reason}`}</p>`,
           );
         }
       })();
@@ -336,7 +343,7 @@ function Editor({
         navigate(`/content/${result.id}`, { replace: true });
       }
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     } finally {
       setBusy(false);
     }
@@ -380,10 +387,12 @@ function Editor({
               )
             }
           >
-            ← All content
+            <Trans>← All content</Trans>
           </Button>
           <Field className="w-auto">
-            <FieldLabel htmlFor="editor-kind">Type</FieldLabel>
+            <FieldLabel htmlFor="editor-kind">
+              <Trans>Type</Trans>
+            </FieldLabel>
             <NativeSelect
               id="editor-kind"
               className="min-w-32"
@@ -402,12 +411,14 @@ function Editor({
             </NativeSelect>
           </Field>
           <Field className="w-auto">
-            <FieldLabel htmlFor="editor-slug">Slug</FieldLabel>
+            <FieldLabel htmlFor="editor-slug">
+              <Trans>Slug</Trans>
+            </FieldLabel>
             <Input
               id="editor-slug"
               className="min-w-40"
               value={slug}
-              placeholder="derived from the title"
+              placeholder={t`derived from the title`}
               onInput={(event) => {
                 setSlug(event.currentTarget.value);
                 setDirty(true);
@@ -432,10 +443,18 @@ function Editor({
             ))}
             {missing.length === 0 ? null : (
               <StatusBadge tone="warn" title={missing.join(', ')}>
-                {missing.length} image{missing.length === 1 ? '' : 's'} missing
+                <Plural
+                  value={missing.length}
+                  one="# image missing"
+                  other="# images missing"
+                />
               </StatusBadge>
             )}
-            {dirty ? <StatusBadge tone="neutral">Unsaved</StatusBadge> : null}
+            {dirty ? (
+              <StatusBadge tone="neutral">
+                <Trans>Unsaved</Trans>
+              </StatusBadge>
+            ) : null}
             {saved && !dirty ? <SavedNote /> : null}
             <Button
               type="button"
@@ -443,14 +462,14 @@ function Editor({
               disabled={busy}
               onClick={() => void save('draft')}
             >
-              Save draft
+              <Trans>Save draft</Trans>
             </Button>
             <Button
               type="button"
               disabled={busy}
               onClick={() => void save('published')}
             >
-              {busy ? 'Saving…' : 'Publish'}
+              {busy ? t`Saving…` : t`Publish`}
             </Button>
           </div>
         </div>
@@ -466,7 +485,7 @@ function Editor({
 
         <section
           className="grid min-h-0 flex-1 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)_minmax(0,1fr)]"
-          aria-label="Fields, Markdown and preview"
+          aria-label={t`Fields, Markdown and preview`}
         >
           <aside className="min-h-0 min-w-0 overflow-auto border-b bg-muted/20 p-4 lg:border-r lg:border-b-0">
             <SchemaForm
@@ -504,7 +523,7 @@ function Editor({
             dangerous pairing. The body is sanitized before it gets here.
           */}
             <iframe
-              title="Preview"
+              title={t`Preview`}
               // A theme's page is designed on white; the frame keeps it so in
               // the admin's dark scheme too.
               className="w-full flex-1 border-0 bg-white"
@@ -512,7 +531,9 @@ function Editor({
               srcDoc={preview}
             />
             <p className="border-t px-3 py-1.5 text-xs text-muted-foreground">
-              Rendered by the same code the site runs — {previewPath}
+              <Trans>
+                Rendered by the same code the site runs — {previewPath}
+              </Trans>
             </p>
           </section>
         </section>
@@ -538,22 +559,27 @@ function Editor({
       */}
       {loaded === null || attached.length === 0 ? null : (
         <div className="mt-6 flex flex-col gap-4" id="attached-panels">
-          {attached.map(({ plugin, panel }) => (
-            <section
-              className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground"
-              key={`${plugin.id}/${panel.id}`}
-            >
-              <p className="text-sm text-muted-foreground">
-                From the {plugin.name} plugin. Shared by every language of this
-                item, and saved on its own — not with Publish.
-              </p>
-              <PluginPanelView
-                pluginId={plugin.id}
-                panel={panel}
-                attachedTo={loaded.translationGroup}
-              />
-            </section>
-          ))}
+          {attached.map(({ plugin, panel }) => {
+            const pluginName = plugin.name;
+            return (
+              <section
+                className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground"
+                key={`${plugin.id}/${panel.id}`}
+              >
+                <p className="text-sm text-muted-foreground">
+                  <Trans>
+                    From the {pluginName} plugin. Shared by every language of
+                    this item, and saved on its own — not with Publish.
+                  </Trans>
+                </p>
+                <PluginPanelView
+                  pluginId={plugin.id}
+                  panel={panel}
+                  attachedTo={loaded.translationGroup}
+                />
+              </section>
+            );
+          })}
         </div>
       )}
     </>
@@ -572,15 +598,17 @@ function TranslationBar(props: {
   readonly kind: string;
 }): JSX.Element | null {
   const navigate = useNavigate();
+  const { t } = useLingui();
   if (props.translations.length < 2) {
     return null;
   }
   return (
     <nav
       className="flex flex-wrap items-center gap-2 border-b px-3 py-2"
-      aria-label="Translations"
+      aria-label={t`Translations`}
     >
       {props.translations.map((slot) => {
+        const slotLocale = slot.locale;
         if (slot.locale === props.current) {
           return (
             <StatusBadge key={slot.locale} tone="ok">
@@ -613,7 +641,7 @@ function TranslationBar(props: {
               )
             }
           >
-            Create {slot.locale}
+            {t`Create ${slotLocale}`}
           </Button>
         );
       })}

@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { i18n } from '@lingui/core';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { normalizeSlugInput } from '../../src/admin/slug.js';
+
+beforeAll(() => {
+  i18n.loadAndActivate({ locale: 'en', messages: {} });
+});
 
 /**
  * The slug field is free text, and the server refuses anything `slugify` would

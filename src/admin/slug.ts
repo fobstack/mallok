@@ -7,6 +7,7 @@
  * of them, before a request is made.
  */
 
+import { t } from '@lingui/core/macro';
 import {
   canonicalSlug,
   MAX_SLUG_SEGMENTS,
@@ -50,10 +51,12 @@ export function normalizeSlugInput(typed: string): SlugNormalization {
       (segment) => segment.trim() !== '' && slugify(segment) === '',
     );
     if (lost !== -1) {
+      const position = lost + 1;
+      const segment = segments[lost] ?? '';
       return {
         slug: typed,
         usable: false,
-        notice: `Segment ${lost + 1} ("${segments[lost]}") has no Latin letters or digits to build a folder name from. Write it in Latin characters.`,
+        notice: t`Segment ${position} ("${segment}") has no Latin letters or digits to build a folder name from. Write it in Latin characters.`,
       };
     }
   }
@@ -74,19 +77,19 @@ export function normalizeSlugInput(typed: string): SlugNormalization {
     return {
       slug: normalized,
       usable: true,
-      notice: `The slug became "${normalized}": a slug has at most ${MAX_SLUG_SEGMENTS} segments.`,
+      notice: t`The slug became "${normalized}": a slug has at most ${MAX_SLUG_SEGMENTS} segments.`,
     };
   }
   if (normalized === '') {
     return {
       slug: typed,
       usable: false,
-      notice: `"${typed}" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title.`,
+      notice: t`"${typed}" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title.`,
     };
   }
   return {
     slug: normalized,
     usable: true,
-    notice: `The slug became "${normalized}", because a slug is also a folder name in an export.`,
+    notice: t`The slug became "${normalized}", because a slug is also a folder name in an export.`,
   };
 }

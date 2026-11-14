@@ -57,7 +57,7 @@ test('creates the administrator, the site and the starter content', async ({
     /A shop this site brought/,
   );
   await expect(options.first()).toHaveAccessibleName(
-    /1 pages · 1 sample records/,
+    /1 page · 1 sample record/,
   );
   await expect(options.first()).toBeChecked();
   // The official one is what the rest of the suite expects to find.

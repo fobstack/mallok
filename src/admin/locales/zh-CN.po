@@ -20,10 +20,29 @@ msgstr "“{actionLabel}”执行失败。"
 msgid "\"{type}\" is not accepted."
 msgstr "不支持“{type}”类型的文件。"
 
+#: src/admin/slug.ts
+msgid "\"{typed}\" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title."
+msgstr "“{typed}”里没有拉丁字母或数字，无法生成 slug。请用拉丁字符填写，或清空此栏，由标题自动生成。"
+
 #. placeholder {0}: item.refCount
 #: src/admin/components/media-library.tsx
 msgid "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
 msgstr "{0, plural, other {“{name}”正被 # 项内容引用，请先移除引用。}}"
+
+#. placeholder {0}: missing.length
+#: src/admin/pages/editor.tsx
+msgid "{0, plural, one {# image missing} other {# images missing}}"
+msgstr "{0, plural, other {缺少 # 张图片}}"
+
+#. placeholder {0}: notInstalled.length
+#: src/admin/pages/setup.tsx
+msgid "{0, plural, one {# of the starter's items could not be imported:} other {# of the starter's items could not be imported:}}"
+msgstr "{0, plural, other {示例内容中有 # 项未能导入：}}"
+
+#. placeholder {0}: entry.documents
+#: src/admin/pages/setup.tsx
+msgid "{0, plural, one {# page} other {# pages}}"
+msgstr "{0, plural, other {# 个页面}}"
 
 #. placeholder {0}: plugin.clientScripts.length
 #: src/admin/pages/plugins.tsx
@@ -39,6 +58,14 @@ msgstr "{0}/{1} 个文件"
 #: src/admin/components/record-editor.tsx
 msgid "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
 msgstr "{count, plural, other {将应用于已选的 # 行。}}"
+
+#: src/admin/pages/setup.tsx
+msgid "{installed, plural, one {# page was installed.} other {# pages were installed.}}"
+msgstr "{installed, plural, other {已安装 # 个页面。}}"
+
+#: src/admin/pages/setup.tsx
+msgid "{installedRecords, plural, one {# sample record was added.} other {# sample records were added.}}"
+msgstr "{installedRecords, plural, other {已添加 # 条示例记录。}}"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "{items, plural, one {# item} other {# items}} and {files, plural, one {# file} other {# files}} in {fileName}."
@@ -56,6 +83,14 @@ msgstr "{limit, plural, other {最多 # 行。}}"
 msgid "{locale} (default)"
 msgstr "{locale}（默认）"
 
+#: src/admin/form/types.ts
+msgid "{max, plural, one {At most # entry.} other {At most # entries.}}"
+msgstr "{max, plural, other {最多 # 项。}}"
+
+#: src/admin/form/types.ts
+msgid "{max, plural, one {Must be at most # character.} other {Must be at most # characters.}}"
+msgstr "{max, plural, other {不能超过 # 个字符。}}"
+
 #: src/admin/pages/settings-site.tsx
 msgid "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
 msgstr "{moved, plural, other {已迁移 # 个 URL，均已设置重定向；导航链接已同步改写。}}"
@@ -68,9 +103,17 @@ msgstr "{panelLabel}详情"
 msgid "{pluginName} enabled"
 msgstr "启用 {pluginName}"
 
+#: src/admin/pages/setup.tsx
+msgid "{records, plural, one {# sample record} other {# sample records}}"
+msgstr "{records, plural, other {# 条示例记录}}"
+
 #: src/admin/pages/settings-appearance.tsx
 msgid "{scripts, plural, one {Injects # script} other {Injects # scripts}}"
 msgstr "{scripts, plural, other {注入 # 个脚本}}"
+
+#: src/admin/form/controls.tsx
+msgid "{target} slug"
+msgstr "{target} 的 slug"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "{when} — after {cause}, Cloudflare answered HTTP {status}"
@@ -80,6 +123,10 @@ msgstr "{when} — 由{cause}触发，Cloudflare 返回 HTTP {status}"
 msgid "{when} — after {cause}, Cloudflare could not be reached"
 msgstr "{when} — 由{cause}触发，无法连接 Cloudflare"
 
+#: src/admin/pages/editor.tsx
+msgid "← All content"
+msgstr "← 全部内容"
+
 #: src/admin/pages/plugins.tsx
 msgid "<0>{panelLabel}</0> is edited where it belongs: open any <1>{kind}</1> in Content, and it is under the editor."
 msgstr "<0>{panelLabel}</0>：在所属内容中编辑——在“内容”里打开任意 <1>{kind}</1>，它就在编辑器下方。"
@@ -87,6 +134,10 @@ msgstr "<0>{panelLabel}</0>：在所属内容中编辑——在“内容”里�
 #: src/admin/pages/settings-advanced.tsx
 msgid "a content change"
 msgstr "内容修改"
+
+#: src/admin/pages/setup.tsx
+msgid "A language code such as <0>en</0> or <1>zh</1>. It has no URL prefix; every other language does."
+msgstr "语言代码，例如 <0>en</0> 或 <1>zh</1>。主语言不带 URL 前缀，其他语言都带。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "a plugin switch"
@@ -99,6 +150,10 @@ msgstr "定时发布"
 #: src/admin/pages/settings-advanced.tsx
 msgid "a settings change"
 msgstr "设置修改"
+
+#: src/admin/pages/setup.tsx
+msgid "A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site."
+msgstr "示例内容会为站点填充真实的页面，之后可以编辑或删除。跳过则得到一个空站点。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
@@ -127,6 +182,10 @@ msgstr "账号菜单"
 msgid "Active"
 msgstr "已生效"
 
+#: src/admin/pages/setup.tsx
+msgid "Add a custom domain in the Cloudflare dashboard under Workers & Pages → your Worker → Settings → Domains & Routes, then enter it under Settings → Site. Nothing else changes: your content, its ids and every URL stay as they are."
+msgstr "请在 Cloudflare 控制台的 Workers & Pages → 你的 Worker → Settings → Domains & Routes 中添加自定义域名，然后在“设置 → 站点”中填写。其他一切都不会改变：内容、内容 ID 和所有 URL 都保持原样。"
+
 #: src/admin/components/record-editor.tsx
 msgid "Add a row"
 msgstr "添加一行"
@@ -135,9 +194,25 @@ msgstr "添加一行"
 msgid "Add alt text"
 msgstr "添加替代文本"
 
+#: src/admin/form/controls.tsx
+msgid "Add entry"
+msgstr "添加一项"
+
+#: src/admin/form/controls.tsx
+msgid "Add image…"
+msgstr "添加图片…"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Add language"
 msgstr "添加语言"
+
+#: src/admin/form/controls.tsx
+msgid "Add row"
+msgstr "添加一行"
+
+#: src/admin/pages/setup.tsx
+msgid "Administrator"
+msgstr "管理员"
 
 #: src/admin/components/shell.tsx
 #: src/admin/pages/settings-advanced.tsx
@@ -194,6 +269,14 @@ msgstr "静态资源"
 msgid "At least 12 characters."
 msgstr "至少 12 个字符。"
 
+#: src/admin/pages/setup.tsx
+msgid "At least 12 characters. This is the only account."
+msgstr "至少 12 个字符。这是唯一的账号。"
+
+#: src/admin/app.tsx
+msgid "Back to content"
+msgstr "返回内容列表"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Background jobs waiting"
 msgstr "等待中的后台任务"
@@ -217,6 +300,10 @@ msgstr "缓存"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Cache purge token"
 msgstr "缓存清除令牌"
+
+#: src/admin/form/controls.tsx
+msgid "Cancel"
+msgstr "取消"
 
 #: src/admin/pages/account.tsx
 msgid "Change password"
@@ -263,6 +350,18 @@ msgstr "选择图片"
 msgid "Choose files, or drop them here"
 msgstr "选择文件，或拖放到这里"
 
+#: src/admin/form/types.ts
+msgid "Choose one of the listed values."
+msgstr "请从列出的选项中选择一个。"
+
+#: src/admin/form/controls.tsx
+msgid "Choose…"
+msgstr "选择…"
+
+#: src/admin/form/controls.tsx
+msgid "Clear"
+msgstr "清除"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Clear cached pages"
 msgstr "清除页面缓存"
@@ -296,6 +395,10 @@ msgstr "前台 JavaScript"
 msgid "Colour scheme"
 msgstr "配色"
 
+#: src/admin/pages/setup.tsx
+msgid "Comma separated. You can add more later."
+msgstr "用逗号分隔。之后还可以添加更多。"
+
 #: src/admin/components/saved-note.tsx
 msgid "Configure a cache-purge token to make saves appear immediately."
 msgstr "配置缓存清除令牌后，保存即可立即生效。"
@@ -320,6 +423,10 @@ msgstr "内容类型"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Content: create, edit, publish, delete"
 msgstr "内容：新建、编辑、发布、删除"
+
+#: src/admin/pages/setup.tsx
+msgid "Continue"
+msgstr "继续"
 
 #: src/admin/components/media-library.tsx
 msgid "converting"
@@ -375,6 +482,7 @@ msgid "Could not load tokens."
 msgstr "无法加载令牌。"
 
 #: src/admin/components/related-rows.tsx
+#: src/admin/pages/editor.tsx
 msgid "Could not load."
 msgstr "加载失败。"
 
@@ -384,6 +492,7 @@ msgstr "无法撤销令牌。"
 
 #: src/admin/components/media-library.tsx
 #: src/admin/components/record-editor.tsx
+#: src/admin/pages/editor.tsx
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/settings-appearance.tsx
@@ -392,13 +501,29 @@ msgstr "无法撤销令牌。"
 msgid "Could not save."
 msgstr "保存失败。"
 
+#: src/admin/pages/setup.tsx
+msgid "Could not start setup."
+msgstr "无法开始初始设置。"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Could not switch."
 msgstr "切换失败。"
 
+#: src/admin/pages/editor.tsx
+msgid "Create {slotLocale}"
+msgstr "创建 {slotLocale}"
+
+#: src/admin/pages/setup.tsx
+msgid "Create the administrator"
+msgstr "创建管理员"
+
 #: src/admin/pages/account.tsx
 msgid "Create token"
 msgstr "创建令牌"
+
+#: src/admin/pages/setup.tsx
+msgid "Creating…"
+msgstr "正在创建…"
 
 #: src/admin/pages/account.tsx
 msgid "Current password"
@@ -437,9 +562,17 @@ msgstr "永久删除"
 msgid "Delete…"
 msgstr "删除…"
 
+#: src/admin/pages/editor.tsx
+msgid "derived from the title"
+msgstr "由标题自动生成"
+
 #: src/admin/components/media-library.tsx
 msgid "Describe the image"
 msgstr "描述这张图片"
+
+#: src/admin/pages/editor.tsx
+msgid "Description"
+msgstr "描述"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Details"
@@ -448,6 +581,10 @@ msgstr "详情"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Diagnostics"
 msgstr "诊断"
+
+#: src/admin/pages/setup.tsx
+msgid "Domain"
+msgstr "域名"
 
 #: src/admin/components/media-library.tsx
 msgid "done"
@@ -493,12 +630,17 @@ msgstr "正在编辑"
 #: src/admin/components/shell.tsx
 #: src/admin/pages/login.tsx
 #: src/admin/pages/settings-email.tsx
+#: src/admin/pages/setup.tsx
 msgid "Email"
 msgstr "邮箱"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Email (Resend)"
 msgstr "邮件（Resend）"
+
+#: src/admin/form/types.ts
+msgid "Enter a number."
+msgstr "请输入数字。"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
@@ -508,6 +650,10 @@ msgstr "所有语言（包括默认语言）都在 <0>/<locale>/</0> 下提供�
 msgid "Everything below is a platform detail. You do not need any of it to run the site."
 msgstr "以下都是平台层面的细节，日常运营站点用不到。"
 
+#: src/admin/pages/setup.tsx
+msgid "Everything the wizard set can be changed later in Settings."
+msgstr "向导中的所有设置之后都可以在“设置”中修改。"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Export everything"
 msgstr "全部导出"
@@ -516,13 +662,29 @@ msgstr "全部导出"
 msgid "Failed background jobs"
 msgstr "失败的后台任务"
 
+#: src/admin/pages/editor.tsx
+msgid "Fields, Markdown and preview"
+msgstr "字段、Markdown 与预览"
+
 #: src/admin/pages/media.tsx
 msgid "Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate."
 msgstr "文件按原图的哈希值存储，同一张图片上传两次不会产生额外开销，也不会出现重复。"
 
+#: src/admin/pages/setup.tsx
+msgid "Finish"
+msgstr "完成"
+
+#: src/admin/pages/setup.tsx
+msgid "Finish setup"
+msgstr "完成设置"
+
 #: src/admin/pages/settings-email.tsx
 msgid "From address"
 msgstr "发件地址"
+
+#: src/admin/pages/editor.tsx
+msgid "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
+msgstr "来自 {pluginName} 插件。这条内容的所有语言版本共用这些数据，它们单独保存——不随“发布”一起保存。"
 
 #: src/admin/components/media-library.tsx
 msgid "hashing"
@@ -544,9 +706,17 @@ msgstr "正在使用中，请先移除引用。"
 msgid "Inactive — a workers.dev URL is a preview, not a site"
 msgstr "未生效 — workers.dev 地址只是预览，不是正式站点"
 
+#: src/admin/pages/setup.tsx
+msgid "Install"
+msgstr "安装"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Installing, updating or removing a plugin"
 msgstr "安装、更新或移除插件"
+
+#: src/admin/pages/setup.tsx
+msgid "Installing…"
+msgstr "正在安装…"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Instant"
@@ -594,10 +764,16 @@ msgstr "浅色"
 #: src/admin/components/record-editor.tsx
 #: src/admin/components/related-rows.tsx
 #: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/setup.tsx
 msgid "Loading…"
 msgstr "正在加载…"
+
+#: src/admin/pages/setup.tsx
+msgid "Main language"
+msgstr "主语言"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Make \"{locale}\" the default language?\n"
@@ -610,6 +786,10 @@ msgstr "将“{locale}”设为默认语言？\n"
 #: src/admin/pages/settings-site.tsx
 msgid "Make default"
 msgstr "设为默认"
+
+#: src/admin/components/markdown-editor.tsx
+msgid "Markdown source"
+msgstr "Markdown 源文本"
 
 #: src/admin/components/shell.tsx
 #: src/admin/pages/content-list.tsx
@@ -626,9 +806,25 @@ msgstr "媒体域名"
 msgid "Media files"
 msgstr "媒体文件"
 
+#: src/admin/form/types.ts
+msgid "Must be at least {min}."
+msgstr "不能小于 {min}。"
+
+#: src/admin/form/types.ts
+msgid "Must be at most {max}."
+msgstr "不能大于 {max}。"
+
 #: src/admin/pages/settings-email.tsx
 msgid "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
 msgstr "必须是已在 Resend 验证过的域名。插件可以设置自己的发件地址；没有设置时使用这里的地址。"
+
+#: src/admin/form/controls.tsx
+msgid "Name"
+msgstr "名称"
+
+#: src/admin/pages/setup.tsx
+msgid "Name your site"
+msgstr "为站点命名"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Needs a rebuild and deploy"
@@ -672,6 +868,10 @@ msgstr "下一页"
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "尚未配置缓存清除令牌，保存的修改要等页面缓存过期后访客才能看到。站点运行正常，并没有出错——将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。"
 
+#: src/admin/pages/setup.tsx
+msgid "No cache-purge token is configured, so the cache lifetime was set to 60 seconds — edits appear within a minute instead of immediately. Add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets for instant publishing. This is a working configuration, not a broken one."
+msgstr "尚未配置缓存清除令牌，因此缓存有效期设为 60 秒——修改会在一分钟内生效，而不是立即生效。将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。这是可正常运行的配置，并没有出错。"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "No error was recorded."
 msgstr "没有记录到错误信息。"
@@ -709,6 +909,7 @@ msgstr "未绑定"
 msgid "Not configured — edits go live after the cache expires"
 msgstr "未配置 — 修改要等缓存过期后才生效"
 
+#: src/admin/app.tsx
 #: src/admin/components/shell.tsx
 msgid "Not found"
 msgstr "未找到"
@@ -758,6 +959,14 @@ msgstr "打开"
 msgid "Open {id}"
 msgstr "打开 {id}"
 
+#: src/admin/pages/setup.tsx
+msgid "Open the admin"
+msgstr "进入后台"
+
+#: src/admin/pages/setup.tsx
+msgid "Other languages"
+msgstr "其他语言"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Pages it named may still be served from the cache until they expire."
 msgstr "涉及的页面在缓存过期前，可能仍会显示旧内容。"
@@ -769,12 +978,17 @@ msgstr "分页"
 
 #: src/admin/pages/account.tsx
 #: src/admin/pages/login.tsx
+#: src/admin/pages/setup.tsx
 msgid "Password"
 msgstr "密码"
 
 #: src/admin/pages/account.tsx
 msgid "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Current guidance is {recommended}, but a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU budget, so the cost is capped."
 msgstr "密码使用 PBKDF2-SHA256 哈希，迭代 {iterations} 次。目前的推荐值是 {recommended} 次，但登录必须在 Cloudflare 免费计划 10 毫秒的 CPU 预算内完成，所以迭代次数设了上限。"
+
+#: src/admin/form/controls.tsx
+msgid "Paste the value"
+msgstr "粘贴密钥值"
 
 #: src/admin/pages/content-list.tsx
 msgid "Path"
@@ -797,10 +1011,26 @@ msgstr "插件随源代码发布，而不是通过这个页面安装"
 msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
 msgstr "默认语言也加前缀（<0>/{prefix}/…</0>）"
 
+#: src/admin/pages/editor.tsx
+msgid "Preview"
+msgstr "预览"
+
+#: src/admin/pages/editor.tsx
+msgid "Preview failed: {reason}"
+msgstr "预览失败：{reason}"
+
 #: src/admin/components/plugin-panel.tsx
 #: src/admin/pages/content-list.tsx
 msgid "Previous"
 msgstr "上一页"
+
+#: src/admin/pages/setup.tsx
+msgid "Printed once by <0>mallok create</0>. It proves this site is yours: without it, whoever found the address first could claim it. It stops working the moment setup succeeds."
+msgstr "由 <0>mallok create</0> 输出，只显示一次。它用来证明这个站点属于你：没有它，最先发现这个地址的人就能抢先认领。设置成功后它立即失效。"
+
+#: src/admin/pages/editor.tsx
+msgid "Publish"
+msgstr "发布"
 
 #: src/admin/pages/content-list.tsx
 #: src/admin/pages/settings-advanced.tsx
@@ -815,6 +1045,7 @@ msgstr "重新生成所有页面"
 msgid "Redirects"
 msgstr "重定向"
 
+#: src/admin/form/controls.tsx
 #: src/admin/pages/settings-site.tsx
 msgid "Remove"
 msgstr "移除"
@@ -827,9 +1058,17 @@ msgstr "移除{item} {number}"
 msgid "Render pipeline"
 msgstr "渲染管线"
 
+#: src/admin/pages/editor.tsx
+msgid "Rendered by the same code the site runs — {previewPath}"
+msgstr "与线上站点使用同一套代码渲染 — {previewPath}"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Rendered fragments"
 msgstr "已渲染片段"
+
+#: src/admin/form/controls.tsx
+msgid "Replace"
+msgstr "替换"
 
 #: src/admin/pages/settings-email.tsx
 msgid "Resend API key"
@@ -853,10 +1092,15 @@ msgstr "跟随系统"
 
 #: src/admin/components/media-library.tsx
 #: src/admin/components/record-editor.tsx
+#: src/admin/form/controls.tsx
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/settings-site.tsx
 msgid "Save"
 msgstr "保存"
+
+#: src/admin/pages/editor.tsx
+msgid "Save draft"
+msgstr "保存草稿"
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "Save options"
@@ -888,10 +1132,12 @@ msgid "Saving content purges the pages it affects, so this is a ceiling for page
 msgstr "保存内容时会清除受影响页面的缓存，所以这是未被修改页面的缓存上限，而不是修改生效前的等待时间。"
 
 #: src/admin/components/record-editor.tsx
+#: src/admin/pages/editor.tsx
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/settings-appearance.tsx
 #: src/admin/pages/settings-email.tsx
 #: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
 msgid "Saving…"
 msgstr "正在保存…"
 
@@ -910,6 +1156,10 @@ msgstr "搜索"
 #: src/admin/pages/plugins.tsx
 msgid "Secrets"
 msgstr "密钥"
+
+#: src/admin/slug.ts
+msgid "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
+msgstr "第 {position} 段（“{segment}”）里没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Select"
@@ -947,6 +1197,18 @@ msgstr "让“{prefix}”也在 /{prefix}/ 下提供？\n"
 msgid "Served through the Worker"
 msgstr "由 Worker 提供"
 
+#: src/admin/pages/setup.tsx
+msgid "Serving <0>{customDomain}</0>. The edge cache is active."
+msgstr "正在通过 <0>{customDomain}</0> 提供服务，边缘缓存已生效。"
+
+#: src/admin/form/controls.tsx
+msgid "Set"
+msgstr "已设置"
+
+#: src/admin/pages/setup.tsx
+msgid "Set up your site"
+msgstr "设置你的站点"
+
 #: src/admin/components/shell.tsx
 #: src/admin/pages/plugins.tsx
 msgid "Settings"
@@ -955,6 +1217,14 @@ msgstr "设置"
 #: src/admin/pages/settings-advanced.tsx
 msgid "setup"
 msgstr "初始设置"
+
+#: src/admin/pages/setup.tsx
+msgid "Setup is finished"
+msgstr "初始设置已完成"
+
+#: src/admin/pages/setup.tsx
+msgid "Setup key"
+msgstr "设置密钥"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Shown by most themes under the site name, and as the home page description."
@@ -985,13 +1255,34 @@ msgstr "正在登录…"
 msgid "Site"
 msgstr "站点"
 
+#: src/admin/pages/setup.tsx
+msgid "Site and languages"
+msgstr "站点与语言"
+
 #: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
 msgid "Site name"
 msgstr "站点名称"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Site settings, languages, navigation"
 msgstr "站点设置、语言、导航"
+
+#: src/admin/pages/setup.tsx
+msgid "Skip"
+msgstr "跳过"
+
+#: src/admin/pages/editor.tsx
+msgid "Slug"
+msgstr "Slug"
+
+#: src/admin/pages/setup.tsx
+msgid "Start with example content?"
+msgstr "要从示例内容开始吗？"
+
+#: src/admin/pages/setup.tsx
+msgid "Starting content"
+msgstr "初始内容"
 
 #: src/admin/pages/content-list.tsx
 msgid "Status"
@@ -1031,6 +1322,7 @@ msgid "Test"
 msgstr "检测"
 
 #: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/setup.tsx
 msgid "That did not work."
 msgstr "操作未成功。"
 
@@ -1076,9 +1368,25 @@ msgstr "导出失败。"
 msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
 msgstr "以下选项是运行时设置：保存后立即生效，无需重新构建。主题本身属于源代码。"
 
+#: src/admin/api.ts
+msgid "The server could not be reached. Nothing was saved."
+msgstr "无法连接服务器，没有保存任何内容。"
+
+#: src/admin/pages/setup.tsx
+msgid "The site is empty and waiting for its first page."
+msgstr "站点目前是空的，等待第一个页面。"
+
 #: src/admin/pages/login.tsx
 msgid "The site's admin"
 msgstr "站点后台"
+
+#: src/admin/slug.ts
+msgid "The slug became \"{normalized}\", because a slug is also a folder name in an export."
+msgstr "slug 已改为“{normalized}”，因为导出时 slug 也是目录名。"
+
+#: src/admin/slug.ts
+msgid "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
+msgstr "slug 已改为“{normalized}”：slug 最多 {MAX_SLUG_SEGMENTS} 段。"
 
 #: src/admin/components/media-library.tsx
 #: src/admin/media.ts
@@ -1101,6 +1409,10 @@ msgstr "当前主题提供的主题选项"
 msgid "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
 msgstr "主题位于源代码中，而不在数据库里——它们会被编译进 Worker。要更换主题，请修改 <1>src/themes/index.ts</1> 中的 <0>ACTIVE_THEME</0>，然后重新构建并部署。"
 
+#: src/admin/app.tsx
+msgid "There is no page at this address in the admin."
+msgstr "后台中没有这个地址对应的页面。"
+
 #: src/admin/pages/settings-site.tsx
 msgid "These are stored the moment you save — no rebuild, no deploy."
 msgstr "点击保存即生效——无需重新构建或部署。"
@@ -1109,11 +1421,24 @@ msgstr "点击保存即生效——无需重新构建或部署。"
 msgid "These values apply to every language unless a language overrides them below."
 msgstr "这些值适用于所有语言，除非某个语言在下面单独设置。"
 
+#: src/admin/form/types.ts
+msgid "This field is required."
+msgstr "此项为必填项。"
+
 #: src/admin/pages/plugins.tsx
 msgid "This plugin runs on <0>every visitor request</0>, including ones the cache would otherwise answer for free."
 msgstr "这个插件会在<0>每一次访客请求</0>时运行，包括本来可以直接由缓存免费响应的请求。"
 
+#: src/admin/pages/setup.tsx
+msgid "This site has already been set up. Everything the wizard did can be changed in <0>Settings</0>."
+msgstr "这个站点已经完成初始设置。向导中的所有设置都可以在<0>设置</0>中修改。"
+
+#: src/admin/pages/setup.tsx
+msgid "This site has no custom domain yet, so it is running on a <0>.workers.dev</0> address. That address is a preview: <1>Cloudflare's edge cache does not apply to it</1>, so pages are rendered on every request and will feel slower than the real site."
+msgstr "这个站点还没有自定义域名，目前运行在 <0>.workers.dev</0> 地址上。这个地址只是预览：<1>Cloudflare 的边缘缓存对它不生效</1>，每次请求都会重新渲染页面，速度会比正式站点慢。"
+
 #: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
 msgid "Title"
 msgstr "标题"
 
@@ -1121,13 +1446,26 @@ msgstr "标题"
 msgid "To add one, put its folder in <0>src/plugins/</0>, list it in <1>src/plugins/index.ts</1>, then build and deploy. Removing one is the reverse. There is no upload here because there is no way to make an upload take effect without a new build."
 msgstr "要添加插件，请把它的目录放进 <0>src/plugins/</0>，在 <1>src/plugins/index.ts</1> 中登记，然后重新构建并部署。移除插件则反过来操作。这里没有上传入口，因为上传的插件不重新构建就无法生效。"
 
+#: src/admin/pages/editor.tsx
+msgid "Translations"
+msgstr "翻译版本"
+
 #: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
 msgid "Type"
 msgstr "类型"
+
+#: src/admin/pages/editor.tsx
+msgid "unknown error"
+msgstr "未知错误"
 
 #: src/admin/media.ts
 msgid "unknown type"
 msgstr "未知类型"
+
+#: src/admin/pages/editor.tsx
+msgid "Unsaved"
+msgstr "未保存"
 
 #: src/admin/components/media-library.tsx
 msgid "unused"
@@ -1162,9 +1500,21 @@ msgstr "请使用 hello@example.com 或 Acme <hello@example.com> 这样的地址
 msgid "used {0}×"
 msgstr "已引用 {0} 次"
 
+#: src/admin/pages/editor.tsx
+msgid "Used as the meta description and in listings. Derived from the body when empty."
+msgstr "用作 meta 描述，也显示在列表中。留空则从正文中提取。"
+
+#: src/admin/form/controls.tsx
+msgid "Value"
+msgstr "值"
+
 #: src/admin/pages/settings-appearance.tsx
 msgid "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
 msgstr "这里修改的值只对 {editingLocale} 生效。没有改动的选项沿用 {editingDefaultLocale} 的值。"
+
+#: src/admin/pages/setup.tsx
+msgid "View the site"
+msgstr "查看站点"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "What is instant, and what needs a deploy"
@@ -1186,6 +1536,18 @@ msgstr "重试后已放弃的任务——例如发不出去的邮件、反复失
 msgid "Working…"
 msgstr "正在执行…"
 
+#: src/admin/pages/setup.tsx
+msgid "written for the \"{starterTheme}\" theme, but this build runs \"{activeTheme}\", so some pages will use the plain page layout"
+msgstr "为“{starterTheme}”主题编写，但当前构建使用的是“{activeTheme}”，部分页面会使用普通页面布局"
+
 #: src/admin/pages/plugins.tsx
 msgid "Yes"
 msgstr "是"
+
+#: src/admin/pages/setup.tsx
+msgid "Your domain"
+msgstr "你的域名"
+
+#: src/admin/pages/setup.tsx
+msgid "Your site is ready"
+msgstr "站点已就绪"

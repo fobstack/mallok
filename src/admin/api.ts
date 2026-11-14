@@ -6,6 +6,8 @@
  * requests carry the CSRF header on every write (docs/SECURITY.md §3).
  */
 
+import { t } from '@lingui/core/macro';
+
 const BASE = '/_mallok/api';
 
 /** A failed request, carrying the server's own message. */
@@ -83,7 +85,7 @@ export async function api<T>(
   } catch {
     throw new ApiError(
       0,
-      'The server could not be reached. Nothing was saved.',
+      t`The server could not be reached. Nothing was saved.`,
     );
   }
 
