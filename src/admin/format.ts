@@ -25,6 +25,13 @@ export function formatDateTime(value: Date | string | number): string {
   }).format(new Date(value));
 }
 
+/** A day, without the time: "14 Nov 2026", "2026年11月14日". */
+export function formatDate(value: Date | string | number): string {
+  return new Intl.DateTimeFormat(i18n.locale, { dateStyle: 'medium' }).format(
+    new Date(value),
+  );
+}
+
 /**
  * A length of time in whole units: hours from an hour up, minutes from a
  * minute up, seconds below that.

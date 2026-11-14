@@ -740,6 +740,21 @@ Phase 4 as built, in the order it landed:
 
   The editor's language bar stays chips on purpose. It moves between
   translations; it does not filter or pick a value.
+- **U4–U6, the content list.**
+  - U4: the Type column shows the theme's label, and Updated is a date in
+    the interface language (`formatDate`). A language column was never
+    there; the list is filtered to one content language.
+  - U5: "Media" is gone from the header. "New" says what it makes: "New
+    content", or "New Product" when filtered to a kind, which the editor
+    then opens with. The pager is hidden when there is one page.
+  - U5's empty states: an empty language offers "Create the first page"; a
+    filter that matches nothing offers "Clear filters", which keeps the
+    language. Both use `components/empty-state.tsx`, a muted block rather
+    than the dashed one the drop zone uses; U19 moves the other lists to it.
+  - U6: below `md` a row is the title with type and status under it, and
+    Path and Updated are hidden on purpose.
+  - The browser tests still find "New" by substring, so no selector
+    changed.
 
 ## 9. Risks and open questions
 
