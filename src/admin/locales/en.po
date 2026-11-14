@@ -17,6 +17,11 @@ msgstr ", "
 msgid "\"{actionLabel}\" failed."
 msgstr "\"{actionLabel}\" failed."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.exists_create_only"
+msgstr "\"{slug}\" already exists in {locale}. Remove --create-only to update it."
+
 #: src/admin/media.ts
 msgid "\"{type}\" is not accepted."
 msgstr "\"{type}\" is not accepted."
@@ -100,9 +105,19 @@ msgstr "{moved, plural, one {# URL moved, with a redirect; navigation links rewr
 msgid "{panelLabel} detail"
 msgstr "{panelLabel} detail"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.path_taken"
+msgstr "{path} is already the address of the {kind} \"{slug}\" ({locale}). Choose another slug."
+
 #: src/admin/pages/plugins.tsx
 msgid "{pluginName} enabled"
 msgstr "{pluginName} enabled"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.frontmatter_invalid"
+msgstr "{reason}"
 
 #: src/admin/pages/setup.tsx
 msgid "{records, plural, one {# sample record} other {# sample records}}"
@@ -140,6 +155,16 @@ msgstr "a content change"
 msgid "A language code such as <0>en</0> or <1>zh</1>. It has no URL prefix; every other language does."
 msgstr "A language code such as <0>en</0> or <1>zh</1>. It has no URL prefix; every other language does."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.plugin_too_large"
+msgstr "A plugin made this item larger than can be stored. Nothing was saved."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.plugin_rewrite_invalid"
+msgstr "A plugin rewrote this item into something that cannot be saved: {reason}"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "a plugin switch"
 msgstr "a plugin switch"
@@ -151,6 +176,26 @@ msgstr "a scheduled publication"
 #: src/admin/pages/settings-advanced.tsx
 msgid "a settings change"
 msgstr "a settings change"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.list_page"
+msgstr "A slug cannot start with \"page/{page}\": that is the address of a list's page {page}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.kind_start"
+msgstr "A slug with several segments cannot start with \"{first}/\": that is the address of the kind \"{kind}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.locale_start"
+msgstr "A slug with several segments cannot start with \"{first}/\": that is the prefix of the language \"{first}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.reserved_start"
+msgstr "A slug with several segments cannot start with \"{first}/\": the site answers that address itself."
 
 #: src/admin/pages/setup.tsx
 msgid "A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site."
@@ -271,6 +316,11 @@ msgstr "Appearance"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Applied migrations"
 msgstr "Applied migrations"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.asset_path_conflict"
+msgstr "Asset path \"{path}\" conflicts with another path on a case-insensitive filesystem."
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "Assets"
@@ -472,6 +522,11 @@ msgstr "Could not create."
 #: src/admin/components/record-editor.tsx
 msgid "Could not delete."
 msgstr "Could not delete."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.slug_underivable"
+msgstr "Could not derive a slug; provide one explicitly."
 
 #: src/admin/pages/content-list.tsx
 msgid "Could not load content."
@@ -712,6 +767,11 @@ msgstr "From the {pluginName} plugin. Shared by every language of this item, and
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.content.title_missing"
+msgstr "Front matter must include a non-empty \"title\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.account.ui_locale_invalid"
 msgstr "Give the interface language as a language tag such as \"zh-CN\", or null."
 
@@ -758,6 +818,11 @@ msgstr "Interface language"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.content.asset_path_invalid"
+msgstr "Invalid asset path \"{path}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.auth.invalid_credentials"
 msgstr "Invalid email or password."
 
@@ -768,6 +833,11 @@ msgstr "Keep it"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Key set, no site sender — only plugins with their own send"
 msgstr "Key set, no site sender — only plugins with their own send"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.kind_disabled"
+msgstr "Kind \"{kind}\" is not enabled on this site."
 
 #: src/admin/pages/content-list.tsx
 msgid "Language"
@@ -804,6 +874,11 @@ msgstr "Light"
 #: src/admin/pages/setup.tsx
 msgid "Loading…"
 msgstr "Loading…"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.locale_disabled"
+msgstr "Locale \"{locale}\" is not enabled on this site."
 
 #: src/admin/pages/setup.tsx
 msgid "Main language"
@@ -1244,9 +1319,29 @@ msgstr "Search"
 msgid "Secrets"
 msgstr "Secrets"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_no_latin"
+msgstr "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
+
 #: src/admin/slug.ts
 msgid "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
 msgstr "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_no_latin_use"
+msgstr "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters. Use \"{use}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_not_canonical"
+msgstr "Segment {position} (\"{segment}\") must use lowercase Latin letters, digits and single dashes."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_not_canonical_use"
+msgstr "Segment {position} (\"{segment}\") must use lowercase Latin letters, digits and single dashes. Use \"{use}\"."
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Select"
@@ -1510,6 +1605,11 @@ msgstr "The site is empty and waiting for its first page."
 msgid "The site's admin"
 msgstr "The site's admin"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.no_latin"
+msgstr "The slug \"{slug}\" has no Latin letters or digits to build a folder name from. Provide one written in Latin characters."
+
 #: src/admin/slug.ts
 msgid "The slug became \"{normalized}\", because a slug is also a folder name in an export."
 msgstr "The slug became \"{normalized}\", because a slug is also a folder name in an export."
@@ -1517,6 +1617,46 @@ msgstr "The slug became \"{normalized}\", because a slug is also a folder name i
 #: src/admin/slug.ts
 msgid "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
 msgstr "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_many_segments"
+msgstr "The slug has {count} segments; at most {max} are allowed."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_many_segments_use"
+msgstr "The slug has {count} segments; at most {max} are allowed. Use \"{use}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_segment"
+msgstr "The slug has an empty segment: it starts or ends with \"/\", or has \"//\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_segment_use"
+msgstr "The slug has an empty segment: it starts or ends with \"/\", or has \"//\". Use \"{use}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty"
+msgstr "The slug is empty."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_use"
+msgstr "The slug is empty. Use \"{use}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_long"
+msgstr "The slug is longer than {max} characters."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.not_canonical_use"
+msgstr "The slug must use lowercase Latin letters, digits and single dashes. Use \"{use}\"."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -1582,6 +1722,11 @@ msgstr "This site has no setup key, so it will not create an administrator. Run 
 msgid "server.auth.token_scope"
 msgstr "This token lacks the \"{scope}\" scope."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.translation_exists"
+msgstr "This translation group already has an item in {locale}: the {kind} \"{slug}\" at {path} (id {id}). Edit that item instead."
+
 #: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
 msgid "Title"
@@ -1617,6 +1762,11 @@ msgstr "unknown error"
 #: src/admin/server-messages.catalog.ts
 msgid "server.tokens.scope_unknown"
 msgstr "Unknown scope: {scopes}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.status_filter_unknown"
+msgstr "Unknown status filter."
 
 #: src/admin/media.ts
 msgid "unknown type"
