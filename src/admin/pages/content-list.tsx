@@ -27,6 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { api } from '../api.js';
+import { ContentLanguageSelect } from '../components/content-language.js';
 import { Page, PageHeader, StatusBadge } from '../components/page.js';
 import { useReportError } from '../notice.js';
 import { keys, useSettings, useTheme } from '../queries.js';
@@ -151,22 +152,13 @@ export function ContentListPage(): JSX.Element {
             ))}
           </NativeSelect>
         </Field>
-        <Field className="w-auto">
-          <FieldLabel htmlFor="filter-locale">
-            <Trans>Language</Trans>
-          </FieldLabel>
-          <NativeSelect
-            id="filter-locale"
-            value={locale}
-            onChange={(event) => filter('locale', event.currentTarget.value)}
-          >
-            {site.locales.map((entry) => (
-              <NativeSelectOption key={entry} value={entry}>
-                {entry}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Field>
+        <ContentLanguageSelect
+          id="filter-locale"
+          value={locale}
+          onChange={(value) => filter('locale', value)}
+          locales={site.locales}
+          defaultLocale={site.defaultLocale}
+        />
         <Field className="w-auto">
           <FieldLabel htmlFor="filter-status">
             <Trans>Status</Trans>

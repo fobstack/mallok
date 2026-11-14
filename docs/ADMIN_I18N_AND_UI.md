@@ -702,6 +702,22 @@ Phase 4 as built, in the order it landed:
   1.4 KiB of first load in gzip framing alone; the note moved into
   `shell.tsx`, and first load is 165.3 KiB.
 
+- **U15.** A successful save is always the green "Saved", in a status
+  region, followed by plain text: "Visitors see it now." or "Visitors see
+  it within 1 minute." The orange "Saved — visitors see it within …" badge
+  is gone. `15-tagline-languages` reads the status region instead of the
+  badge's old words.
+- **U10, and U12's taglines.** `components/content-language.tsx` names a
+  content language with `Intl.DisplayNames` in the interface language and
+  its code beside it ("Chinese (zh)", "中文（zh）"), and its select is always
+  labelled "Content language". The content list's filter, Appearance's
+  former "Editing" select and the editor's language bar use it; the bar's
+  chips are named too ("Create Chinese (zh)"). On Site, other languages'
+  taglines sit behind that select — one field for the chosen language —
+  instead of a text box per language; the form keeps every language's
+  value. `15-tagline-languages` and `19-translation` find the controls by
+  their new names.
+
 ## 9. Risks and open questions
 
 | Risk | Why it is real | What contains it |

@@ -7,29 +7,37 @@
  * (docs/ADMIN.md §5, docs/ARCHITECTURE.md §6.2).
  */
 
-import { Trans, useLingui } from '@lingui/react/macro';
+import { Trans } from '@lingui/react/macro';
 import type { JSX } from 'react';
 import { formatDuration } from '../format.js';
 import { useLiveDelay } from '../queries.js';
 import { StatusBadge } from './page.js';
 
+/**
+ * Success reads as success: always the green "Saved", with when visitors
+ * see it as plain text after it. A delay is how this site works without a
+ * purge token, not a problem with the save, so it is not drawn as a warning
+ * (docs/ADMIN_I18N_AND_UI.md, U15).
+ */
 export function SavedNote(): JSX.Element {
   const delay = useLiveDelay();
-  const { t } = useLingui();
-  if (delay.instant) {
-    return (
-      <StatusBadge tone="ok">
-        <Trans>Saved — live now</Trans>
-      </StatusBadge>
-    );
-  }
-  const within = formatDuration(delay.seconds);
   return (
-    <StatusBadge
-      tone="warn"
-      title={t`Configure a cache-purge token to make saves appear immediately.`}
-    >
-      <Trans>Saved — visitors see it within {within}</Trans>
-    </StatusBadge>
+    <span role="status" className="flex flex-wrap items-center gap-2 text-sm">
+      <StatusBadge tone="ok">
+        <Trans>Saved</Trans>
+      </StatusBadge>
+      <span className="text-muted-foreground">
+        {delay.instant ? (
+          <Trans>Visitors see it now.</Trans>
+        ) : (
+          <DelayNote seconds={delay.seconds} />
+        )}
+      </span>
+    </span>
   );
+}
+
+function DelayNote({ seconds }: { readonly seconds: number }): JSX.Element {
+  const within = formatDuration(seconds);
+  return <Trans>Visitors see it within {within}.</Trans>;
 }

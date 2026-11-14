@@ -14,13 +14,12 @@ import { useState } from 'react';
 import { type FieldValues, useForm } from 'react-hook-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select';
 import { LOCALE_OPTIONS_KEY } from '../../core/constants.js';
 import { ApiError } from '../api.js';
+import {
+  ContentLanguageSelect,
+  useContentLanguageName,
+} from '../components/content-language.js';
 import {
   Code,
   Facts,
@@ -94,7 +93,9 @@ export function AppearancePage(): JSX.Element {
   const kinds = Object.entries(active.kinds);
   const scripts = active.clientScripts.length;
   const builtIn = active.available.join(', ');
-  const editingDefaultLocale = current.defaultLocale;
+  const nameOf = useContentLanguageName();
+  const editingLanguage = nameOf(editingLocale);
+  const defaultLanguage = nameOf(current.defaultLocale);
 
   return (
     <Page>
@@ -194,31 +195,18 @@ export function AppearancePage(): JSX.Element {
           }
         >
           {current.locales.length > 1 ? (
-            <Field>
-              <FieldLabel htmlFor="theme-editing-locale">
-                <Trans>Editing</Trans>
-              </FieldLabel>
-              <NativeSelect
-                id="theme-editing-locale"
-                value={editingLocale}
-                onChange={(event) =>
-                  setEditingLocale(event.currentTarget.value)
-                }
-              >
-                {current.locales.map((locale) => (
-                  <NativeSelectOption key={locale} value={locale}>
-                    {locale === current.defaultLocale
-                      ? t`${locale} (default)`
-                      : locale}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-              <FieldDescription>
-                {editingLocale === current.defaultLocale
+            <ContentLanguageSelect
+              id="theme-editing-locale"
+              value={editingLocale}
+              onChange={setEditingLocale}
+              locales={current.locales}
+              defaultLocale={current.defaultLocale}
+              description={
+                editingLocale === current.defaultLocale
                   ? t`These values apply to every language unless a language overrides them below.`
-                  : t`Values you change here apply only to ${editingLocale}. Anything you leave alone follows the ${editingDefaultLocale} value.`}
-              </FieldDescription>
-            </Field>
+                  : t`Values you change here apply only to ${editingLanguage}. Anything you leave alone follows the ${defaultLanguage} value.`
+              }
+            />
           ) : null}
           <SchemaForm specs={specs} control={form.control} idPrefix="theme" />
         </Section>
