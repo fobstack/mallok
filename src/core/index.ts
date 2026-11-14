@@ -6,6 +6,15 @@
  */
 
 export {
+  ADMIN_CATALOG_PATH,
+  type AdminCatalog,
+  adminCatalogLanguage,
+  adminCatalogProblem,
+  localizeThemeManifest,
+  pickAdminCatalog,
+  themeCatalogKeys,
+} from './admin-catalog.js';
+export {
   type AssetMap,
   buildFileUrls,
   buildImageViews,

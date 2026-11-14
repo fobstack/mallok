@@ -1,0 +1,12 @@
+{
+  "description": "高端行业资讯杂志：衬线刊头、配图头条、最新文章栏、订阅栏。",
+  "kinds.page.label": "页面",
+  "kinds.article.label": "报道",
+  "kinds.article.fields.section.label": "栏目",
+  "kinds.article.fields.byline.label": "署名",
+  "options.accent_label.label": "刊头链接文字",
+  "options.accent_href.label": "刊头链接地址",
+  "options.newsletter_title.label": "订阅栏标题",
+  "options.newsletter_lede.label": "订阅栏文字",
+  "options.newsletter_href.label": "订阅栏链接（留空则隐藏订阅栏）"
+}

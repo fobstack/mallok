@@ -60,6 +60,19 @@ export interface ThemeInfo {
   readonly defaultLocale: string;
   readonly imageWidths: readonly number[];
   readonly clientScripts: ThemeManifest['clientScripts'];
+  /**
+   * The manifest's words as the theme wrote them. The fields above are in
+   * the interface language when the theme has an admin catalog for it; the
+   * preview renders from these, because a page reads a kind's label
+   * (docs/THEME_FORMAT.md §10.1).
+   */
+  readonly declared: {
+    readonly name: string;
+    readonly description: string;
+    readonly kinds: ThemeManifest['kinds'];
+    readonly options: ThemeManifest['options'];
+    readonly clientScripts: ThemeManifest['clientScripts'];
+  };
   readonly assetBase: string;
   /** Templates and locale bundles, so the editor can render a real preview. */
   readonly files: Readonly<Record<string, string>>;

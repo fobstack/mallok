@@ -149,8 +149,11 @@ export async function signIn(email: string, password: string): Promise<void> {
   });
   setCsrf(result.csrf);
   const me = await api<Session>('/auth/me');
-  // The workspace first: the shell renders the moment the session lands.
-  await Promise.all([fetchWorkspace(), adoptAccountLanguage(me.uiLocale)]);
+  // The language before the workspace: the theme's declarations are asked
+  // for in it. Then the workspace, because the shell renders the moment the
+  // session lands.
+  await adoptAccountLanguage(me.uiLocale);
+  await fetchWorkspace();
   queryClient.setQueryData(keys.session, me);
 }
 
@@ -163,6 +166,10 @@ export async function chooseInterfaceLanguage(
   language: InterfaceLanguage,
 ): Promise<void> {
   await setInterfaceLanguage(language);
+  // What the theme and the plugins declare is worded in the interface
+  // language; ask for it again in the new one.
+  void queryClient.invalidateQueries({ queryKey: keys.theme });
+  void queryClient.invalidateQueries({ queryKey: keys.plugins });
   const saved = await api<{ uiLocale: string | null }>('/auth/me', {
     method: 'PATCH',
     body: { uiLocale: language },

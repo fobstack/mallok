@@ -13,6 +13,11 @@
  */
 
 import {
+  ADMIN_CATALOG_PATH,
+  adminCatalogProblem,
+  themeCatalogKeys,
+} from './admin-catalog.js';
+import {
   parseThemeManifest,
   THEME_API_VERSION,
   type ThemeManifest,
@@ -123,7 +128,11 @@ export function readThemePackage(
     if (path === MANIFEST || path === ENTRY_MODULE) {
       continue;
     }
-    if (TEMPLATE_PATH.test(path) || LOCALE_PATH.test(path)) {
+    if (
+      TEMPLATE_PATH.test(path) ||
+      LOCALE_PATH.test(path) ||
+      ADMIN_CATALOG_PATH.test(path)
+    ) {
       files[path] = decoder.decode(bytes);
       continue;
     }
@@ -149,12 +158,13 @@ export function readThemePackage(
       continue;
     }
     throw new ThemePackageError(
-      `"${path}" is not an allowed path. A theme may contain theme.json, index.ts, layouts/*.liquid, partials/*.liquid, locales/*.json and assets/**.`,
+      `"${path}" is not an allowed path. A theme may contain theme.json, index.ts, layouts/*.liquid, partials/*.liquid, locales/*.json, admin/*.json and assets/**.`,
     );
   }
 
   assertLayoutsExist(manifest, files);
   assertLocalesExist(manifest, files);
+  assertAdminCatalogs(manifest, files);
   assertNoUndeclaredScripts(manifest, files);
 
   return { manifest, files, assets };
@@ -252,6 +262,27 @@ function assertLocalesExist(
       }
     } catch {
       throw new ThemePackageError(`locales/${locale}.json is not valid JSON.`);
+    }
+  }
+}
+
+/**
+ * Refuses an admin catalog that is not a map of strings, or that names a
+ * declaration the manifest does not have (docs/THEME_FORMAT.md §10.1) — a
+ * typo there would otherwise leave a label in English with no one told.
+ */
+function assertAdminCatalogs(
+  manifest: ThemeManifest,
+  files: Readonly<Record<string, string>>,
+): void {
+  const keys = themeCatalogKeys(manifest);
+  for (const [path, body] of Object.entries(files)) {
+    if (!ADMIN_CATALOG_PATH.test(path)) {
+      continue;
+    }
+    const problem = adminCatalogProblem(body, keys);
+    if (problem !== null) {
+      throw new ThemePackageError(`${path} ${problem}.`);
     }
   }
 }

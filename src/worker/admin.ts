@@ -124,7 +124,7 @@ export async function handleAdmin(
       );
 
     case 'GET theme':
-      return getTheme();
+      return getTheme(request);
 
     case 'POST cache/purge':
       return withScope(principal, 'settings:write', () => postPurgeAll(env));

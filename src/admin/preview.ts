@@ -24,26 +24,33 @@ import type { MediaItem, Settings, ThemeInfo } from './types.js';
 let compiled: CompiledTheme | null = null;
 let compiledFor = '';
 
-/** Compiles the active theme once and reuses it across keystrokes. */
+/**
+ * Compiles the active theme once and reuses it across keystrokes — from its
+ * declared words, never the interface language's, so the preview is the page
+ * the site renders.
+ */
 function themeFor(theme: ThemeInfo): CompiledTheme {
+  const { declared } = theme;
   const key = `${theme.id}@${theme.version}`;
   if (compiled === null || compiledFor !== key) {
     compiled = compileTheme(
       {
         id: theme.id,
         themeApi: 1,
-        name: theme.name,
+        name: declared.name,
         version: theme.version,
         home: 'layouts/home.liquid',
-        kinds: theme.kinds,
-        options: theme.options,
+        kinds: declared.kinds,
+        options: declared.options,
         locales: [...theme.locales],
         defaultLocale: theme.defaultLocale,
         imageWidths: [...theme.imageWidths],
-        clientScripts: [...theme.clientScripts],
+        clientScripts: [...declared.clientScripts],
         // The preview renders content, never a plugin's page.
         pluginLayouts: {},
-        ...(theme.description === '' ? {} : { description: theme.description }),
+        ...(declared.description === ''
+          ? {}
+          : { description: declared.description }),
       },
       theme.files,
       1,
