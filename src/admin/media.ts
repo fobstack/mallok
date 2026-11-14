@@ -10,6 +10,7 @@
 
 import { t } from '@lingui/core/macro';
 import { api, csrf } from './api.js';
+import { serverMessage } from './server-messages.js';
 import type { MediaItem } from './types.js';
 
 /** Types the API accepts. SVG is deliberately absent. */
@@ -182,8 +183,15 @@ export async function uploadFile(
     bitmap?.close();
     const body = (await response.json().catch(() => null)) as {
       error?: string;
+      code?: string;
+      params?: unknown;
     } | null;
-    throw new Error(body?.error ?? t`The upload failed.`);
+    // A raw PUT, not `api()`, so the code is read here (D3).
+    throw new Error(
+      serverMessage(body?.code, body?.params) ??
+        body?.error ??
+        t`The upload failed.`,
+    );
   }
 
   if (bitmap !== null) {

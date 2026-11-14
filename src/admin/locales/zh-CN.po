@@ -19,6 +19,21 @@ msgstr "“{actionLabel}”执行失败。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.settings.base_reserved"
+msgstr "“{base}”是存储文件专用的路径，不能用作内容的基础路径。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.path_clash"
+msgstr "“{from}”会移到“{to}”，而这个地址已被其他内容占用。请先修改其中一个的 slug。没有做任何改动。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_uncheckable"
+msgstr "“{name}”无法自动检测。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.content.exists_create_only"
 msgstr "“{slug}”在 {locale} 中已存在。去掉 --create-only 即可更新它。"
 
@@ -60,6 +75,11 @@ msgstr "{0, plural, other {# 个脚本}}"
 #: src/admin/pages/settings-advanced.tsx
 msgid "{0}/{1} files"
 msgstr "{0}/{1} 个文件"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.slugs_stranded"
+msgstr "{count, plural, other {有 # 个 slug 会以新设置分配给某个语言或内容类型的地址开头。请先修改它们。}}"
 
 #: src/admin/components/record-editor.tsx
 msgid "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
@@ -245,6 +265,11 @@ msgstr "添加一行"
 msgid "Add alt text"
 msgstr "添加替代文本"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.rows_required"
+msgstr "请至少添加一行。"
+
 #: src/admin/form/controls.tsx
 msgid "Add entry"
 msgstr "添加一项"
@@ -334,6 +359,16 @@ msgstr "至少 12 个字符。"
 msgid "At least 12 characters. This is the only account."
 msgstr "至少 12 个字符。这是唯一的账号。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_entries"
+msgstr "最多 {max} 项。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_rows"
+msgstr "最多 {max} 行。"
+
 #: src/admin/app.tsx
 msgid "Back to content"
 msgstr "返回内容列表"
@@ -345,6 +380,36 @@ msgstr "等待中的后台任务"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Backup and export"
 msgstr "备份与导出"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.enabled_body_invalid"
+msgstr "请求内容必须是 {\"enabled\": true | false}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.email.body_invalid"
+msgstr "请求内容必须是 {\"fromAddress\"?: string | null, \"resendApiKey\"?: string | null}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_body_invalid"
+msgstr "请求内容必须是 {\"values\": { … }}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secrets_body_invalid"
+msgstr "请求内容必须是密钥值组成的 JSON 对象。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_body_invalid"
+msgstr "请求内容必须是设置项组成的 JSON 对象。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.action_ids_missing"
+msgstr "请求内容必须包含要操作的行 ID。"
 
 #: src/admin/components/ui/breadcrumb.tsx
 msgid "breadcrumb"
@@ -386,6 +451,11 @@ msgstr "修改将在 {within}内对访客可见"
 msgid "Changing anything else in the source tree"
 msgstr "修改源代码中的其他任何内容"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_endpoint"
+msgstr "修改默认语言会改写所有 URL，请使用 POST /_mallok/api/settings/default-locale。"
+
 #: src/admin/pages/settings-appearance.tsx
 msgid "Changing the theme takes a deploy"
 msgstr "更换主题需要重新部署"
@@ -414,6 +484,16 @@ msgstr "选择图片"
 #: src/admin/components/media-library.tsx
 msgid "Choose files, or drop them here"
 msgstr "选择文件，或拖放到这里"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.currency"
+msgstr "请从列出的币种中选择一个。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.choice"
+msgstr "请从列出的选项中选择一个。"
 
 #: src/admin/form/types.ts
 msgid "Choose one of the listed values."
@@ -717,9 +797,29 @@ msgstr "邮箱"
 msgid "Email (Resend)"
 msgstr "邮件（Resend）"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.color"
+msgstr "请按 #rrggbb 格式输入颜色。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.date"
+msgstr "请按 YYYY-MM-DD 格式输入日期。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.number"
+msgstr "请输入数字。"
+
 #: src/admin/form/types.ts
 msgid "Enter a number."
 msgstr "请输入数字。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount"
+msgstr "请输入金额。"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
@@ -826,6 +926,21 @@ msgstr "资源路径“{path}”无效。"
 msgid "server.auth.invalid_credentials"
 msgstr "邮箱或密码不正确。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_invalid_at"
+msgstr "设置项“{field}”无效：{reason}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_invalid"
+msgstr "设置无效：{reason}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.invalid"
+msgstr "设置无效。"
+
 #: src/admin/components/record-editor.tsx
 msgid "Keep it"
 msgstr "保留"
@@ -917,6 +1032,11 @@ msgstr "媒体文件"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.media.too_large"
+msgstr "媒体文件不能超过 {max} 字节。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.method_not_allowed"
 msgstr "不允许使用该请求方法。"
 
@@ -929,9 +1049,39 @@ msgstr "CSRF 令牌缺失或无效，请刷新页面后重试。"
 msgid "More"
 msgstr "更多"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.rows_list"
+msgstr "必须是行的列表。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.text_list"
+msgstr "必须是文本列表。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.pairs"
+msgstr "必须是一组名称与值。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.min"
+msgstr "不能小于 {min}。"
+
 #: src/admin/form/types.ts
 msgid "Must be at least {min}."
 msgstr "不能小于 {min}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_length"
+msgstr "不能超过 {max} 个字符。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max"
+msgstr "不能大于 {max}。"
 
 #: src/admin/form/types.ts
 msgid "Must be at most {max}."
@@ -941,6 +1091,16 @@ msgstr "不能大于 {max}。"
 msgid "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
 msgstr "必须是已在 Resend 验证过的域名。插件可以设置自己的发件地址；没有设置时使用这里的地址。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.text"
+msgstr "必须是文本。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.boolean"
+msgstr "必须是“是”或“否”。"
+
 #: src/admin/form/controls.tsx
 msgid "Name"
 msgstr "名称"
@@ -949,6 +1109,11 @@ msgstr "名称"
 #: src/admin/server-messages.catalog.ts
 msgid "server.setup.starter_missing"
 msgstr "请选择要安装的示例内容。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.related_parent_missing"
+msgstr "请用 ?parent=<id> 指定行。"
 
 #: src/admin/pages/setup.tsx
 msgid "Name your site"
@@ -992,6 +1157,11 @@ msgstr "新建：{panelLabel}"
 msgid "Next"
 msgstr "下一页"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.attached_owner_missing"
+msgstr "不存在属于该翻译组的 {kind}。"
+
 #: src/admin/components/saved-note.tsx
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "尚未配置缓存清除令牌，保存的修改要等页面缓存过期后访客才能看到。站点运行正常，并没有出错——将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。"
@@ -1024,6 +1194,36 @@ msgstr "还没有任何行。"
 #: src/admin/server-messages.catalog.ts
 msgid "server.setup.starter_unknown"
 msgstr "没有名为“{starter}”的示例内容。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.action_unknown"
+msgstr "面板没有这个操作。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.panel_unknown"
+msgstr "没有这个面板。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.unknown"
+msgstr "本次构建中没有编译进这个插件。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_unknown"
+msgstr "没有这条记录。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.records_panel_unknown"
+msgstr "没有这个记录面板。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.related_unknown"
+msgstr "没有这个关联表。"
 
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-appearance.tsx
@@ -1085,6 +1285,11 @@ msgstr "整个站点共用一个 Resend 密钥和一个发件地址。所有发�
 msgid "Only at request time"
 msgstr "仅在请求时"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_not_image"
+msgstr "只有图片才有缩略图。"
+
 #: src/admin/components/related-rows.tsx
 msgid "Only the first rows are shown."
 msgstr "只显示了前面的部分行。"
@@ -1145,6 +1350,11 @@ msgstr "路径"
 msgid "Plugin on/off switches, settings and secrets"
 msgstr "插件的启用开关、设置和密钥"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.state_missing"
+msgstr "缺少插件的状态记录。"
+
 #: src/admin/components/shell.tsx
 #: src/admin/pages/plugins.tsx
 msgid "Plugins"
@@ -1157,6 +1367,11 @@ msgstr "插件随源代码发布，而不是通过这个页面安装"
 #: src/admin/pages/settings-site.tsx
 msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
 msgstr "默认语言也加前缀（<0>/{prefix}/…</0>）"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.locale_prefix_endpoint"
+msgstr "给默认语言加前缀会改写所有 URL，请使用 POST /_mallok/api/settings/locale-prefix。"
 
 #: src/admin/pages/editor.tsx
 msgid "Preview"
@@ -1177,6 +1392,16 @@ msgstr "由 <0>mallok create</0> 输出，只显示一次。它用来证明这�
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.settings.locale_prefix_confirm"
+msgstr "请提供 \"enabled\": true 或 false，以及 \"confirm\": true；此操作会改写所有 URL。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.hashes_missing"
+msgstr "请提供 sha256 哈希值列表。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.tokens.incomplete"
 msgstr "请填写名称，并至少选择一个权限范围。"
 
@@ -1187,8 +1412,18 @@ msgstr "请填写站点名称、默认语言和语言列表。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.media.alt_invalid"
+msgstr "替代文本必须是字符串或 null。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.setup.credentials_incomplete"
 msgstr "请填写邮箱，以及至少 {min} 个字符的密码。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_confirm"
+msgstr "请提供目标语言以及 \"confirm\": true；此操作会改写所有 URL。"
 
 #: src/admin/pages/editor.tsx
 msgid "Publish"
@@ -1202,6 +1437,11 @@ msgstr "已发布"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Rebuild all pages"
 msgstr "重新生成所有页面"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_not_removable"
+msgstr "这个面板的记录不能在这里删除。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Redirects"
@@ -1314,6 +1554,11 @@ msgstr "权限范围"
 #: src/admin/components/plugin-panel.tsx
 msgid "Search"
 msgstr "搜索"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_not_string"
+msgstr "密钥“{name}”必须是字符串或 null。"
 
 #: src/admin/pages/plugins.tsx
 msgid "Secrets"
@@ -1472,6 +1717,11 @@ msgstr "跳过"
 msgid "Slug"
 msgstr "Slug"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.fields_invalid"
+msgstr "有些字段需要修改。"
+
 #: src/admin/pages/setup.tsx
 msgid "Start with example content?"
 msgstr "要从示例内容开始吗？"
@@ -1544,6 +1794,21 @@ msgstr "操作失败。"
 msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
 msgstr "当前主题没有声明这个类型，所以按普通页面的布局渲染。内容和 URL 都不受影响。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount_high"
+msgstr "金额过高。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount_low"
+msgstr "金额过低。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.hash_mismatch"
+msgstr "上传的内容与路径中的 sha256 不一致。"
+
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx
 msgid "The check failed."
@@ -1566,6 +1831,11 @@ msgstr "当前主题没有 {layouts} 的布局。这些页面会以内置的简�
 msgid "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
 msgstr "默认语言不带 URL 前缀；其他语言都在 <0>/<locale>/</0> 下提供。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_unlisted"
+msgstr "启用的语言必须包含默认语言“{locale}”。"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "The export failed."
 msgstr "导出失败。"
@@ -1581,12 +1851,27 @@ msgstr "语言列表必须包含默认语言。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.media.id_invalid"
+msgstr "媒体 ID 必须是十六进制的 sha256 摘要。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.account.password_short"
 msgstr "新密码至少需要 {min} 个字符。"
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
 msgstr "以下选项是运行时设置：保存后立即生效，无需重新构建。主题本身属于源代码。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.body_empty"
+msgstr "请求内容为空。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.email.sender_invalid"
+msgstr "发件人必须是 “hello@example.com” 或 “Acme <hello@example.com>” 这样的地址。"
 
 #: src/admin/api.ts
 msgid "The server could not be reached. Nothing was saved."
@@ -1663,6 +1948,11 @@ msgstr "slug 只能使用小写拉丁字母、数字和单个连字符。可改�
 msgid "server.setup.starter_prefix_clash"
 msgstr "该示例内容会给默认语言加上前缀，但“{from}”会移到“{to}”，而这个地址已被其他内容占用。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.export.unsafe"
+msgstr "存储的内容无法安全导出：{reason}。"
+
 #: src/admin/components/media-library.tsx
 #: src/admin/media.ts
 msgid "The upload failed."
@@ -1696,9 +1986,34 @@ msgstr "点击保存即生效——无需重新构建或部署。"
 msgid "These values apply to every language unless a language overrides them below."
 msgstr "这些值适用于所有语言，除非某个语言在下面单独设置。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.required"
+msgstr "此项为必填项。"
+
 #: src/admin/form/types.ts
 msgid "This field is required."
 msgstr "此项为必填项。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.in_use"
+msgstr "这个文件正在使用中。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.in_use_count"
+msgstr "这个文件正被 {count} 项内容引用，请先移除这些引用。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.operation_scope"
+msgstr "此操作需要“{scope}”权限范围。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.attached_to_missing"
+msgstr "这个面板属于某条内容：请把它的翻译组作为 “attachedTo” 发送。"
 
 #: src/admin/pages/plugins.tsx
 msgid "This plugin runs on <0>every visitor request</0>, including ones the cache would otherwise answer for free."
@@ -1760,8 +2075,18 @@ msgstr "未知错误"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.media.kind_filter_unknown"
+msgstr "未知的类型筛选条件。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.tokens.scope_unknown"
 msgstr "未知的权限范围：{scopes}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_unknown"
+msgstr "未知的密钥“{name}”。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -1776,6 +2101,11 @@ msgstr "未知类型"
 msgid "Unsaved"
 msgstr "未保存"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.type_unsupported"
+msgstr "不支持的文件类型。支持：jpg、png、gif、webp、avif、pdf、xlsx、docx、zip。"
+
 #: src/admin/components/media-library.tsx
 msgid "unused"
 msgstr "未使用"
@@ -1787,6 +2117,11 @@ msgstr "更新时间"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Upgrading Mallok itself"
 msgstr "升级 Mallok 本身"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.original_missing"
+msgstr "请先上传原图，再上传它的缩略图。"
 
 #: src/admin/components/media-library.tsx
 msgid "uploading"
@@ -1820,6 +2155,16 @@ msgstr "值"
 #: src/admin/pages/settings-appearance.tsx
 msgid "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
 msgstr "这里修改的值只对 {editingLocale} 生效。没有改动的选项沿用 {editingDefaultLocale} 的值。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_width"
+msgstr "缩略图宽度必须在 1 到 {max} 之间。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_not_webp"
+msgstr "缩略图必须是 WebP 格式。"
 
 #: src/admin/pages/setup.tsx
 msgid "View the site"

@@ -61,6 +61,38 @@ interface RequestOptions {
 }
 
 /**
+ * The per-field messages of an error body, each in the interface language
+ * when `errorCodes` names it with a code the catalog has (D3), else the
+ * server's English.
+ */
+function fieldMessages(parsed: unknown): Record<string, string> {
+  if (parsed === null || typeof parsed !== 'object') {
+    return {};
+  }
+  const { errors, errorCodes } = parsed as {
+    errors?: unknown;
+    errorCodes?: unknown;
+  };
+  if (errors === null || typeof errors !== 'object' || Array.isArray(errors)) {
+    return {};
+  }
+  const codes =
+    errorCodes !== null && typeof errorCodes === 'object'
+      ? (errorCodes as Record<string, { code?: unknown; params?: unknown }>)
+      : {};
+  return Object.fromEntries(
+    Object.entries(errors as Record<string, unknown>)
+      .filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      )
+      .map(([field, english]) => {
+        const named = codes[field];
+        return [field, serverMessage(named?.code, named?.params) ?? english];
+      }),
+  );
+}
+
+/**
  * Performs one API call and returns the parsed body.
  *
  * Network failures surface as errors rather than empty state: the admin must
@@ -124,16 +156,10 @@ export async function api<T>(
     // Translated now, in the language of the moment it is said: every
     // place that shows `caught.message` gets it without knowing codes.
     const message = serverMessage(body.code, body.params) ?? english;
-    const errors =
-      parsed !== null && typeof parsed === 'object'
-        ? (parsed as { errors?: unknown }).errors
-        : undefined;
     throw new ApiError(
       response.status,
       message,
-      errors !== null && typeof errors === 'object' && !Array.isArray(errors)
-        ? (errors as Record<string, string>)
-        : {},
+      fieldMessages(parsed),
       typeof body.code === 'string' ? body.code : undefined,
     );
   }
