@@ -285,6 +285,10 @@ msgstr "等待中的后台任务"
 msgid "Backup and export"
 msgstr "备份与导出"
 
+#: src/admin/components/ui/breadcrumb.tsx
+msgid "breadcrumb"
+msgstr "面包屑导航"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Building…"
 msgstr "正在生成…"
@@ -390,6 +394,11 @@ msgstr "正在清除…"
 #: src/admin/pages/settings-appearance.tsx
 msgid "Client JavaScript"
 msgstr "前台 JavaScript"
+
+#: src/admin/components/ui/dialog.tsx
+#: src/admin/components/ui/sheet.tsx
+msgid "Close"
+msgstr "关闭"
 
 #: src/admin/components/account-menu.tsx
 msgid "Colour scheme"
@@ -581,6 +590,10 @@ msgstr "详情"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Diagnostics"
 msgstr "诊断"
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Displays the mobile sidebar."
+msgstr "显示移动端侧栏。"
 
 #: src/admin/pages/setup.tsx
 msgid "Domain"
@@ -806,6 +819,10 @@ msgstr "媒体域名"
 msgid "Media files"
 msgstr "媒体文件"
 
+#: src/admin/components/ui/breadcrumb.tsx
+msgid "More"
+msgstr "更多"
+
 #: src/admin/form/types.ts
 msgid "Must be at least {min}."
 msgstr "不能小于 {min}。"
@@ -922,6 +939,10 @@ msgstr "主题未声明"
 #: src/admin/pages/content-list.tsx
 msgid "Nothing here yet."
 msgstr "这里还没有内容。"
+
+#: src/admin/components/toast-host.tsx
+msgid "Notifications"
+msgstr "通知"
 
 #: src/admin/pages/plugins.tsx
 msgid "Off"
@@ -1234,6 +1255,10 @@ msgstr "大多数主题会显示在站点名称下方，并用作首页描述。
 msgid "Shown on pages in {locale}. Empty uses the tagline above."
 msgstr "显示在 {locale} 页面上。留空则使用上面的标语。"
 
+#: src/admin/components/ui/sidebar.tsx
+msgid "Sidebar"
+msgstr "侧栏"
+
 #: src/admin/pages/login.tsx
 msgid "Sign in"
 msgstr "登录"
@@ -1445,6 +1470,10 @@ msgstr "标题"
 #: src/admin/pages/plugins.tsx
 msgid "To add one, put its folder in <0>src/plugins/</0>, list it in <1>src/plugins/index.ts</1>, then build and deploy. Removing one is the reverse. There is no upload here because there is no way to make an upload take effect without a new build."
 msgstr "要添加插件，请把它的目录放进 <0>src/plugins/</0>，在 <1>src/plugins/index.ts</1> 中登记，然后重新构建并部署。移除插件则反过来操作。这里没有上传入口，因为上传的插件不重新构建就无法生效。"
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Toggle Sidebar"
+msgstr "展开或收起侧栏"
 
 #: src/admin/pages/editor.tsx
 msgid "Translations"

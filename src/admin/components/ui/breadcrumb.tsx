@@ -1,12 +1,14 @@
+import { Trans, useLingui } from '@lingui/react/macro';
 import { cn } from 'cn';
 import { ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
 import { Slot } from 'radix-ui';
 import type * as React from 'react';
 
 function Breadcrumb({ className, ...props }: React.ComponentProps<'nav'>) {
+  const { t } = useLingui();
   return (
     <nav
-      aria-label="breadcrumb"
+      aria-label={t`breadcrumb`}
       data-slot="breadcrumb"
       className={cn(className)}
       {...props}
@@ -102,7 +104,9 @@ function BreadcrumbEllipsis({
       {...props}
     >
       <MoreHorizontalIcon />
-      <span className="sr-only">More</span>
+      <span className="sr-only">
+        <Trans>More</Trans>
+      </span>
     </span>
   );
 }

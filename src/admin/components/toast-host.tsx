@@ -4,6 +4,7 @@
  * toast library is not worth its weight on every first load.
  */
 
+import { useLingui } from '@lingui/react/macro';
 import type { JSX } from 'react';
 import { useEffect } from 'react';
 import { toast } from 'sonner';
@@ -16,6 +17,7 @@ export function ToastHost({
   readonly message: string;
   readonly onShown: () => void;
 }): JSX.Element {
+  const { t } = useLingui();
   // The Toaster below is a child, so its effects — subscribing to toasts —
   // have run by the time this one shows the message.
   useEffect(() => {
@@ -24,5 +26,8 @@ export function ToastHost({
       onShown();
     }
   }, [message, onShown]);
-  return <Toaster position="bottom-right" />;
+  // Sonner adds its keyboard shortcut after this label.
+  return (
+    <Toaster position="bottom-right" containerAriaLabel={t`Notifications`} />
+  );
 }

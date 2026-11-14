@@ -89,29 +89,36 @@ async function scan(
   expect(blocking.map(describe), label).toEqual([]);
 }
 
+/** Every screen of the admin, scanned in each interface language. */
+const ADMIN_SCREENS = [
+  ['content list', '/_mallok/app/'],
+  ['media', '/_mallok/app/media'],
+  ['plugins', '/_mallok/app/plugins'],
+  ['settings: site', '/_mallok/app/settings'],
+  ['settings: appearance', '/_mallok/app/settings/appearance'],
+  ['settings: email', '/_mallok/app/settings/email'],
+  ['settings: advanced', '/_mallok/app/settings/advanced'],
+  ['account', '/_mallok/app/account'],
+] as const;
+
+/** Scans every screen in `ADMIN_SCREENS` on a signed-in page. */
+async function scanScreens(page: Page, prefix: string): Promise<void> {
+  for (const [label, path] of ADMIN_SCREENS) {
+    await page.goto(path);
+    // Every screen loads its data before it is worth scanning; the heading
+    // is the signal that the route rendered rather than the shell alone.
+    await expect(page.getByRole('heading').first()).toBeVisible();
+    await scan(page, `${prefix}: ${label}`);
+  }
+}
+
 test.describe('the admin', () => {
   test('has no serious or critical violations on any screen', async ({
     page,
   }) => {
     test.setTimeout(120_000);
     await signIn(page);
-
-    for (const [label, path] of [
-      ['content list', '/_mallok/app/'],
-      ['media', '/_mallok/app/media'],
-      ['plugins', '/_mallok/app/plugins'],
-      ['settings: site', '/_mallok/app/settings'],
-      ['settings: appearance', '/_mallok/app/settings/appearance'],
-      ['settings: email', '/_mallok/app/settings/email'],
-      ['settings: advanced', '/_mallok/app/settings/advanced'],
-      ['account', '/_mallok/app/account'],
-    ] as const) {
-      await page.goto(path);
-      // Every screen loads its data before it is worth scanning; the heading
-      // is the signal that the route rendered rather than the shell alone.
-      await expect(page.getByRole('heading').first()).toBeVisible();
-      await scan(page, `admin: ${label}`);
-    }
+    await scanScreens(page, 'admin');
   });
 
   test('has no serious or critical violations in the editor', async ({
@@ -165,6 +172,46 @@ test.describe('the admin', () => {
     await expect(page.locator('#login-password')).toBeVisible();
 
     await scan(page, 'admin: sign in');
+  });
+});
+
+/**
+ * The same screens in Simplified Chinese (docs/ADMIN_I18N_AND_UI.md, phase
+ * 2): a translation changes the text's length and the `lang` it is read in,
+ * and every control must still have a name in that language.
+ */
+test.describe('the admin in Chinese', () => {
+  test.describe('before signing in', () => {
+    // A browser that prefers Chinese is greeted in it (D7).
+    test.use({ locale: 'zh-CN' });
+
+    test('has no serious or critical violations on the sign-in screen', async ({
+      page,
+    }) => {
+      await page.goto('/_mallok/app/');
+      await expect(page.getByRole('heading', { name: '登录' })).toBeVisible();
+      await scan(page, 'admin zh-CN: sign in');
+    });
+  });
+
+  test('has no serious or critical violations on any screen', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    // Signed in in English, as every spec does; the choice made afterwards
+    // is the one an operator makes in the account menu.
+    await signIn(page);
+    await page.evaluate(() =>
+      localStorage.setItem('mallok-admin-language', 'zh-CN'),
+    );
+    await scanScreens(page, 'admin zh-CN');
+
+    await page.goto('/_mallok/app/content/new');
+    await expect(page.locator('#fm-title')).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+    // The preview frame is scanned in English above; its document is the
+    // theme's, in the content's language, not the interface's.
+    await scan(page, 'admin zh-CN: editor', 'iframe[title="预览"]');
   });
 });
 

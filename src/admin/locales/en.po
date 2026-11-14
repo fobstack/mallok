@@ -285,6 +285,10 @@ msgstr "Background jobs waiting"
 msgid "Backup and export"
 msgstr "Backup and export"
 
+#: src/admin/components/ui/breadcrumb.tsx
+msgid "breadcrumb"
+msgstr "breadcrumb"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Building…"
 msgstr "Building…"
@@ -390,6 +394,11 @@ msgstr "Clearing…"
 #: src/admin/pages/settings-appearance.tsx
 msgid "Client JavaScript"
 msgstr "Client JavaScript"
+
+#: src/admin/components/ui/dialog.tsx
+#: src/admin/components/ui/sheet.tsx
+msgid "Close"
+msgstr "Close"
 
 #: src/admin/components/account-menu.tsx
 msgid "Colour scheme"
@@ -581,6 +590,10 @@ msgstr "Details"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Diagnostics"
 msgstr "Diagnostics"
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Displays the mobile sidebar."
+msgstr "Displays the mobile sidebar."
 
 #: src/admin/pages/setup.tsx
 msgid "Domain"
@@ -806,6 +819,10 @@ msgstr "Media domain"
 msgid "Media files"
 msgstr "Media files"
 
+#: src/admin/components/ui/breadcrumb.tsx
+msgid "More"
+msgstr "More"
+
 #: src/admin/form/types.ts
 msgid "Must be at least {min}."
 msgstr "Must be at least {min}."
@@ -922,6 +939,10 @@ msgstr "Not in theme"
 #: src/admin/pages/content-list.tsx
 msgid "Nothing here yet."
 msgstr "Nothing here yet."
+
+#: src/admin/components/toast-host.tsx
+msgid "Notifications"
+msgstr "Notifications"
 
 #: src/admin/pages/plugins.tsx
 msgid "Off"
@@ -1234,6 +1255,10 @@ msgstr "Shown by most themes under the site name, and as the home page descripti
 msgid "Shown on pages in {locale}. Empty uses the tagline above."
 msgstr "Shown on pages in {locale}. Empty uses the tagline above."
 
+#: src/admin/components/ui/sidebar.tsx
+msgid "Sidebar"
+msgstr "Sidebar"
+
 #: src/admin/pages/login.tsx
 msgid "Sign in"
 msgstr "Sign in"
@@ -1445,6 +1470,10 @@ msgstr "Title"
 #: src/admin/pages/plugins.tsx
 msgid "To add one, put its folder in <0>src/plugins/</0>, list it in <1>src/plugins/index.ts</1>, then build and deploy. Removing one is the reverse. There is no upload here because there is no way to make an upload take effect without a new build."
 msgstr "To add one, put its folder in <0>src/plugins/</0>, list it in <1>src/plugins/index.ts</1>, then build and deploy. Removing one is the reverse. There is no upload here because there is no way to make an upload take effect without a new build."
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Toggle Sidebar"
+msgstr "Toggle Sidebar"
 
 #: src/admin/pages/editor.tsx
 msgid "Translations"

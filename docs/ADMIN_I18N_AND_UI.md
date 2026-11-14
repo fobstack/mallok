@@ -571,9 +571,35 @@ Phase 2 as built (commits `bb278c7` to the commit adding this note):
   `admin:size` (first load 165.5 KiB) pass; `pnpm test:e2e` passes, 48
   specs. One `pnpm test` run failed `wrangler-contract.test.ts` on its 5 s
   timeout under load; alone it passed, and the full suite passed after.
-  Screenshots were taken on macOS only. **Not yet run:** the
-  pseudo-language pass, axe in Chinese, and screenshots on Windows and
-  Linux.
+  Screenshots were taken on macOS only.
+- **Pseudo-language pass**, run twice on a fresh database: `zh-CN.po` was
+  swapped, for the run only, for a catalog whose every message is wrapped
+  in ⟦ ⟧, and a throwaway spec walked the wizard, sign-in (empty and wrong
+  password), the content list, the account menu, the editor (stored, new,
+  a slug notice), media (empty, an upload, alt text, a refused SVG), the
+  plugins page (an action with nothing selected, a record refused and
+  stored, an action's parameters), the four settings pages (a refused
+  sender), the account page (a refused password, a minted token), the 404
+  page and the mobile sidebar, collecting visible text and `aria-label`,
+  `placeholder`, `title` and `alt` outside the marks. The first run found
+  seven messages in the vendored shadcn/ui components and Sonner — the
+  sidebar's "Toggle Sidebar", its mobile sheet's title and description, the
+  sheet's and dialog's "Close", the breadcrumb's label and "More", and the
+  toasts' region label — now in the catalog (371 messages). The second run
+  found nothing unmarked but what §5.2 and phase 3 expect: each language's
+  own name, example placeholders (`zh, de`, `Acme <hello@example.com>`),
+  scope and migration names, content, the Worker's messages (D3: a refused
+  sign-in, "Some fields need attention.", the server's required-field
+  message on a record, Advanced's storage note), the starters' names, and
+  what themes and plugins declare (D4, D5).
+- **Axe in Chinese**: `05-accessibility` scans the sign-in screen with a
+  browser that prefers Chinese, and every admin screen and the editor with
+  Chinese chosen; no serious or critical violation.
+- **Not run: screenshots on Windows and Linux.** This machine has neither,
+  nor Docker. They remain for the owner or CI.
+- Found on the way, not an interface-language matter: once setup is done,
+  `/_mallok/setup` answers the Worker's JSON 404 (`{"error":"Not found."}`),
+  so the admin's "Setup is finished" card is never shown.
 
 ## 9. Risks and open questions
 
