@@ -109,10 +109,11 @@ export function SiteSettingsPage(): JSX.Element {
   });
   const [saved, setSaved] = useState(false);
 
-  // Other languages' taglines sit behind one content-language select, under
-  // the tagline itself, rather than one text box per language (U10, U12).
-  // The form keeps every language's value; the select only says which is
-  // shown.
+  // Other languages' taglines sit under the tagline itself, one field at a
+  // time rather than one text box per language (U10, U12). With a single
+  // further language that field is simply there; with more, one
+  // content-language select says which is shown. The form keeps every
+  // language's value, so switching loses nothing.
   const [taglineLocale, setTaglineLocale] = useState(otherLocales[0] ?? '');
   const nameOf = useContentLanguageName();
   const taglineLanguage = nameOf(taglineLocale);
@@ -183,23 +184,24 @@ export function SiteSettingsPage(): JSX.Element {
         }
       >
         <SchemaForm specs={before} control={form.control} idPrefix="site" />
+        {otherLocales.length < 2 ? null : (
+          <ContentLanguageSelect
+            id="site-tagline-locale"
+            value={taglineLocale}
+            onChange={setTaglineLocale}
+            locales={otherLocales}
+            description={t`Each further language can have its own tagline. What you type is kept while you switch; Save stores them all.`}
+          />
+        )}
         {otherLocales.length === 0 ? null : (
-          <div className="flex flex-col gap-3 rounded-lg border p-3">
-            <ContentLanguageSelect
-              id="site-tagline-locale"
-              value={taglineLocale}
-              onChange={setTaglineLocale}
-              locales={otherLocales}
-            />
-            <SchemaForm
-              // A different language is a different field, not the same one
-              // with another value: its control must not carry typing over.
-              key={taglineLocale}
-              specs={[otherTagline]}
-              control={form.control}
-              idPrefix="site"
-            />
-          </div>
+          <SchemaForm
+            // A different language is a different field, not the same one
+            // with another value: its control must not carry typing over.
+            key={taglineLocale}
+            specs={[otherTagline]}
+            control={form.control}
+            idPrefix="site"
+          />
         )}
         <SchemaForm specs={after} control={form.control} idPrefix="site" />
       </Section>
@@ -223,6 +225,7 @@ function LocaleSection(): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState('');
   const prefix = current.defaultLocale;
+  const nameOf = useContentLanguageName();
 
   const setLocales = async (locales: string[]): Promise<void> => {
     setBusy(true);
@@ -236,8 +239,9 @@ function LocaleSection(): JSX.Element {
   };
 
   const makeDefault = async (locale: string): Promise<void> => {
+    const language = nameOf(locale);
     const ok = window.confirm(
-      t`Make "${locale}" the default language?\n\nEvery public URL is rewritten and the old URLs are redirected. This cannot be undone automatically.`,
+      t`Make ${language} the default language?\n\nEvery public URL is rewritten and the old URLs are redirected. This cannot be undone automatically.`,
     );
     if (!ok) {
       return;
@@ -251,7 +255,7 @@ function LocaleSection(): JSX.Element {
       await reloadWorkspace();
       const moved = result.moved;
       notify(
-        t`Default language is now "${locale}". ${plural(moved, { one: '# URL moved, with a redirect.', other: '# URLs moved, each with a redirect.' })}`,
+        t`Default language is now ${language}. ${plural(moved, { one: '# URL moved, with a redirect.', other: '# URLs moved, each with a redirect.' })}`,
       );
     } catch (caught) {
       notify(
@@ -329,13 +333,14 @@ function LocaleSection(): JSX.Element {
           </span>
         </FieldLabel>
       </Field>
-      <ul className="flex flex-col divide-y rounded-lg border">
+      {/* As wide as the fields above it: one right edge per card (U2). */}
+      <ul className="flex max-w-2xl flex-col divide-y rounded-lg border">
         {current.locales.map((locale) => (
           <li
             key={locale}
             className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm"
           >
-            <Code>{locale}</Code>
+            <span>{nameOf(locale)}</span>
             {locale === current.defaultLocale ? (
               <StatusBadge tone="ok">
                 <Trans>Default</Trans>

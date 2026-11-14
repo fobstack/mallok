@@ -103,7 +103,7 @@ msgstr "{label}：币种"
 
 #: src/admin/components/content-language.tsx
 msgid "{language}, default"
-msgstr "{language}，默认"
+msgstr "{language} · 默认"
 
 #: src/admin/components/record-editor.tsx
 msgid "{limit, plural, one {At most # row.} other {At most # rows.}}"
@@ -714,13 +714,17 @@ msgstr "自定义域名"
 msgid "Dark"
 msgstr "深色"
 
+#: src/admin/pages/settings-advanced.tsx
+msgid "Database read and write quotas are shown in the Cloudflare dashboard, not here."
+msgstr "数据库的读写配额请在 Cloudflare 控制台查看，这里不显示。"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Default"
 msgstr "默认"
 
 #: src/admin/pages/settings-site.tsx
-msgid "Default language is now \"{locale}\". {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
-msgstr "默认语言已改为“{locale}”。{moved, plural, other {已迁移 # 个 URL，均已设置重定向。}}"
+msgid "Default language is now {language}. {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+msgstr "默认语言已改为{language}。{moved, plural, other {已迁移 # 个 URL，均已设置重定向。}}"
 
 #: src/admin/components/media-library.tsx
 msgid "Delete"
@@ -781,6 +785,10 @@ msgstr "草稿"
 #: src/admin/components/media-library.tsx
 msgid "Drop to upload"
 msgstr "松开即可上传"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Each further language can have its own tagline. What you type is kept while you switch; Save stores them all."
+msgstr "其他每种语言都可以有自己的标语。切换语言时已输入的内容会保留，点“保存”时一并保存。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Edge cache"
@@ -1018,10 +1026,10 @@ msgid "Main language"
 msgstr "主语言"
 
 #: src/admin/pages/settings-site.tsx
-msgid "Make \"{locale}\" the default language?\n"
+msgid "Make {language} the default language?\n"
 "\n"
 "Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
-msgstr "将“{locale}”设为默认语言？\n"
+msgstr "将{language}设为默认语言？\n"
 "\n"
 "所有公开 URL 都会改写，旧 URL 会重定向到新地址。此操作无法自动撤销。"
 
@@ -1183,6 +1191,10 @@ msgstr "不存在属于该翻译组的 {kind}。"
 #: src/admin/pages/settings-advanced.tsx
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "尚未配置缓存清除令牌，保存的修改要等页面缓存过期后访客才能看到。站点运行正常，并没有出错——将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
+msgstr "未配置缓存清除令牌，因此没有清除任何缓存。已缓存的页面会自行过期。"
 
 #: src/admin/pages/setup.tsx
 msgid "No cache-purge token is configured, so the cache lifetime was set to 60 seconds — edits appear within a minute instead of immediately. Add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets for instant publishing. This is a working configuration, not a broken one."

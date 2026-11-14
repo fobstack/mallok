@@ -25,16 +25,25 @@ import {
  * so the notice above it, its header and its sections share one left edge
  * and one width (docs/ADMIN_I18N_AND_UI.md, U2); a form caps its own fields
  * instead (`Section`).
+ *
+ * The page, not the shell, says how wide that column is: `width="full"`
+ * lets the shell's column span the window, for a page such as the editor
+ * that needs the room (U7).
  */
 export function Page({
   children,
   className,
+  width = 'column',
 }: {
   readonly children: ReactNode;
   readonly className?: string;
+  readonly width?: 'column' | 'full';
 }): JSX.Element {
   return (
-    <div className={cn('flex w-full flex-col gap-6', className)}>
+    <div
+      data-page-width={width}
+      className={cn('flex w-full flex-col gap-6', className)}
+    >
       {children}
     </div>
   );
@@ -81,6 +90,7 @@ export function Section({
   onSubmit,
   className,
   id,
+  wide = false,
 }: {
   readonly title?: ReactNode;
   readonly description?: ReactNode;
@@ -91,6 +101,12 @@ export function Section({
   readonly className?: string;
   /** An anchor another page links to, such as `#diagnostics`. */
   readonly id?: string;
+  /**
+   * Lets fields span the card. A section of settings caps its fields at a
+   * readable width; one holding a table or a plugin's panel says so here
+   * instead of overriding the cap.
+   */
+  readonly wide?: boolean;
 }): JSX.Element {
   const titleId = useId();
   const card = (
@@ -109,7 +125,12 @@ export function Section({
       )}
       {children === undefined ? null : (
         // A field is capped at a readable width; the card spans the column.
-        <CardContent className="flex flex-col gap-4 [&_[data-slot=field]]:max-w-2xl">
+        <CardContent
+          className={cn(
+            'flex flex-col gap-4',
+            !wide && '[&_[data-slot=field]]:max-w-2xl',
+          )}
+        >
           {children}
         </CardContent>
       )}

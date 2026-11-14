@@ -717,6 +717,29 @@ Phase 4 as built, in the order it landed:
   instead of a text box per language; the form keeps every language's
   value. `15-tagline-languages` and `19-translation` find the controls by
   their new names.
+- **After review of U1–U15.** A second reading of the screenshots found:
+  - A draft's save claimed "Visitors see it within 1 minute", which a
+    draft never is. It now gets the badge alone.
+  - The Languages card still listed bare codes. It names them, and so do
+    the make-default confirmation and notice.
+  - The taglines sat in a bordered box inside the card, with a select of
+    one option on a two-language site. They are now flat. The select
+    appears only from two further languages on, and it says that what is
+    typed is kept while switching.
+  - Advanced still showed two English sentences that the Worker writes for
+    the CLI: the storage quota note and the no-token purge note. The admin
+    now says both itself.
+  - The language list now has the fields' width, so a card has one right
+    edge.
+
+  Three structural changes ease the remaining items:
+  - `Page width="full"` widens the shell's column, notice included, for U7.
+  - `Section wide` lifts the field cap rather than overriding it.
+  - `ContentLanguageOptions` gives the named options without the labelled
+    field, for U12's and U16's pickers.
+
+  The editor's language bar stays chips on purpose. It moves between
+  translations; it does not filter or pick a value.
 
 ## 9. Risks and open questions
 

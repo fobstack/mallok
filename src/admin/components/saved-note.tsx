@@ -18,21 +18,30 @@ import { StatusBadge } from './page.js';
  * see it as plain text after it. A delay is how this site works without a
  * purge token, not a problem with the save, so it is not drawn as a warning
  * (docs/ADMIN_I18N_AND_UI.md, U15).
+ *
+ * A draft is saved but reaches no visitor, so it gets the badge alone:
+ * telling when visitors see it would be untrue.
  */
-export function SavedNote(): JSX.Element {
+export function SavedNote({
+  draft = false,
+}: {
+  readonly draft?: boolean;
+}): JSX.Element {
   const delay = useLiveDelay();
   return (
     <span role="status" className="flex flex-wrap items-center gap-2 text-sm">
       <StatusBadge tone="ok">
         <Trans>Saved</Trans>
       </StatusBadge>
-      <span className="text-muted-foreground">
-        {delay.instant ? (
-          <Trans>Visitors see it now.</Trans>
-        ) : (
-          <DelayNote seconds={delay.seconds} />
-        )}
-      </span>
+      {draft ? null : (
+        <span className="text-muted-foreground">
+          {delay.instant ? (
+            <Trans>Visitors see it now.</Trans>
+          ) : (
+            <DelayNote seconds={delay.seconds} />
+          )}
+        </span>
+      )}
     </span>
   );
 }

@@ -201,13 +201,18 @@ export function AdvancedPage(): JSX.Element {
     setClearing(what);
     setCacheResult('');
     try {
-      const result = await api<{ note?: string; cleared?: number }>(
+      const result = await api<{ attempted?: boolean; cleared?: number }>(
         `/cache/${what}`,
         { method: 'POST' },
       );
       // The server says when it could not purge; repeat that rather than
-      // claiming success (docs/ADMIN.md §5).
-      setCacheResult(result.note ?? done);
+      // claiming success (docs/ADMIN.md §5). Its `note` is English for the
+      // CLI; the admin says the same in the interface language.
+      setCacheResult(
+        result.attempted === false
+          ? t`No cache-purge token is configured, so nothing was purged. Cached pages expire on their own.`
+          : done,
+      );
       // A whole-site purge that worked clears a recorded failure; show that.
       await client.invalidateQueries({ queryKey: keys.health });
     } catch (caught) {
@@ -386,9 +391,9 @@ export function AdvancedPage(): JSX.Element {
 
       <Section
         title={t`Storage`}
-        {...(diagnostics === null || diagnostics.quotaUsageNote === ''
-          ? {}
-          : { description: diagnostics.quotaUsageNote })}
+        // The Worker's `quotaUsageNote` is English for the CLI; this is the
+        // same fact in the interface language.
+        description={t`Database read and write quotas are shown in the Cloudflare dashboard, not here.`}
       >
         {diagnostics === null ? (
           <p className="text-sm text-muted-foreground">

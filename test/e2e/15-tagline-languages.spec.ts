@@ -14,8 +14,10 @@ test('a further language gets its own tagline field, and it is kept', async ({
   await signIn(page);
   await page.goto('/_mallok/app/settings');
   const main = page.getByLabel('Tagline', { exact: true });
-  // Since U10 another language's tagline sits behind the one "Content
-  // language" select, and the language is named, not shown as a code.
+  // Since U10 the language is named, not shown as a code. With one further
+  // language its field is simply there; a "Content language" select appears
+  // only from two on, so there is none to pick from here.
+  await expect(page.locator('#site-tagline-locale')).toHaveCount(0);
   const chinese = page.getByLabel('Tagline in Chinese (zh)', { exact: true });
   await expect(chinese).toBeVisible();
   await expect(chinese).toHaveValue('');
