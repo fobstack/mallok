@@ -19,6 +19,7 @@ import {
   listApiTokens,
   revokeApiToken,
   updateAdminPassword,
+  updateAdminUiLocale,
 } from '../db/auth.js';
 import { loadSite } from '../db/queries.js';
 import {
@@ -45,11 +46,27 @@ import { json, problem, readJson } from './http.js';
 
 const MIN_PASSWORD_LENGTH = 12;
 
+/**
+ * An interface language as the admin names it: a BCP 47 tag such as `en` or
+ * `zh-CN`. The Worker keeps it, not judges it — which languages have a
+ * catalog is the admin's business, and an unknown tag simply matches none.
+ */
+const uiLocaleSchema = z
+  .string()
+  .max(35)
+  .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
+
 const credentialsSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(MIN_PASSWORD_LENGTH).max(1024),
   /** The one-time key `mallok create` printed; see {@link checkSetupKey}. */
   setupKey: z.string().min(1).max(512).optional(),
+  /** The wizard's interface language, carried into the account (D2). */
+  uiLocale: uiLocaleSchema.optional(),
+});
+
+const accountPatchSchema = z.object({
+  uiLocale: uiLocaleSchema.nullable(),
 });
 
 /**
@@ -220,6 +237,7 @@ export async function bootstrapAdmin(
       passwordHash: derived.hash,
       passwordParams: JSON.stringify(derived.params),
       now: now.toISOString(),
+      uiLocale: parsed.data.uiLocale ?? null,
     },
     check.keyUsed,
   );
@@ -285,7 +303,12 @@ export async function login(
     now: now.toISOString(),
   });
   return json(
-    { email: user.email, csrf, expiresAt: expiresAt.toISOString() },
+    {
+      email: user.email,
+      csrf,
+      expiresAt: expiresAt.toISOString(),
+      uiLocale: user.ui_locale,
+    },
     { headers: { 'set-cookie': sessionCookie(token.plaintext, expiresAt) } },
   );
 }
@@ -321,11 +344,36 @@ export async function whoami(
     kind: 'session',
     email: user?.email ?? null,
     csrf: principal.csrf,
+    // The interface language this person chose, on any browser (D2).
+    uiLocale: user?.ui_locale ?? null,
     passwordIterations: PBKDF2_ITERATIONS,
     // Surfaced so the admin UI can tell the truth about password strength
     // rather than implying it meets current guidance.
     passwordRecommendedIterations: PBKDF2_RECOMMENDED_ITERATIONS,
   });
+}
+
+/**
+ * Changes what the signed-in administrator's account remembers: today, only
+ * the interface language. A token has no account to change.
+ */
+export async function updateMe(
+  request: Request,
+  env: Env,
+  principal: Principal,
+): Promise<Response> {
+  if (principal.kind !== 'session') {
+    return problem(403, 'Account changes require a browser session.');
+  }
+  const parsed = accountPatchSchema.safeParse(await readJson(request));
+  if (!parsed.success) {
+    return problem(
+      400,
+      'Give the interface language as a language tag such as "zh-CN", or null.',
+    );
+  }
+  await updateAdminUiLocale(env.DB, principal.userId, parsed.data.uiLocale);
+  return json({ uiLocale: parsed.data.uiLocale });
 }
 
 /** Changes the administrator's password and invalidates other sessions. */

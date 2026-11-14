@@ -1389,6 +1389,10 @@ msgstr "默认语言不带 URL 前缀；其他语言都在 <0>/<locale>/</0> 下
 msgid "The export failed."
 msgstr "导出失败。"
 
+#: src/admin/components/account-menu.tsx
+msgid "The language applies in this browser, but your account could not remember it."
+msgstr "界面语言已在当前浏览器生效，但没能保存到你的账号。"
+
 #: src/admin/pages/settings-appearance.tsx
 msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
 msgstr "以下选项是运行时设置：保存后立即生效，无需重新构建。主题本身属于源代码。"

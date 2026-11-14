@@ -1389,6 +1389,10 @@ msgstr "The default language has no URL prefix; every other language is served u
 msgid "The export failed."
 msgstr "The export failed."
 
+#: src/admin/components/account-menu.tsx
+msgid "The language applies in this browser, but your account could not remember it."
+msgstr "The language applies in this browser, but your account could not remember it."
+
 #: src/admin/pages/settings-appearance.tsx
 msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
 msgstr "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."

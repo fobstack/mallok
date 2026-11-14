@@ -4,14 +4,15 @@ import { signIn } from './credentials.js';
 /**
  * The interface language (docs/ADMIN_I18N_AND_UI.md, D2 and D7).
  *
- * It is chosen in the account menu and kept in this browser only: no cookie,
- * nothing the Worker sees. Phase 1 translates the shell and the sign-in page;
- * the pages inside the shell still read English.
+ * It is chosen in the account menu and kept in this browser — no cookie, so
+ * the edge cache never varies by it — and, since phase 3, with the account,
+ * so another browser follows once it signs in.
  */
 
 test('switches the shell to Simplified Chinese and keeps the choice', async ({
   page,
   context,
+  browser,
 }) => {
   await signIn(page);
   const cookiesBefore = await context.cookies();
@@ -35,6 +36,22 @@ test('switches the shell to Simplified Chinese and keeps the choice', async ({
   // The choice lives in this browser's storage, not in a cookie the edge
   // cache or the Worker would see.
   expect(await context.cookies()).toEqual(cookiesBefore);
+
+  // The account keeps it too (D2): another browser, with nothing stored and
+  // an English preference, is in Chinese the moment it signs in.
+  const elsewhere = await browser.newContext({ locale: 'en-US' });
+  try {
+    const other = await elsewhere.newPage();
+    await signIn(other);
+    await expect(
+      other.locator('[data-sidebar="sidebar"]').first().getByRole('link', {
+        name: '媒体',
+      }),
+    ).toBeVisible();
+    await expect(other.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  } finally {
+    await elsewhere.close();
+  }
 
   await page.getByRole('button', { name: '账号菜单' }).click();
   await page.getByRole('menuitemradio', { name: 'English' }).click();

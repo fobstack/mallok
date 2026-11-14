@@ -601,6 +601,24 @@ Phase 2 as built (commits `bb278c7` to the commit adding this note):
   `/_mallok/setup` answers the Worker's JSON 404 (`{"error":"Not found."}`),
   so the admin's "Setup is finished" card is never shown.
 
+Phase 3 as built, in the order it landed:
+
+- **D2, the account's language.** Migration `0010_admin_ui_locale` adds a
+  nullable `admin_user.ui_locale`. `GET /_mallok/api/auth/me` and the
+  sign-in response return it as `uiLocale`; `PATCH /_mallok/api/auth/me`
+  with `{ "uiLocale": "zh-CN" | null }` changes it, for a browser session
+  only (a token has no account; 403). The Worker checks the value's shape,
+  not whether a catalog exists. The wizard sends the language it is used in
+  when it creates the administrator. In the admin, the session query and
+  the sign-in adopt the account's language before the shell renders and
+  copy it to `localStorage`; choosing in the account menu writes both, and
+  says so if the account could not be told. A language chosen on the
+  sign-in page applies until sign-in, where the account's wins — D2 as
+  decided. `05-accessibility`'s Chinese pass now chooses Chinese in the
+  account menu: writing `localStorage` alone stopped working once the
+  account's `en` won on every load, and the scan then checked English
+  without failing; each scanned screen now asserts its `lang`.
+
 ## 9. Risks and open questions
 
 | Risk | Why it is real | What contains it |

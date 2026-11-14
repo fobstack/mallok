@@ -260,9 +260,11 @@ export function SetupPage(): JSX.Element {
               event.preventDefault();
               void run(
                 'admin',
+                // The language the wizard is used in becomes the account's
+                // (docs/ADMIN_I18N_AND_UI.md, D2).
                 status.requiresSetupKey
-                  ? { email, password, setupKey }
-                  : { email, password },
+                  ? { email, password, setupKey, uiLocale: i18n.locale }
+                  : { email, password, uiLocale: i18n.locale },
                 'site',
               );
             }}
