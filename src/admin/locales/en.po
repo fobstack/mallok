@@ -174,6 +174,11 @@ msgstr "Account"
 msgid "Account and API tokens"
 msgstr "Account and API tokens"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.session_required"
+msgstr "Account changes require a browser session."
+
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/shell.tsx
 msgid "Account menu"
@@ -240,6 +245,11 @@ msgstr "Alt text"
 #: src/admin/components/media-library.tsx
 msgid "Alt: {0}"
 msgstr "Alt: {0}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.admin_exists"
+msgstr "An administrator already exists."
 
 #: src/admin/pages/settings-site.tsx
 msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
@@ -700,6 +710,11 @@ msgstr "From address"
 msgid "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
 msgstr "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.ui_locale_invalid"
+msgstr "Give the interface language as a language tag such as \"zh-CN\", or null."
+
 #: src/admin/components/media-library.tsx
 msgid "hashing"
 msgstr "hashing"
@@ -740,6 +755,11 @@ msgstr "Instant"
 #: src/admin/components/language-picker.tsx
 msgid "Interface language"
 msgstr "Interface language"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.invalid_credentials"
+msgstr "Invalid email or password."
 
 #: src/admin/components/record-editor.tsx
 msgid "Keep it"
@@ -820,6 +840,16 @@ msgstr "Media domain"
 msgid "Media files"
 msgstr "Media files"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.method_not_allowed"
+msgstr "Method not allowed."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.csrf_invalid"
+msgstr "Missing or invalid CSRF token."
+
 #: src/admin/components/ui/breadcrumb.tsx
 msgid "More"
 msgstr "More"
@@ -839,6 +869,11 @@ msgstr "Must be on a domain you have verified in Resend. A plugin may set its ow
 #: src/admin/form/controls.tsx
 msgid "Name"
 msgstr "Name"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_missing"
+msgstr "Name a starter to install."
 
 #: src/admin/pages/setup.tsx
 msgid "Name your site"
@@ -910,6 +945,11 @@ msgstr "No plugins are compiled into this build."
 msgid "No rows yet."
 msgstr "No rows yet."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_unknown"
+msgstr "No starter named \"{starter}\"."
+
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-appearance.tsx
 msgid "None"
@@ -931,6 +971,11 @@ msgstr "Not configured — edits go live after the cache expires"
 #: src/admin/components/shell.tsx
 msgid "Not found"
 msgstr "Not found"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.not_found"
+msgstr "Not found."
 
 #: src/admin/pages/content-list.tsx
 msgid "Not in theme"
@@ -1004,6 +1049,11 @@ msgstr "Pagination"
 msgid "Password"
 msgstr "Password"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.session_required_password"
+msgstr "Password changes require a browser session."
+
 #: src/admin/pages/account.tsx
 msgid "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Current guidance is {recommended}, but a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU budget, so the cost is capped."
 msgstr "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Current guidance is {recommended}, but a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU budget, so the cost is capped."
@@ -1049,6 +1099,21 @@ msgstr "Previous"
 #: src/admin/pages/setup.tsx
 msgid "Printed once by <0>mallok create</0>. It proves this site is yours: without it, whoever found the address first could claim it. It stops working the moment setup succeeds."
 msgstr "Printed once by <0>mallok create</0>. It proves this site is yours: without it, whoever found the address first could claim it. It stops working the moment setup succeeds."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.tokens.incomplete"
+msgstr "Provide a name and at least one scope."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.site_incomplete"
+msgstr "Provide a site name, a default language and a language list."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.credentials_incomplete"
+msgstr "Provide an email and a password of at least {min} characters."
 
 #: src/admin/pages/editor.tsx
 msgid "Publish"
@@ -1264,6 +1329,11 @@ msgstr "Sidebar"
 msgid "Sign in"
 msgstr "Sign in"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.sign_in_required"
+msgstr "Sign in as the administrator to continue."
+
 #: src/admin/components/account-menu.tsx
 msgid "Sign out"
 msgstr "Sign out"
@@ -1284,6 +1354,11 @@ msgstr "Site"
 #: src/admin/pages/setup.tsx
 msgid "Site and languages"
 msgstr "Site and languages"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.not_initialized"
+msgstr "Site is not initialized."
 
 #: src/admin/pages/settings-site.tsx
 #: src/admin/pages/setup.tsx
@@ -1352,6 +1427,11 @@ msgstr "Test"
 msgid "That did not work."
 msgstr "That did not work."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_wrong"
+msgstr "That setup key is not correct. It was printed once, by `mallok create`."
+
 #: src/admin/tokens.ts
 msgid "That token was already revoked."
 msgstr "That token was already revoked."
@@ -1378,6 +1458,11 @@ msgstr "The check failed."
 msgid "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
 msgstr "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.current_password_wrong"
+msgstr "The current password is not correct."
+
 #: src/admin/pages/plugins.tsx
 msgid "The current theme has no layout for {layouts}. Those pages are shown in a plain built-in layout, without the site’s design. Adding the layouts to the theme needs a new build and deploy."
 msgstr "The current theme has no layout for {layouts}. Those pages are shown in a plain built-in layout, without the site’s design. Adding the layouts to the theme needs a new build and deploy."
@@ -1394,6 +1479,16 @@ msgstr "The export failed."
 msgid "The language applies in this browser, but your account could not remember it."
 msgstr "The language applies in this browser, but your account could not remember it."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.default_locale_unlisted"
+msgstr "The language list must include the default language."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.password_short"
+msgstr "The new password must be at least {min} characters."
+
 #: src/admin/pages/settings-appearance.tsx
 msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
 msgstr "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
@@ -1401,6 +1496,11 @@ msgstr "The options below are runtime settings: saving takes effect without a re
 #: src/admin/api.ts
 msgid "The server could not be reached. Nothing was saved."
 msgstr "The server could not be reached. Nothing was saved."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_used"
+msgstr "The setup key has already been used. Deploy a new key with `wrangler secret put MALLOK_SETUP_KEY` if you need to run setup again."
 
 #: src/admin/pages/setup.tsx
 msgid "The site is empty and waiting for its first page."
@@ -1417,6 +1517,11 @@ msgstr "The slug became \"{normalized}\", because a slug is also a folder name i
 #: src/admin/slug.ts
 msgid "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
 msgstr "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_prefix_clash"
+msgstr "The starter prefixes the default locale, but \"{from}\" would move to \"{to}\", which another item already uses."
 
 #: src/admin/components/media-library.tsx
 #: src/admin/media.ts
@@ -1467,6 +1572,16 @@ msgstr "This site has already been set up. Everything the wizard did can be chan
 msgid "This site has no custom domain yet, so it is running on a <0>.workers.dev</0> address. That address is a preview: <1>Cloudflare's edge cache does not apply to it</1>, so pages are rendered on every request and will feel slower than the real site."
 msgstr "This site has no custom domain yet, so it is running on a <0>.workers.dev</0> address. That address is a preview: <1>Cloudflare's edge cache does not apply to it</1>, so pages are rendered on every request and will feel slower than the real site."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_unconfigured"
+msgstr "This site has no setup key, so it will not create an administrator. Run `mallok create .` in the project directory to finish provisioning it, or `mallok setup-key` to issue one."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.token_scope"
+msgstr "This token lacks the \"{scope}\" scope."
+
 #: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
 msgid "Title"
@@ -1489,9 +1604,19 @@ msgstr "Translations"
 msgid "Type"
 msgstr "Type"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.unauthorized"
+msgstr "Unauthorized."
+
 #: src/admin/pages/editor.tsx
 msgid "unknown error"
 msgstr "unknown error"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.tokens.scope_unknown"
+msgstr "Unknown scope: {scopes}."
 
 #: src/admin/media.ts
 msgid "unknown type"

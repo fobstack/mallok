@@ -80,6 +80,13 @@ test('can be chosen on the sign-in page, before there is a session', async ({
   await expect(page.getByRole('heading', { name: '登录' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
 
+  // The Worker's refusal is said in Chinese too: it names it with a code
+  // (docs/ADMIN_I18N_AND_UI.md, D3).
+  await page.getByLabel('邮箱', { exact: true }).fill('nobody@example.test');
+  await page.getByLabel('密码', { exact: true }).fill('not-a-real-password');
+  await page.getByRole('button', { name: '登录' }).click();
+  await expect(page.getByText('邮箱或密码不正确。')).toBeVisible();
+
   await page.getByRole('combobox', { name: '界面语言' }).selectOption('en');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });

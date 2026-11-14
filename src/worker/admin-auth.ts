@@ -159,6 +159,7 @@ async function checkSetupKey(
         'This site has no setup key, so it will not create an administrator. ' +
           'Run `mallok create .` in the project directory to finish ' +
           'provisioning it, or `mallok setup-key` to issue one.',
+        'setup.key_unconfigured',
       ),
     };
   }
@@ -170,6 +171,7 @@ async function checkSetupKey(
         409,
         'The setup key has already been used. Deploy a new key with ' +
           '`wrangler secret put MALLOK_SETUP_KEY` if you need to run setup again.',
+        'setup.key_used',
       ),
     };
   }
@@ -178,6 +180,7 @@ async function checkSetupKey(
       refusal: problem(
         403,
         'That setup key is not correct. It was printed once, by `mallok create`.',
+        'setup.key_wrong',
       ),
     };
   }
@@ -204,13 +207,19 @@ export async function bootstrapAdmin(
   now: Date,
 ): Promise<Response> {
   if ((await countAdminUsers(env.DB)) > 0) {
-    return problem(409, 'An administrator already exists.');
+    return problem(
+      409,
+      'An administrator already exists.',
+      'setup.admin_exists',
+    );
   }
   const parsed = credentialsSchema.safeParse(await readJson(request));
   if (!parsed.success) {
     return problem(
       400,
       `Provide an email and a password of at least ${MIN_PASSWORD_LENGTH} characters.`,
+      'setup.credentials_incomplete',
+      { min: MIN_PASSWORD_LENGTH },
     );
   }
   // Checked after the payload parses and before any work is done, so a bad
@@ -242,7 +251,11 @@ export async function bootstrapAdmin(
     check.keyUsed,
   );
   if (!claimed) {
-    return problem(409, 'An administrator already exists.');
+    return problem(
+      409,
+      'An administrator already exists.',
+      'setup.admin_exists',
+    );
   }
   return json({ ok: true }, { status: 201 });
 }
@@ -255,7 +268,11 @@ export async function login(
 ): Promise<Response> {
   const parsed = credentialsSchema.safeParse(await readJson(request));
   if (!parsed.success) {
-    return problem(400, 'Invalid email or password.');
+    return problem(
+      400,
+      'Invalid email or password.',
+      'auth.invalid_credentials',
+    );
   }
   const email = parsed.data.email.toLowerCase();
   const user = await findAdminUserByEmail(env.DB, email);
@@ -264,12 +281,20 @@ export async function login(
     // Derive anyway so a missing account cannot be told apart from a wrong
     // password by timing alone.
     await hashPassword(parsed.data.password);
-    return problem(401, 'Invalid email or password.');
+    return problem(
+      401,
+      'Invalid email or password.',
+      'auth.invalid_credentials',
+    );
   }
 
   const params = parsePasswordParams(user.password_params);
   if (params === null) {
-    return problem(401, 'Invalid email or password.');
+    return problem(
+      401,
+      'Invalid email or password.',
+      'auth.invalid_credentials',
+    );
   }
   const ok = await verifyPassword(
     parsed.data.password,
@@ -277,7 +302,11 @@ export async function login(
     params,
   );
   if (!ok) {
-    return problem(401, 'Invalid email or password.');
+    return problem(
+      401,
+      'Invalid email or password.',
+      'auth.invalid_credentials',
+    );
   }
 
   // Opportunistically re-derive when the stored cost is below the current
@@ -363,13 +392,18 @@ export async function updateMe(
   principal: Principal,
 ): Promise<Response> {
   if (principal.kind !== 'session') {
-    return problem(403, 'Account changes require a browser session.');
+    return problem(
+      403,
+      'Account changes require a browser session.',
+      'auth.session_required',
+    );
   }
   const parsed = accountPatchSchema.safeParse(await readJson(request));
   if (!parsed.success) {
     return problem(
       400,
       'Give the interface language as a language tag such as "zh-CN", or null.',
+      'account.ui_locale_invalid',
     );
   }
   await updateAdminUiLocale(env.DB, principal.userId, parsed.data.uiLocale);
@@ -383,18 +417,24 @@ export async function changePassword(
   principal: Principal,
 ): Promise<Response> {
   if (principal.kind !== 'session') {
-    return problem(403, 'Password changes require a browser session.');
+    return problem(
+      403,
+      'Password changes require a browser session.',
+      'auth.session_required_password',
+    );
   }
   const parsed = passwordChangeSchema.safeParse(await readJson(request));
   if (!parsed.success) {
     return problem(
       400,
       `The new password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+      'account.password_short',
+      { min: MIN_PASSWORD_LENGTH },
     );
   }
   const user = await findAdminUserById(env.DB, principal.userId);
   if (user === null) {
-    return problem(401, 'Unauthorized.');
+    return problem(401, 'Unauthorized.', 'auth.unauthorized');
   }
   const params = parsePasswordParams(user.password_params);
   if (
@@ -405,7 +445,11 @@ export async function changePassword(
       params,
     ))
   ) {
-    return problem(403, 'The current password is not correct.');
+    return problem(
+      403,
+      'The current password is not correct.',
+      'account.current_password_wrong',
+    );
   }
   const derived = await hashPassword(parsed.data.newPassword);
   await updateAdminPassword(
@@ -445,11 +489,22 @@ export async function postToken(
 ): Promise<Response> {
   const parsed = tokenCreateSchema.safeParse(await readJson(request));
   if (!parsed.success) {
-    return problem(400, 'Provide a name and at least one scope.');
+    return problem(
+      400,
+      'Provide a name and at least one scope.',
+      'tokens.incomplete',
+    );
   }
   const unknown = parsed.data.scopes.filter((scope) => !isScope(scope));
   if (unknown.length > 0) {
-    return problem(400, `Unknown scope: ${unknown.join(', ')}.`);
+    return problem(
+      400,
+      `Unknown scope: ${unknown.join(', ')}.`,
+      'tokens.scope_unknown',
+      {
+        scopes: unknown.join(', '),
+      },
+    );
   }
   const scopes = parsed.data.scopes.filter((scope): scope is Scope =>
     isScope(scope),
@@ -481,7 +536,7 @@ export async function revokeToken(
 ): Promise<Response> {
   const revoked = await revokeApiToken(env.DB, id, now.toISOString());
   if (!revoked) {
-    return problem(404, 'Not found.');
+    return problem(404, 'Not found.', 'not_found');
   }
   return json({ ok: true });
 }

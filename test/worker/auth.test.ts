@@ -205,6 +205,33 @@ describe('authentication', () => {
     expect(body.passwordRecommendedIterations).toBe(600_000);
   });
 
+  it('names its errors with a code the admin can translate', async () => {
+    // `error` stays English for the CLI; `code` and `params` let the admin
+    // say it in the operator's language (docs/ADMIN_I18N_AND_UI.md, D3).
+    const refused = await post('/_mallok/api/auth/login', {
+      email: EMAIL,
+      password: 'not the password at all',
+    });
+    expect(refused.status).toBe(401);
+    expect(await refused.json()).toEqual({
+      error: 'Invalid email or password.',
+      code: 'auth.invalid_credentials',
+    });
+
+    const session = await signIn();
+    const short = await post(
+      '/_mallok/api/auth/password',
+      { currentPassword: PASSWORD, newPassword: 'short' },
+      { cookie: session.cookie, 'x-mallok-csrf': session.csrf },
+    );
+    expect(short.status).toBe(400);
+    expect(await short.json()).toEqual({
+      error: 'The new password must be at least 12 characters.',
+      code: 'account.password_short',
+      params: { min: 12 },
+    });
+  });
+
   it('keeps the interface language with the account, not the browser', async () => {
     const session = await signIn();
     const read = async (): Promise<unknown> => {
