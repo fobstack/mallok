@@ -8,6 +8,7 @@
  * boundary intact while still letting a plugin have a real interface.
  */
 
+import { Trans, useLingui } from '@lingui/react/macro';
 import {
   keepPreviousData,
   useQuery,
@@ -75,6 +76,7 @@ export function PluginPanelView({
    */
   readonly attachedTo?: string;
 }): JSX.Element {
+  const { t } = useLingui();
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -121,7 +123,7 @@ export function PluginPanelView({
     // A new filter or page keeps the rows on screen until the next arrive.
     placeholderData: keepPreviousData,
   });
-  useReportError(listed.error, 'Could not load rows.');
+  useReportError(listed.error, t`Could not load rows.`);
   const rows = listed.data?.rows ?? [];
   const hasNext = listed.data?.hasNext ?? false;
   const loading = listed.isPending;
@@ -158,7 +160,8 @@ export function PluginPanelView({
         body: JSON.stringify({ ids: selected }),
       });
       if (!response.ok) {
-        notify(`"${action.label}" failed.`);
+        const actionLabel = action.label;
+        notify(t`"${actionLabel}" failed.`);
         return;
       }
       const blob = await response.blob();
@@ -175,7 +178,7 @@ export function PluginPanelView({
     }
 
     if (selected.length === 0) {
-      notify('Select at least one row first.');
+      notify(t`Select at least one row first.`);
       return;
     }
     if (action.params !== undefined) {
@@ -192,7 +195,7 @@ export function PluginPanelView({
       await reload();
     } catch (caught) {
       notify(
-        caught instanceof ApiError ? caught.message : 'The action failed.',
+        caught instanceof ApiError ? caught.message : t`The action failed.`,
       );
     }
   };
@@ -218,7 +221,7 @@ export function PluginPanelView({
             <Input
               id={`${titleId}-filter-${field}`}
               value={filters[field] ?? ''}
-              placeholder="any"
+              placeholder={t`any`}
               onChange={(event) => {
                 setOffset(0);
                 setFilters((previous) => ({
@@ -231,7 +234,9 @@ export function PluginPanelView({
         ))}
         {panel.search.length === 0 ? null : (
           <Field className="w-56">
-            <FieldLabel htmlFor={`${titleId}-search`}>Search</FieldLabel>
+            <FieldLabel htmlFor={`${titleId}-search`}>
+              <Trans>Search</Trans>
+            </FieldLabel>
             <Input
               id={`${titleId}-search`}
               type="search"
@@ -248,7 +253,7 @@ export function PluginPanelView({
         )}
         {editable ? (
           <Button type="button" onClick={() => setEditing(null)}>
-            New
+            <Trans>New</Trans>
           </Button>
         ) : null}
         {panel.actions.map((action) => (
@@ -264,10 +269,12 @@ export function PluginPanelView({
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
+        </p>
       ) : rows.length === 0 ? (
         <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-          Nothing here yet.
+          <Trans>Nothing here yet.</Trans>
         </p>
       ) : (
         <div className="rounded-lg border">
@@ -275,7 +282,9 @@ export function PluginPanelView({
             <TableHeader>
               <TableRow>
                 <TableHead scope="col" className="w-10 pl-3">
-                  <span className="sr-only">Select</span>
+                  <span className="sr-only">
+                    <Trans>Select</Trans>
+                  </span>
                 </TableHead>
                 {panel.columns.map((column) => {
                   const sorted = sort?.field === column.field;
@@ -326,13 +335,18 @@ export function PluginPanelView({
                   );
                 })}
                 <TableHead scope="col" className="pr-3">
-                  <span className="sr-only">Details</span>
+                  <span className="sr-only">
+                    <Trans>Details</Trans>
+                  </span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => {
                 const id = String(row.id ?? '');
+                const rowName = String(
+                  row[panel.columns[0]?.field ?? 'id'] ?? id,
+                );
                 return (
                   <TableRow
                     key={id}
@@ -340,7 +354,7 @@ export function PluginPanelView({
                   >
                     <TableCell className="pl-3">
                       <Checkbox
-                        aria-label={`Select ${id}`}
+                        aria-label={t`Select ${id}`}
                         checked={selected.includes(id)}
                         onCheckedChange={(checked) =>
                           setSelected(
@@ -362,15 +376,13 @@ export function PluginPanelView({
                         variant="outline"
                         size="sm"
                         aria-label={
-                          editable
-                            ? `Edit ${String(row[panel.columns[0]?.field ?? 'id'] ?? id)}`
-                            : `Open ${id}`
+                          editable ? t`Edit ${rowName}` : t`Open ${id}`
                         }
                         onClick={() =>
                           editable ? setEditing(id) : setOpen(row)
                         }
                       >
-                        {editable ? 'Edit' : 'Open'}
+                        {editable ? t`Edit` : t`Open`}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -381,7 +393,7 @@ export function PluginPanelView({
         </div>
       )}
 
-      <nav className="flex gap-2" aria-label="Pagination">
+      <nav className="flex gap-2" aria-label={t`Pagination`}>
         <Button
           type="button"
           variant="outline"
@@ -389,7 +401,7 @@ export function PluginPanelView({
           disabled={offset === 0}
           onClick={() => setOffset(Math.max(0, offset - PAGE))}
         >
-          Previous
+          <Trans>Previous</Trans>
         </Button>
         <Button
           type="button"
@@ -398,7 +410,7 @@ export function PluginPanelView({
           disabled={!hasNext}
           onClick={() => setOffset(offset + PAGE)}
         >
-          Next
+          <Trans>Next</Trans>
         </Button>
       </nav>
 
@@ -455,6 +467,8 @@ function RowDetail({
   readonly row: Row;
   readonly onClose: () => void;
 }): JSX.Element {
+  const { t } = useLingui();
+  const panelLabel = panel.label;
   const fields = [
     ...panel.columns.map((column) => column.field),
     ...panel.detail,
@@ -473,7 +487,7 @@ function RowDetail({
         // The dialog keeps the name it had: the panel's label is the title,
         // and "detail" says which view of it this is.
         aria-labelledby={undefined}
-        aria-label={`${panel.label} detail`}
+        aria-label={t`${panelLabel} detail`}
         aria-describedby={undefined}
       >
         <SheetHeader>

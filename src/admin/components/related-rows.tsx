@@ -4,6 +4,7 @@
  * table shares.
  */
 
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import {
@@ -72,6 +73,7 @@ function RelatedTable({
   readonly related: PluginPanel['related'][number];
   readonly parentId: string;
 }): JSX.Element {
+  const { t } = useLingui();
   const loaded = useQuery({
     queryKey: panelKey(pluginId, panelId, 'related', related.id, parentId),
     queryFn: () =>
@@ -86,7 +88,7 @@ function RelatedTable({
       ? ''
       : loaded.error instanceof ApiError
         ? loaded.error.message
-        : 'Could not load.';
+        : t`Could not load.`;
 
   return (
     <section className="flex flex-col gap-2" aria-label={related.label}>
@@ -96,9 +98,13 @@ function RelatedTable({
           {failure}
         </p>
       ) : rows === null ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
+        </p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">None.</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>None.</Trans>
+        </p>
       ) : (
         <div className="rounded-lg border">
           <Table>
@@ -136,7 +142,7 @@ function RelatedTable({
       )}
       {more ? (
         <p className="text-sm text-muted-foreground">
-          Only the first rows are shown.
+          <Trans>Only the first rows are shown.</Trans>
         </p>
       ) : null}
     </section>
