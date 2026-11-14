@@ -10,6 +10,7 @@
 import {
   type AdminCatalog,
   catalogObjectProblem,
+  type FieldErrorCode,
   localizePluginManifest,
   matchCatalogLanguage,
   panelWords,
@@ -31,7 +32,12 @@ import { hasScope, type Principal, type Scope } from './auth.js';
 import { purgeTags } from './cache.js';
 import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
-import { json, preferredLanguages, problem } from './http.js';
+import {
+  json,
+  type ProblemParams,
+  preferredLanguages,
+  problem,
+} from './http.js';
 import {
   type ActivePlugin,
   buildPluginContext,
@@ -65,7 +71,7 @@ export async function routePlugins(
   if (route === 'plugins') {
     return method === 'GET'
       ? listPlugins(env, request)
-      : problem(405, 'Method not allowed.');
+      : problem(405, 'Method not allowed.', 'method_not_allowed');
   }
   if (!route.startsWith('plugins/')) {
     return null;
@@ -75,7 +81,11 @@ export async function routePlugins(
     (candidate) => candidate.manifest.id === parts[0],
   );
   if (plugin === undefined) {
-    return problem(404, 'No such plugin is compiled into this build.');
+    return problem(
+      404,
+      'No such plugin is compiled into this build.',
+      'plugins.unknown',
+    );
   }
 
   if (parts.length === 2 && parts[1] === 'enabled' && method === 'POST') {
@@ -150,7 +160,7 @@ export async function routePlugins(
       parts[4] ?? '',
     );
   }
-  return problem(404, 'Not found.');
+  return problem(404, 'Not found.', 'not_found');
 }
 
 async function withScope(
@@ -159,7 +169,12 @@ async function withScope(
   handler: () => Promise<Response>,
 ): Promise<Response> {
   if (!hasScope(principal, scope)) {
-    return problem(403, `This operation needs the "${scope}" scope.`);
+    return problem(
+      403,
+      `This operation needs the "${scope}" scope.`,
+      'auth.operation_scope',
+      { scope },
+    );
   }
   return handler();
 }
@@ -258,7 +273,11 @@ async function postEnabled(
 ): Promise<Response> {
   const body = await readJson(request);
   if (body === null || typeof body.enabled !== 'boolean') {
-    return problem(400, 'Body must be {"enabled": true | false}.');
+    return problem(
+      400,
+      'Body must be {"enabled": true | false}.',
+      'plugins.enabled_body_invalid',
+    );
   }
   const now = new Date().toISOString();
   const changed = await setPluginEnabled(
@@ -268,7 +287,11 @@ async function postEnabled(
     now,
   );
   if (!changed) {
-    return problem(404, 'Plugin state row is missing.');
+    return problem(
+      404,
+      'Plugin state row is missing.',
+      'plugins.state_missing',
+    );
   }
   // Cached pages may embed (or now lack) this plugin's stage-two output.
   ctx.waitUntil(purgeTags(env, ['site'], 'plugins'));
@@ -283,16 +306,32 @@ async function patchPluginSettings(
 ): Promise<Response> {
   const body = await readJson(request);
   if (body === null) {
-    return problem(400, 'Body must be a JSON object of settings.');
+    return problem(
+      400,
+      'Body must be a JSON object of settings.',
+      'plugins.settings_body_invalid',
+    );
   }
   const parsed = settingsValidator(plugin.manifest).safeParse(body);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
     const where = first?.path.join('.') ?? '';
-    return problem(
-      400,
-      `Invalid settings${where === '' ? '' : ` at "${where}"`}: ${first?.message ?? 'validation failed'}.`,
-    );
+    const reason = first?.message ?? 'validation failed';
+    // The validator's reason is English and kept as it is; the code names
+    // the sentence around it (D3).
+    return where === ''
+      ? problem(
+          400,
+          `Invalid settings: ${reason}.`,
+          'plugins.settings_invalid',
+          { reason },
+        )
+      : problem(
+          400,
+          `Invalid settings at "${where}": ${reason}.`,
+          'plugins.settings_invalid_at',
+          { field: where, reason },
+        );
   }
   const now = new Date().toISOString();
   await setPluginSettings(
@@ -312,23 +351,41 @@ async function putPluginSecrets(
 ): Promise<Response> {
   const body = await readJson(request);
   if (body === null) {
-    return problem(400, 'Body must be a JSON object of secret values.');
+    return problem(
+      400,
+      'Body must be a JSON object of secret values.',
+      'plugins.secrets_body_invalid',
+    );
   }
   const state = await findPluginState(env.DB, plugin.manifest.id);
   if (state === null) {
-    return problem(404, 'Plugin state row is missing.');
+    return problem(
+      404,
+      'Plugin state row is missing.',
+      'plugins.state_missing',
+    );
   }
   const stored = parseJson(state.secrets);
   for (const [name, value] of Object.entries(body)) {
     if (!(name in plugin.manifest.secrets)) {
-      return problem(400, `Unknown secret "${name}".`);
+      return problem(
+        400,
+        `Unknown secret "${name}".`,
+        'plugins.secret_unknown',
+        { name },
+      );
     }
     if (value === null || value === '') {
       delete stored[name];
       continue;
     }
     if (typeof value !== 'string') {
-      return problem(400, `Secret "${name}" must be a string or null.`);
+      return problem(
+        400,
+        `Secret "${name}" must be a string or null.`,
+        'plugins.secret_not_string',
+        { name },
+      );
     }
     stored[name] = await encryptSecret(
       env.MALLOK_SECRET,
@@ -367,15 +424,24 @@ async function checkPluginSecret(
 ): Promise<Response> {
   const check = plugin.checkSecrets?.[name];
   if (check === undefined) {
-    return problem(404, `"${name}" cannot be checked automatically.`);
+    return problem(
+      404,
+      `"${name}" cannot be checked automatically.`,
+      'plugins.secret_uncheckable',
+      { name },
+    );
   }
   const siteRow = await loadSite(env.DB);
   if (siteRow === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const state = await findPluginState(env.DB, plugin.manifest.id);
   if (state === null) {
-    return problem(404, 'Plugin state row is missing.');
+    return problem(
+      404,
+      'Plugin state row is missing.',
+      'plugins.state_missing',
+    );
   }
   const active: ActivePlugin = {
     plugin,
@@ -400,7 +466,7 @@ async function getPanel(
 ): Promise<Response> {
   const panel = plugin.manifest.panels.find((entry) => entry.id === panelId);
   if (panel === undefined) {
-    return problem(404, 'No such panel.');
+    return problem(404, 'No such panel.', 'plugins.panel_unknown');
   }
   const url = new URL(request.url);
   const limit = Math.min(
@@ -508,33 +574,50 @@ async function routeRecords(
     panel.fields === undefined ||
     handlers === undefined
   ) {
-    return problem(404, 'No such records panel.');
+    return problem(
+      404,
+      'No such records panel.',
+      'plugins.records_panel_unknown',
+    );
   }
   if (recordId !== null && recordId.length > RECORD_ID_MAX) {
-    return problem(404, 'No such record.');
+    return problem(404, 'No such record.', 'plugins.record_unknown');
   }
   const reading = method === 'GET' && recordId !== null;
   const creating = method === 'POST' && recordId === null;
   const updating = method === 'PUT' && recordId !== null;
   const removing = method === 'DELETE' && recordId !== null;
   if (!reading && !creating && !updating && !removing) {
-    return problem(405, 'Method not allowed.');
+    return problem(405, 'Method not allowed.', 'method_not_allowed');
   }
   const scope: Scope = reading ? 'export' : 'content:write';
   if (!hasScope(principal, scope)) {
-    return problem(403, `This operation needs the "${scope}" scope.`);
+    return problem(
+      403,
+      `This operation needs the "${scope}" scope.`,
+      'auth.operation_scope',
+      { scope },
+    );
   }
   if (removing && handlers.remove === undefined) {
-    return problem(405, 'Records of this panel cannot be deleted here.');
+    return problem(
+      405,
+      'Records of this panel cannot be deleted here.',
+      'plugins.record_not_removable',
+    );
   }
 
   const siteRow = await loadSite(env.DB);
   if (siteRow === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const state = await findPluginState(env.DB, plugin.manifest.id);
   if (state === null) {
-    return problem(404, 'Plugin state row is missing.');
+    return problem(
+      404,
+      'Plugin state row is missing.',
+      'plugins.state_missing',
+    );
   }
   const pluginCtx = await buildPluginContext(
     env,
@@ -546,7 +629,7 @@ async function routeRecords(
   if (reading) {
     const record = await handlers.load(recordId ?? '', pluginCtx);
     return record === null
-      ? problem(404, 'No such record.')
+      ? problem(404, 'No such record.', 'plugins.record_unknown')
       : json({ id: recordId, values: record });
   }
   if (removing) {
@@ -562,9 +645,16 @@ async function routeRecords(
   });
   if ('problem' in outcome) {
     return outcome.errors === undefined
-      ? problem(outcome.status, outcome.problem)
+      ? problem(outcome.status, outcome.problem, outcome.code, outcome.params)
       : json(
-          { error: outcome.problem, errors: outcome.errors },
+          {
+            error: outcome.problem,
+            ...(outcome.code === undefined ? {} : { code: outcome.code }),
+            errors: outcome.errors,
+            ...(outcome.errorCodes === undefined
+              ? {}
+              : { errorCodes: outcome.errorCodes }),
+          },
           { status: outcome.status },
         );
   }
@@ -577,8 +667,13 @@ export type RecordSaveOutcome =
   | {
       readonly status: number;
       readonly problem: string;
+      /** Names `problem` for the admin (D3); absent for a plugin's own. */
+      readonly code?: string;
+      readonly params?: ProblemParams;
       /** Messages by field, when the values were the problem. */
       readonly errors?: Readonly<Record<string, string>>;
+      /** The core's codes for `errors`; a plugin's own messages have none. */
+      readonly errorCodes?: Readonly<Record<string, FieldErrorCode>>;
     };
 
 /**
@@ -610,7 +705,11 @@ export async function savePluginRecord(
     panel.fields === undefined ||
     handlers === undefined
   ) {
-    return { status: 404, problem: 'No such records panel.' };
+    return {
+      status: 404,
+      problem: 'No such records panel.',
+      code: 'plugins.records_panel_unknown',
+    };
   }
   const submitted = input.values;
   if (
@@ -619,7 +718,11 @@ export async function savePluginRecord(
     typeof submitted !== 'object' ||
     Array.isArray(submitted)
   ) {
-    return { status: 400, problem: 'Body must be {"values": { … }}.' };
+    return {
+      status: 400,
+      problem: 'Body must be {"values": { … }}.',
+      code: 'plugins.record_body_invalid',
+    };
   }
   // An attached panel's record belongs to a content item, and the plugin is
   // told which — after the core has made sure it is a real one of the kind
@@ -633,6 +736,7 @@ export async function savePluginRecord(
         status: 400,
         problem:
           'This panel belongs to a content item: send its translation group as "attachedTo".',
+        code: 'plugins.attached_to_missing',
       };
     }
     const owner = (await listTranslationsOf(env.DB, group)).find(
@@ -642,6 +746,8 @@ export async function savePluginRecord(
       return {
         status: 404,
         problem: `No ${panel.attachTo.kind} with that translation group exists.`,
+        code: 'plugins.attached_owner_missing',
+        params: { kind: panel.attachTo.kind },
       };
     }
     attachedTo = { translationGroup: group, kind: panel.attachTo.kind };
@@ -654,7 +760,9 @@ export async function savePluginRecord(
     return {
       status: 422,
       problem: 'Some fields need attention.',
+      code: 'plugins.fields_invalid',
       errors: checked.errors,
+      errorCodes: checked.errorCodes,
     };
   }
   const saved = await handlers.save(
@@ -665,6 +773,7 @@ export async function savePluginRecord(
     return {
       status: 422,
       problem: 'Some fields need attention.',
+      code: 'plugins.fields_invalid',
       errors: saved.errors,
     };
   }
@@ -684,11 +793,16 @@ async function runPanelAction(
   const action = panel?.actions.find((entry) => entry.id === actionId);
   const handler = plugin.actions?.[actionId];
   if (panel === undefined || action === undefined || handler === undefined) {
-    return problem(404, 'No such panel action.');
+    return problem(404, 'No such panel action.', 'plugins.action_unknown');
   }
   const scope: Scope = action.type === 'download' ? 'export' : 'content:write';
   if (!hasScope(principal, scope)) {
-    return problem(403, `This operation needs the "${scope}" scope.`);
+    return problem(
+      403,
+      `This operation needs the "${scope}" scope.`,
+      'auth.operation_scope',
+      { scope },
+    );
   }
 
   const body = await readJson(request);
@@ -698,17 +812,25 @@ async function runPanelAction(
         .slice(0, ACTION_IDS_MAX)
     : [];
   if (action.type === 'update' && ids.length === 0) {
-    return problem(400, 'Body must carry the row ids to act on.');
+    return problem(
+      400,
+      'Body must carry the row ids to act on.',
+      'plugins.action_ids_missing',
+    );
   }
 
   const siteRow = await loadSite(env.DB);
   if (siteRow === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const site = parseSiteSettings(siteRow);
   const state = await findPluginState(env.DB, plugin.manifest.id);
   if (state === null) {
-    return problem(404, 'Plugin state row is missing.');
+    return problem(
+      404,
+      'Plugin state row is missing.',
+      'plugins.state_missing',
+    );
   }
   const active: ActivePlugin = {
     plugin,
@@ -730,7 +852,12 @@ async function runPanelAction(
     );
     if (Object.keys(checked.errors).length > 0) {
       return json(
-        { error: 'Some fields need attention.', errors: checked.errors },
+        {
+          error: 'Some fields need attention.',
+          code: 'plugins.fields_invalid',
+          errors: checked.errors,
+          errorCodes: checked.errorCodes,
+        },
         { status: 422 },
       );
     }
@@ -758,11 +885,15 @@ async function getRelated(
   const panel = plugin.manifest.panels.find((entry) => entry.id === panelId);
   const related = panel?.related.find((entry) => entry.id === relatedId);
   if (panel === undefined || related === undefined) {
-    return problem(404, 'No such related table.');
+    return problem(404, 'No such related table.', 'plugins.related_unknown');
   }
   const parent = new URL(request.url).searchParams.get('parent');
   if (parent === null || parent === '') {
-    return problem(400, 'Name the row with ?parent=<id>.');
+    return problem(
+      400,
+      'Name the row with ?parent=<id>.',
+      'plugins.related_parent_missing',
+    );
   }
   const rows = await env.DB.prepare(
     `SELECT * FROM ${related.table} WHERE ${related.foreignKey} = ?

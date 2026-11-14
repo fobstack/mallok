@@ -263,4 +263,292 @@ export const SERVER_MESSAGES: Readonly<Record<string, MessageDescriptor>> = {
     message:
       'A slug with several segments cannot start with "{first}/": that is the prefix of the language "{first}".',
   }),
+  'media.hashes_missing': msg({
+    id: 'server.media.hashes_missing',
+    message: 'Provide a list of sha256 hashes.',
+  }),
+  'media.id_invalid': msg({
+    id: 'server.media.id_invalid',
+    message: 'The media id must be a sha256 hex digest.',
+  }),
+  'media.too_large': msg({
+    id: 'server.media.too_large',
+    message: 'Media objects are limited to {max} bytes.',
+  }),
+  'media.body_empty': msg({
+    id: 'server.media.body_empty',
+    message: 'The request body is empty.',
+  }),
+  'media.hash_mismatch': msg({
+    id: 'server.media.hash_mismatch',
+    message: 'The body does not match the sha256 in the path.',
+  }),
+  'media.type_unsupported': msg({
+    id: 'server.media.type_unsupported',
+    message:
+      'Unsupported file type. Accepted: jpg, png, gif, webp, avif, pdf, xlsx, docx, zip.',
+  }),
+  'media.variant_width': msg({
+    id: 'server.media.variant_width',
+    message: 'Variant width must be 1..{max}.',
+  }),
+  'media.original_missing': msg({
+    id: 'server.media.original_missing',
+    message: 'Upload the original before its variants.',
+  }),
+  'media.variant_not_image': msg({
+    id: 'server.media.variant_not_image',
+    message: 'Only images have variants.',
+  }),
+  'media.variant_not_webp': msg({
+    id: 'server.media.variant_not_webp',
+    message: 'Variants must be WebP.',
+  }),
+  'media.kind_filter_unknown': msg({
+    id: 'server.media.kind_filter_unknown',
+    message: 'Unknown kind filter.',
+  }),
+  'media.alt_invalid': msg({
+    id: 'server.media.alt_invalid',
+    message: 'Provide an "alt" string or null.',
+  }),
+  'media.in_use_count': msg({
+    id: 'server.media.in_use_count',
+    message:
+      'This file is used by {count} item(s). Remove those references first.',
+  }),
+  'media.in_use': msg({
+    id: 'server.media.in_use',
+    message: 'This file is in use.',
+  }),
+  'settings.default_locale_endpoint': msg({
+    id: 'server.settings.default_locale_endpoint',
+    message:
+      'Changing the default locale rewrites every URL. Use POST /_mallok/api/settings/default-locale.',
+  }),
+  'settings.locale_prefix_endpoint': msg({
+    id: 'server.settings.locale_prefix_endpoint',
+    message:
+      'Prefixing the default locale rewrites every URL. Use POST /_mallok/api/settings/locale-prefix.',
+  }),
+  'settings.base_reserved': msg({
+    id: 'server.settings.base_reserved',
+    message:
+      '"{base}" is reserved for stored files and cannot be a content base path.',
+  }),
+  'settings.default_locale_unlisted': msg({
+    id: 'server.settings.default_locale_unlisted',
+    message: 'The enabled locales must include the default locale "{locale}".',
+  }),
+  'settings.default_locale_confirm': msg({
+    id: 'server.settings.default_locale_confirm',
+    message:
+      'Provide the target locale and "confirm": true; this rewrites every URL.',
+  }),
+  'settings.locale_prefix_confirm': msg({
+    id: 'server.settings.locale_prefix_confirm',
+    message:
+      'Provide "enabled": true or false, and "confirm": true; this rewrites every URL.',
+  }),
+  'settings.path_clash': msg({
+    id: 'server.settings.path_clash',
+    message:
+      '"{from}" would move to "{to}", which another item already uses. Change one of their slugs first. Nothing was changed.',
+  }),
+  'settings.invalid': msg({
+    id: 'server.settings.invalid',
+    message: 'Invalid settings.',
+  }),
+  'settings.slugs_stranded': msg({
+    id: 'server.settings.slugs_stranded',
+    message:
+      '{count, plural, one {# slug would start at an address the new settings give to a language or a kind. Change it first.} other {# slugs would start at an address the new settings give to a language or a kind. Change them first.}}',
+  }),
+  'email.body_invalid': msg({
+    id: 'server.email.body_invalid',
+    message:
+      'Body must be {"fromAddress"?: string | null, "resendApiKey"?: string | null}.',
+  }),
+  'email.sender_invalid': msg({
+    id: 'server.email.sender_invalid',
+    message:
+      'The sender must be an address such as "hello@example.com" or "Acme <hello@example.com>".',
+  }),
+  'export.unsafe': msg({
+    id: 'server.export.unsafe',
+    message: 'The stored content cannot be exported safely: {reason}.',
+  }),
+  'auth.operation_scope': msg({
+    id: 'server.auth.operation_scope',
+    message: 'This operation needs the "{scope}" scope.',
+  }),
+  'plugins.unknown': msg({
+    id: 'server.plugins.unknown',
+    message: 'No such plugin is compiled into this build.',
+  }),
+  'plugins.enabled_body_invalid': msg({
+    id: 'server.plugins.enabled_body_invalid',
+    message: 'Body must be {"enabled": true | false}.',
+  }),
+  'plugins.state_missing': msg({
+    id: 'server.plugins.state_missing',
+    message: 'Plugin state row is missing.',
+  }),
+  'plugins.settings_body_invalid': msg({
+    id: 'server.plugins.settings_body_invalid',
+    message: 'Body must be a JSON object of settings.',
+  }),
+  'plugins.settings_invalid': msg({
+    id: 'server.plugins.settings_invalid',
+    message: 'Invalid settings: {reason}.',
+  }),
+  'plugins.settings_invalid_at': msg({
+    id: 'server.plugins.settings_invalid_at',
+    message: 'Invalid settings at "{field}": {reason}.',
+  }),
+  'plugins.secrets_body_invalid': msg({
+    id: 'server.plugins.secrets_body_invalid',
+    message: 'Body must be a JSON object of secret values.',
+  }),
+  'plugins.secret_unknown': msg({
+    id: 'server.plugins.secret_unknown',
+    message: 'Unknown secret "{name}".',
+  }),
+  'plugins.secret_not_string': msg({
+    id: 'server.plugins.secret_not_string',
+    message: 'Secret "{name}" must be a string or null.',
+  }),
+  'plugins.secret_uncheckable': msg({
+    id: 'server.plugins.secret_uncheckable',
+    message: '"{name}" cannot be checked automatically.',
+  }),
+  'plugins.panel_unknown': msg({
+    id: 'server.plugins.panel_unknown',
+    message: 'No such panel.',
+  }),
+  'plugins.records_panel_unknown': msg({
+    id: 'server.plugins.records_panel_unknown',
+    message: 'No such records panel.',
+  }),
+  'plugins.record_unknown': msg({
+    id: 'server.plugins.record_unknown',
+    message: 'No such record.',
+  }),
+  'plugins.record_not_removable': msg({
+    id: 'server.plugins.record_not_removable',
+    message: 'Records of this panel cannot be deleted here.',
+  }),
+  'plugins.action_unknown': msg({
+    id: 'server.plugins.action_unknown',
+    message: 'No such panel action.',
+  }),
+  'plugins.action_ids_missing': msg({
+    id: 'server.plugins.action_ids_missing',
+    message: 'Body must carry the row ids to act on.',
+  }),
+  'plugins.related_unknown': msg({
+    id: 'server.plugins.related_unknown',
+    message: 'No such related table.',
+  }),
+  'plugins.related_parent_missing': msg({
+    id: 'server.plugins.related_parent_missing',
+    message: 'Name the row with ?parent=<id>.',
+  }),
+  'plugins.record_body_invalid': msg({
+    id: 'server.plugins.record_body_invalid',
+    message: 'Body must be {"values": { … }}.',
+  }),
+  'plugins.attached_to_missing': msg({
+    id: 'server.plugins.attached_to_missing',
+    message:
+      'This panel belongs to a content item: send its translation group as "attachedTo".',
+  }),
+  'plugins.attached_owner_missing': msg({
+    id: 'server.plugins.attached_owner_missing',
+    message: 'No {kind} with that translation group exists.',
+  }),
+  'plugins.fields_invalid': msg({
+    id: 'server.plugins.fields_invalid',
+    message: 'Some fields need attention.',
+  }),
+  'field.required': msg({
+    id: 'server.field.required',
+    message: 'This field is required.',
+  }),
+  'field.number': msg({
+    id: 'server.field.number',
+    message: 'Enter a number.',
+  }),
+  'field.min': msg({
+    id: 'server.field.min',
+    message: 'Must be at least {min}.',
+  }),
+  'field.max': msg({
+    id: 'server.field.max',
+    message: 'Must be at most {max}.',
+  }),
+  'field.boolean': msg({
+    id: 'server.field.boolean',
+    message: 'Must be yes or no.',
+  }),
+  'field.choice': msg({
+    id: 'server.field.choice',
+    message: 'Choose one of the listed values.',
+  }),
+  'field.date': msg({
+    id: 'server.field.date',
+    message: 'Enter a date as YYYY-MM-DD.',
+  }),
+  'field.color': msg({
+    id: 'server.field.color',
+    message: 'Enter a colour as #rrggbb.',
+  }),
+  'field.text_list': msg({
+    id: 'server.field.text_list',
+    message: 'Must be a list of text values.',
+  }),
+  'field.max_entries': msg({
+    id: 'server.field.max_entries',
+    message: 'At most {max} entries.',
+  }),
+  'field.pairs': msg({
+    id: 'server.field.pairs',
+    message: 'Must be a set of name and value pairs.',
+  }),
+  'field.amount': msg({
+    id: 'server.field.amount',
+    message: 'Enter an amount.',
+  }),
+  'field.currency': msg({
+    id: 'server.field.currency',
+    message: 'Choose one of the listed currencies.',
+  }),
+  'field.amount_low': msg({
+    id: 'server.field.amount_low',
+    message: 'The amount is too low.',
+  }),
+  'field.amount_high': msg({
+    id: 'server.field.amount_high',
+    message: 'The amount is too high.',
+  }),
+  'field.text': msg({
+    id: 'server.field.text',
+    message: 'Must be text.',
+  }),
+  'field.max_length': msg({
+    id: 'server.field.max_length',
+    message: 'Must be at most {max} characters.',
+  }),
+  'field.rows_required': msg({
+    id: 'server.field.rows_required',
+    message: 'Add at least one row.',
+  }),
+  'field.rows_list': msg({
+    id: 'server.field.rows_list',
+    message: 'Must be a list of rows.',
+  }),
+  'field.max_rows': msg({
+    id: 'server.field.max_rows',
+    message: 'At most {max} rows.',
+  }),
 };

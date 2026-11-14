@@ -139,6 +139,7 @@ export {
   pluginCatalogAllows,
 } from './plugin-catalog.js';
 export {
+  type FieldErrorCode,
   type MoneyValue,
   RECORD_ROWS_MAX,
   type RecordField,

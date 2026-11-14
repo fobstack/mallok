@@ -19,6 +19,21 @@ msgstr "\"{actionLabel}\" failed."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.settings.base_reserved"
+msgstr "\"{base}\" is reserved for stored files and cannot be a content base path."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.path_clash"
+msgstr "\"{from}\" would move to \"{to}\", which another item already uses. Change one of their slugs first. Nothing was changed."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_uncheckable"
+msgstr "\"{name}\" cannot be checked automatically."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.content.exists_create_only"
 msgstr "\"{slug}\" already exists in {locale}. Remove --create-only to update it."
 
@@ -60,6 +75,11 @@ msgstr "{0, plural, one {# script} other {# scripts}}"
 #: src/admin/pages/settings-advanced.tsx
 msgid "{0}/{1} files"
 msgstr "{0}/{1} files"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.slugs_stranded"
+msgstr "{count, plural, one {# slug would start at an address the new settings give to a language or a kind. Change it first.} other {# slugs would start at an address the new settings give to a language or a kind. Change them first.}}"
 
 #: src/admin/components/record-editor.tsx
 msgid "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
@@ -245,6 +265,11 @@ msgstr "Add a row"
 msgid "Add alt text"
 msgstr "Add alt text"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.rows_required"
+msgstr "Add at least one row."
+
 #: src/admin/form/controls.tsx
 msgid "Add entry"
 msgstr "Add entry"
@@ -334,6 +359,16 @@ msgstr "At least 12 characters."
 msgid "At least 12 characters. This is the only account."
 msgstr "At least 12 characters. This is the only account."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_entries"
+msgstr "At most {max} entries."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_rows"
+msgstr "At most {max} rows."
+
 #: src/admin/app.tsx
 msgid "Back to content"
 msgstr "Back to content"
@@ -345,6 +380,36 @@ msgstr "Background jobs waiting"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Backup and export"
 msgstr "Backup and export"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.enabled_body_invalid"
+msgstr "Body must be {\"enabled\": true | false}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.email.body_invalid"
+msgstr "Body must be {\"fromAddress\"?: string | null, \"resendApiKey\"?: string | null}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_body_invalid"
+msgstr "Body must be {\"values\": { … }}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secrets_body_invalid"
+msgstr "Body must be a JSON object of secret values."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_body_invalid"
+msgstr "Body must be a JSON object of settings."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.action_ids_missing"
+msgstr "Body must carry the row ids to act on."
 
 #: src/admin/components/ui/breadcrumb.tsx
 msgid "breadcrumb"
@@ -386,6 +451,11 @@ msgstr "Changes reach visitors within {within}"
 msgid "Changing anything else in the source tree"
 msgstr "Changing anything else in the source tree"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_endpoint"
+msgstr "Changing the default locale rewrites every URL. Use POST /_mallok/api/settings/default-locale."
+
 #: src/admin/pages/settings-appearance.tsx
 msgid "Changing the theme takes a deploy"
 msgstr "Changing the theme takes a deploy"
@@ -414,6 +484,16 @@ msgstr "Choose an image"
 #: src/admin/components/media-library.tsx
 msgid "Choose files, or drop them here"
 msgstr "Choose files, or drop them here"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.currency"
+msgstr "Choose one of the listed currencies."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.choice"
+msgstr "Choose one of the listed values."
 
 #: src/admin/form/types.ts
 msgid "Choose one of the listed values."
@@ -717,9 +797,29 @@ msgstr "Email"
 msgid "Email (Resend)"
 msgstr "Email (Resend)"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.color"
+msgstr "Enter a colour as #rrggbb."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.date"
+msgstr "Enter a date as YYYY-MM-DD."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.number"
+msgstr "Enter a number."
+
 #: src/admin/form/types.ts
 msgid "Enter a number."
 msgstr "Enter a number."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount"
+msgstr "Enter an amount."
 
 #: src/admin/pages/settings-site.tsx
 msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
@@ -826,6 +926,21 @@ msgstr "Invalid asset path \"{path}\"."
 msgid "server.auth.invalid_credentials"
 msgstr "Invalid email or password."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_invalid_at"
+msgstr "Invalid settings at \"{field}\": {reason}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_invalid"
+msgstr "Invalid settings: {reason}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.invalid"
+msgstr "Invalid settings."
+
 #: src/admin/components/record-editor.tsx
 msgid "Keep it"
 msgstr "Keep it"
@@ -917,6 +1032,11 @@ msgstr "Media files"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.media.too_large"
+msgstr "Media objects are limited to {max} bytes."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.method_not_allowed"
 msgstr "Method not allowed."
 
@@ -929,9 +1049,39 @@ msgstr "Missing or invalid CSRF token."
 msgid "More"
 msgstr "More"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.rows_list"
+msgstr "Must be a list of rows."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.text_list"
+msgstr "Must be a list of text values."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.pairs"
+msgstr "Must be a set of name and value pairs."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.min"
+msgstr "Must be at least {min}."
+
 #: src/admin/form/types.ts
 msgid "Must be at least {min}."
 msgstr "Must be at least {min}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_length"
+msgstr "Must be at most {max} characters."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max"
+msgstr "Must be at most {max}."
 
 #: src/admin/form/types.ts
 msgid "Must be at most {max}."
@@ -941,6 +1091,16 @@ msgstr "Must be at most {max}."
 msgid "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
 msgstr "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.text"
+msgstr "Must be text."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.boolean"
+msgstr "Must be yes or no."
+
 #: src/admin/form/controls.tsx
 msgid "Name"
 msgstr "Name"
@@ -949,6 +1109,11 @@ msgstr "Name"
 #: src/admin/server-messages.catalog.ts
 msgid "server.setup.starter_missing"
 msgstr "Name a starter to install."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.related_parent_missing"
+msgstr "Name the row with ?parent=<id>."
 
 #: src/admin/pages/setup.tsx
 msgid "Name your site"
@@ -992,6 +1157,11 @@ msgstr "New: {panelLabel}"
 msgid "Next"
 msgstr "Next"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.attached_owner_missing"
+msgstr "No {kind} with that translation group exists."
+
 #: src/admin/components/saved-note.tsx
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
@@ -1024,6 +1194,36 @@ msgstr "No rows yet."
 #: src/admin/server-messages.catalog.ts
 msgid "server.setup.starter_unknown"
 msgstr "No starter named \"{starter}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.action_unknown"
+msgstr "No such panel action."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.panel_unknown"
+msgstr "No such panel."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.unknown"
+msgstr "No such plugin is compiled into this build."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_unknown"
+msgstr "No such record."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.records_panel_unknown"
+msgstr "No such records panel."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.related_unknown"
+msgstr "No such related table."
 
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-appearance.tsx
@@ -1085,6 +1285,11 @@ msgstr "One Resend key and one sender address for the whole site. Every plugin t
 msgid "Only at request time"
 msgstr "Only at request time"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_not_image"
+msgstr "Only images have variants."
+
 #: src/admin/components/related-rows.tsx
 msgid "Only the first rows are shown."
 msgstr "Only the first rows are shown."
@@ -1145,6 +1350,11 @@ msgstr "Path"
 msgid "Plugin on/off switches, settings and secrets"
 msgstr "Plugin on/off switches, settings and secrets"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.state_missing"
+msgstr "Plugin state row is missing."
+
 #: src/admin/components/shell.tsx
 #: src/admin/pages/plugins.tsx
 msgid "Plugins"
@@ -1157,6 +1367,11 @@ msgstr "Plugins ship with your source, not through this page"
 #: src/admin/pages/settings-site.tsx
 msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
 msgstr "Prefix the default language too (<0>/{prefix}/…</0>)"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.locale_prefix_endpoint"
+msgstr "Prefixing the default locale rewrites every URL. Use POST /_mallok/api/settings/locale-prefix."
 
 #: src/admin/pages/editor.tsx
 msgid "Preview"
@@ -1177,6 +1392,16 @@ msgstr "Printed once by <0>mallok create</0>. It proves this site is yours: with
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.settings.locale_prefix_confirm"
+msgstr "Provide \"enabled\": true or false, and \"confirm\": true; this rewrites every URL."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.hashes_missing"
+msgstr "Provide a list of sha256 hashes."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.tokens.incomplete"
 msgstr "Provide a name and at least one scope."
 
@@ -1187,8 +1412,18 @@ msgstr "Provide a site name, a default language and a language list."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.media.alt_invalid"
+msgstr "Provide an \"alt\" string or null."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.setup.credentials_incomplete"
 msgstr "Provide an email and a password of at least {min} characters."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_confirm"
+msgstr "Provide the target locale and \"confirm\": true; this rewrites every URL."
 
 #: src/admin/pages/editor.tsx
 msgid "Publish"
@@ -1202,6 +1437,11 @@ msgstr "Published"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Rebuild all pages"
 msgstr "Rebuild all pages"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_not_removable"
+msgstr "Records of this panel cannot be deleted here."
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Redirects"
@@ -1314,6 +1554,11 @@ msgstr "Scopes"
 #: src/admin/components/plugin-panel.tsx
 msgid "Search"
 msgstr "Search"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_not_string"
+msgstr "Secret \"{name}\" must be a string or null."
 
 #: src/admin/pages/plugins.tsx
 msgid "Secrets"
@@ -1472,6 +1717,11 @@ msgstr "Skip"
 msgid "Slug"
 msgstr "Slug"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.fields_invalid"
+msgstr "Some fields need attention."
+
 #: src/admin/pages/setup.tsx
 msgid "Start with example content?"
 msgstr "Start with example content?"
@@ -1544,6 +1794,21 @@ msgstr "The action failed."
 msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
 msgstr "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount_high"
+msgstr "The amount is too high."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount_low"
+msgstr "The amount is too low."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.hash_mismatch"
+msgstr "The body does not match the sha256 in the path."
+
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx
 msgid "The check failed."
@@ -1566,6 +1831,11 @@ msgstr "The current theme has no layout for {layouts}. Those pages are shown in 
 msgid "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
 msgstr "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_unlisted"
+msgstr "The enabled locales must include the default locale \"{locale}\"."
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "The export failed."
 msgstr "The export failed."
@@ -1581,12 +1851,27 @@ msgstr "The language list must include the default language."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.media.id_invalid"
+msgstr "The media id must be a sha256 hex digest."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.account.password_short"
 msgstr "The new password must be at least {min} characters."
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
 msgstr "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.body_empty"
+msgstr "The request body is empty."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.email.sender_invalid"
+msgstr "The sender must be an address such as \"hello@example.com\" or \"Acme <hello@example.com>\"."
 
 #: src/admin/api.ts
 msgid "The server could not be reached. Nothing was saved."
@@ -1663,6 +1948,11 @@ msgstr "The slug must use lowercase Latin letters, digits and single dashes. Use
 msgid "server.setup.starter_prefix_clash"
 msgstr "The starter prefixes the default locale, but \"{from}\" would move to \"{to}\", which another item already uses."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.export.unsafe"
+msgstr "The stored content cannot be exported safely: {reason}."
+
 #: src/admin/components/media-library.tsx
 #: src/admin/media.ts
 msgid "The upload failed."
@@ -1696,9 +1986,34 @@ msgstr "These are stored the moment you save — no rebuild, no deploy."
 msgid "These values apply to every language unless a language overrides them below."
 msgstr "These values apply to every language unless a language overrides them below."
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.required"
+msgstr "This field is required."
+
 #: src/admin/form/types.ts
 msgid "This field is required."
 msgstr "This field is required."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.in_use"
+msgstr "This file is in use."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.in_use_count"
+msgstr "This file is used by {count} item(s). Remove those references first."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.operation_scope"
+msgstr "This operation needs the \"{scope}\" scope."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.attached_to_missing"
+msgstr "This panel belongs to a content item: send its translation group as \"attachedTo\"."
 
 #: src/admin/pages/plugins.tsx
 msgid "This plugin runs on <0>every visitor request</0>, including ones the cache would otherwise answer for free."
@@ -1760,8 +2075,18 @@ msgstr "unknown error"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.media.kind_filter_unknown"
+msgstr "Unknown kind filter."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.tokens.scope_unknown"
 msgstr "Unknown scope: {scopes}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_unknown"
+msgstr "Unknown secret \"{name}\"."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -1776,6 +2101,11 @@ msgstr "unknown type"
 msgid "Unsaved"
 msgstr "Unsaved"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.type_unsupported"
+msgstr "Unsupported file type. Accepted: jpg, png, gif, webp, avif, pdf, xlsx, docx, zip."
+
 #: src/admin/components/media-library.tsx
 msgid "unused"
 msgstr "unused"
@@ -1787,6 +2117,11 @@ msgstr "Updated"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Upgrading Mallok itself"
 msgstr "Upgrading Mallok itself"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.original_missing"
+msgstr "Upload the original before its variants."
 
 #: src/admin/components/media-library.tsx
 msgid "uploading"
@@ -1820,6 +2155,16 @@ msgstr "Value"
 #: src/admin/pages/settings-appearance.tsx
 msgid "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
 msgstr "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_width"
+msgstr "Variant width must be 1..{max}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_not_webp"
+msgstr "Variants must be WebP."
 
 #: src/admin/pages/setup.tsx
 msgid "View the site"
