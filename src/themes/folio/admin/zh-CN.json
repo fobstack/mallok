@@ -1,0 +1,14 @@
+{
+  "description": "轻盈的画廊式作品集：超大衬线字体开场、通栏展示的精选项目、杂志式网格。",
+  "kinds.page.label": "页面",
+  "kinds.project.label": "项目",
+  "kinds.project.fields.year.label": "年份",
+  "kinds.project.fields.client.label": "客户",
+  "kinds.project.fields.discipline.label": "类别",
+  "kinds.project.fields.materials.label": "材料",
+  "kinds.article.label": "随笔",
+  "options.intro_note.label": "开场段落",
+  "options.meta_line.label": "附注行（开场区右上角）",
+  "options.enquire_label.label": "咨询链接文字",
+  "options.enquire_href.label": "咨询链接地址（留空则隐藏）"
+}

@@ -60,6 +60,8 @@ src/themes/trade/
 ├── locales/
 │   ├── en.json             # required: the file for theme.json's defaultLocale
 │   └── zh.json
+├── admin/                  # optional: the declarations in the operator's language, §10.1
+│   └── zh-CN.json
 └── assets/
     └── style.css           # optional; reference more files as needed
 ```
@@ -68,7 +70,8 @@ Hard rules, **all checked at build time — a failure fails the build**:
 
 1. The directory name equals `theme.json`'s `id`.
 2. Only these paths are accepted: `theme.json`, `index.ts`,
-   `layouts/*.liquid`, `partials/*.liquid`, `locales/*.json`, `assets/**`.
+   `layouts/*.liquid`, `partials/*.liquid`, `locales/*.json`,
+   `admin/<ui-locale>.json`, `assets/**`.
 3. Extensions under `assets/` are limited to what can be served safely: `css`,
    `woff2`, `woff`, `png`, `jpg`, `jpeg`, `webp`, `gif`, `ico`, `txt` — and
    `js`, **only for a file whose exact path `clientScripts` declares** (§9);
@@ -77,7 +80,9 @@ Hard rules, **all checked at build time — a failure fails the build**:
    (`SECURITY.md §6`): it can carry script.
 4. Filenames under `layouts/` and `partials/` match `[a-z0-9-]+`.
 5. The layout `home` points at, every kind's `layout` and `listLayout`, and
-   every language pack named in `locales` must actually exist.
+   every language pack named in `locales` must actually exist. An admin
+   catalog must be a JSON object of strings whose every key names something
+   the manifest declares (§10.1).
 6. Every theme must have a `page` kind — it is the fallback when a kind is not
    supported (§5.3).
 
@@ -782,6 +787,54 @@ pack the same way (`PLUGIN_API.md §5.3`).
 A missing page is rendered through the theme's own `page` layout, so a visitor
 who mistypes a URL still gets the site's header, navigation and footer. No
 theme needs a `404` layout, and none of the official themes has one.
+
+### 10.1 Admin catalogs
+
+`locales/<locale>.json` is for **readers**, keyed by content language
+(`zh`). The words a theme declares for the **operator** — kind and field
+labels, help, group names, option labels — are English in `theme.json`. An
+optional `admin/<ui-locale>.json` gives them in one of the admin's interface
+languages (`zh-CN`), as a flat map keyed by where the word is declared:
+
+```json
+{
+  "description": "以材料为核心的工业产品目录主题。",
+  "kinds.product.label": "产品",
+  "kinds.product.fields.grade.label": "牌号",
+  "kinds.product.fields.category.help": "该产品所属系列的 slug。",
+  "groups.Specification": "规格",
+  "options.hero_title.label": "首屏标题",
+  "scripts.assets/hero-carousel.js.purpose": "仅用于首页：轮播控制。"
+}
+```
+
+| Key | Replaces |
+| --- | --- |
+| `name`, `description` | The manifest's own |
+| `kinds.<kind>.label` | A kind's `label` (or its name, when it has none) |
+| `kinds.<kind>.fields.<field>.label`, `.help` | A field's `label` (or its name) and `help` |
+| `groups.<group>` | A `group`, on every field in it |
+| `options.<option>.label` | An option's `label` |
+| `scripts.<path>.purpose` | A declared client script's `purpose` |
+
+- Every key is optional; **a missing key keeps the declared English**, and a
+  theme with no catalog is shown as declared.
+- A key that names nothing the manifest declares, a value that is not a
+  string, or a file that is not a JSON object **fails the build**, so a typo
+  cannot leave a label silently in English.
+- `index.ts` lists the file like any other: `'admin/zh-CN.json':
+  JSON.stringify(adminZhCnJson)`.
+- The admin sends its interface language as `Accept-Language`;
+  `GET /_mallok/api/theme` lays the best match over the manifest — an exact
+  tag, then the same primary language — and returns the theme's own words
+  under `declared`. The editor's preview renders from `declared`, because a
+  page reads a kind's label (§10) and must look as the site renders it.
+- Only words change. Ids, types, layouts and a `select`'s `choices` are as
+  declared: a choice is the stored value, and there is no translated label
+  for one yet (`ADMIN_I18N_AND_UI.md §9`).
+
+The five official themes ship `admin/zh-CN.json`. Their names are proper
+names and are not translated.
 
 ## 11. `assets/` and static files
 

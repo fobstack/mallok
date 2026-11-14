@@ -388,4 +388,30 @@ describe('readThemePackage', () => {
     expect(pkg.files['index.ts']).toBeUndefined();
     expect(pkg.assets['index.ts']).toBeUndefined();
   });
+
+  it('bundles an admin catalog, and refuses one that names an undeclared key', () => {
+    const pkg = readThemePackage(
+      themeSource('trade', '1.0.0', [
+        file(
+          'admin/zh-CN.json',
+          JSON.stringify({ 'kinds.page.label': '页面' }),
+        ),
+      ]),
+    );
+    expect(pkg.files['admin/zh-CN.json']).toContain('页面');
+
+    expectRejected(
+      themeSource('trade', '1.0.0', [
+        file(
+          'admin/zh-CN.json',
+          JSON.stringify({ 'kinds.pgae.label': '页面' }),
+        ),
+      ]),
+      /admin\/zh-CN\.json names "kinds\.pgae\.label", which the manifest does not declare/,
+    );
+    expectRejected(
+      themeSource('trade', '1.0.0', [file('admin/zh-CN.json', '{')]),
+      /admin\/zh-CN\.json is not valid JSON/,
+    );
+  });
 });

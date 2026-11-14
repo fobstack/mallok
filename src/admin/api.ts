@@ -6,6 +6,7 @@
  * requests carry the CSRF header on every write (docs/SECURITY.md §3).
  */
 
+import { i18n } from '@lingui/core';
 import { t } from '@lingui/core/macro';
 
 const BASE = '/_mallok/api';
@@ -63,6 +64,10 @@ export async function api<T>(
 ): Promise<T> {
   const method = options.method ?? 'GET';
   const headers = new Headers(options.headers);
+  // The interface language: what a theme's or plugin's declarations are
+  // worded in when they have an admin catalog for it (docs/THEME_FORMAT.md
+  // §10.1). Nothing under /_mallok/ is cached, so it varies nothing.
+  headers.set('accept-language', i18n.locale || 'en');
   if (method !== 'GET' && method !== 'HEAD') {
     headers.set('x-mallok-csrf', csrfToken);
   }

@@ -619,6 +619,22 @@ Phase 3 as built, in the order it landed:
   account's `en` won on every load, and the scan then checked English
   without failing; each scanned screen now asserts its `lang`.
 
+- **D4, themes' admin catalogs.** `src/core/admin-catalog.ts` lists the
+  keys a manifest allows, checks a catalog, picks one for a list of
+  languages and lays it over a manifest; `readThemePackage` accepts
+  `admin/<ui-locale>.json` and fails the build on a bad one. `api.ts` sends
+  the interface language as `Accept-Language`; `GET /_mallok/api/theme`
+  overlays the best match. **One change to D4 as written:** it said the
+  admin's code would not change, but `src/core/view.ts` titles a list page
+  and its links with a kind's label when the language pack has none, so a
+  preview rendered from a translated manifest could differ from the site.
+  The endpoint therefore also returns the words as written, under
+  `declared`, and `preview.ts` renders from those — the one admin change.
+  Choosing a language refetches the theme (and the plugins, for D5); sign-in
+  adopts the account's language before it loads the workspace. The five
+  official themes have `admin/zh-CN.json` (89 keys; theme names kept as
+  proper names). `THEME_FORMAT.md §10.1` documents the file.
+
 ## 9. Risks and open questions
 
 | Risk | Why it is real | What contains it |

@@ -83,3 +83,31 @@ test('can be chosen on the sign-in page, before there is a session', async ({
   await page.getByRole('combobox', { name: '界面语言' }).selectOption('en');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });
+
+test("a theme's declarations are in Chinese, and its preview is not", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await page.getByRole('menuitemradio', { name: '简体中文' }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  try {
+    await page.goto('/_mallok/app/content');
+    await page.getByRole('link', { name: 'Grade 5 titanium bar' }).click();
+    // The theme's admin catalog names the fields (docs/THEME_FORMAT.md
+    // §10.1)…
+    await expect(page.getByLabel('牌号', { exact: true })).toBeVisible();
+    await expect(page.getByText('规格', { exact: true })).toBeVisible();
+    // …while the preview is the page a reader gets, in the content's
+    // language, rendered from the declarations as the theme wrote them.
+    const preview = page.frameLocator('iframe[title="预览"]');
+    await expect(
+      preview.getByRole('heading', { name: 'Grade 5 titanium bar' }),
+    ).toBeVisible();
+    await expect(preview.getByText('产品', { exact: true })).toHaveCount(0);
+  } finally {
+    await page.getByRole('button', { name: '账号菜单' }).click();
+    await page.getByRole('menuitemradio', { name: 'English' }).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  }
+});

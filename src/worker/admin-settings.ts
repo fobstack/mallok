@@ -12,7 +12,9 @@ import {
   joinTagline,
   LOCALE_PATTERN,
   linkForPrefix,
+  localizeThemeManifest,
   PIPELINE_VERSION,
+  pickAdminCatalog,
   type SiteLocales,
   slugPlacementProblem,
   splitTagline,
@@ -42,7 +44,7 @@ import {
 } from './cache.js';
 import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
-import { json, problem, readJson } from './http.js';
+import { json, preferredLanguages, problem, readJson } from './http.js';
 import { parseSiteSettings, type SiteSettings } from './site.js';
 import { siteEmailView } from './site-email.js';
 
@@ -581,9 +583,24 @@ export async function changeLocalePrefix(
  * render as the site does (docs/ADMIN.md §6.3), and it needs the manifest to
  * generate the field and option forms. There is nothing to POST here: the
  * theme is a build-time constant.
+ *
+ * The words of the manifest — kind, field, group and option labels, help,
+ * the description — are in the admin's interface language when the theme
+ * has an admin catalog for it (`Accept-Language`; docs/THEME_FORMAT.md
+ * §10.1). `declared` keeps them as the theme wrote them, because the preview
+ * must render exactly what the site renders, and a page reads a kind's
+ * label. No response under `/_mallok/` is cached, so the header varies
+ * nothing at the edge.
  */
-export function getTheme(): Response {
-  const { manifest, files } = activeTheme();
+export function getTheme(request: Request): Response {
+  const { manifest: declared, files } = activeTheme();
+  const manifest = localizeThemeManifest(
+    declared,
+    pickAdminCatalog(
+      files,
+      preferredLanguages(request.headers.get('accept-language')),
+    ),
+  );
   return json({
     id: manifest.id,
     name: manifest.name,
@@ -591,6 +608,13 @@ export function getTheme(): Response {
     description: manifest.description ?? '',
     kinds: manifest.kinds,
     options: manifest.options,
+    declared: {
+      name: declared.name,
+      description: declared.description ?? '',
+      kinds: declared.kinds,
+      options: declared.options,
+      clientScripts: declared.clientScripts,
+    },
     locales: manifest.locales,
     defaultLocale: manifest.defaultLocale,
     imageWidths: manifest.imageWidths,
