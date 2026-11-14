@@ -35,8 +35,16 @@ const BADGE_TONE: Readonly<Record<string, 'ok' | 'warn'>> = {
   scheduled: 'warn',
 };
 
-/** Formats one cell by its declared column type. */
-export function cell(value: unknown, type: ColumnType): JSX.Element | string {
+/**
+ * Formats one cell by its declared column type. `words` is what a badge's
+ * values read as in the interface language, when the plugin says (§7.8);
+ * the tone still follows the stored value.
+ */
+export function cell(
+  value: unknown,
+  type: ColumnType,
+  words?: Readonly<Record<string, string>>,
+): JSX.Element | string {
   if (value === null || value === undefined || value === '') {
     return '—';
   }
@@ -56,7 +64,9 @@ export function cell(value: unknown, type: ColumnType): JSX.Element | string {
   }
   if (type === 'badge') {
     return (
-      <StatusBadge tone={BADGE_TONE[text] ?? 'neutral'}>{text}</StatusBadge>
+      <StatusBadge tone={BADGE_TONE[text] ?? 'neutral'}>
+        {words?.[text] ?? text}
+      </StatusBadge>
     );
   }
   return text;
@@ -67,11 +77,13 @@ function RelatedTable({
   panelId,
   related,
   parentId,
+  values,
 }: {
   readonly pluginId: string;
   readonly panelId: string;
   readonly related: PluginPanel['related'][number];
   readonly parentId: string;
+  readonly values: PluginPanel['values'];
 }): JSX.Element {
   const { t } = useLingui();
   const loaded = useQuery({
@@ -131,7 +143,11 @@ function RelatedTable({
                       key={column.field}
                       className="first:pl-3 last:pr-3"
                     >
-                      {cell(row[column.field], column.type)}
+                      {cell(
+                        row[column.field],
+                        column.type,
+                        values?.[column.field],
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -171,6 +187,7 @@ export function RelatedRows({
           panelId={panel.id}
           related={related}
           parentId={parentId}
+          values={panel.values}
         />
       ))}
     </>

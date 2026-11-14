@@ -7,7 +7,15 @@
  * that pretends otherwise.
  */
 
-import { settingsValidator, validateRecord } from '../core/index.js';
+import {
+  type AdminCatalog,
+  catalogObjectProblem,
+  localizePluginManifest,
+  matchCatalogLanguage,
+  panelWords,
+  settingsValidator,
+  validateRecord,
+} from '../core/index.js';
 import {
   findPluginState,
   listPluginState,
@@ -23,7 +31,7 @@ import { hasScope, type Principal, type Scope } from './auth.js';
 import { purgeTags } from './cache.js';
 import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
-import { json, problem } from './http.js';
+import { json, preferredLanguages, problem } from './http.js';
 import {
   type ActivePlugin,
   buildPluginContext,
@@ -56,7 +64,7 @@ export async function routePlugins(
 ): Promise<Response | null> {
   if (route === 'plugins') {
     return method === 'GET'
-      ? listPlugins(env)
+      ? listPlugins(env, request)
       : problem(405, 'Method not allowed.');
   }
   if (!route.startsWith('plugins/')) {
@@ -156,13 +164,39 @@ async function withScope(
   return handler();
 }
 
-async function listPlugins(env: Env): Promise<Response> {
+/**
+ * The admin catalog of `plugin` for the first of `wanted` it has one for,
+ * or an empty one. `definePlugin` has already checked every catalog; this
+ * only picks.
+ */
+function catalogFor(
+  plugin: MallokPlugin,
+  wanted: readonly string[],
+): AdminCatalog {
+  const catalogs = plugin.adminCatalogs ?? {};
+  const language = matchCatalogLanguage(Object.keys(catalogs), wanted);
+  const catalog = language === undefined ? undefined : catalogs[language];
+  return catalog !== undefined &&
+    catalogObjectProblem(catalog, () => true) === null
+    ? (catalog as AdminCatalog)
+    : {};
+}
+
+/**
+ * The compiled-in plugins, what they declare and their state. What they
+ * declare for the operator is in the admin's interface language when a
+ * plugin has an admin catalog for it (`Accept-Language`;
+ * docs/PLUGIN_API.md §7.8).
+ */
+async function listPlugins(env: Env, request: Request): Promise<Response> {
   const states = new Map(
     (await listPluginState(env.DB)).map((row) => [row.plugin_id, row]),
   );
   const themeLayouts = activeTheme().manifest.pluginLayouts;
+  const wanted = preferredLanguages(request.headers.get('accept-language'));
   const plugins = registeredPlugins().map((plugin) => {
-    const manifest = plugin.manifest;
+    const catalog = catalogFor(plugin, wanted);
+    const manifest = localizePluginManifest(plugin.manifest, catalog);
     const state = states.get(manifest.id);
     const stored = parseJson(state?.secrets ?? '{}');
     return {
@@ -204,8 +238,11 @@ async function listPlugins(env: Env): Promise<Response> {
       })),
       // `canRemove` is the one thing about a records panel the manifest
       // cannot say: whether the plugin gave it a `remove` handler.
+      // `names` and `values` are words with no declaration of their own: a
+      // filter's or detail row's name, a badge value's (§7.8).
       panels: manifest.panels.map((panel) => ({
         ...panel,
+        ...panelWords(panel.id, catalog),
         canRemove: plugin.records?.[panel.id]?.remove !== undefined,
       })),
     };

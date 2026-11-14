@@ -111,3 +111,32 @@ test("a theme's declarations are in Chinese, and its preview is not", async ({
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   }
 });
+
+test("a plugin's declarations are in Chinese where it has a catalog", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.getByRole('button', { name: 'Account menu' }).click();
+  await page.getByRole('menuitemradio', { name: '简体中文' }).click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  try {
+    await page.goto('/_mallok/app/plugins');
+    // The fixture plugin's partial catalog (docs/PLUGIN_API.md §7.8)…
+    const panel = page.getByRole('region', { name: '目录条目' });
+    await expect(panel).toBeVisible();
+    await expect(
+      panel.getByRole('columnheader', { name: /名称/ }),
+    ).toBeVisible();
+    await expect(panel.getByRole('button', { name: '设置状态' })).toBeVisible();
+    await expect(panel.getByPlaceholder('名称、代码')).toBeVisible();
+    // …and what it leaves out stays as declared.
+    await expect(panel.getByRole('button', { name: 'Touch' })).toBeVisible();
+    await expect(
+      panel.getByRole('columnheader', { name: 'Price' }),
+    ).toBeVisible();
+  } finally {
+    await page.getByRole('button', { name: '账号菜单' }).click();
+    await page.getByRole('menuitemradio', { name: 'English' }).click();
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  }
+});

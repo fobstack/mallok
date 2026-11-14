@@ -60,12 +60,12 @@ export function themeCatalogKeys(
 }
 
 /**
- * Why a catalog cannot be used, or `null` when it can: it must be a JSON
- * object of strings, every key one `themeCatalogKeys` names.
+ * Why a catalog's text cannot be used, or `null` when it can: it must be a
+ * JSON object of strings, every key one `allows` accepts.
  */
 export function adminCatalogProblem(
   text: string,
-  keys: ReadonlyMap<string, string>,
+  allows: (key: string) => boolean,
 ): string | null {
   let parsed: unknown;
   try {
@@ -73,6 +73,14 @@ export function adminCatalogProblem(
   } catch {
     return 'is not valid JSON';
   }
+  return catalogObjectProblem(parsed, allows);
+}
+
+/** {@link adminCatalogProblem} for a catalog that is already parsed. */
+export function catalogObjectProblem(
+  parsed: unknown,
+  allows: (key: string) => boolean,
+): string | null {
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return 'must be a JSON object';
   }
@@ -80,11 +88,38 @@ export function adminCatalogProblem(
     if (typeof value !== 'string') {
       return `gives "${key}" a value that is not a string`;
     }
-    if (!keys.has(key)) {
+    if (!allows(key)) {
       return `names "${key}", which the manifest does not declare`;
     }
   }
   return null;
+}
+
+/** Whether a string is shaped like an interface language tag: `zh-CN`. */
+export function isCatalogLanguage(tag: string): boolean {
+  return /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(tag);
+}
+
+/**
+ * Which of `available` serves the first of `wanted` (most preferred first):
+ * an exact tag, then the same primary language (`zh-Hans-CN` and `zh` find
+ * `zh-CN`). `undefined` when none does.
+ */
+export function matchCatalogLanguage(
+  available: readonly string[],
+  wanted: readonly string[],
+): string | undefined {
+  for (const tag of wanted) {
+    const lower = tag.toLowerCase();
+    const primary = lower.split('-')[0];
+    const match =
+      available.find((entry) => entry.toLowerCase() === lower) ??
+      available.find((entry) => entry.toLowerCase().split('-')[0] === primary);
+    if (match !== undefined) {
+      return match;
+    }
+  }
+  return undefined;
 }
 
 /** The interface language an admin catalog path is for, or `undefined`. */
@@ -102,25 +137,11 @@ export function pickAdminCatalog(
   files: Readonly<Record<string, string>>,
   wanted: readonly string[],
 ): AdminCatalog {
-  const available = Object.keys(files)
-    .map((path) => ({ path, tag: adminCatalogLanguage(path) }))
-    .filter(
-      (entry): entry is { path: string; tag: string } =>
-        entry.tag !== undefined,
-    );
-  for (const tag of wanted) {
-    const lower = tag.toLowerCase();
-    const primary = lower.split('-')[0];
-    const match =
-      available.find((entry) => entry.tag.toLowerCase() === lower) ??
-      available.find(
-        (entry) => entry.tag.toLowerCase().split('-')[0] === primary,
-      );
-    if (match !== undefined) {
-      return readCatalog(files[match.path]);
-    }
-  }
-  return {};
+  const tags = Object.keys(files)
+    .map((path) => adminCatalogLanguage(path))
+    .filter((tag): tag is string => tag !== undefined);
+  const tag = matchCatalogLanguage(tags, wanted);
+  return tag === undefined ? {} : readCatalog(files[`admin/${tag}.json`]);
 }
 
 function readCatalog(text: string | undefined): AdminCatalog {
