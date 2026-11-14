@@ -653,6 +653,22 @@ Phase 3 as built, in the order it landed:
   `admin/zh-CN.json` (36 keys, its status values included) through
   `adminCatalogs` in `index.ts`; its `plugin.json` is unchanged, as D5 asks.
 
+- **D3, the Worker's errors: the mechanism, and sign-in, setup and the
+  account.** `problem(status, message, code?, params?)` adds `code` and
+  `params` beside the unchanged English `error`. Codes are dotted
+  (`auth.invalid_credentials`, `setup.key_wrong`); a code is never reused
+  for a different sentence. The admin's sentences live in
+  `src/admin/server-messages.catalog.ts` with the id `server.<code>` and
+  the Worker's English as their message; `api.ts` builds an `ApiError`'s
+  message from the loaded catalog when it has the code, and from `error`
+  otherwise, so no caller changed. Measured on the way: a lookup table
+  bundled into `api.ts` cost 0.6 KiB of first load for 25 codes, which
+  would not survive the rest; keyed by id, the sentences live only in the
+  lazily loaded catalogs and first load is 166.0 KiB however many codes
+  there are. A test fails on a code the Worker never sends. First batch:
+  the router's own refusals, sign-in, the account, tokens and every setup
+  step (25 codes).
+
 ## 9. Risks and open questions
 
 | Risk | Why it is real | What contains it |

@@ -174,6 +174,11 @@ msgstr "账号"
 msgid "Account and API tokens"
 msgstr "账号与 API 令牌"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.session_required"
+msgstr "修改账号需要通过浏览器登录。"
+
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/shell.tsx
 msgid "Account menu"
@@ -240,6 +245,11 @@ msgstr "替代文本"
 #: src/admin/components/media-library.tsx
 msgid "Alt: {0}"
 msgstr "替代文本：{0}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.admin_exists"
+msgstr "管理员已存在。"
 
 #: src/admin/pages/settings-site.tsx
 msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
@@ -700,6 +710,11 @@ msgstr "发件地址"
 msgid "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
 msgstr "来自 {pluginName} 插件。这条内容的所有语言版本共用这些数据，它们单独保存——不随“发布”一起保存。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.ui_locale_invalid"
+msgstr "界面语言需要是 “zh-CN” 这样的语言标签，或者为 null。"
+
 #: src/admin/components/media-library.tsx
 msgid "hashing"
 msgstr "正在计算哈希"
@@ -740,6 +755,11 @@ msgstr "立即生效"
 #: src/admin/components/language-picker.tsx
 msgid "Interface language"
 msgstr "界面语言"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.invalid_credentials"
+msgstr "邮箱或密码不正确。"
 
 #: src/admin/components/record-editor.tsx
 msgid "Keep it"
@@ -820,6 +840,16 @@ msgstr "媒体域名"
 msgid "Media files"
 msgstr "媒体文件"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.method_not_allowed"
+msgstr "不允许使用该请求方法。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.csrf_invalid"
+msgstr "CSRF 令牌缺失或无效，请刷新页面后重试。"
+
 #: src/admin/components/ui/breadcrumb.tsx
 msgid "More"
 msgstr "更多"
@@ -839,6 +869,11 @@ msgstr "必须是已在 Resend 验证过的域名。插件可以设置自己的�
 #: src/admin/form/controls.tsx
 msgid "Name"
 msgstr "名称"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_missing"
+msgstr "请选择要安装的示例内容。"
 
 #: src/admin/pages/setup.tsx
 msgid "Name your site"
@@ -910,6 +945,11 @@ msgstr "本次构建没有编译进任何插件。"
 msgid "No rows yet."
 msgstr "还没有任何行。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_unknown"
+msgstr "没有名为“{starter}”的示例内容。"
+
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-appearance.tsx
 msgid "None"
@@ -931,6 +971,11 @@ msgstr "未配置 — 修改要等缓存过期后才生效"
 #: src/admin/components/shell.tsx
 msgid "Not found"
 msgstr "未找到"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.not_found"
+msgstr "未找到。"
 
 #: src/admin/pages/content-list.tsx
 msgid "Not in theme"
@@ -1004,6 +1049,11 @@ msgstr "分页"
 msgid "Password"
 msgstr "密码"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.session_required_password"
+msgstr "修改密码需要通过浏览器登录。"
+
 #: src/admin/pages/account.tsx
 msgid "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Current guidance is {recommended}, but a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU budget, so the cost is capped."
 msgstr "密码使用 PBKDF2-SHA256 哈希，迭代 {iterations} 次。目前的推荐值是 {recommended} 次，但登录必须在 Cloudflare 免费计划 10 毫秒的 CPU 预算内完成，所以迭代次数设了上限。"
@@ -1049,6 +1099,21 @@ msgstr "上一页"
 #: src/admin/pages/setup.tsx
 msgid "Printed once by <0>mallok create</0>. It proves this site is yours: without it, whoever found the address first could claim it. It stops working the moment setup succeeds."
 msgstr "由 <0>mallok create</0> 输出，只显示一次。它用来证明这个站点属于你：没有它，最先发现这个地址的人就能抢先认领。设置成功后它立即失效。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.tokens.incomplete"
+msgstr "请填写名称，并至少选择一个权限范围。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.site_incomplete"
+msgstr "请填写站点名称、默认语言和语言列表。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.credentials_incomplete"
+msgstr "请填写邮箱，以及至少 {min} 个字符的密码。"
 
 #: src/admin/pages/editor.tsx
 msgid "Publish"
@@ -1264,6 +1329,11 @@ msgstr "侧栏"
 msgid "Sign in"
 msgstr "登录"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.sign_in_required"
+msgstr "请以管理员身份登录后继续。"
+
 #: src/admin/components/account-menu.tsx
 msgid "Sign out"
 msgstr "退出登录"
@@ -1284,6 +1354,11 @@ msgstr "站点"
 #: src/admin/pages/setup.tsx
 msgid "Site and languages"
 msgstr "站点与语言"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.not_initialized"
+msgstr "站点尚未初始化。"
 
 #: src/admin/pages/settings-site.tsx
 #: src/admin/pages/setup.tsx
@@ -1352,6 +1427,11 @@ msgstr "检测"
 msgid "That did not work."
 msgstr "操作未成功。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_wrong"
+msgstr "设置密钥不正确。它由 `mallok create` 输出，只显示过一次。"
+
 #: src/admin/tokens.ts
 msgid "That token was already revoked."
 msgstr "该令牌已被撤销。"
@@ -1378,6 +1458,11 @@ msgstr "检测失败。"
 msgid "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
 msgstr "CLI 和各种脚本都通过令牌访问。令牌只显示一次——请立即复制，之后无法再次查看。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.current_password_wrong"
+msgstr "当前密码不正确。"
+
 #: src/admin/pages/plugins.tsx
 msgid "The current theme has no layout for {layouts}. Those pages are shown in a plain built-in layout, without the site’s design. Adding the layouts to the theme needs a new build and deploy."
 msgstr "当前主题没有 {layouts} 的布局。这些页面会以内置的简单布局显示，不带站点的设计。为主题添加这些布局需要重新构建并部署。"
@@ -1394,6 +1479,16 @@ msgstr "导出失败。"
 msgid "The language applies in this browser, but your account could not remember it."
 msgstr "界面语言已在当前浏览器生效，但没能保存到你的账号。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.default_locale_unlisted"
+msgstr "语言列表必须包含默认语言。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.password_short"
+msgstr "新密码至少需要 {min} 个字符。"
+
 #: src/admin/pages/settings-appearance.tsx
 msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
 msgstr "以下选项是运行时设置：保存后立即生效，无需重新构建。主题本身属于源代码。"
@@ -1401,6 +1496,11 @@ msgstr "以下选项是运行时设置：保存后立即生效，无需重新构
 #: src/admin/api.ts
 msgid "The server could not be reached. Nothing was saved."
 msgstr "无法连接服务器，没有保存任何内容。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_used"
+msgstr "设置密钥已经用过。如需重新进行初始设置，请用 `wrangler secret put MALLOK_SETUP_KEY` 部署一个新密钥。"
 
 #: src/admin/pages/setup.tsx
 msgid "The site is empty and waiting for its first page."
@@ -1417,6 +1517,11 @@ msgstr "slug 已改为“{normalized}”，因为导出时 slug 也是目录名�
 #: src/admin/slug.ts
 msgid "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
 msgstr "slug 已改为“{normalized}”：slug 最多 {MAX_SLUG_SEGMENTS} 段。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_prefix_clash"
+msgstr "该示例内容会给默认语言加上前缀，但“{from}”会移到“{to}”，而这个地址已被其他内容占用。"
 
 #: src/admin/components/media-library.tsx
 #: src/admin/media.ts
@@ -1467,6 +1572,16 @@ msgstr "这个站点已经完成初始设置。向导中的所有设置都可以
 msgid "This site has no custom domain yet, so it is running on a <0>.workers.dev</0> address. That address is a preview: <1>Cloudflare's edge cache does not apply to it</1>, so pages are rendered on every request and will feel slower than the real site."
 msgstr "这个站点还没有自定义域名，目前运行在 <0>.workers.dev</0> 地址上。这个地址只是预览：<1>Cloudflare 的边缘缓存对它不生效</1>，每次请求都会重新渲染页面，速度会比正式站点慢。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_unconfigured"
+msgstr "这个站点没有设置密钥，因此不会创建管理员。请在项目目录中运行 `mallok create .` 完成配置，或运行 `mallok setup-key` 生成一个。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.token_scope"
+msgstr "这个令牌缺少“{scope}”权限范围。"
+
 #: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
 msgid "Title"
@@ -1489,9 +1604,19 @@ msgstr "翻译版本"
 msgid "Type"
 msgstr "类型"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.unauthorized"
+msgstr "未登录或登录已过期。"
+
 #: src/admin/pages/editor.tsx
 msgid "unknown error"
 msgstr "未知错误"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.tokens.scope_unknown"
+msgstr "未知的权限范围：{scopes}。"
 
 #: src/admin/media.ts
 msgid "unknown type"

@@ -10,9 +10,32 @@ export function json(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), { ...init, headers });
 }
 
-/** Plain-text error response that never leaks internals. */
-export function problem(status: number, message: string): Response {
-  return json({ error: message }, { status });
+/** The variable parts of an error's sentence, by name. */
+export type ProblemParams = Readonly<Record<string, string | number>>;
+
+/**
+ * Plain-text error response that never leaks internals.
+ *
+ * `error` is English and stays exactly as written: the CLI prints it and it
+ * is every client's fallback. A `code`, when given, names the sentence so
+ * the admin can say it in its interface language, with `params` filling in
+ * what varies (docs/ADMIN_I18N_AND_UI.md, D3). A code never changes once
+ * shipped; a new sentence gets a new code.
+ */
+export function problem(
+  status: number,
+  message: string,
+  code?: string,
+  params?: ProblemParams,
+): Response {
+  return json(
+    {
+      error: message,
+      ...(code === undefined ? {} : { code }),
+      ...(params === undefined ? {} : { params }),
+    },
+    { status },
+  );
 }
 
 /** HTML response for public pages. */

@@ -8,12 +8,18 @@
 
 import { i18n } from '@lingui/core';
 import { t } from '@lingui/core/macro';
+import { serverMessage } from './server-messages.js';
 
 const BASE = '/_mallok/api';
 
-/** A failed request, carrying the server's own message. */
+/**
+ * A failed request. Its message is the server's, in the interface language
+ * when the server named it with a code the admin knows (D3).
+ */
 export class ApiError extends Error {
   readonly status: number;
+  /** The server's code for the message, when it sent one. */
+  readonly code: string | undefined;
   /**
    * Per-field messages, when the server sent any: a form shows each one
    * beside the field it is about rather than as one line at the top.
@@ -24,11 +30,13 @@ export class ApiError extends Error {
     status: number,
     message: string,
     fields: Readonly<Record<string, string>> = {},
+    code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.fields = fields;
+    this.code = code;
   }
 }
 
@@ -105,12 +113,17 @@ export async function api<T>(
     parsed = null;
   }
   if (!response.ok) {
-    const message =
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      typeof (parsed as { error?: unknown }).error === 'string'
-        ? (parsed as { error: string }).error
+    const body =
+      parsed !== null && typeof parsed === 'object'
+        ? (parsed as { error?: unknown; code?: unknown; params?: unknown })
+        : {};
+    const english =
+      typeof body.error === 'string'
+        ? body.error
         : `Request failed (${response.status}).`;
+    // Translated now, in the language of the moment it is said: every
+    // place that shows `caught.message` gets it without knowing codes.
+    const message = serverMessage(body.code, body.params) ?? english;
     const errors =
       parsed !== null && typeof parsed === 'object'
         ? (parsed as { errors?: unknown }).errors
@@ -121,6 +134,7 @@ export async function api<T>(
       errors !== null && typeof errors === 'object' && !Array.isArray(errors)
         ? (errors as Record<string, string>)
         : {},
+      typeof body.code === 'string' ? body.code : undefined,
     );
   }
   return parsed as T;
