@@ -8,6 +8,7 @@ msgstr ""
 "Language: en\n"
 
 #. Between items of a list
+#: src/admin/components/plugin-panel.tsx
 #: src/admin/pages/plugins.tsx
 msgid ", "
 msgstr ", "

@@ -95,6 +95,9 @@ export function PluginPanelView({
   );
 
   const base = `/plugins/${pluginId}/panels/${panel.id}`;
+  /** A field's name in the interface language, or a readable form of it. */
+  const nameOf = (field: string): string =>
+    panel.names?.[field] ?? field.replace(/_/g, ' ');
 
   const query = new URLSearchParams({
     limit: String(PAGE),
@@ -214,9 +217,9 @@ export function PluginPanelView({
           <Field key={field} className="w-40">
             <FieldLabel
               htmlFor={`${titleId}-filter-${field}`}
-              className="capitalize"
+              className={panel.names?.[field] === undefined ? 'capitalize' : ''}
             >
-              {field.replace(/_/g, ' ')}
+              {nameOf(field)}
             </FieldLabel>
             <Input
               id={`${titleId}-filter-${field}`}
@@ -241,9 +244,7 @@ export function PluginPanelView({
               id={`${titleId}-search`}
               type="search"
               value={search}
-              placeholder={panel.search
-                .map((field) => field.replace(/_/g, ' '))
-                .join(', ')}
+              placeholder={panel.search.map(nameOf).join(t`, `)}
               onChange={(event) => {
                 setOffset(0);
                 setSearch(event.currentTarget.value);
@@ -367,7 +368,11 @@ export function PluginPanelView({
                     </TableCell>
                     {panel.columns.map((column) => (
                       <TableCell key={column.field}>
-                        {cell(row[column.field], column.type)}
+                        {cell(
+                          row[column.field],
+                          column.type,
+                          panel.values?.[column.field],
+                        )}
                       </TableCell>
                     ))}
                     <TableCell className="pr-3 text-right">
@@ -495,12 +500,19 @@ function RowDetail({
         </SheetHeader>
         <div className="flex flex-col gap-6 px-4 pb-4">
           <Facts
-            items={fields.map((field) => [
-              <span key="t" className="capitalize">
-                {field.replace(/_/g, ' ')}
-              </span>,
-              String(row[field] ?? '—'),
-            ])}
+            items={fields.map((field) => {
+              const name = panel.names?.[field];
+              return [
+                name === undefined ? (
+                  <span key="t" className="capitalize">
+                    {field.replace(/_/g, ' ')}
+                  </span>
+                ) : (
+                  name
+                ),
+                String(row[field] ?? '—'),
+              ];
+            })}
           />
           <RelatedRows
             pluginId={pluginId}

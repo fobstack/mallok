@@ -280,7 +280,7 @@ function assertAdminCatalogs(
     if (!ADMIN_CATALOG_PATH.test(path)) {
       continue;
     }
-    const problem = adminCatalogProblem(body, keys);
+    const problem = adminCatalogProblem(body, (key) => keys.has(key));
     if (problem !== null) {
       throw new ThemePackageError(`${path} ${problem}.`);
     }

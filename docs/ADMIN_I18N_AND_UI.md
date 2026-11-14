@@ -635,6 +635,21 @@ Phase 3 as built, in the order it landed:
   official themes have `admin/zh-CN.json` (89 keys; theme names kept as
   proper names). `THEME_FORMAT.md §10.1` documents the file.
 
+- **D5, plugins' admin catalogs.** `src/core/plugin-catalog.ts` lists the
+  keys a plugin manifest allows and lays a catalog over one. A plugin passes
+  its catalogs to `definePlugin` as `adminCatalogs` (`{ "zh-CN": … }`),
+  which refuses a bad one when the plugin is defined. `GET
+  /_mallok/api/plugins` overlays the best match per plugin, and each panel
+  also carries `names` (a filter's, a detail row's or a search field's
+  name) and `values` (a badge value's words), which the panel view and
+  related rows use; neither changes anything shown in English. Two changes
+  to D5 as written: an action's key is `panels.<panel>.actions.<action>`,
+  because action ids are unique only within a panel, and a badge value's is
+  `panels.<panel>.values.<field>.<value>` for the same reason. No
+  `declared` copy is kept, as for themes: a plugin's panels never reach a
+  visitor. `PLUGIN_API.md §7.8` documents it. The test fixture plugin
+  carries a partial catalog, which `20-interface-language` reads.
+
 ## 9. Risks and open questions
 
 | Risk | Why it is real | What contains it |

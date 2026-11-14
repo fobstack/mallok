@@ -93,6 +93,36 @@ describe('definePlugin fills in what the runtime assumes', () => {
 });
 
 describe('definePlugin refuses what it cannot fix', () => {
+  it('an admin catalog that names nothing the plugin declares', () => {
+    // A typo in a key would otherwise leave that label in English with no
+    // one told (docs/PLUGIN_API.md §7.8). A version 1 plugin may have one:
+    // a catalog is part of the implementation, not of plugin.json.
+    expect(
+      definePlugin({
+        manifest: MINIMAL,
+        adminCatalogs: { 'zh-CN': { name: '示例' } },
+      }).adminCatalogs,
+    ).toEqual({ 'zh-CN': { name: '示例' } });
+    expect(() =>
+      definePlugin({
+        manifest: MINIMAL,
+        adminCatalogs: { 'zh-CN': { nmae: '示例' } },
+      }),
+    ).toThrow(/"zh-CN" admin catalog names "nmae"/);
+    expect(() =>
+      definePlugin({
+        manifest: MINIMAL,
+        adminCatalogs: { 'zh-CN': { name: 1 } },
+      }),
+    ).toThrow(/not a string/);
+    expect(() =>
+      definePlugin({
+        manifest: MINIMAL,
+        adminCatalogs: { 'zh CN': { name: '示例' } },
+      }),
+    ).toThrow(/not an interface language tag/);
+  });
+
   it('a manifest that is not there at all', () => {
     expect(() => definePlugin({} as unknown as MallokPlugin)).toThrow(
       /manifest/i,

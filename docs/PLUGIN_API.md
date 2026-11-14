@@ -1292,6 +1292,57 @@ The manifest names every plugin whose export failed. Both the CLI and the
 browser refuse to produce a backup when that list is non-empty, so an archive
 without inquiries or other plugin-owned data cannot be reported as complete.
 
+### 7.8 Admin catalogs
+
+What `plugin.json` declares for the operator — the plugin's description,
+setting and secret labels, panel, column and action labels, field labels
+and help — is English. A plugin may give it in other interface languages
+with `adminCatalogs`, keyed by language tag; by convention each catalog is
+a file `admin/<ui-locale>.json` beside `plugin.json`:
+
+```ts
+import adminZhCn from './admin/zh-CN.json';
+import manifest from './plugin.json';
+
+export const shop = definePlugin({
+  manifest,
+  adminCatalogs: { 'zh-CN': adminZhCn },
+  // …
+});
+```
+
+A catalog is a flat map from where a word is declared to that word:
+
+| Key | Replaces |
+| --- | --- |
+| `name`, `description` | The manifest's own |
+| `settings.<key>.label`, `.help`; `groups.<group>` | A setting's words; a settings group |
+| `secrets.<key>.label` | A secret's label |
+| `scripts.<src>.purpose` | A client script's `purpose` |
+| `panels.<panel>.label` | A panel's label |
+| `panels.<panel>.columns.<field>` | A column's label |
+| `panels.<panel>.names.<field>` | A field's name where the panel shows the name, not a column label: a filter, the detail view, the search box |
+| `panels.<panel>.values.<field>.<value>` | How a value of a `badge` column reads (`new`, `replied`); any value of a badge column may be named |
+| `panels.<panel>.fields.<field>.label`, `.help`; `.fields.<field>.fields.<inner>.label`, `.help`; `panels.<panel>.groups.<group>` | A record field's words, a `rows` field's inner fields', a record field group |
+| `panels.<panel>.actions.<action>.label`; `.actions.<action>.params.<field>.label`, `.help` | An action and its parameters |
+| `panels.<panel>.related.<id>.label`, `.related.<id>.columns.<field>` | A related table and its columns |
+
+- Every key is optional and **a missing key keeps the declared English**; a
+  plugin without catalogs is shown as declared.
+- `definePlugin` refuses a catalog that is not an object of strings, that is
+  keyed by something other than a language tag, or that names anything
+  `plugin.json` does not declare, so a typo fails the build rather than
+  leaving a label in English.
+- The admin sends its interface language as `Accept-Language`, and
+  `GET /_mallok/api/plugins` lays the best match over each plugin — an exact
+  tag, then the same primary language. `names` and `values` arrive on each
+  panel beside its declaration.
+- Only words change. Ids, tables, types, a `select`'s `choices` and a money
+  field's currencies are as declared: a choice is a stored value, and there
+  is no translated label for one yet (`ADMIN_I18N_AND_UI.md §9`).
+- It is part of the implementation, not of `plugin.json`, so a plugin
+  declaring `pluginApi: 1` may have one (§13.1).
+
 ## 8. Lifecycle
 
 | Stage | How |
@@ -1497,6 +1548,7 @@ inquiry cart or a booking plugin as much as a shop.
 | Per-plugin isolation of `scheduled`, and a job API (`ctx.enqueue`, `ctx.enqueueStatement`, `jobs`) | §5.5, §7.4 | 33 | Done |
 | `ctx.purgeTags` resolves to a `PurgeOutcome` (was `unknown`) | §9.1 | 47 | Done |
 | `ctx.site.prefixDefaultLocale` and the `localePrefix(locale, site)` helper | §7, `ARCHITECTURE.md §9` | 49 | Done |
+| Admin catalogs (`adminCatalogs`): declarations in the operator's language (any API version) | §7.8; `ADMIN_I18N_AND_UI.md` D5 | — | Done |
 
 Theme-side changes in the same phase are documented in `THEME_FORMAT.md`:
 layouts for plugin pages (§16, Task 26), which are optional, and the script

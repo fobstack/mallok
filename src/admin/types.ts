@@ -168,6 +168,13 @@ export interface PluginPanel {
   readonly id: string;
   readonly label: string;
   readonly type: 'table' | 'records';
+  /**
+   * What a filter, a detail row or a search field is called in the
+   * interface language, by field; a field it lacks is shown by its name.
+   */
+  readonly names?: Readonly<Record<string, string>>;
+  /** What a badge column's values read as, by field and value. */
+  readonly values?: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** `records` only: the fields of the create and edit form. */
   readonly fields?: Readonly<Record<string, RecordField>>;
   /** Columns a text search looks in; empty means no search box. */

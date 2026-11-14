@@ -69,27 +69,28 @@ describe('themeCatalogKeys', () => {
 
 describe('adminCatalogProblem', () => {
   const keys = themeCatalogKeys(manifest);
+  const allows = (key: string): boolean => keys.has(key);
 
   it('accepts a partial catalog', () => {
     expect(
       adminCatalogProblem(
         JSON.stringify({ 'kinds.product.label': '产品' }),
-        keys,
+        allows,
       ),
     ).toBeNull();
   });
 
   it('refuses what is not a map of strings', () => {
-    expect(adminCatalogProblem('{', keys)).toBe('is not valid JSON');
-    expect(adminCatalogProblem('[]', keys)).toBe('must be a JSON object');
-    expect(adminCatalogProblem('{"name":1}', keys)).toMatch(/not a string/);
+    expect(adminCatalogProblem('{', allows)).toBe('is not valid JSON');
+    expect(adminCatalogProblem('[]', allows)).toBe('must be a JSON object');
+    expect(adminCatalogProblem('{"name":1}', allows)).toMatch(/not a string/);
   });
 
   it('refuses a key the manifest does not declare, naming it', () => {
     expect(
       adminCatalogProblem(
         JSON.stringify({ 'kinds.product.fields.grde.label': '牌号' }),
-        keys,
+        allows,
       ),
     ).toBe(
       'names "kinds.product.fields.grde.label", which the manifest does not declare',

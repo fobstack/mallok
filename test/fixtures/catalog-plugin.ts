@@ -150,6 +150,20 @@ export const catalogPlugin = definePlugin({
       },
     ],
   },
+  // A partial catalog, as most will be: what it leaves out stays in English
+  // (docs/PLUGIN_API.md §7.8). `20-interface-language` reads it.
+  adminCatalogs: {
+    'zh-CN': {
+      'panels.items.label': '目录条目',
+      'panels.items.columns.name': '名称',
+      'panels.items.columns.status': '状态',
+      'panels.items.names.name': '名称',
+      'panels.items.names.code': '代码',
+      'panels.items.values.status.active': '在售',
+      'panels.items.actions.set_status.label': '设置状态',
+      'panels.items.fields.name.label': '名称',
+    },
+  },
   migrations: [
     {
       id: 'plugin:catalog:0001_init',

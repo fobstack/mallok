@@ -321,6 +321,12 @@ export interface PluginSecretVerdict {
 
 export interface PluginImplementation {
   readonly migrations?: readonly Migration[];
+  /**
+   * What the manifest declares for the operator, in other interface
+   * languages, keyed by language tag: `{ "zh-CN": <admin/zh-CN.json> }`
+   * (docs/PLUGIN_API.md §7.8). Optional; checked when the plugin is defined.
+   */
+  readonly adminCatalogs?: Readonly<Record<string, unknown>>;
   readonly hooks?: PluginHooks;
   /** Handlers keyed by the route `path` declared in the manifest. */
   readonly routes?: Readonly<Record<string, PluginRouteHandler>>;
