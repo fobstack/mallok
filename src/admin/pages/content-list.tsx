@@ -6,6 +6,9 @@
  * (docs/THEME_FORMAT.md §5.3).
  */
 
+import { i18n, type MessageDescriptor } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -37,7 +40,15 @@ const STATUS_TONE: Readonly<Record<string, 'ok' | 'warn'>> = {
   scheduled: 'warn',
 };
 
+/** A status as the list shows it; an unknown one is shown as stored. */
+const STATUS_LABELS: Readonly<Record<string, MessageDescriptor>> = {
+  published: msg`Published`,
+  draft: msg`Draft`,
+  scheduled: msg`Scheduled`,
+};
+
 export function ContentListPage(): JSX.Element {
+  const { t } = useLingui();
   const site = useSettings();
   const active = useTheme();
   const navigate = useNavigate();
@@ -92,7 +103,7 @@ export function ContentListPage(): JSX.Element {
         `/content?${query.toString()}`,
       ),
   });
-  useReportError(listed.error, 'Could not load content.');
+  useReportError(listed.error, t`Could not load content.`);
   const items = listed.data?.items ?? [];
   const hasNext = listed.data?.hasNext ?? false;
   const loading = listed.isPending;
@@ -102,7 +113,7 @@ export function ContentListPage(): JSX.Element {
   return (
     <Page className="max-w-6xl">
       <PageHeader
-        title="Content"
+        title={t`Content`}
         actions={
           <>
             <Button
@@ -110,13 +121,13 @@ export function ContentListPage(): JSX.Element {
               variant="outline"
               onClick={() => navigate('/media')}
             >
-              Media
+              <Trans>Media</Trans>
             </Button>
             <Button
               type="button"
               onClick={() => navigate(`/content/new?locale=${locale}`)}
             >
-              New
+              <Trans>New</Trans>
             </Button>
           </>
         }
@@ -124,13 +135,15 @@ export function ContentListPage(): JSX.Element {
 
       <div className="flex flex-wrap gap-4">
         <Field className="w-auto">
-          <FieldLabel htmlFor="filter-kind">Type</FieldLabel>
+          <FieldLabel htmlFor="filter-kind">
+            <Trans>Type</Trans>
+          </FieldLabel>
           <NativeSelect
             id="filter-kind"
             value={kind}
             onChange={(event) => filter('kind', event.currentTarget.value)}
           >
-            <NativeSelectOption value="">All</NativeSelectOption>
+            <NativeSelectOption value="">{t`All`}</NativeSelectOption>
             {kinds.map((entry) => (
               <NativeSelectOption key={entry} value={entry}>
                 {active.kinds[entry]?.label ?? entry}
@@ -139,7 +152,9 @@ export function ContentListPage(): JSX.Element {
           </NativeSelect>
         </Field>
         <Field className="w-auto">
-          <FieldLabel htmlFor="filter-locale">Language</FieldLabel>
+          <FieldLabel htmlFor="filter-locale">
+            <Trans>Language</Trans>
+          </FieldLabel>
           <NativeSelect
             id="filter-locale"
             value={locale}
@@ -153,25 +168,31 @@ export function ContentListPage(): JSX.Element {
           </NativeSelect>
         </Field>
         <Field className="w-auto">
-          <FieldLabel htmlFor="filter-status">Status</FieldLabel>
+          <FieldLabel htmlFor="filter-status">
+            <Trans>Status</Trans>
+          </FieldLabel>
           <NativeSelect
             id="filter-status"
             value={status}
             onChange={(event) => filter('status', event.currentTarget.value)}
           >
-            <NativeSelectOption value="">All</NativeSelectOption>
-            <NativeSelectOption value="published">Published</NativeSelectOption>
-            <NativeSelectOption value="draft">Draft</NativeSelectOption>
-            <NativeSelectOption value="scheduled">Scheduled</NativeSelectOption>
+            <NativeSelectOption value="">{t`All`}</NativeSelectOption>
+            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+              <NativeSelectOption key={value} value={value}>
+                {i18n._(label)}
+              </NativeSelectOption>
+            ))}
           </NativeSelect>
         </Field>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
+        </p>
       ) : items.length === 0 ? (
         <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          Nothing here yet.
+          <Trans>Nothing here yet.</Trans>
         </p>
       ) : (
         <div className="rounded-lg border">
@@ -179,19 +200,26 @@ export function ContentListPage(): JSX.Element {
             <TableHeader>
               <TableRow>
                 <TableHead scope="col" className="pl-3">
-                  Title
+                  <Trans>Title</Trans>
                 </TableHead>
-                <TableHead scope="col">Type</TableHead>
-                <TableHead scope="col">Status</TableHead>
-                <TableHead scope="col">Path</TableHead>
+                <TableHead scope="col">
+                  <Trans>Type</Trans>
+                </TableHead>
+                <TableHead scope="col">
+                  <Trans>Status</Trans>
+                </TableHead>
+                <TableHead scope="col">
+                  <Trans>Path</Trans>
+                </TableHead>
                 <TableHead scope="col" className="pr-3">
-                  Updated
+                  <Trans>Updated</Trans>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((item) => {
                 const known = active.kinds[item.kind] !== undefined;
+                const statusLabel = STATUS_LABELS[item.status];
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="min-w-40 pl-3 whitespace-normal">
@@ -208,16 +236,18 @@ export function ContentListPage(): JSX.Element {
                         {known ? null : (
                           <StatusBadge
                             tone="warn"
-                            title="The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
+                            title={t`The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched.`}
                           >
-                            Not in theme
+                            <Trans>Not in theme</Trans>
                           </StatusBadge>
                         )}
                       </span>
                     </TableCell>
                     <TableCell>
                       <StatusBadge tone={STATUS_TONE[item.status] ?? 'neutral'}>
-                        {item.status}
+                        {statusLabel === undefined
+                          ? item.status
+                          : i18n._(statusLabel)}
                       </StatusBadge>
                     </TableCell>
                     <TableCell className="max-w-72 min-w-48 whitespace-normal">
@@ -239,14 +269,14 @@ export function ContentListPage(): JSX.Element {
         </div>
       )}
 
-      <nav className="flex gap-2" aria-label="Pagination">
+      <nav className="flex gap-2" aria-label={t`Pagination`}>
         <Button
           type="button"
           variant="outline"
           disabled={offset === 0}
           onClick={() => page(Math.max(0, offset - PAGE))}
         >
-          Previous
+          <Trans>Previous</Trans>
         </Button>
         <Button
           type="button"
@@ -254,7 +284,7 @@ export function ContentListPage(): JSX.Element {
           disabled={!hasNext}
           onClick={() => page(offset + PAGE)}
         >
-          Next
+          <Trans>Next</Trans>
         </Button>
       </nav>
     </Page>

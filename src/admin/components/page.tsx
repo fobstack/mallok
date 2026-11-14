@@ -137,7 +137,10 @@ export function StatusBadge({
       role={role}
       title={title}
       className={cn(
-        'h-auto max-w-full whitespace-normal',
+        // A long status may wrap, but only where English would: `break-keep`
+        // stops Chinese from breaking between any two characters, which in a
+        // narrow table cell stacked "已发布" one character per line.
+        'h-auto max-w-full whitespace-normal break-keep',
         tone === 'ok' && 'border-success/30 bg-success/10 text-success',
         tone === 'warn' && 'border-warning/30 bg-warning/10 text-warning',
       )}
