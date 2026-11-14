@@ -1342,6 +1342,8 @@ A catalog is a flat map from where a word is declared to that word:
   is no translated label for one yet (`ADMIN_I18N_AND_UI.md §9`).
 - It is part of the implementation, not of `plugin.json`, so a plugin
   declaring `pluginApi: 1` may have one (§13.1).
+- The official `inquiry` plugin ships `admin/zh-CN.json`, and declares
+  `pluginApi: 1`.
 
 ## 8. Lifecycle
 

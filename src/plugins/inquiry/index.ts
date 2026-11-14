@@ -13,6 +13,7 @@ import { z } from 'zod';
 import { localePrefix, renderTextTemplate } from '../../core/index.js';
 import { defineOfficialPlugin } from '../define.js';
 import type { PluginRequestContext, RouteInput } from '../types.js';
+import adminZhCn from './admin/zh-CN.json';
 import {
   buildAutoreply,
   buildNotification,
@@ -271,6 +272,9 @@ async function inquiriesCsv(db: D1Database): Promise<string> {
 /** The official inquiry plugin. */
 export const inquiryPlugin = defineOfficialPlugin({
   manifest: manifestJson,
+  // What the admin calls this plugin's settings and panel in Simplified
+  // Chinese (docs/PLUGIN_API.md §7.8).
+  adminCatalogs: { 'zh-CN': adminZhCn },
   migrations: [{ id: 'plugin:inquiry:0001_inquiry', sql: inquirySql }],
   hooks: {
     afterRender: (html, ctx) => {
