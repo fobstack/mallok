@@ -8,7 +8,7 @@ import { Page, PageHeader } from '../components/page.js';
 export function MediaPage(): JSX.Element {
   const { t } = useLingui();
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeader
         title={t`Media`}
         lede={t`Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate.`}

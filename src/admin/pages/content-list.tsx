@@ -111,7 +111,7 @@ export function ContentListPage(): JSX.Element {
   const kinds = Object.keys(site.kinds);
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeader
         title={t`Content`}
         actions={

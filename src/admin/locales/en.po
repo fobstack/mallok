@@ -443,7 +443,7 @@ msgstr "Change password"
 msgid "Changed"
 msgstr "Changed"
 
-#: src/admin/components/saved-note.tsx
+#: src/admin/components/shell.tsx
 msgid "Changes reach visitors within {within}"
 msgstr "Changes reach visitors within {within}"
 
@@ -1182,7 +1182,7 @@ msgstr "Next"
 msgid "server.plugins.attached_owner_missing"
 msgstr "No {kind} with that translation group exists."
 
-#: src/admin/components/saved-note.tsx
+#: src/admin/pages/settings-advanced.tsx
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 
@@ -2197,6 +2197,10 @@ msgstr "What is instant, and what needs a deploy"
 #: src/admin/pages/plugins.tsx
 msgid "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
 msgstr "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
+
+#: src/admin/components/shell.tsx
+msgid "Why?"
+msgstr "Why?"
 
 #: src/admin/pages/settings-email.tsx
 msgid "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."

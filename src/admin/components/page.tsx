@@ -20,7 +20,12 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-/** A page's column: header, then sections. */
+/**
+ * A page's column: header, then sections. It takes the shell's whole column,
+ * so the notice above it, its header and its sections share one left edge
+ * and one width (docs/ADMIN_I18N_AND_UI.md, U2); a form caps its own fields
+ * instead (`Section`).
+ */
 export function Page({
   children,
   className,
@@ -29,7 +34,7 @@ export function Page({
   readonly className?: string;
 }): JSX.Element {
   return (
-    <div className={cn('flex w-full max-w-4xl flex-col gap-6', className)}>
+    <div className={cn('flex w-full flex-col gap-6', className)}>
       {children}
     </div>
   );
@@ -75,6 +80,7 @@ export function Section({
   as = 'section',
   onSubmit,
   className,
+  id,
 }: {
   readonly title?: ReactNode;
   readonly description?: ReactNode;
@@ -83,6 +89,8 @@ export function Section({
   readonly as?: 'section' | 'form';
   readonly onSubmit?: FormEventHandler<HTMLFormElement>;
   readonly className?: string;
+  /** An anchor another page links to, such as `#diagnostics`. */
+  readonly id?: string;
 }): JSX.Element {
   const titleId = useId();
   const card = (
@@ -100,7 +108,10 @@ export function Section({
         </CardHeader>
       )}
       {children === undefined ? null : (
-        <CardContent className="flex flex-col gap-4">{children}</CardContent>
+        // A field is capped at a readable width; the card spans the column.
+        <CardContent className="flex flex-col gap-4 [&_[data-slot=field]]:max-w-2xl">
+          {children}
+        </CardContent>
       )}
       {footer === undefined ? null : (
         <CardFooter className="flex flex-wrap items-center gap-3">
@@ -109,7 +120,10 @@ export function Section({
       )}
     </Card>
   );
-  const named = title === undefined ? {} : { 'aria-labelledby': titleId };
+  const named = {
+    ...(title === undefined ? {} : { 'aria-labelledby': titleId }),
+    ...(id === undefined ? {} : { id }),
+  };
   return as === 'form' ? (
     <form {...named} onSubmit={onSubmit}>
       {card}

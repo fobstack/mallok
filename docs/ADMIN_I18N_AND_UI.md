@@ -688,6 +688,20 @@ Phase 3 as built, in the order it landed:
   route's errors — plugin routes, SEO routes, the media proxy — which
   visitors meet, not operators.
 
+Phase 4 as built, in the order it landed:
+
+- **U1, U2.** The no-token note is one line — the delay, and "Why?" linking
+  to Advanced → Diagnostics (`#diagnostics`), which now carries the
+  sentence with `CF_API_TOKEN` and `CF_ZONE_ID`; §2.3 said the names were
+  already there, and they were not. The note sits inside the shell's
+  column, so it, the page header and the page share one left edge and one
+  width; `Page` no longer caps itself, and a `Section` caps its fields at
+  `max-w-2xl` instead. Measured on the way: importing React Router's `Link`
+  into `saved-note.tsx`, which the editor's lazy chunk shares with the
+  shell, made Rolldown split a 23.5 KiB chunk out of the entry and cost
+  1.4 KiB of first load in gzip framing alone; the note moved into
+  `shell.tsx`, and first load is 165.3 KiB.
+
 ## 9. Risks and open questions
 
 | Risk | Why it is real | What contains it |
