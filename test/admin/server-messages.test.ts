@@ -13,13 +13,16 @@ import { serverMessage } from '../../src/admin/server-messages.js';
  * left to the Worker's English.
  */
 
-/** Every Worker source file, as text. */
+/** Every source file a Worker error can come from, as text. */
 function workerSource(): string {
-  const root = join(import.meta.dirname, '../../src/worker');
-  return readdirSync(root, { recursive: true })
-    .map(String)
-    .filter((path) => path.endsWith('.ts'))
-    .map((path) => readFileSync(join(root, path), 'utf8'))
+  return ['../../src/worker', '../../src/core', '../../src/plugins']
+    .flatMap((directory) => {
+      const root = join(import.meta.dirname, directory);
+      return readdirSync(root, { recursive: true })
+        .map(String)
+        .filter((path) => path.endsWith('.ts'))
+        .map((path) => readFileSync(join(root, path), 'utf8'));
+    })
     .join('\n');
 }
 
@@ -60,7 +63,13 @@ describe('serverMessage', () => {
   it('knows no code the Worker never sends', () => {
     const source = workerSource();
     for (const code of Object.keys(SERVER_MESSAGES)) {
-      expect(source.includes(`'${code}'`), code).toBe(true);
+      // A reason given with a suggestion is its code plus `_use`, added
+      // where the suggestion is (`slugProblem`).
+      const written = code.endsWith('_use') ? code.slice(0, -4) : code;
+      expect(
+        source.includes(`'${code}'`) || source.includes(`'${written}'`),
+        code,
+      ).toBe(true);
     }
   });
 });

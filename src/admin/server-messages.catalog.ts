@@ -125,4 +125,142 @@ export const SERVER_MESSAGES: Readonly<Record<string, MessageDescriptor>> = {
     id: 'server.setup.credentials_incomplete',
     message: 'Provide an email and a password of at least {min} characters.',
   }),
+
+  'content.status_filter_unknown': msg({
+    id: 'server.content.status_filter_unknown',
+    message: 'Unknown status filter.',
+  }),
+  'content.kind_disabled': msg({
+    id: 'server.content.kind_disabled',
+    message: 'Kind "{kind}" is not enabled on this site.',
+  }),
+  'content.locale_disabled': msg({
+    id: 'server.content.locale_disabled',
+    message: 'Locale "{locale}" is not enabled on this site.',
+  }),
+  'content.frontmatter_invalid': msg({
+    id: 'server.content.frontmatter_invalid',
+    message: '{reason}',
+  }),
+  'content.title_missing': msg({
+    id: 'server.content.title_missing',
+    message: 'Front matter must include a non-empty "title".',
+  }),
+  'content.slug_underivable': msg({
+    id: 'server.content.slug_underivable',
+    message: 'Could not derive a slug; provide one explicitly.',
+  }),
+  'content.asset_path_invalid': msg({
+    id: 'server.content.asset_path_invalid',
+    message: 'Invalid asset path "{path}".',
+  }),
+  'content.asset_path_conflict': msg({
+    id: 'server.content.asset_path_conflict',
+    message:
+      'Asset path "{path}" conflicts with another path on a case-insensitive filesystem.',
+  }),
+  'content.exists_create_only': msg({
+    id: 'server.content.exists_create_only',
+    message:
+      '"{slug}" already exists in {locale}. Remove --create-only to update it.',
+  }),
+  'content.translation_exists': msg({
+    id: 'server.content.translation_exists',
+    message:
+      'This translation group already has an item in {locale}: the {kind} "{slug}" at {path} (id {id}). Edit that item instead.',
+  }),
+  'content.plugin_too_large': msg({
+    id: 'server.content.plugin_too_large',
+    message:
+      'A plugin made this item larger than can be stored. Nothing was saved.',
+  }),
+  'content.plugin_rewrite_invalid': msg({
+    id: 'server.content.plugin_rewrite_invalid',
+    message:
+      'A plugin rewrote this item into something that cannot be saved: {reason}',
+  }),
+  'content.path_taken': msg({
+    id: 'server.content.path_taken',
+    message:
+      '{path} is already the address of the {kind} "{slug}" ({locale}). Choose another slug.',
+  }),
+
+  'slug.too_long': msg({
+    id: 'server.slug.too_long',
+    message: 'The slug is longer than {max} characters.',
+  }),
+  'slug.too_many_segments': msg({
+    id: 'server.slug.too_many_segments',
+    message: 'The slug has {count} segments; at most {max} are allowed.',
+  }),
+  'slug.too_many_segments_use': msg({
+    id: 'server.slug.too_many_segments_use',
+    message:
+      'The slug has {count} segments; at most {max} are allowed. Use "{use}".',
+  }),
+  'slug.empty': msg({ id: 'server.slug.empty', message: 'The slug is empty.' }),
+  'slug.empty_use': msg({
+    id: 'server.slug.empty_use',
+    message: 'The slug is empty. Use "{use}".',
+  }),
+  'slug.empty_segment': msg({
+    id: 'server.slug.empty_segment',
+    message:
+      'The slug has an empty segment: it starts or ends with "/", or has "//".',
+  }),
+  'slug.empty_segment_use': msg({
+    id: 'server.slug.empty_segment_use',
+    message:
+      'The slug has an empty segment: it starts or ends with "/", or has "//". Use "{use}".',
+  }),
+  'slug.no_latin': msg({
+    id: 'server.slug.no_latin',
+    message:
+      'The slug "{slug}" has no Latin letters or digits to build a folder name from. Provide one written in Latin characters.',
+  }),
+  'slug.not_canonical_use': msg({
+    id: 'server.slug.not_canonical_use',
+    message:
+      'The slug must use lowercase Latin letters, digits and single dashes. Use "{use}".',
+  }),
+  'slug.segment_no_latin': msg({
+    id: 'server.slug.segment_no_latin',
+    message:
+      'Segment {position} ("{segment}") has no Latin letters or digits to build a folder name from. Write it in Latin characters.',
+  }),
+  'slug.segment_no_latin_use': msg({
+    id: 'server.slug.segment_no_latin_use',
+    message:
+      'Segment {position} ("{segment}") has no Latin letters or digits to build a folder name from. Write it in Latin characters. Use "{use}".',
+  }),
+  'slug.segment_not_canonical': msg({
+    id: 'server.slug.segment_not_canonical',
+    message:
+      'Segment {position} ("{segment}") must use lowercase Latin letters, digits and single dashes.',
+  }),
+  'slug.segment_not_canonical_use': msg({
+    id: 'server.slug.segment_not_canonical_use',
+    message:
+      'Segment {position} ("{segment}") must use lowercase Latin letters, digits and single dashes. Use "{use}".',
+  }),
+  'slug.list_page': msg({
+    id: 'server.slug.list_page',
+    message:
+      'A slug cannot start with "page/{page}": that is the address of a list\'s page {page}.',
+  }),
+  'slug.reserved_start': msg({
+    id: 'server.slug.reserved_start',
+    message:
+      'A slug with several segments cannot start with "{first}/": the site answers that address itself.',
+  }),
+  'slug.kind_start': msg({
+    id: 'server.slug.kind_start',
+    message:
+      'A slug with several segments cannot start with "{first}/": that is the address of the kind "{kind}".',
+  }),
+  'slug.locale_start': msg({
+    id: 'server.slug.locale_start',
+    message:
+      'A slug with several segments cannot start with "{first}/": that is the prefix of the language "{first}".',
+  }),
 };

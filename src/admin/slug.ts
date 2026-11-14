@@ -14,6 +14,7 @@ import {
   slugify,
   slugProblem,
 } from '../core/index.js';
+import { serverMessage } from './server-messages.js';
 
 /**
  * What the slug field should hold, and what to tell the operator.
@@ -68,7 +69,13 @@ export function normalizeSlugInput(typed: string): SlugNormalization {
   // `page/2` is a list's second page. Say so before the request, in its words.
   const refused = normalized === '' ? null : slugProblem(normalized);
   if (refused !== null) {
-    return { slug: typed, usable: false, notice: refused.message };
+    return {
+      slug: typed,
+      usable: false,
+      // The core's reason, said as the Worker would say it, in the interface
+      // language when the catalog has its code (D3).
+      notice: serverMessage(refused.code, refused.params) ?? refused.message,
+    };
   }
   if (normalized === typed) {
     return { slug: typed, usable: true, notice: null };

@@ -38,7 +38,7 @@ import {
 } from '../db/queries.js';
 import { purgeTags, tagsForContent } from './cache.js';
 import type { Env } from './env.js';
-import { json, problem, readJson } from './http.js';
+import { json, type ProblemParams, problem, readJson } from './http.js';
 import {
   anyPluginHas,
   beforeRenderHooks,
@@ -95,7 +95,11 @@ export async function getContentList(env: Env, url: URL): Promise<Response> {
   const offset = clamp(Number(url.searchParams.get('offset') ?? 0), 0, 1e6);
   const status = url.searchParams.get('status');
   if (status !== null && !isStatus(status)) {
-    return problem(400, 'Unknown status filter.');
+    return problem(
+      400,
+      'Unknown status filter.',
+      'content.status_filter_unknown',
+    );
   }
   const result = await listContent(env.DB, {
     ...optional('kind', url.searchParams.get('kind')),
@@ -124,7 +128,7 @@ export async function getContentList(env: Env, url: URL): Promise<Response> {
 export async function getContentItem(env: Env, id: string): Promise<Response> {
   const row = await findContentById(env.DB, id);
   if (row === null) {
-    return problem(404, 'Not found.');
+    return problem(404, 'Not found.', 'not_found');
   }
   const [siblings, siteRow] = await Promise.all([
     listTranslationsOf(env.DB, row.translation_group),
@@ -172,21 +176,31 @@ export async function saveContent(
   // needed twice below, for the save hooks and for stage one.
   const siteData = await loadSiteRenderData(env.DB);
   if (siteData.site === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const settings = parseSiteSettings(siteData.site);
   const kindConfig = settings.kinds[input.kind];
   if (kindConfig === undefined) {
-    return problem(400, `Kind "${input.kind}" is not enabled on this site.`);
+    return problem(
+      400,
+      `Kind "${input.kind}" is not enabled on this site.`,
+      'content.kind_disabled',
+      { kind: input.kind },
+    );
   }
   const locale = input.locale ?? settings.defaultLocale;
   if (!settings.locales.includes(locale)) {
-    return problem(400, `Locale "${locale}" is not enabled on this site.`);
+    return problem(
+      400,
+      `Locale "${locale}" is not enabled on this site.`,
+      'content.locale_disabled',
+      { locale },
+    );
   }
 
   const submitted = readDocument(input.markdown);
-  if (typeof submitted === 'string') {
-    return problem(400, submitted);
+  if ('code' in submitted) {
+    return problem(400, submitted.message, submitted.code, submitted.params);
   }
   const slug =
     input.slug ??
@@ -194,7 +208,11 @@ export async function saveContent(
       ? submitted.fm.slug
       : slugify(submitted.title));
   if (slug === '') {
-    return problem(400, 'Could not derive a slug; provide one explicitly.');
+    return problem(
+      400,
+      'Could not derive a slug; provide one explicitly.',
+      'content.slug_underivable',
+    );
   }
   // A slug becomes a URL and, flattened, a folder name in an export, so it
   // has to survive a round trip through a filesystem; one of several
@@ -204,7 +222,7 @@ export async function saveContent(
   const refused =
     slugProblem(slug) ?? slugPlacementProblem(slug, kindConfig.base, settings);
   if (refused !== null) {
-    return problem(400, refused.message);
+    return problem(400, refused.message, refused.code, refused.params);
   }
 
   const assets: Record<string, string> = {};
@@ -212,13 +230,20 @@ export async function saveContent(
   for (const [rawPath, sha] of Object.entries(input.assets)) {
     const normalized = normalizeRelativePath(rawPath);
     if (normalized === null) {
-      return problem(400, `Invalid asset path "${rawPath}".`);
+      return problem(
+        400,
+        `Invalid asset path "${rawPath}".`,
+        'content.asset_path_invalid',
+        { path: rawPath },
+      );
     }
     const portableKey = exportPathKey(normalized);
     if (assetKeys.has(portableKey)) {
       return problem(
         400,
         `Asset path "${rawPath}" conflicts with another path on a case-insensitive filesystem.`,
+        'content.asset_path_conflict',
+        { path: rawPath },
       );
     }
     assetKeys.add(portableKey);
@@ -236,6 +261,8 @@ export async function saveContent(
     return problem(
       409,
       `"${slug}" already exists in ${locale}. Remove --create-only to update it.`,
+      'content.exists_create_only',
+      { slug, locale },
     );
   }
 
@@ -250,6 +277,14 @@ export async function saveContent(
       return problem(
         409,
         `This translation group already has an item in ${locale}: the ${sibling.kind} "${sibling.slug}" at ${sibling.path} (id ${sibling.id}). Edit that item instead.`,
+        'content.translation_exists',
+        {
+          locale,
+          kind: sibling.kind,
+          slug: sibling.slug,
+          path: sibling.path,
+          id: sibling.id,
+        },
       );
     }
   }
@@ -289,13 +324,16 @@ export async function saveContent(
         return problem(
           422,
           'A plugin made this item larger than can be stored. Nothing was saved.',
+          'content.plugin_too_large',
         );
       }
       const rewritten = readDocument(hooked.markdown);
-      if (typeof rewritten === 'string') {
+      if ('code' in rewritten) {
         return problem(
           422,
-          `A plugin rewrote this item into something that cannot be saved: ${rewritten}`,
+          `A plugin rewrote this item into something that cannot be saved: ${rewritten.message}`,
+          'content.plugin_rewrite_invalid',
+          { reason: rewritten.message },
         );
       }
       markdown = hooked.markdown;
@@ -353,6 +391,8 @@ export async function saveContent(
     return problem(
       409,
       `${path} is already the address of the ${holder.kind} "${holder.slug}" (${holder.locale}). Choose another slug.`,
+      'content.path_taken',
+      { path, kind: holder.kind, slug: holder.slug, locale: holder.locale },
     );
   }
 
@@ -459,7 +499,7 @@ export async function removeContent(
 ): Promise<Response> {
   const existing = await findContentById(env.DB, id);
   if (existing === null) {
-    return problem(404, 'Not found.');
+    return problem(404, 'Not found.', 'not_found');
   }
   await deleteContent(env.DB, existing, new Date().toISOString());
   ctx.waitUntil(
@@ -514,12 +554,26 @@ interface ReadDocument {
 }
 
 /** Parses a Markdown source, or says why it cannot be saved. */
-function readDocument(markdown: string): ReadDocument | string {
+/** Why a document cannot be read, with the code that names it (D3). */
+interface Unreadable {
+  readonly message: string;
+  readonly code: string;
+  readonly params?: ProblemParams;
+}
+
+function readDocument(markdown: string): ReadDocument | Unreadable {
   let document: ReturnType<typeof splitFrontmatter>;
   try {
     document = splitFrontmatter(markdown);
   } catch (error) {
-    return error instanceof Error ? error.message : 'Invalid input.';
+    // The parser's own words are kept, untranslated, as the reason: they
+    // point at the line, which no catalog could.
+    const reason = error instanceof Error ? error.message : 'Invalid input.';
+    return {
+      message: reason,
+      code: 'content.frontmatter_invalid',
+      params: { reason },
+    };
   }
   // Aliases from Astro, Hugo and common CMS exports are derived into the
   // stored view; the Markdown itself is never rewritten
@@ -527,7 +581,10 @@ function readDocument(markdown: string): ReadDocument | string {
   const fm = deriveFrontmatter(document.data);
   const title = typeof fm.title === 'string' ? fm.title.trim() : '';
   if (title === '') {
-    return 'Front matter must include a non-empty "title".';
+    return {
+      message: 'Front matter must include a non-empty "title".',
+      code: 'content.title_missing',
+    };
   }
   return { document, fm, title };
 }

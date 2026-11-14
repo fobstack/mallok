@@ -17,6 +17,11 @@ msgstr "、"
 msgid "\"{actionLabel}\" failed."
 msgstr "“{actionLabel}”执行失败。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.exists_create_only"
+msgstr "“{slug}”在 {locale} 中已存在。去掉 --create-only 即可更新它。"
+
 #: src/admin/media.ts
 msgid "\"{type}\" is not accepted."
 msgstr "不支持“{type}”类型的文件。"
@@ -100,9 +105,19 @@ msgstr "{moved, plural, other {已迁移 # 个 URL，均已设置重定向；导
 msgid "{panelLabel} detail"
 msgstr "{panelLabel}详情"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.path_taken"
+msgstr "{path} 已是 {kind}“{slug}”（{locale}）的地址。请换一个 slug。"
+
 #: src/admin/pages/plugins.tsx
 msgid "{pluginName} enabled"
 msgstr "启用 {pluginName}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.frontmatter_invalid"
+msgstr "Front matter 有误：{reason}"
 
 #: src/admin/pages/setup.tsx
 msgid "{records, plural, one {# sample record} other {# sample records}}"
@@ -140,6 +155,16 @@ msgstr "内容修改"
 msgid "A language code such as <0>en</0> or <1>zh</1>. It has no URL prefix; every other language does."
 msgstr "语言代码，例如 <0>en</0> 或 <1>zh</1>。主语言不带 URL 前缀，其他语言都带。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.plugin_too_large"
+msgstr "某个插件让这条内容超出了可存储的大小。没有保存任何内容。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.plugin_rewrite_invalid"
+msgstr "某个插件把这条内容改写成了无法保存的形式：{reason}"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "a plugin switch"
 msgstr "插件开关"
@@ -151,6 +176,26 @@ msgstr "定时发布"
 #: src/admin/pages/settings-advanced.tsx
 msgid "a settings change"
 msgstr "设置修改"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.list_page"
+msgstr "slug 不能以“page/{page}”开头：那是列表第 {page} 页的地址。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.kind_start"
+msgstr "多段 slug 不能以“{first}/”开头：那是内容类型“{kind}”的地址。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.locale_start"
+msgstr "多段 slug 不能以“{first}/”开头：那是语言“{first}”的前缀。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.reserved_start"
+msgstr "多段 slug 不能以“{first}/”开头：站点自身会响应这个地址。"
 
 #: src/admin/pages/setup.tsx
 msgid "A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site."
@@ -271,6 +316,11 @@ msgstr "外观"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Applied migrations"
 msgstr "已执行的迁移"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.asset_path_conflict"
+msgstr "资源路径“{path}”在不区分大小写的文件系统上与另一个路径冲突。"
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "Assets"
@@ -472,6 +522,11 @@ msgstr "创建失败。"
 #: src/admin/components/record-editor.tsx
 msgid "Could not delete."
 msgstr "删除失败。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.slug_underivable"
+msgstr "无法自动生成 slug，请手动填写。"
 
 #: src/admin/pages/content-list.tsx
 msgid "Could not load content."
@@ -712,6 +767,11 @@ msgstr "来自 {pluginName} 插件。这条内容的所有语言版本共用这�
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.content.title_missing"
+msgstr "Front matter 必须包含非空的 “title”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.account.ui_locale_invalid"
 msgstr "界面语言需要是 “zh-CN” 这样的语言标签，或者为 null。"
 
@@ -758,6 +818,11 @@ msgstr "界面语言"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
+msgid "server.content.asset_path_invalid"
+msgstr "资源路径“{path}”无效。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
 msgid "server.auth.invalid_credentials"
 msgstr "邮箱或密码不正确。"
 
@@ -768,6 +833,11 @@ msgstr "保留"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Key set, no site sender — only plugins with their own send"
 msgstr "已设置密钥，但没有站点发件地址 — 只有自带发件地址的插件能发送"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.kind_disabled"
+msgstr "本站点未启用内容类型“{kind}”。"
 
 #: src/admin/pages/content-list.tsx
 msgid "Language"
@@ -804,6 +874,11 @@ msgstr "浅色"
 #: src/admin/pages/setup.tsx
 msgid "Loading…"
 msgstr "正在加载…"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.locale_disabled"
+msgstr "本站点未启用语言“{locale}”。"
 
 #: src/admin/pages/setup.tsx
 msgid "Main language"
@@ -1244,9 +1319,29 @@ msgstr "搜索"
 msgid "Secrets"
 msgstr "密钥"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_no_latin"
+msgstr "第 {position} 段（“{segment}”）里没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
+
 #: src/admin/slug.ts
 msgid "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
 msgstr "第 {position} 段（“{segment}”）里没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_no_latin_use"
+msgstr "第 {position} 段（“{segment}”）里没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。可改用“{use}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_not_canonical"
+msgstr "第 {position} 段（“{segment}”）只能使用小写拉丁字母、数字和单个连字符。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_not_canonical_use"
+msgstr "第 {position} 段（“{segment}”）只能使用小写拉丁字母、数字和单个连字符。可改用“{use}”。"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Select"
@@ -1510,6 +1605,11 @@ msgstr "站点目前是空的，等待第一个页面。"
 msgid "The site's admin"
 msgstr "站点后台"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.no_latin"
+msgstr "slug“{slug}”中没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
+
 #: src/admin/slug.ts
 msgid "The slug became \"{normalized}\", because a slug is also a folder name in an export."
 msgstr "slug 已改为“{normalized}”，因为导出时 slug 也是目录名。"
@@ -1517,6 +1617,46 @@ msgstr "slug 已改为“{normalized}”，因为导出时 slug 也是目录名�
 #: src/admin/slug.ts
 msgid "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
 msgstr "slug 已改为“{normalized}”：slug 最多 {MAX_SLUG_SEGMENTS} 段。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_many_segments"
+msgstr "slug 有 {count} 段，最多允许 {max} 段。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_many_segments_use"
+msgstr "slug 有 {count} 段，最多允许 {max} 段。可改用“{use}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_segment"
+msgstr "slug 中有空段：以“/”开头或结尾，或者包含“//”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_segment_use"
+msgstr "slug 中有空段：以“/”开头或结尾，或者包含“//”。可改用“{use}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty"
+msgstr "slug 为空。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_use"
+msgstr "slug 为空。可改用“{use}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_long"
+msgstr "slug 超过了 {max} 个字符。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.not_canonical_use"
+msgstr "slug 只能使用小写拉丁字母、数字和单个连字符。可改用“{use}”。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -1582,6 +1722,11 @@ msgstr "这个站点没有设置密钥，因此不会创建管理员。请在项
 msgid "server.auth.token_scope"
 msgstr "这个令牌缺少“{scope}”权限范围。"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.translation_exists"
+msgstr "这组翻译在 {locale} 中已有内容：位于 {path} 的 {kind}“{slug}”（ID {id}）。请直接编辑那一项。"
+
 #: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
 msgid "Title"
@@ -1617,6 +1762,11 @@ msgstr "未知错误"
 #: src/admin/server-messages.catalog.ts
 msgid "server.tokens.scope_unknown"
 msgstr "未知的权限范围：{scopes}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.status_filter_unknown"
+msgstr "未知的状态筛选条件。"
 
 #: src/admin/media.ts
 msgid "unknown type"
