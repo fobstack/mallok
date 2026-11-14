@@ -101,13 +101,13 @@ msgstr "{items, plural, one {# item} other {# items}} and {files, plural, one {#
 msgid "{label}: currency"
 msgstr "{label}: currency"
 
+#: src/admin/components/content-language.tsx
+msgid "{language}, default"
+msgstr "{language}, default"
+
 #: src/admin/components/record-editor.tsx
 msgid "{limit, plural, one {At most # row.} other {At most # rows.}}"
 msgstr "{limit, plural, one {At most # row.} other {At most # rows.}}"
-
-#: src/admin/pages/settings-appearance.tsx
-msgid "{locale} (default)"
-msgstr "{locale} (default)"
 
 #: src/admin/form/types.ts
 msgid "{max, plural, one {At most # entry.} other {At most # entries.}}"
@@ -120,6 +120,10 @@ msgstr "{max, plural, one {Must be at most # character.} other {Must be at most 
 #: src/admin/pages/settings-site.tsx
 msgid "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
 msgstr "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
+
+#: src/admin/components/content-language.tsx
+msgid "{name} ({code})"
+msgstr "{name} ({code})"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "{panelLabel} detail"
@@ -299,6 +303,7 @@ msgstr "Advanced"
 msgid "Affects cached pages"
 msgstr "Affects cached pages"
 
+#: src/admin/components/content-language.tsx
 #: src/admin/pages/content-list.tsx
 msgid "All"
 msgstr "All"
@@ -564,10 +569,6 @@ msgstr "Colour scheme"
 msgid "Comma separated. You can add more later."
 msgstr "Comma separated. You can add more later."
 
-#: src/admin/components/saved-note.tsx
-msgid "Configure a cache-purge token to make saves appear immediately."
-msgstr "Configure a cache-purge token to make saves appear immediately."
-
 #: src/admin/pages/settings-advanced.tsx
 msgid "Configured"
 msgstr "Configured"
@@ -580,6 +581,11 @@ msgstr "Content"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Content items"
 msgstr "Content items"
+
+#: src/admin/components/content-language.tsx
+#: src/admin/pages/editor.tsx
+msgid "Content language"
+msgstr "Content language"
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "Content types"
@@ -680,8 +686,8 @@ msgid "Could not switch."
 msgstr "Could not switch."
 
 #: src/admin/pages/editor.tsx
-msgid "Create {slotLocale}"
-msgstr "Create {slotLocale}"
+msgid "Create {slotLanguage}"
+msgstr "Create {slotLanguage}"
 
 #: src/admin/pages/setup.tsx
 msgid "Create the administrator"
@@ -796,10 +802,6 @@ msgstr "Edit {rowName}"
 #: src/admin/components/record-editor.tsx
 msgid "Edit: {panelLabel}"
 msgstr "Edit: {panelLabel}"
-
-#: src/admin/pages/settings-appearance.tsx
-msgid "Editing"
-msgstr "Editing"
 
 #: src/admin/components/shell.tsx
 #: src/admin/pages/login.tsx
@@ -973,10 +975,6 @@ msgstr "Key set, no site sender — only plugins with their own send"
 #: src/admin/server-messages.catalog.ts
 msgid "server.content.kind_disabled"
 msgstr "Kind \"{kind}\" is not enabled on this site."
-
-#: src/admin/pages/content-list.tsx
-msgid "Language"
-msgstr "Language"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Language code"
@@ -1536,18 +1534,11 @@ msgstr "Save sender"
 msgid "Save settings"
 msgstr "Save settings"
 
+#: src/admin/components/saved-note.tsx
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx
 msgid "Saved"
 msgstr "Saved"
-
-#: src/admin/components/saved-note.tsx
-msgid "Saved — live now"
-msgstr "Saved — live now"
-
-#: src/admin/components/saved-note.tsx
-msgid "Saved — visitors see it within {within}"
-msgstr "Saved — visitors see it within {within}"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
@@ -1678,8 +1669,8 @@ msgid "Shown by most themes under the site name, and as the home page descriptio
 msgstr "Shown by most themes under the site name, and as the home page description."
 
 #: src/admin/pages/settings-site.tsx
-msgid "Shown on pages in {locale}. Empty uses the tagline above."
-msgstr "Shown on pages in {locale}. Empty uses the tagline above."
+msgid "Shown on pages in {taglineLanguage}. Empty uses the tagline above."
+msgstr "Shown on pages in {taglineLanguage}. Empty uses the tagline above."
 
 #: src/admin/components/ui/sidebar.tsx
 msgid "Sidebar"
@@ -1779,8 +1770,8 @@ msgid "Tagline"
 msgstr "Tagline"
 
 #: src/admin/pages/settings-site.tsx
-msgid "Tagline ({locale})"
-msgstr "Tagline ({locale})"
+msgid "Tagline in {taglineLanguage}"
+msgstr "Tagline in {taglineLanguage}"
 
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx
@@ -2173,8 +2164,8 @@ msgid "Value"
 msgstr "Value"
 
 #: src/admin/pages/settings-appearance.tsx
-msgid "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
-msgstr "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
+msgid "Values you change here apply only to {editingLanguage}. Anything you leave alone follows the {defaultLanguage} value."
+msgstr "Values you change here apply only to {editingLanguage}. Anything you leave alone follows the {defaultLanguage} value."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -2189,6 +2180,14 @@ msgstr "Variants must be WebP."
 #: src/admin/pages/setup.tsx
 msgid "View the site"
 msgstr "View the site"
+
+#: src/admin/components/saved-note.tsx
+msgid "Visitors see it now."
+msgstr "Visitors see it now."
+
+#: src/admin/components/saved-note.tsx
+msgid "Visitors see it within {within}."
+msgstr "Visitors see it within {within}."
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "What is instant, and what needs a deploy"

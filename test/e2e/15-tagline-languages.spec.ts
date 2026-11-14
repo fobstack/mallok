@@ -14,7 +14,9 @@ test('a further language gets its own tagline field, and it is kept', async ({
   await signIn(page);
   await page.goto('/_mallok/app/settings');
   const main = page.getByLabel('Tagline', { exact: true });
-  const chinese = page.getByLabel('Tagline (zh)', { exact: true });
+  // Since U10 another language's tagline sits behind the one "Content
+  // language" select, and the language is named, not shown as a code.
+  const chinese = page.getByLabel('Tagline in Chinese (zh)', { exact: true });
   await expect(chinese).toBeVisible();
   await expect(chinese).toHaveValue('');
   const before = await main.inputValue();
@@ -30,19 +32,22 @@ test('a further language gets its own tagline field, and it is kept', async ({
 
   // After a reload both come from the server: the map, taken apart again.
   await page.reload();
-  await expect(page.getByLabel('Tagline (zh)', { exact: true })).toHaveValue(
-    '钛材，按图加工',
-  );
+  await expect(
+    page.getByLabel('Tagline in Chinese (zh)', { exact: true }),
+  ).toHaveValue('钛材，按图加工');
   await expect(page.getByLabel('Tagline', { exact: true })).toHaveValue(before);
 
   // Emptying it goes back to one tagline for every language.
-  await page.getByLabel('Tagline (zh)', { exact: true }).fill('');
+  await page.getByLabel('Tagline in Chinese (zh)', { exact: true }).fill('');
   await page.getByRole('button', { name: 'Save' }).first().click();
-  // The note says when visitors will see it, not that it is live.
-  await expect(page.getByText(/^Saved — /)).toBeVisible();
+  // The note says when visitors will see it, not that it is live. Since
+  // U15 it is the green "Saved" with the delay as plain text after it,
+  // in one status region, rather than one orange "Saved — …" badge.
+  const note = page.getByRole('status').filter({ hasText: 'Saved' });
+  await expect(note).toContainText(/Visitors see it within /);
   await page.reload();
-  await expect(page.getByLabel('Tagline (zh)', { exact: true })).toHaveValue(
-    '',
-  );
+  await expect(
+    page.getByLabel('Tagline in Chinese (zh)', { exact: true }),
+  ).toHaveValue('');
   await expect(page.getByLabel('Tagline', { exact: true })).toHaveValue(before);
 });

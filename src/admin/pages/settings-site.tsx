@@ -16,6 +16,10 @@ import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
 import {
+  ContentLanguageSelect,
+  useContentLanguageName,
+} from '../components/content-language.js';
+import {
   Code,
   Page,
   PageHeader,
@@ -105,26 +109,26 @@ export function SiteSettingsPage(): JSX.Element {
   });
   const [saved, setSaved] = useState(false);
 
-  // A tagline field per further language, right under the tagline itself.
-  const fields: readonly FieldSpec[] = siteFields.flatMap((spec) =>
-    spec.name === 'tagline'
-      ? [
-          spec,
-          ...otherLocales.map(
-            (locale): FieldSpec => ({
-              name: taglineField(locale),
-              field: {
-                type: 'text',
-                label: t`Tagline (${locale})`,
-                required: false,
-                max: 300,
-                help: t`Shown on pages in ${locale}. Empty uses the tagline above.`,
-              },
-            }),
-          ),
-        ]
-      : [spec],
-  );
+  // Other languages' taglines sit behind one content-language select, under
+  // the tagline itself, rather than one text box per language (U10, U12).
+  // The form keeps every language's value; the select only says which is
+  // shown.
+  const [taglineLocale, setTaglineLocale] = useState(otherLocales[0] ?? '');
+  const nameOf = useContentLanguageName();
+  const taglineLanguage = nameOf(taglineLocale);
+  const splitAt = siteFields.findIndex((spec) => spec.name === 'tagline') + 1;
+  const before = siteFields.slice(0, splitAt);
+  const after = siteFields.slice(splitAt);
+  const otherTagline: FieldSpec = {
+    name: taglineField(taglineLocale),
+    field: {
+      type: 'text',
+      label: t`Tagline in ${taglineLanguage}`,
+      required: false,
+      max: 300,
+      help: t`Shown on pages in ${taglineLanguage}. Empty uses the tagline above.`,
+    },
+  };
 
   /** One string when no language has its own tagline, otherwise the map. */
   const taglineValue = (
@@ -178,7 +182,26 @@ export function SiteSettingsPage(): JSX.Element {
           </>
         }
       >
-        <SchemaForm specs={fields} control={form.control} idPrefix="site" />
+        <SchemaForm specs={before} control={form.control} idPrefix="site" />
+        {otherLocales.length === 0 ? null : (
+          <div className="flex flex-col gap-3 rounded-lg border p-3">
+            <ContentLanguageSelect
+              id="site-tagline-locale"
+              value={taglineLocale}
+              onChange={setTaglineLocale}
+              locales={otherLocales}
+            />
+            <SchemaForm
+              // A different language is a different field, not the same one
+              // with another value: its control must not carry typing over.
+              key={taglineLocale}
+              specs={[otherTagline]}
+              control={form.control}
+              idPrefix="site"
+            />
+          </div>
+        )}
+        <SchemaForm specs={after} control={form.control} idPrefix="site" />
       </Section>
 
       <LocaleSection />

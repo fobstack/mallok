@@ -101,13 +101,13 @@ msgstr "{fileName} 中包含 {items, plural, other {# 项内容}}和 {files, plu
 msgid "{label}: currency"
 msgstr "{label}：币种"
 
+#: src/admin/components/content-language.tsx
+msgid "{language}, default"
+msgstr "{language}，默认"
+
 #: src/admin/components/record-editor.tsx
 msgid "{limit, plural, one {At most # row.} other {At most # rows.}}"
 msgstr "{limit, plural, other {最多 # 行。}}"
-
-#: src/admin/pages/settings-appearance.tsx
-msgid "{locale} (default)"
-msgstr "{locale}（默认）"
 
 #: src/admin/form/types.ts
 msgid "{max, plural, one {At most # entry.} other {At most # entries.}}"
@@ -120,6 +120,10 @@ msgstr "{max, plural, other {不能超过 # 个字符。}}"
 #: src/admin/pages/settings-site.tsx
 msgid "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
 msgstr "{moved, plural, other {已迁移 # 个 URL，均已设置重定向；导航链接已同步改写。}}"
+
+#: src/admin/components/content-language.tsx
+msgid "{name} ({code})"
+msgstr "{name}（{code}）"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "{panelLabel} detail"
@@ -299,6 +303,7 @@ msgstr "高级"
 msgid "Affects cached pages"
 msgstr "影响缓存页面"
 
+#: src/admin/components/content-language.tsx
 #: src/admin/pages/content-list.tsx
 msgid "All"
 msgstr "全部"
@@ -564,10 +569,6 @@ msgstr "配色"
 msgid "Comma separated. You can add more later."
 msgstr "用逗号分隔。之后还可以添加更多。"
 
-#: src/admin/components/saved-note.tsx
-msgid "Configure a cache-purge token to make saves appear immediately."
-msgstr "配置缓存清除令牌后，保存即可立即生效。"
-
 #: src/admin/pages/settings-advanced.tsx
 msgid "Configured"
 msgstr "已配置"
@@ -580,6 +581,11 @@ msgstr "内容"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Content items"
 msgstr "内容条目"
+
+#: src/admin/components/content-language.tsx
+#: src/admin/pages/editor.tsx
+msgid "Content language"
+msgstr "内容语言"
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "Content types"
@@ -680,8 +686,8 @@ msgid "Could not switch."
 msgstr "切换失败。"
 
 #: src/admin/pages/editor.tsx
-msgid "Create {slotLocale}"
-msgstr "创建 {slotLocale}"
+msgid "Create {slotLanguage}"
+msgstr "创建{slotLanguage}版本"
 
 #: src/admin/pages/setup.tsx
 msgid "Create the administrator"
@@ -796,10 +802,6 @@ msgstr "编辑 {rowName}"
 #: src/admin/components/record-editor.tsx
 msgid "Edit: {panelLabel}"
 msgstr "编辑：{panelLabel}"
-
-#: src/admin/pages/settings-appearance.tsx
-msgid "Editing"
-msgstr "正在编辑"
 
 #: src/admin/components/shell.tsx
 #: src/admin/pages/login.tsx
@@ -973,10 +975,6 @@ msgstr "已设置密钥，但没有站点发件地址 — 只有自带发件地�
 #: src/admin/server-messages.catalog.ts
 msgid "server.content.kind_disabled"
 msgstr "本站点未启用内容类型“{kind}”。"
-
-#: src/admin/pages/content-list.tsx
-msgid "Language"
-msgstr "语言"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Language code"
@@ -1536,18 +1534,11 @@ msgstr "保存发件人"
 msgid "Save settings"
 msgstr "保存设置"
 
+#: src/admin/components/saved-note.tsx
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx
 msgid "Saved"
 msgstr "已保存"
-
-#: src/admin/components/saved-note.tsx
-msgid "Saved — live now"
-msgstr "已保存 — 已生效"
-
-#: src/admin/components/saved-note.tsx
-msgid "Saved — visitors see it within {within}"
-msgstr "已保存 — 访客将在 {within}内看到"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
@@ -1678,8 +1669,8 @@ msgid "Shown by most themes under the site name, and as the home page descriptio
 msgstr "大多数主题会显示在站点名称下方，并用作首页描述。"
 
 #: src/admin/pages/settings-site.tsx
-msgid "Shown on pages in {locale}. Empty uses the tagline above."
-msgstr "显示在 {locale} 页面上。留空则使用上面的标语。"
+msgid "Shown on pages in {taglineLanguage}. Empty uses the tagline above."
+msgstr "显示在{taglineLanguage}页面上。留空则使用上面的标语。"
 
 #: src/admin/components/ui/sidebar.tsx
 msgid "Sidebar"
@@ -1779,8 +1770,8 @@ msgid "Tagline"
 msgstr "标语"
 
 #: src/admin/pages/settings-site.tsx
-msgid "Tagline ({locale})"
-msgstr "标语（{locale}）"
+msgid "Tagline in {taglineLanguage}"
+msgstr "{taglineLanguage}标语"
 
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx
@@ -2173,8 +2164,8 @@ msgid "Value"
 msgstr "值"
 
 #: src/admin/pages/settings-appearance.tsx
-msgid "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."
-msgstr "这里修改的值只对 {editingLocale} 生效。没有改动的选项沿用 {editingDefaultLocale} 的值。"
+msgid "Values you change here apply only to {editingLanguage}. Anything you leave alone follows the {defaultLanguage} value."
+msgstr "这里修改的值只对{editingLanguage}生效。没有改动的选项沿用{defaultLanguage}的值。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -2189,6 +2180,14 @@ msgstr "缩略图必须是 WebP 格式。"
 #: src/admin/pages/setup.tsx
 msgid "View the site"
 msgstr "查看站点"
+
+#: src/admin/components/saved-note.tsx
+msgid "Visitors see it now."
+msgstr "访客现在就能看到。"
+
+#: src/admin/components/saved-note.tsx
+msgid "Visitors see it within {within}."
+msgstr "访客将在 {within}内看到。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "What is instant, and what needs a deploy"

@@ -31,6 +31,7 @@ import {
   splitFrontmatter,
 } from '../../core/index.js';
 import { ApiError, api } from '../api.js';
+import { useContentLanguageName } from '../components/content-language.js';
 import { MarkdownEditor } from '../components/markdown-editor.js';
 import { MediaPicker } from '../components/media-library.js';
 import { StatusBadge } from '../components/page.js';
@@ -599,6 +600,7 @@ function TranslationBar(props: {
 }): JSX.Element | null {
   const navigate = useNavigate();
   const { t } = useLingui();
+  const nameOf = useContentLanguageName();
   if (props.translations.length < 2) {
     return null;
   }
@@ -607,12 +609,16 @@ function TranslationBar(props: {
       className="flex flex-wrap items-center gap-2 border-b px-3 py-2"
       aria-label={t`Translations`}
     >
+      {/* Named as everywhere else a content language is chosen (U10). */}
+      <span className="text-xs font-medium text-muted-foreground">
+        <Trans>Content language</Trans>
+      </span>
       {props.translations.map((slot) => {
-        const slotLocale = slot.locale;
+        const slotLanguage = nameOf(slot.locale);
         if (slot.locale === props.current) {
           return (
             <StatusBadge key={slot.locale} tone="ok">
-              {slot.locale}
+              {slotLanguage}
             </StatusBadge>
           );
         }
@@ -625,7 +631,7 @@ function TranslationBar(props: {
               size="sm"
               onClick={() => navigate(`/content/${slot.id}`)}
             >
-              {slot.locale}
+              {slotLanguage}
             </Button>
           );
         }
@@ -641,7 +647,7 @@ function TranslationBar(props: {
               )
             }
           >
-            {t`Create ${slotLocale}`}
+            {t`Create ${slotLanguage}`}
           </Button>
         );
       })}
