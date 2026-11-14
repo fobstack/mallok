@@ -25,9 +25,18 @@ export async function postPurgeAll(env: Env): Promise<Response> {
   if (result.attempted && !result.ok) {
     // Asked, and refused or unreachable. Saying "cleared" here would leave
     // the operator looking at stale pages they were just told were gone.
+    const detail = (result.detail ?? '').slice(0, 300);
     return problem(
       502,
-      `Cloudflare did not purge the cache${result.status === undefined ? '' : ` (HTTP ${result.status})`}. ${purgeFailureAdvice(result.status)} ${(result.detail ?? '').slice(0, 300)}`.trim(),
+      `Cloudflare did not purge the cache${result.status === undefined ? '' : ` (HTTP ${result.status})`}. ${purgeFailureAdvice(result.status)} ${detail}`.trim(),
+      // Which advice was given, named; Cloudflare's own reply stays as it
+      // came (D3). `none` stands for a request that got no status at all.
+      result.status === 401 || result.status === 403
+        ? 'cache.purge_refused'
+        : result.status === 429
+          ? 'cache.purge_limited'
+          : 'cache.purge_failed',
+      { status: result.status ?? 'none', detail },
     );
   }
   return json({

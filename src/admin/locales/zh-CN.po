@@ -541,6 +541,21 @@ msgstr "前台 JavaScript"
 msgid "Close"
 msgstr "关闭"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_failed"
+msgstr "Cloudflare 未能清除缓存{status, select, none {} other {（HTTP {status}）}}。请检查缓存清除令牌是否仍然有效，并且有权清除这个区域的缓存。{detail}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_limited"
+msgstr "Cloudflare 未能清除缓存{status, select, none {} other {（HTTP {status}）}}。Cloudflare 正在限制这个账号的清除请求；在此期间页面会按缓存有效期自行过期。{detail}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_refused"
+msgstr "Cloudflare 未能清除缓存{status, select, none {} other {（HTTP {status}）}}。缓存清除令牌被拒绝：它需要这个区域的 Zone → Cache Purge → Purge 权限（不是 Cache Rules，那个权限清除不了任何缓存），并且 CF_ZONE_ID 必须是这个区域的 ID。{detail}"
+
 #: src/admin/components/account-menu.tsx
 msgid "Colour scheme"
 msgstr "配色"
@@ -915,6 +930,11 @@ msgstr "立即生效"
 #: src/admin/components/language-picker.tsx
 msgid "Interface language"
 msgstr "界面语言"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.internal_error"
+msgstr "服务器内部错误。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts

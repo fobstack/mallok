@@ -551,4 +551,23 @@ export const SERVER_MESSAGES: Readonly<Record<string, MessageDescriptor>> = {
     id: 'server.field.max_rows',
     message: 'At most {max} rows.',
   }),
+  internal_error: msg({
+    id: 'server.internal_error',
+    message: 'Internal error.',
+  }),
+  'cache.purge_refused': msg({
+    id: 'server.cache.purge_refused',
+    message:
+      "Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. The purge token was refused. It needs Zone → Cache Purge → Purge on this zone — not Cache Rules, which purges nothing — and CF_ZONE_ID must be this zone's id. {detail}",
+  }),
+  'cache.purge_limited': msg({
+    id: 'server.cache.purge_limited',
+    message:
+      'Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. Cloudflare is limiting purge requests for this account; pages expire on their own meanwhile. {detail}',
+  }),
+  'cache.purge_failed': msg({
+    id: 'server.cache.purge_failed',
+    message:
+      'Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. Check that the purge token is still valid and may purge this zone. {detail}',
+  }),
 };

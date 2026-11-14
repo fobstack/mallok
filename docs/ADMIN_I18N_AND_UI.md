@@ -669,6 +669,25 @@ Phase 3 as built, in the order it landed:
   the router's own refusals, sign-in, the account, tokens and every setup
   step (25 codes).
 
+- **D3, the rest of what the admin can be told.** Content saves and every
+  slug reason (`SlugProblem` gains `code` and `params`, so the editor's
+  slug field says them in Chinese before any request); media uploads;
+  settings, email and export; every plugin endpoint; a failed cache purge
+  (its advice named by `cache.purge_refused`, `_limited` or `_failed`, with
+  Cloudflare's reply as `detail`); and the handler's own 404, 503 and 500.
+  Field problems are named as well: `validateRecord` returns `errorCodes`
+  beside `errors`, a records panel's or an action's refusal sends them, and
+  `api.ts` words each field from its code. 128 codes in all; the catalog
+  holds 500 messages. First load stays 166.1 KiB.
+  **Still English, on purpose:** what a plugin's own code refuses with (its
+  `onContentSave` refusal, a records handler's field messages — D5's
+  `errors.<code>` is not built); the reasons quoted inside a coded sentence
+  that come from a library or from Cloudflare (a YAML parse error, a zod
+  issue, a purge reply); the admin app's "not part of this build", which a
+  browser shows as raw JSON before the admin exists; and every public
+  route's errors — plugin routes, SEO routes, the media proxy — which
+  visitors meet, not operators.
+
 ## 9. Risks and open questions
 
 | Risk | Why it is real | What contains it |

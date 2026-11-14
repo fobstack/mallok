@@ -541,6 +541,21 @@ msgstr "Client JavaScript"
 msgid "Close"
 msgstr "Close"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_failed"
+msgstr "Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. Check that the purge token is still valid and may purge this zone. {detail}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_limited"
+msgstr "Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. Cloudflare is limiting purge requests for this account; pages expire on their own meanwhile. {detail}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_refused"
+msgstr "Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. The purge token was refused. It needs Zone → Cache Purge → Purge on this zone — not Cache Rules, which purges nothing — and CF_ZONE_ID must be this zone's id. {detail}"
+
 #: src/admin/components/account-menu.tsx
 msgid "Colour scheme"
 msgstr "Colour scheme"
@@ -915,6 +930,11 @@ msgstr "Instant"
 #: src/admin/components/language-picker.tsx
 msgid "Interface language"
 msgstr "Interface language"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.internal_error"
+msgstr "Internal error."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts

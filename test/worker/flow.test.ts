@@ -407,6 +407,10 @@ describe('walking skeleton', () => {
   it('returns 404 for unknown internal paths and hides internals', async () => {
     const missing = await get('/_mallok/whatever');
     expect(missing.status).toBe(404);
-    expect(await missing.text()).toBe('{"error":"Not found."}');
+    // Nothing but the sentence and the code that names it (D3 of
+    // docs/ADMIN_I18N_AND_UI.md): no path, no stack, no binding.
+    expect(await missing.text()).toBe(
+      '{"error":"Not found.","code":"not_found"}',
+    );
   });
 });
