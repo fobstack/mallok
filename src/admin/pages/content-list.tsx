@@ -11,8 +11,7 @@
  * (docs/ADMIN_I18N_AND_UI.md, U4–U6).
  */
 
-import { i18n, type MessageDescriptor } from '@lingui/core';
-import { msg } from '@lingui/core/macro';
+import { i18n } from '@lingui/core';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
@@ -36,6 +35,10 @@ import {
   ContentLanguageSelect,
   useContentLanguageName,
 } from '../components/content-language.js';
+import {
+  ContentStatusBadge,
+  STATUS_LABELS,
+} from '../components/content-status.js';
 import { EmptyState } from '../components/empty-state.js';
 import { Page, PageHeader, StatusBadge } from '../components/page.js';
 import { formatDate } from '../format.js';
@@ -44,19 +47,6 @@ import { keys, useSettings, useTheme } from '../queries.js';
 import type { ContentListItem } from '../types.js';
 
 const PAGE = 25;
-
-/** A status's badge colour: live is good, waiting is a caution. */
-const STATUS_TONE: Readonly<Record<string, 'ok' | 'warn'>> = {
-  published: 'ok',
-  scheduled: 'warn',
-};
-
-/** A status as the list shows it; an unknown one is shown as stored. */
-const STATUS_LABELS: Readonly<Record<string, MessageDescriptor>> = {
-  published: msg`Published`,
-  draft: msg`Draft`,
-  scheduled: msg`Scheduled`,
-};
 
 export function ContentListPage(): JSX.Element {
   const { t } = useLingui();
@@ -260,7 +250,6 @@ export function ContentListPage(): JSX.Element {
             <TableBody>
               {items.map((item) => {
                 const known = active.kinds[item.kind] !== undefined;
-                const statusLabel = STATUS_LABELS[item.status];
                 const typeCell = (
                   <span className="flex flex-wrap items-center gap-1.5">
                     {kindLabel(item.kind)}
@@ -274,13 +263,7 @@ export function ContentListPage(): JSX.Element {
                     )}
                   </span>
                 );
-                const statusBadge = (
-                  <StatusBadge tone={STATUS_TONE[item.status] ?? 'neutral'}>
-                    {statusLabel === undefined
-                      ? item.status
-                      : i18n._(statusLabel)}
-                  </StatusBadge>
-                );
+                const statusBadge = <ContentStatusBadge status={item.status} />;
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="min-w-40 pl-3 whitespace-normal">
