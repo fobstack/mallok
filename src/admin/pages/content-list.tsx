@@ -4,6 +4,11 @@
  * Kinds a theme does not declare are marked rather than hidden: the content
  * and its URL survive a theme change, and the list has to say so
  * (docs/THEME_FORMAT.md §5.3).
+ *
+ * Every value is shown as an operator reads it — a kind by the theme's
+ * label, a status by name, a date in the interface language — and a phone
+ * gets one row per item rather than a table that scrolls sideways
+ * (docs/ADMIN_I18N_AND_UI.md, U4–U6).
  */
 
 import { i18n, type MessageDescriptor } from '@lingui/core';
@@ -27,8 +32,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { api } from '../api.js';
-import { ContentLanguageSelect } from '../components/content-language.js';
+import {
+  ContentLanguageSelect,
+  useContentLanguageName,
+} from '../components/content-language.js';
+import { EmptyState } from '../components/empty-state.js';
 import { Page, PageHeader, StatusBadge } from '../components/page.js';
+import { formatDate } from '../format.js';
 import { useReportError } from '../notice.js';
 import { keys, useSettings, useTheme } from '../queries.js';
 import type { ContentListItem } from '../types.js';
@@ -110,27 +120,33 @@ export function ContentListPage(): JSX.Element {
   const loading = listed.isPending;
 
   const kinds = Object.keys(site.kinds);
+  const nameOf = useContentLanguageName();
+  /** A kind by the theme's label; one the theme lacks keeps its id. */
+  const kindLabel = (id: string): string => active.kinds[id]?.label ?? id;
+  const filtered = kind !== '' || status !== '';
+
+  // "New" says what it makes: the filtered kind when there is one. The
+  // editor opens in the list's language and, when filtered, that kind.
+  const newQuery = new URLSearchParams({ locale });
+  if (kind !== '') {
+    newQuery.set('kind', kind);
+  }
+  const createNew = (): void => {
+    void navigate(`/content/new?${newQuery.toString()}`);
+  };
+  const filteredKind = kind === '' ? '' : kindLabel(kind);
+  const newLabel = kind === '' ? t`New content` : t`New ${filteredKind}`;
+  const language = nameOf(locale);
 
   return (
     <Page>
       <PageHeader
         title={t`Content`}
+        // No "Media" here: the sidebar has it one link away (U5).
         actions={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/media')}
-            >
-              <Trans>Media</Trans>
-            </Button>
-            <Button
-              type="button"
-              onClick={() => navigate(`/content/new?locale=${locale}`)}
-            >
-              <Trans>New</Trans>
-            </Button>
-          </>
+          <Button type="button" onClick={createNew}>
+            {newLabel}
+          </Button>
         }
       />
 
@@ -182,10 +198,41 @@ export function ContentListPage(): JSX.Element {
         <p className="text-sm text-muted-foreground">
           <Trans>Loading…</Trans>
         </p>
+      ) : items.length === 0 && filtered ? (
+        // A filter that matches nothing is not an empty site (U5).
+        <EmptyState
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setSearch(
+                  search.get('locale') === null
+                    ? {}
+                    : { locale: search.get('locale') ?? '' },
+                )
+              }
+            >
+              <Trans>Clear filters</Trans>
+            </Button>
+          }
+        >
+          <Trans>Nothing in {language} matches these filters.</Trans>
+        </EmptyState>
       ) : items.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          <Trans>Nothing here yet.</Trans>
-        </p>
+        <EmptyState
+          action={
+            <Button type="button" onClick={createNew}>
+              <Trans>Create the first page</Trans>
+            </Button>
+          }
+        >
+          {locale === site.defaultLocale ? (
+            <Trans>This site has no content yet.</Trans>
+          ) : (
+            <Trans>Nothing has been written in {language} yet.</Trans>
+          )}
+        </EmptyState>
       ) : (
         <div className="rounded-lg border">
           <Table>
@@ -194,16 +241,18 @@ export function ContentListPage(): JSX.Element {
                 <TableHead scope="col" className="pl-3">
                   <Trans>Title</Trans>
                 </TableHead>
-                <TableHead scope="col">
+                {/* Below `md` a row is the title with its type and status
+                    under it; Path and Updated are left out on purpose (U6). */}
+                <TableHead scope="col" className="hidden md:table-cell">
                   <Trans>Type</Trans>
                 </TableHead>
-                <TableHead scope="col">
+                <TableHead scope="col" className="hidden md:table-cell">
                   <Trans>Status</Trans>
                 </TableHead>
-                <TableHead scope="col">
+                <TableHead scope="col" className="hidden md:table-cell">
                   <Trans>Path</Trans>
                 </TableHead>
-                <TableHead scope="col" className="pr-3">
+                <TableHead scope="col" className="hidden pr-3 md:table-cell">
                   <Trans>Updated</Trans>
                 </TableHead>
               </TableRow>
@@ -212,6 +261,26 @@ export function ContentListPage(): JSX.Element {
               {items.map((item) => {
                 const known = active.kinds[item.kind] !== undefined;
                 const statusLabel = STATUS_LABELS[item.status];
+                const typeCell = (
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {kindLabel(item.kind)}
+                    {known ? null : (
+                      <StatusBadge
+                        tone="warn"
+                        title={t`The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched.`}
+                      >
+                        <Trans>Not in theme</Trans>
+                      </StatusBadge>
+                    )}
+                  </span>
+                );
+                const statusBadge = (
+                  <StatusBadge tone={STATUS_TONE[item.status] ?? 'neutral'}>
+                    {statusLabel === undefined
+                      ? item.status
+                      : i18n._(statusLabel)}
+                  </StatusBadge>
+                );
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="min-w-40 pl-3 whitespace-normal">
@@ -221,28 +290,18 @@ export function ContentListPage(): JSX.Element {
                       >
                         {item.title}
                       </Link>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        {item.kind}
-                        {known ? null : (
-                          <StatusBadge
-                            tone="warn"
-                            title={t`The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched.`}
-                          >
-                            <Trans>Not in theme</Trans>
-                          </StatusBadge>
-                        )}
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground md:hidden">
+                        {typeCell}
+                        {statusBadge}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <StatusBadge tone={STATUS_TONE[item.status] ?? 'neutral'}>
-                        {statusLabel === undefined
-                          ? item.status
-                          : i18n._(statusLabel)}
-                      </StatusBadge>
+                    <TableCell className="hidden md:table-cell">
+                      {typeCell}
                     </TableCell>
-                    <TableCell className="max-w-72 min-w-48 whitespace-normal">
+                    <TableCell className="hidden md:table-cell">
+                      {statusBadge}
+                    </TableCell>
+                    <TableCell className="hidden max-w-72 min-w-48 whitespace-normal md:table-cell">
                       <a
                         className="font-mono text-xs break-all text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                         href={item.path}
@@ -250,8 +309,10 @@ export function ContentListPage(): JSX.Element {
                         {item.path}
                       </a>
                     </TableCell>
-                    <TableCell className="pr-3 text-muted-foreground tabular-nums">
-                      {item.updatedAt.slice(0, 10)}
+                    <TableCell className="hidden pr-3 text-muted-foreground tabular-nums md:table-cell">
+                      <time dateTime={item.updatedAt}>
+                        {formatDate(item.updatedAt)}
+                      </time>
                     </TableCell>
                   </TableRow>
                 );
@@ -261,24 +322,27 @@ export function ContentListPage(): JSX.Element {
         </div>
       )}
 
-      <nav className="flex gap-2" aria-label={t`Pagination`}>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={offset === 0}
-          onClick={() => page(Math.max(0, offset - PAGE))}
-        >
-          <Trans>Previous</Trans>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!hasNext}
-          onClick={() => page(offset + PAGE)}
-        >
-          <Trans>Next</Trans>
-        </Button>
-      </nav>
+      {/* Nothing to page through on a single page, so no pager (U5). */}
+      {offset === 0 && !hasNext ? null : (
+        <nav className="flex gap-2" aria-label={t`Pagination`}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={offset === 0}
+            onClick={() => page(Math.max(0, offset - PAGE))}
+          >
+            <Trans>Previous</Trans>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!hasNext}
+            onClick={() => page(offset + PAGE)}
+          >
+            <Trans>Next</Trans>
+          </Button>
+        </nav>
+      )}
     </Page>
   );
 }

@@ -516,6 +516,10 @@ msgstr "清除"
 msgid "Clear cached pages"
 msgstr "清除页面缓存"
 
+#: src/admin/pages/content-list.tsx
+msgid "Clear filters"
+msgstr "清除筛选"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Cleared the fragment cache."
 msgstr "已清除片段缓存。"
@@ -692,6 +696,10 @@ msgstr "创建{slotLanguage}版本"
 #: src/admin/pages/setup.tsx
 msgid "Create the administrator"
 msgstr "创建管理员"
+
+#: src/admin/pages/content-list.tsx
+msgid "Create the first page"
+msgstr "创建第一个页面"
 
 #: src/admin/pages/account.tsx
 msgid "Create token"
@@ -1042,7 +1050,6 @@ msgid "Markdown source"
 msgstr "Markdown 源文本"
 
 #: src/admin/components/shell.tsx
-#: src/admin/pages/content-list.tsx
 #: src/admin/pages/media.tsx
 msgid "Media"
 msgstr "媒体"
@@ -1158,9 +1165,16 @@ msgid "Never used"
 msgstr "从未使用"
 
 #: src/admin/components/plugin-panel.tsx
-#: src/admin/pages/content-list.tsx
 msgid "New"
 msgstr "新建"
+
+#: src/admin/pages/content-list.tsx
+msgid "New {filteredKind}"
+msgstr "新建{filteredKind}"
+
+#: src/admin/pages/content-list.tsx
+msgid "New content"
+msgstr "新建内容"
 
 #: src/admin/components/shell.tsx
 msgid "New item"
@@ -1286,10 +1300,17 @@ msgstr "未找到。"
 msgid "Not in theme"
 msgstr "主题未声明"
 
-#: src/admin/components/plugin-panel.tsx
 #: src/admin/pages/content-list.tsx
+msgid "Nothing has been written in {language} yet."
+msgstr "还没有{language}的内容。"
+
+#: src/admin/components/plugin-panel.tsx
 msgid "Nothing here yet."
 msgstr "这里还没有内容。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Nothing in {language} matches these filters."
+msgstr "{language}内容中没有符合筛选条件的项。"
 
 #: src/admin/components/toast-host.tsx
 msgid "Notifications"
@@ -2045,6 +2066,10 @@ msgstr "这个插件会在<0>每一次访客请求</0>时运行，包括本来�
 #: src/admin/pages/setup.tsx
 msgid "This site has already been set up. Everything the wizard did can be changed in <0>Settings</0>."
 msgstr "这个站点已经完成初始设置。向导中的所有设置都可以在<0>设置</0>中修改。"
+
+#: src/admin/pages/content-list.tsx
+msgid "This site has no content yet."
+msgstr "这个站点还没有内容。"
 
 #: src/admin/pages/setup.tsx
 msgid "This site has no custom domain yet, so it is running on a <0>.workers.dev</0> address. That address is a preview: <1>Cloudflare's edge cache does not apply to it</1>, so pages are rendered on every request and will feel slower than the real site."
