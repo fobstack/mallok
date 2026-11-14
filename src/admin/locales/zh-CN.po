@@ -7,6 +7,15 @@ msgstr ""
 "X-Generator: @lingui/cli\n"
 "Language: zh-CN\n"
 
+#: src/admin/media.ts
+msgid "\"{type}\" is not accepted."
+msgstr "不支持“{type}”类型的文件。"
+
+#. placeholder {0}: item.refCount
+#: src/admin/components/media-library.tsx
+msgid "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
+msgstr "{0, plural, other {“{name}”正被 # 项内容引用，请先移除引用。}}"
+
 #. placeholder {0}: progress.done
 #. placeholder {1}: progress.total
 #: src/admin/pages/settings-advanced.tsx
@@ -57,8 +66,13 @@ msgstr "设置修改"
 msgid "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
 msgstr "一个 zip 压缩包，包含所有页面的 Markdown、图片、站点设置和询盘。它是一个完整的站点，在哪里都能读取——随时可以带去 Astro、Hugo 或 Obsidian。升级前请先导出。"
 
+#: src/admin/pages/account.tsx
+msgid "About password hashing"
+msgstr "关于密码哈希"
+
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/shell.tsx
+#: src/admin/pages/account.tsx
 msgid "Account"
 msgstr "账号"
 
@@ -75,6 +89,10 @@ msgstr "账号菜单"
 msgid "Active"
 msgstr "已生效"
 
+#: src/admin/components/media-library.tsx
+msgid "Add alt text"
+msgstr "添加替代文本"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Add language"
 msgstr "添加语言"
@@ -84,9 +102,30 @@ msgstr "添加语言"
 msgid "Advanced"
 msgstr "高级"
 
+#: src/admin/pages/content-list.tsx
+msgid "All"
+msgstr "全部"
+
+#: src/admin/components/media-library.tsx
+msgid "already stored, skipped"
+msgstr "已存在，已跳过"
+
+#: src/admin/components/media-library.tsx
+msgid "Alt text"
+msgstr "替代文本"
+
+#. placeholder {0}: item.alt
+#: src/admin/components/media-library.tsx
+msgid "Alt: {0}"
+msgstr "替代文本：{0}"
+
 #: src/admin/pages/settings-site.tsx
 msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
 msgstr "R2 的自定义域名，例如 https://media.example.com。留空则由 Worker 提供图片。"
+
+#: src/admin/pages/account.tsx
+msgid "API tokens"
+msgstr "API 令牌"
 
 #: src/admin/components/shell.tsx
 #: src/admin/pages/settings-appearance.tsx
@@ -100,6 +139,10 @@ msgstr "已执行的迁移"
 #: src/admin/pages/settings-appearance.tsx
 msgid "Assets"
 msgstr "静态资源"
+
+#: src/admin/pages/account.tsx
+msgid "At least 12 characters."
+msgstr "至少 12 个字符。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Background jobs waiting"
@@ -125,6 +168,14 @@ msgstr "缓存"
 msgid "Cache purge token"
 msgstr "缓存清除令牌"
 
+#: src/admin/pages/account.tsx
+msgid "Change password"
+msgstr "修改密码"
+
+#: src/admin/pages/account.tsx
+msgid "Changed"
+msgstr "已修改"
+
 #: src/admin/components/saved-note.tsx
 msgid "Changes reach visitors within {within}"
 msgstr "修改将在 {within}内对访客可见"
@@ -137,9 +188,29 @@ msgstr "修改源代码中的其他任何内容"
 msgid "Changing the theme takes a deploy"
 msgstr "更换主题需要重新部署"
 
+#: src/admin/pages/account.tsx
+msgid "Changing…"
+msgstr "正在修改…"
+
+#: src/admin/components/media-library.tsx
+msgid "checking"
+msgstr "正在检查"
+
 #: src/admin/pages/settings-email.tsx
 msgid "Checking…"
 msgstr "正在检测…"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose a file"
+msgstr "选择文件"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose an image"
+msgstr "选择图片"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose files, or drop them here"
+msgstr "选择文件，或拖放到这里"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Clear cached pages"
@@ -182,6 +253,7 @@ msgid "Configured"
 msgstr "已配置"
 
 #: src/admin/components/shell.tsx
+#: src/admin/pages/content-list.tsx
 msgid "Content"
 msgstr "内容"
 
@@ -197,10 +269,47 @@ msgstr "内容类型"
 msgid "Content: create, edit, publish, delete"
 msgstr "内容：新建、编辑、发布、删除"
 
+#: src/admin/components/media-library.tsx
+msgid "converting"
+msgstr "正在转换"
+
+#: src/admin/pages/account.tsx
+msgid "Copy"
+msgstr "复制"
+
+#: src/admin/pages/account.tsx
+msgid "Could not change the password."
+msgstr "密码修改失败。"
+
+#: src/admin/pages/account.tsx
+msgid "Could not create."
+msgstr "创建失败。"
+
+#: src/admin/components/media-library.tsx
+msgid "Could not delete."
+msgstr "删除失败。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Could not load content."
+msgstr "无法加载内容。"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Could not load diagnostics."
 msgstr "无法加载诊断信息。"
 
+#: src/admin/components/media-library.tsx
+msgid "Could not load media."
+msgstr "无法加载媒体。"
+
+#: src/admin/pages/account.tsx
+msgid "Could not load tokens."
+msgstr "无法加载令牌。"
+
+#: src/admin/tokens.ts
+msgid "Could not revoke the token."
+msgstr "无法撤销令牌。"
+
+#: src/admin/components/media-library.tsx
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/settings-appearance.tsx
 #: src/admin/pages/settings-email.tsx
@@ -211,6 +320,14 @@ msgstr "保存失败。"
 #: src/admin/pages/settings-site.tsx
 msgid "Could not switch."
 msgstr "切换失败。"
+
+#: src/admin/pages/account.tsx
+msgid "Create token"
+msgstr "创建令牌"
+
+#: src/admin/pages/account.tsx
+msgid "Current password"
+msgstr "当前密码"
 
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/settings-site.tsx
@@ -229,9 +346,37 @@ msgstr "默认"
 msgid "Default language is now \"{locale}\". {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
 msgstr "默认语言已改为“{locale}”。{moved, plural, other {已迁移 # 个 URL，均已设置重定向。}}"
 
+#: src/admin/components/media-library.tsx
+msgid "Delete"
+msgstr "删除"
+
+#: src/admin/components/media-library.tsx
+msgid "Delete permanently"
+msgstr "永久删除"
+
+#: src/admin/components/media-library.tsx
+msgid "Describe the image"
+msgstr "描述这张图片"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Diagnostics"
 msgstr "诊断"
+
+#: src/admin/components/media-library.tsx
+msgid "done"
+msgstr "完成"
+
+#: src/admin/pages/account.tsx
+msgid "Done"
+msgstr "完成"
+
+#: src/admin/pages/content-list.tsx
+msgid "Draft"
+msgstr "草稿"
+
+#: src/admin/components/media-library.tsx
+msgid "Drop to upload"
+msgstr "松开即可上传"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Edge cache"
@@ -275,9 +420,25 @@ msgstr "全部导出"
 msgid "Failed background jobs"
 msgstr "失败的后台任务"
 
+#: src/admin/pages/media.tsx
+msgid "Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate."
+msgstr "文件按原图的哈希值存储，同一张图片上传两次不会产生额外开销，也不会出现重复。"
+
 #: src/admin/pages/settings-email.tsx
 msgid "From address"
 msgstr "发件地址"
+
+#: src/admin/components/media-library.tsx
+msgid "hashing"
+msgstr "正在计算哈希"
+
+#: src/admin/components/media-library.tsx
+msgid "Images are converted to WebP in your browser and uploaded at {widths} pixels wide. SVG is not accepted — it can carry script."
+msgstr "图片会在浏览器中转换为 WebP，并按 {widths} 像素宽度上传。不支持 SVG——它可能携带脚本。"
+
+#: src/admin/components/media-library.tsx
+msgid "In use. Remove the references first."
+msgstr "正在使用中，请先移除引用。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Inactive — a workers.dev URL is a preview, not a site"
@@ -300,6 +461,10 @@ msgstr "界面语言"
 msgid "Key set, no site sender — only plugins with their own send"
 msgstr "已设置密钥，但没有站点发件地址 — 只有自带发件地址的插件能发送"
 
+#: src/admin/pages/content-list.tsx
+msgid "Language"
+msgstr "语言"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Language code"
 msgstr "语言代码"
@@ -312,10 +477,16 @@ msgstr "语言"
 msgid "Last failed purge"
 msgstr "最近一次清除失败"
 
+#: src/admin/tokens.ts
+msgid "Last used {lastUsed}"
+msgstr "最近使用于 {lastUsed}"
+
 #: src/admin/components/account-menu.tsx
 msgid "Light"
 msgstr "浅色"
 
+#: src/admin/components/media-library.tsx
+#: src/admin/pages/content-list.tsx
 #: src/admin/pages/settings-advanced.tsx
 msgid "Loading…"
 msgstr "正在加载…"
@@ -333,6 +504,8 @@ msgid "Make default"
 msgstr "设为默认"
 
 #: src/admin/components/shell.tsx
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/media.tsx
 msgid "Media"
 msgstr "媒体"
 
@@ -357,9 +530,29 @@ msgstr "需要重新构建并部署"
 msgid "Neither of these loses anything. Cached pages and fragments are both derived from your content and are rebuilt on the next request — the only cost is that the next visitor waits for a render."
 msgstr "两者都不会丢失任何数据。页面缓存和片段缓存都由内容生成，下一次请求时会重新生成——唯一的代价是下一位访客需要等待一次渲染。"
 
+#: src/admin/tokens.ts
+msgid "Never used"
+msgstr "从未使用"
+
+#: src/admin/pages/content-list.tsx
+msgid "New"
+msgstr "新建"
+
 #: src/admin/components/shell.tsx
 msgid "New item"
 msgstr "新建"
+
+#: src/admin/pages/account.tsx
+msgid "New password"
+msgstr "新密码"
+
+#: src/admin/pages/account.tsx
+msgid "New token name"
+msgstr "新令牌名称"
+
+#: src/admin/pages/content-list.tsx
+msgid "Next"
+msgstr "下一页"
 
 #: src/admin/components/saved-note.tsx
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
@@ -372,6 +565,10 @@ msgstr "没有记录到错误信息。"
 #: src/admin/pages/settings-advanced.tsx
 msgid "No key — no email is sent"
 msgstr "未设置密钥 — 不会发送任何邮件"
+
+#: src/admin/components/media-library.tsx
+msgid "No media yet."
+msgstr "还没有媒体文件。"
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "None"
@@ -389,6 +586,14 @@ msgstr "未配置 — 修改要等缓存过期后才生效"
 msgid "Not found"
 msgstr "未找到"
 
+#: src/admin/pages/content-list.tsx
+msgid "Not in theme"
+msgstr "主题未声明"
+
+#: src/admin/pages/content-list.tsx
+msgid "Nothing here yet."
+msgstr "这里还没有内容。"
+
 #: src/admin/pages/settings-email.tsx
 msgid "One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
 msgstr "整个站点共用一个 Resend 密钥和一个发件地址。所有发送邮件的插件都使用它们，修改后对下一封邮件生效——无需重新构建或部署。"
@@ -401,9 +606,22 @@ msgstr "只有这个域名会被搜索引擎收录。未设置时，所有页面
 msgid "Pages it named may still be served from the cache until they expire."
 msgstr "涉及的页面在缓存过期前，可能仍会显示旧内容。"
 
+#: src/admin/pages/content-list.tsx
+msgid "Pagination"
+msgstr "分页"
+
+#: src/admin/pages/account.tsx
 #: src/admin/pages/login.tsx
 msgid "Password"
 msgstr "密码"
+
+#: src/admin/pages/account.tsx
+msgid "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Current guidance is {recommended}, but a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU budget, so the cost is capped."
+msgstr "密码使用 PBKDF2-SHA256 哈希，迭代 {iterations} 次。目前的推荐值是 {recommended} 次，但登录必须在 Cloudflare 免费计划 10 毫秒的 CPU 预算内完成，所以迭代次数设了上限。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Path"
+msgstr "路径"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Plugin on/off switches, settings and secrets"
@@ -417,6 +635,11 @@ msgstr "插件"
 msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
 msgstr "默认语言也加前缀（<0>/{prefix}/…</0>）"
 
+#: src/admin/pages/content-list.tsx
+msgid "Previous"
+msgstr "上一页"
+
+#: src/admin/pages/content-list.tsx
 #: src/admin/pages/settings-advanced.tsx
 msgid "Published"
 msgstr "已发布"
@@ -445,10 +668,23 @@ msgstr "已渲染片段"
 msgid "Resend API key"
 msgstr "Resend API 密钥"
 
+#: src/admin/pages/account.tsx
+msgid "Revoke"
+msgstr "撤销"
+
+#: src/admin/tokens.ts
+msgid "Revoked {revoked} · last used {lastUsed}"
+msgstr "已于 {revoked} 撤销 · 最近使用于 {lastUsed}"
+
+#: src/admin/tokens.ts
+msgid "Revoked {revoked} · never used"
+msgstr "已于 {revoked} 撤销 · 从未使用"
+
 #: src/admin/components/account-menu.tsx
 msgid "Same as the system"
 msgstr "跟随系统"
 
+#: src/admin/components/media-library.tsx
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/settings-site.tsx
 msgid "Save"
@@ -484,6 +720,14 @@ msgstr "保存内容时会清除受影响页面的缓存，所以这是未被修
 #: src/admin/pages/settings-site.tsx
 msgid "Saving…"
 msgstr "正在保存…"
+
+#: src/admin/pages/content-list.tsx
+msgid "Scheduled"
+msgstr "定时发布"
+
+#: src/admin/pages/account.tsx
+msgid "Scopes"
+msgstr "权限范围"
 
 #: src/admin/pages/settings-email.tsx
 msgid "Sender"
@@ -554,6 +798,10 @@ msgstr "站点名称"
 msgid "Site settings, languages, navigation"
 msgstr "站点设置、语言、导航"
 
+#: src/admin/pages/content-list.tsx
+msgid "Status"
+msgstr "状态"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Storage"
 msgstr "存储"
@@ -561,6 +809,10 @@ msgstr "存储"
 #: src/admin/pages/settings-email.tsx
 msgid "Stored encrypted. It is never shown again, here or anywhere else."
 msgstr "加密保存。之后在这里或任何地方都不会再显示。"
+
+#: src/admin/media.ts
+msgid "SVG is not accepted: it can carry script. Export a PNG or WebP instead."
+msgstr "不支持 SVG：它可能携带脚本。请导出为 PNG 或 WebP。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Switching to a different theme"
@@ -582,13 +834,25 @@ msgstr "检测"
 msgid "That did not work."
 msgstr "操作未成功。"
 
+#: src/admin/tokens.ts
+msgid "That token was already revoked."
+msgstr "该令牌已被撤销。"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "the {plugin} plugin"
 msgstr "{plugin} 插件"
 
+#: src/admin/pages/content-list.tsx
+msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
+msgstr "当前主题没有声明这个类型，所以按普通页面的布局渲染。内容和 URL 都不受影响。"
+
 #: src/admin/pages/settings-email.tsx
 msgid "The check failed."
 msgstr "检测失败。"
+
+#: src/admin/pages/account.tsx
+msgid "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
+msgstr "CLI 和各种脚本都通过令牌访问。令牌只显示一次——请立即复制，之后无法再次查看。"
 
 #: src/admin/pages/settings-site.tsx
 msgid "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
@@ -605,6 +869,11 @@ msgstr "以下选项是运行时设置：保存后立即生效，无需重新构
 #: src/admin/pages/login.tsx
 msgid "The site's admin"
 msgstr "站点后台"
+
+#: src/admin/components/media-library.tsx
+#: src/admin/media.ts
+msgid "The upload failed."
+msgstr "上传失败。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Theme"
@@ -630,13 +899,50 @@ msgstr "点击保存即生效——无需重新构建或部署。"
 msgid "These values apply to every language unless a language overrides them below."
 msgstr "这些值适用于所有语言，除非某个语言在下面单独设置。"
 
+#: src/admin/pages/content-list.tsx
+msgid "Title"
+msgstr "标题"
+
+#: src/admin/pages/content-list.tsx
+msgid "Type"
+msgstr "类型"
+
+#: src/admin/media.ts
+msgid "unknown type"
+msgstr "未知类型"
+
+#: src/admin/components/media-library.tsx
+msgid "unused"
+msgstr "未使用"
+
+#: src/admin/pages/content-list.tsx
+msgid "Updated"
+msgstr "更新时间"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Upgrading Mallok itself"
 msgstr "升级 Mallok 本身"
 
+#: src/admin/components/media-library.tsx
+msgid "uploading"
+msgstr "正在上传"
+
+#: src/admin/components/media-library.tsx
+msgid "Use"
+msgstr "使用"
+
+#: src/admin/pages/account.tsx
+msgid "Use a long, unique password. For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
+msgstr "请使用足够长且不与其他地方重复的密码。如需更强的保护，可以在 <0>/_mallok/</0> 前面加上 Cloudflare Access。"
+
 #: src/admin/pages/settings-email.tsx
 msgid "Use an address such as hello@example.com or Acme <hello@example.com>."
 msgstr "请使用 hello@example.com 或 Acme <hello@example.com> 这样的地址。"
+
+#. placeholder {0}: item.refCount
+#: src/admin/components/media-library.tsx
+msgid "used {0}×"
+msgstr "已引用 {0} 次"
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "Values you change here apply only to {editingLocale}. Anything you leave alone follows the {editingDefaultLocale} value."

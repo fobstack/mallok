@@ -8,6 +8,7 @@
  * byte for byte.
  */
 
+import { t } from '@lingui/core/macro';
 import { api, csrf } from './api.js';
 import type { MediaItem } from './types.js';
 
@@ -140,11 +141,12 @@ export async function uploadFile(
 
   if (file.type === 'image/svg+xml') {
     throw new Error(
-      'SVG is not accepted: it can carry script. Export a PNG or WebP instead.',
+      t`SVG is not accepted: it can carry script. Export a PNG or WebP instead.`,
     );
   }
   if (!ACCEPTED.has(file.type)) {
-    throw new Error(`"${file.type || 'unknown type'}" is not accepted.`);
+    const type = file.type === '' ? t`unknown type` : file.type;
+    throw new Error(t`"${type}" is not accepted.`);
   }
 
   const isImage = file.type.startsWith('image/');
@@ -181,7 +183,7 @@ export async function uploadFile(
     const body = (await response.json().catch(() => null)) as {
       error?: string;
     } | null;
-    throw new Error(body?.error ?? 'The upload failed.');
+    throw new Error(body?.error ?? t`The upload failed.`);
   }
 
   if (bitmap !== null) {
