@@ -755,6 +755,24 @@ Phase 4 as built, in the order it landed:
     Path and Updated are hidden on purpose.
   - The browser tests still find "New" by substring, so no selector
     changed.
+- **U7–U9, the editor.**
+  - U7: the editor declares `Page width="full"`, so the shell's column and
+    its notice span the window. The field pane folds to a rail ("Hide
+    fields" / "Show fields"), and this browser remembers the choice.
+  - U8: the bar shows the stored status (`components/content-status.tsx`,
+    shared with the list), "Updated" with date and time, and "View on
+    site" for a published item. A new item says "Not saved yet". The open
+    language is no longer a green badge, which looked like "Published"; it
+    is a tinted chip with `aria-current`.
+  - U8, honestly: the "Saved" note follows the status the server stored,
+    so a body kept as a draft because it is too long to render reads as a
+    draft.
+  - U9: below `lg`, one pane is shown at a time, chosen with "Fields",
+    "Write" and "Preview". The save buttons are drawn in a bar pinned to
+    the bottom of the screen; on a wide screen they stay in the top bar.
+  - `21-editor-layout` checks all of this at 1440 and 390 px, with axe.
+    Like `05-accessibility`, it leaves the script-free preview frame out
+    of the scan, because axe waits on that frame until the test times out.
 
 ## 9. Risks and open questions
 

@@ -786,7 +786,7 @@ msgstr "完成"
 msgid "Done"
 msgstr "完成"
 
-#: src/admin/pages/content-list.tsx
+#: src/admin/components/content-status.tsx
 msgid "Draft"
 msgstr "草稿"
 
@@ -875,6 +875,10 @@ msgid "Failed background jobs"
 msgstr "失败的后台任务"
 
 #: src/admin/pages/editor.tsx
+msgid "Fields"
+msgstr "字段"
+
+#: src/admin/pages/editor.tsx
 msgid "Fields, Markdown and preview"
 msgstr "字段、Markdown 与预览"
 
@@ -911,6 +915,10 @@ msgstr "界面语言需要是 “zh-CN” 这样的语言标签，或者为 null
 #: src/admin/components/media-library.tsx
 msgid "hashing"
 msgstr "正在计算哈希"
+
+#: src/admin/pages/editor.tsx
+msgid "Hide fields"
+msgstr "收起字段"
 
 #: src/admin/pages/plugins.tsx
 msgid "Hooks"
@@ -1044,6 +1052,10 @@ msgstr "将{language}设为默认语言？\n"
 #: src/admin/pages/settings-site.tsx
 msgid "Make default"
 msgstr "设为默认"
+
+#: src/admin/pages/editor.tsx
+msgid "Markdown"
+msgstr "Markdown"
 
 #: src/admin/components/markdown-editor.tsx
 msgid "Markdown source"
@@ -1300,6 +1312,10 @@ msgstr "未找到。"
 msgid "Not in theme"
 msgstr "主题未声明"
 
+#: src/admin/pages/editor.tsx
+msgid "Not saved yet"
+msgstr "尚未保存"
+
 #: src/admin/pages/content-list.tsx
 msgid "Nothing has been written in {language} yet."
 msgstr "还没有{language}的内容。"
@@ -1373,6 +1389,10 @@ msgstr "涉及的页面在缓存过期前，可能仍会显示旧内容。"
 #: src/admin/pages/content-list.tsx
 msgid "Pagination"
 msgstr "分页"
+
+#: src/admin/pages/editor.tsx
+msgid "Pane shown"
+msgstr "显示的窗格"
 
 #: src/admin/pages/account.tsx
 #: src/admin/pages/login.tsx
@@ -1480,7 +1500,7 @@ msgstr "请提供目标语言以及 \"confirm\": true；此操作会改写所有
 msgid "Publish"
 msgstr "发布"
 
-#: src/admin/pages/content-list.tsx
+#: src/admin/components/content-status.tsx
 #: src/admin/pages/settings-advanced.tsx
 msgid "Published"
 msgstr "已发布"
@@ -1587,7 +1607,7 @@ msgstr "保存内容时会清除受影响页面的缓存，所以这是未被修
 msgid "Saving…"
 msgstr "正在保存…"
 
-#: src/admin/pages/content-list.tsx
+#: src/admin/components/content-status.tsx
 msgid "Scheduled"
 msgstr "定时发布"
 
@@ -1696,6 +1716,10 @@ msgstr "初始设置已完成"
 #: src/admin/pages/setup.tsx
 msgid "Setup key"
 msgstr "设置密钥"
+
+#: src/admin/pages/editor.tsx
+msgid "Show fields"
+msgstr "展开字段"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Shown by most themes under the site name, and as the home page description."
@@ -2162,6 +2186,10 @@ msgstr "未使用"
 msgid "Updated"
 msgstr "更新时间"
 
+#: src/admin/pages/editor.tsx
+msgid "Updated <0>{updated}</0>"
+msgstr "更新于 <0>{updated}</0>"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Upgrading Mallok itself"
 msgstr "升级 Mallok 本身"
@@ -2214,6 +2242,10 @@ msgstr "缩略图宽度必须在 1 到 {max} 之间。"
 msgid "server.media.variant_not_webp"
 msgstr "缩略图必须是 WebP 格式。"
 
+#: src/admin/pages/editor.tsx
+msgid "View on site"
+msgstr "在站点上查看"
+
 #: src/admin/pages/setup.tsx
 msgid "View the site"
 msgstr "查看站点"
@@ -2249,6 +2281,10 @@ msgstr "重试后已放弃的任务——例如发不出去的邮件、反复失
 #: src/admin/components/record-editor.tsx
 msgid "Working…"
 msgstr "正在执行…"
+
+#: src/admin/pages/editor.tsx
+msgid "Write"
+msgstr "编写"
 
 #: src/admin/pages/setup.tsx
 msgid "written for the \"{starterTheme}\" theme, but this build runs \"{activeTheme}\", so some pages will use the plain page layout"

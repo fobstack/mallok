@@ -786,7 +786,7 @@ msgstr "done"
 msgid "Done"
 msgstr "Done"
 
-#: src/admin/pages/content-list.tsx
+#: src/admin/components/content-status.tsx
 msgid "Draft"
 msgstr "Draft"
 
@@ -875,6 +875,10 @@ msgid "Failed background jobs"
 msgstr "Failed background jobs"
 
 #: src/admin/pages/editor.tsx
+msgid "Fields"
+msgstr "Fields"
+
+#: src/admin/pages/editor.tsx
 msgid "Fields, Markdown and preview"
 msgstr "Fields, Markdown and preview"
 
@@ -911,6 +915,10 @@ msgstr "Give the interface language as a language tag such as \"zh-CN\", or null
 #: src/admin/components/media-library.tsx
 msgid "hashing"
 msgstr "hashing"
+
+#: src/admin/pages/editor.tsx
+msgid "Hide fields"
+msgstr "Hide fields"
 
 #: src/admin/pages/plugins.tsx
 msgid "Hooks"
@@ -1044,6 +1052,10 @@ msgstr "Make {language} the default language?\n"
 #: src/admin/pages/settings-site.tsx
 msgid "Make default"
 msgstr "Make default"
+
+#: src/admin/pages/editor.tsx
+msgid "Markdown"
+msgstr "Markdown"
 
 #: src/admin/components/markdown-editor.tsx
 msgid "Markdown source"
@@ -1300,6 +1312,10 @@ msgstr "Not found."
 msgid "Not in theme"
 msgstr "Not in theme"
 
+#: src/admin/pages/editor.tsx
+msgid "Not saved yet"
+msgstr "Not saved yet"
+
 #: src/admin/pages/content-list.tsx
 msgid "Nothing has been written in {language} yet."
 msgstr "Nothing has been written in {language} yet."
@@ -1373,6 +1389,10 @@ msgstr "Pages it named may still be served from the cache until they expire."
 #: src/admin/pages/content-list.tsx
 msgid "Pagination"
 msgstr "Pagination"
+
+#: src/admin/pages/editor.tsx
+msgid "Pane shown"
+msgstr "Pane shown"
 
 #: src/admin/pages/account.tsx
 #: src/admin/pages/login.tsx
@@ -1480,7 +1500,7 @@ msgstr "Provide the target locale and \"confirm\": true; this rewrites every URL
 msgid "Publish"
 msgstr "Publish"
 
-#: src/admin/pages/content-list.tsx
+#: src/admin/components/content-status.tsx
 #: src/admin/pages/settings-advanced.tsx
 msgid "Published"
 msgstr "Published"
@@ -1587,7 +1607,7 @@ msgstr "Saving content purges the pages it affects, so this is a ceiling for pag
 msgid "Saving…"
 msgstr "Saving…"
 
-#: src/admin/pages/content-list.tsx
+#: src/admin/components/content-status.tsx
 msgid "Scheduled"
 msgstr "Scheduled"
 
@@ -1696,6 +1716,10 @@ msgstr "Setup is finished"
 #: src/admin/pages/setup.tsx
 msgid "Setup key"
 msgstr "Setup key"
+
+#: src/admin/pages/editor.tsx
+msgid "Show fields"
+msgstr "Show fields"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Shown by most themes under the site name, and as the home page description."
@@ -2162,6 +2186,10 @@ msgstr "unused"
 msgid "Updated"
 msgstr "Updated"
 
+#: src/admin/pages/editor.tsx
+msgid "Updated <0>{updated}</0>"
+msgstr "Updated <0>{updated}</0>"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Upgrading Mallok itself"
 msgstr "Upgrading Mallok itself"
@@ -2214,6 +2242,10 @@ msgstr "Variant width must be 1..{max}."
 msgid "server.media.variant_not_webp"
 msgstr "Variants must be WebP."
 
+#: src/admin/pages/editor.tsx
+msgid "View on site"
+msgstr "View on site"
+
 #: src/admin/pages/setup.tsx
 msgid "View the site"
 msgstr "View the site"
@@ -2249,6 +2281,10 @@ msgstr "Work that was retried and gave up — an email that could not be sent, a
 #: src/admin/components/record-editor.tsx
 msgid "Working…"
 msgstr "Working…"
+
+#: src/admin/pages/editor.tsx
+msgid "Write"
+msgstr "Write"
 
 #: src/admin/pages/setup.tsx
 msgid "written for the \"{starterTheme}\" theme, but this build runs \"{activeTheme}\", so some pages will use the plain page layout"
