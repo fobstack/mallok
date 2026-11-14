@@ -160,7 +160,8 @@ function Editor({
   );
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
+  // How the last save went out: a draft is saved but no visitor sees it.
+  const [saved, setSaved] = useState<'draft' | 'published' | null>(null);
   const [preview, setPreview] = useState('');
   const [missing, setMissing] = useState<readonly string[]>([]);
   const [picker, setPicker] = useState<{
@@ -309,7 +310,7 @@ function Editor({
     }
 
     setBusy(true);
-    setSaved(false);
+    setSaved(null);
     try {
       const result = await api<{
         id: string;
@@ -332,7 +333,7 @@ function Editor({
         },
       });
       setDirty(false);
-      setSaved(true);
+      setSaved(status);
       // Every list it appears in, and its own record, are out of date.
       void client.invalidateQueries({ queryKey: keys.content });
       // The save still succeeded — this is the server saying it skipped
@@ -456,7 +457,9 @@ function Editor({
                 <Trans>Unsaved</Trans>
               </StatusBadge>
             ) : null}
-            {saved && !dirty ? <SavedNote /> : null}
+            {saved !== null && !dirty ? (
+              <SavedNote draft={saved === 'draft'} />
+            ) : null}
             <Button
               type="button"
               variant="outline"

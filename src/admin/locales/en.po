@@ -714,13 +714,17 @@ msgstr "Custom domain"
 msgid "Dark"
 msgstr "Dark"
 
+#: src/admin/pages/settings-advanced.tsx
+msgid "Database read and write quotas are shown in the Cloudflare dashboard, not here."
+msgstr "Database read and write quotas are shown in the Cloudflare dashboard, not here."
+
 #: src/admin/pages/settings-site.tsx
 msgid "Default"
 msgstr "Default"
 
 #: src/admin/pages/settings-site.tsx
-msgid "Default language is now \"{locale}\". {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
-msgstr "Default language is now \"{locale}\". {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+msgid "Default language is now {language}. {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+msgstr "Default language is now {language}. {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
 
 #: src/admin/components/media-library.tsx
 msgid "Delete"
@@ -781,6 +785,10 @@ msgstr "Draft"
 #: src/admin/components/media-library.tsx
 msgid "Drop to upload"
 msgstr "Drop to upload"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Each further language can have its own tagline. What you type is kept while you switch; Save stores them all."
+msgstr "Each further language can have its own tagline. What you type is kept while you switch; Save stores them all."
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Edge cache"
@@ -1018,10 +1026,10 @@ msgid "Main language"
 msgstr "Main language"
 
 #: src/admin/pages/settings-site.tsx
-msgid "Make \"{locale}\" the default language?\n"
+msgid "Make {language} the default language?\n"
 "\n"
 "Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
-msgstr "Make \"{locale}\" the default language?\n"
+msgstr "Make {language} the default language?\n"
 "\n"
 "Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
 
@@ -1183,6 +1191,10 @@ msgstr "No {kind} with that translation group exists."
 #: src/admin/pages/settings-advanced.tsx
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
+msgstr "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
 
 #: src/admin/pages/setup.tsx
 msgid "No cache-purge token is configured, so the cache lifetime was set to 60 seconds — edits appear within a minute instead of immediately. Add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets for instant publishing. This is a working configuration, not a broken one."
