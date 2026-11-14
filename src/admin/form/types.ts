@@ -7,6 +7,7 @@
  * theme and plugin authors never write admin code.
  */
 
+import { plural, t } from '@lingui/core/macro';
 import type { ThemeField, ThemeManifest } from '../../core/index.js';
 
 /** A field declaration plus the key it is stored under. */
@@ -76,8 +77,14 @@ export function labelFor(spec: FieldSpec): string {
     .replace(/^./, (character) => character.toUpperCase());
 }
 
-/** What every form says about an empty required field. */
-export const REQUIRED_MESSAGE = 'This field is required.';
+/**
+ * What every form says about an empty required field. A function, not a
+ * constant: it is read when a value is checked, in the interface language
+ * of that moment, not once when the module loads.
+ */
+export function requiredMessage(): string {
+  return t`This field is required.`;
+}
 
 /**
  * Validates one value against its declaration and returns an error message,
@@ -92,27 +99,28 @@ export function validate(spec: FieldSpec, value: unknown): string | null {
     value === '' ||
     (Array.isArray(value) && value.length === 0);
   if (field.required && empty) {
-    return REQUIRED_MESSAGE;
+    return requiredMessage();
   }
   if (empty) {
     return null;
   }
   if (field.type === 'number') {
     if (typeof value !== 'number' || Number.isNaN(value)) {
-      return 'Enter a number.';
+      return t`Enter a number.`;
     }
-    if (field.min !== undefined && value < field.min) {
-      return `Must be at least ${field.min}.`;
+    const { min, max } = field;
+    if (min !== undefined && value < min) {
+      return t`Must be at least ${min}.`;
     }
-    if (field.max !== undefined && value > field.max) {
-      return `Must be at most ${field.max}.`;
+    if (max !== undefined && value > max) {
+      return t`Must be at most ${max}.`;
     }
     return null;
   }
   if (field.type === 'select' && typeof value === 'string') {
     return (field.choices ?? []).includes(value)
       ? null
-      : 'Choose one of the listed values.';
+      : t`Choose one of the listed values.`;
   }
   if (
     (field.type === 'string' || field.type === 'text') &&
@@ -120,14 +128,22 @@ export function validate(spec: FieldSpec, value: unknown): string | null {
     field.max !== undefined &&
     value.length > field.max
   ) {
-    return `Must be at most ${field.max} characters.`;
+    const max = field.max;
+    return plural(max, {
+      one: 'Must be at most # character.',
+      other: 'Must be at most # characters.',
+    });
   }
   if (
     Array.isArray(value) &&
     field.max !== undefined &&
     value.length > field.max
   ) {
-    return `At most ${field.max} entries.`;
+    const max = field.max;
+    return plural(max, {
+      one: 'At most # entry.',
+      other: 'At most # entries.',
+    });
   }
   return null;
 }

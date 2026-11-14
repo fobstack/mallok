@@ -32,13 +32,13 @@ import { Input } from '@/components/ui/input';
 import { ApiError } from '../api.js';
 import { LanguagePicker } from '../components/language-picker.js';
 import { invalid } from '../form/form.js';
-import { REQUIRED_MESSAGE } from '../form/types.js';
+import { requiredMessage } from '../form/types.js';
 import { signIn, useKnownSettings } from '../queries.js';
 
 /** Both are needed; whether they match is the server's to say. */
 const signInSchema = z.object({
-  email: z.string().trim().min(1, REQUIRED_MESSAGE),
-  password: z.string().min(1, REQUIRED_MESSAGE),
+  email: z.string().trim().min(1, { error: requiredMessage }),
+  password: z.string().min(1, { error: requiredMessage }),
 });
 
 export function LoginPage(): JSX.Element {

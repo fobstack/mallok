@@ -35,7 +35,7 @@ import {
   StatusBadge,
 } from '../components/page.js';
 import { invalid, showServerErrors } from '../form/form.js';
-import { REQUIRED_MESSAGE } from '../form/types.js';
+import { requiredMessage } from '../form/types.js';
 import { formatNumber } from '../format.js';
 import { notify, useReportError } from '../notice.js';
 import { keys, useSession } from '../queries.js';
@@ -54,7 +54,7 @@ const SCOPES = [
 
 /** A token needs a name; which scopes it may have is the server's rule. */
 const tokenSchema = z.object({
-  name: z.string().trim().min(1, REQUIRED_MESSAGE),
+  name: z.string().trim().min(1, { error: requiredMessage }),
   scopes: z.array(z.string()),
 });
 
@@ -65,7 +65,7 @@ const tokenSchema = z.object({
  */
 function passwordSchema(tooShort: string) {
   return z.object({
-    currentPassword: z.string().min(1, REQUIRED_MESSAGE),
+    currentPassword: z.string().min(1, { error: requiredMessage }),
     newPassword: z.string().min(12, tooShort),
   });
 }

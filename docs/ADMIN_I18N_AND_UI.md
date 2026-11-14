@@ -1,10 +1,11 @@
 # Admin interface languages and interface review
 
-- Status: **decided; phases 0 and 1 implemented** on 2026-11-13. The owner
-  took every recommendation in §3 as written ("按照建议来"): D1 A (Lingui),
-  D2 B built as A first, D3 C, D4 C, D5 as an addition under plugin API 2,
-  D6 unchanged, D7 the four rules, D8 C. Phase 0's numbers are in §8; D1
-  stands. Phase 2 is next.
+- Status: **decided; phases 0 and 1 implemented, phase 2's strings wrapped
+  and translated** on 2026-11-13. The owner took every recommendation in §3
+  as written ("按照建议来"): D1 A (Lingui), D2 B built as A first, D3 C, D4
+  C, D5 as an addition under plugin API 2, D6 unchanged, D7 the four rules,
+  D8 C. Phase 0's numbers are in §8; D1 stands. Phase 2's gate is not yet
+  complete — §8 says which parts ran.
 - Date: 2026-11-12
 - Asked for by the owner on 2026-11-12, in two parts: the admin and the setup
   wizard have no multilingual support, and the admin's interface needs
@@ -538,6 +539,41 @@ Phase 1 as built:
   site in §2.1, `decimalsOf` in `record-editor.tsx`, keeps `'en'`: it reads
   how many decimals a currency has, which no locale changes. First load
   165.5 KiB.
+
+Phase 2 as built (commits `bb278c7` to the commit adding this note):
+
+- Every page and overlay in the order above, then the form generator,
+  `api.ts`'s network failure, the slug notices and the admin's 404 page:
+  364 messages, all with `zh-CN`. The owner reviewed Chinese screenshots
+  every two or three pages and confirmed the wording each time; the agreed
+  terms are 邮箱, 标语, 部署 / 重新构建, 缓存清除令牌, 边缘缓存, 片段, 询盘,
+  密钥 (for both a Worker secret and an API key), API 令牌, 权限范围, 撤销,
+  替代文本, 定时发布.
+- English changed where it was wrong, and only there: "1 pages · 1 sample
+  records" in the wizard (and `01-wizard`'s assertion), "used by 1 items",
+  "1 image(s) missing" and similar became real plurals.
+- `REQUIRED_MESSAGE` became `requiredMessage()`: a constant was read once,
+  at module load, before any language was active. The sign-in and account
+  schemas pass it to zod 4 as `{ error: requiredMessage }`, read when a
+  value is checked.
+- Found in the Chinese screenshots and fixed: `Intl.ListFormat` with
+  `type: 'unit'` joins Chinese items with no separator ("4809601,440"), so
+  the media page uses a conjunction list; a status badge broke "已发布" one
+  character per line in a narrow cell, so it is `break-keep`.
+- Left for phase 3, because each embeds or is text from outside the
+  bundle: what themes and plugins declare (D4, D5), the Worker's messages
+  (D3), and `export.ts`'s failures, whose sentences embed fragments from
+  `src/core`.
+- `pnpm i18n:extract` passes `--clean`, so a message removed from the
+  source leaves the catalogs.
+- Gate, so far: the extractor reports nothing missing; `pnpm lint`,
+  `typecheck`, `test` (1462), `build`, `bundle:size` (Worker 310.3 KiB) and
+  `admin:size` (first load 165.5 KiB) pass; `pnpm test:e2e` passes, 48
+  specs. One `pnpm test` run failed `wrangler-contract.test.ts` on its 5 s
+  timeout under load; alone it passed, and the full suite passed after.
+  Screenshots were taken on macOS only. **Not yet run:** the
+  pseudo-language pass, axe in Chinese, and screenshots on Windows and
+  Linux.
 
 ## 9. Risks and open questions
 

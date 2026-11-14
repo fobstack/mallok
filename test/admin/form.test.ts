@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { i18n } from '@lingui/core';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   byGroup,
   type FieldSpec,
@@ -7,6 +8,10 @@ import {
   toSpecs,
   validate,
 } from '../../src/admin/form/types.js';
+
+beforeAll(() => {
+  i18n.loadAndActivate({ locale: 'en', messages: {} });
+});
 
 function spec(name: string, field: Partial<FieldSpec['field']>): FieldSpec {
   return {

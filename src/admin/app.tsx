@@ -8,6 +8,7 @@
  * signing in the operator is on the page they asked for.
  */
 
+import { Trans } from '@lingui/react/macro';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import type { ComponentType, JSX } from 'react';
 import { lazy, Suspense } from 'react';
@@ -241,15 +242,19 @@ function NotFound(): JSX.Element {
       <Card className="mx-auto mt-8 max-w-md">
         <CardHeader>
           <CardTitle>
-            <h1>Not found</h1>
+            <h1>
+              <Trans>Not found</Trans>
+            </h1>
           </CardTitle>
           <CardDescription>
-            There is no page at this address in the admin.
+            <Trans>There is no page at this address in the admin.</Trans>
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild>
-            <Link to="/">Back to content</Link>
+            <Link to="/">
+              <Trans>Back to content</Trans>
+            </Link>
           </Button>
         </CardContent>
       </Card>
