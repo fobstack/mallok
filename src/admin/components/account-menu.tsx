@@ -23,10 +23,10 @@ import { SidebarMenuButton } from '@/components/ui/sidebar';
 import {
   INTERFACE_LANGUAGES,
   type InterfaceLanguage,
-  setInterfaceLanguage,
   useInterfaceLanguage,
 } from '../i18n.js';
-import { signOut } from '../queries.js';
+import { notify } from '../notice.js';
+import { chooseInterfaceLanguage, signOut } from '../queries.js';
 import {
   setThemeMode,
   THEME_MODES,
@@ -92,9 +92,15 @@ export function AccountMenu({
         <DropdownMenuRadioGroup
           aria-labelledby={languageLabel}
           value={language}
-          onValueChange={(value) =>
-            void setInterfaceLanguage(value as InterfaceLanguage)
-          }
+          onValueChange={(value) => {
+            // Whatever stopped the account hearing of it, what the operator
+            // needs to know is that this browser has the language anyway.
+            chooseInterfaceLanguage(value as InterfaceLanguage).catch(() => {
+              notify(
+                t`The language applies in this browser, but your account could not remember it.`,
+              );
+            });
+          }}
         >
           {INTERFACE_LANGUAGES.map((option) => (
             <DropdownMenuRadioItem

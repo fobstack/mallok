@@ -15,6 +15,8 @@ export interface Session {
   readonly csrf: string;
   readonly passwordIterations: number;
   readonly passwordRecommendedIterations: number;
+  /** The interface language kept with the account, or null (D2). */
+  readonly uiLocale: string | null;
 }
 
 /** Site settings the admin may edit. */

@@ -17,6 +17,11 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query';
 import { api, setCsrf } from './api.js';
+import {
+  adoptAccountLanguage,
+  type InterfaceLanguage,
+  setInterfaceLanguage,
+} from './i18n.js';
 import type {
   Health,
   PluginInfo,
@@ -72,6 +77,9 @@ export const sessionQuery = queryOptions({
     try {
       const me = await api<Session>('/auth/me');
       setCsrf(me.csrf);
+      // Before the shell renders, so it never paints in the browser's
+      // language and then switches.
+      await adoptAccountLanguage(me.uiLocale);
       return me;
     } catch {
       return null;
@@ -142,8 +150,28 @@ export async function signIn(email: string, password: string): Promise<void> {
   setCsrf(result.csrf);
   const me = await api<Session>('/auth/me');
   // The workspace first: the shell renders the moment the session lands.
-  await fetchWorkspace();
+  await Promise.all([fetchWorkspace(), adoptAccountLanguage(me.uiLocale)]);
   queryClient.setQueryData(keys.session, me);
+}
+
+/**
+ * Chooses the interface language for this browser at once, and for the
+ * account, so another browser follows (D2). Throws when the account could
+ * not be told; the language still applies here.
+ */
+export async function chooseInterfaceLanguage(
+  language: InterfaceLanguage,
+): Promise<void> {
+  await setInterfaceLanguage(language);
+  const saved = await api<{ uiLocale: string | null }>('/auth/me', {
+    method: 'PATCH',
+    body: { uiLocale: language },
+  });
+  queryClient.setQueryData<Session | null>(keys.session, (previous) =>
+    previous === null || previous === undefined
+      ? previous
+      : { ...previous, uiLocale: saved.uiLocale },
+  );
 }
 
 /** Signs out; the next sign-in loads the workspace again. */

@@ -5,9 +5,11 @@
  * It is not a content language: the two never default from each other, and
  * a site's content languages are whatever codes the site declares.
  *
- * The choice is kept in this browser, like the colour scheme. Without one,
- * the first of the browser's languages the admin has a catalog for is used,
- * and English otherwise. It is resolved and its catalog loaded before the
+ * The choice is kept in this browser, like the colour scheme, and with the
+ * account once someone is signed in: after sign-in the account's choice wins
+ * and is copied here, so the next sign-in page is already in it. Without
+ * either, the first of the browser's languages the admin has a catalog for is
+ * used, and English otherwise. It is resolved and its catalog loaded before the
  * first render, so the admin never paints in the wrong language.
  */
 
@@ -115,6 +117,22 @@ export async function setInterfaceLanguage(
     // Not remembered; it still applies to this page.
   }
   await activate(language);
+}
+
+/**
+ * Adopts the language an account keeps (D2): it wins over this browser's
+ * choice, and becomes this browser's choice. A tag the admin has no catalog
+ * for, or none at all, leaves the browser's language as it is.
+ */
+export async function adoptAccountLanguage(tag: string | null): Promise<void> {
+  const language = tag === null ? undefined : matchInterfaceLanguage([tag]);
+  if (language === undefined) {
+    return;
+  }
+  if (language === i18n.locale && stored() === language) {
+    return;
+  }
+  await setInterfaceLanguage(language);
 }
 
 /** The current interface language, re-rendering when it changes. */

@@ -15,6 +15,7 @@ import {
   logout,
   postToken,
   revokeToken,
+  updateMe,
   whoami,
 } from './admin-auth.js';
 import { postClearFragments, postPurgeAll } from './admin-cache.js';
@@ -103,6 +104,8 @@ export async function handleAdmin(
       return logout(env, principal);
     case 'GET auth/me':
       return whoami(env, principal);
+    case 'PATCH auth/me':
+      return updateMe(request, env, principal);
     case 'POST auth/password':
       return changePassword(request, env, principal);
 

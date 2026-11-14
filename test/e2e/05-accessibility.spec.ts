@@ -101,13 +101,21 @@ const ADMIN_SCREENS = [
   ['account', '/_mallok/app/account'],
 ] as const;
 
-/** Scans every screen in `ADMIN_SCREENS` on a signed-in page. */
-async function scanScreens(page: Page, prefix: string): Promise<void> {
+/**
+ * Scans every screen in `ADMIN_SCREENS` on a signed-in page, each one first
+ * checked to be in `lang`: a scan of the wrong language passes silently.
+ */
+async function scanScreens(
+  page: Page,
+  prefix: string,
+  lang: string,
+): Promise<void> {
   for (const [label, path] of ADMIN_SCREENS) {
     await page.goto(path);
     // Every screen loads its data before it is worth scanning; the heading
     // is the signal that the route rendered rather than the shell alone.
     await expect(page.getByRole('heading').first()).toBeVisible();
+    await expect(page.locator('html'), label).toHaveAttribute('lang', lang);
     await scan(page, `${prefix}: ${label}`);
   }
 }
@@ -118,7 +126,7 @@ test.describe('the admin', () => {
   }) => {
     test.setTimeout(120_000);
     await signIn(page);
-    await scanScreens(page, 'admin');
+    await scanScreens(page, 'admin', 'en');
   });
 
   test('has no serious or critical violations in the editor', async ({
@@ -198,20 +206,28 @@ test.describe('the admin in Chinese', () => {
     page,
   }) => {
     test.setTimeout(120_000);
-    // Signed in in English, as every spec does; the choice made afterwards
-    // is the one an operator makes in the account menu.
+    // Chosen in the account menu, as an operator chooses it. Writing the
+    // browser's storage alone is not enough: the account's language wins on
+    // every load (D2), and this one was set up in English.
     await signIn(page);
-    await page.evaluate(() =>
-      localStorage.setItem('mallok-admin-language', 'zh-CN'),
-    );
-    await scanScreens(page, 'admin zh-CN');
-
-    await page.goto('/_mallok/app/content/new');
-    await expect(page.locator('#fm-title')).toBeVisible();
+    await page.getByRole('button', { name: 'Account menu' }).click();
+    await page.getByRole('menuitemradio', { name: '简体中文' }).click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
-    // The preview frame is scanned in English above; its document is the
-    // theme's, in the content's language, not the interface's.
-    await scan(page, 'admin zh-CN: editor', 'iframe[title="预览"]');
+    try {
+      await scanScreens(page, 'admin zh-CN', 'zh-CN');
+
+      await page.goto('/_mallok/app/content/new');
+      await expect(page.locator('#fm-title')).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+      // The preview frame is scanned in English above; its document is the
+      // theme's, in the content's language, not the interface's.
+      await scan(page, 'admin zh-CN: editor', 'iframe[title="预览"]');
+    } finally {
+      // Every later spec reads the admin in English.
+      await page.getByRole('button', { name: '账号菜单' }).click();
+      await page.getByRole('menuitemradio', { name: 'English' }).click();
+      await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+    }
   });
 });
 
