@@ -649,6 +649,9 @@ Phase 3 as built, in the order it landed:
   `declared` copy is kept, as for themes: a plugin's panels never reach a
   visitor. `PLUGIN_API.md §7.8` documents it. The test fixture plugin
   carries a partial catalog, which `20-interface-language` reads.
+  In a commit of its own, the official `inquiry` plugin gains
+  `admin/zh-CN.json` (36 keys, its status values included) through
+  `adminCatalogs` in `index.ts`; its `plugin.json` is unchanged, as D5 asks.
 
 ## 9. Risks and open questions
 
