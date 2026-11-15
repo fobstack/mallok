@@ -14,8 +14,13 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
 import { ApiError, api } from '../api.js';
 import {
+  COMMON_LOCALES,
   ContentLanguageSelect,
   useContentLanguageName,
 } from '../components/content-language.js';
@@ -57,7 +62,7 @@ function useSiteFields(): readonly FieldSpec[] {
         label: t`Custom domain`,
         required: false,
         max: 253,
-        help: t`Only this host is indexable. Without one, every page is served noindex and the edge cache does not apply.`,
+        help: t`The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly.`,
       },
     },
     {
@@ -67,7 +72,7 @@ function useSiteFields(): readonly FieldSpec[] {
         label: t`Media domain`,
         required: false,
         max: 512,
-        help: t`An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker.`,
+        help: t`Where images are served from, such as https://media.example.com. Empty serves them from this site.`,
       },
     },
   ];
@@ -211,6 +216,9 @@ export function SiteSettingsPage(): JSX.Element {
   );
 }
 
+/** The add-language select's value for "a language not listed". */
+const ANOTHER = '*';
+
 /**
  * Enabled languages, the default-locale switch, and whether the default
  * language carries a prefix.
@@ -223,8 +231,11 @@ function LocaleSection(): JSX.Element {
   const current = useSettings();
   const { t } = useLingui();
   const [busy, setBusy] = useState(false);
+  /** The language picked to add: a code, or `ANOTHER` to type one. */
   const [adding, setAdding] = useState('');
+  const [typed, setTyped] = useState('');
   const prefix = current.defaultLocale;
+  const chosen = adding === ANOTHER ? typed.trim() : adding;
   const nameOf = useContentLanguageName();
 
   const setLocales = async (locales: string[]): Promise<void> => {
@@ -302,6 +313,13 @@ function LocaleSection(): JSX.Element {
   return (
     <Section
       title={t`Languages`}
+      // Nothing here waits for a Save; the card says so where the button
+      // would be (U12).
+      footer={
+        <p className="text-sm text-muted-foreground">
+          <Trans>Applies immediately</Trans>
+        </p>
+      }
       description={
         current.prefixDefaultLocale ? (
           <Trans>
@@ -375,20 +393,40 @@ function LocaleSection(): JSX.Element {
         ))}
       </ul>
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          className="w-32"
-          aria-label={t`Language code`}
-          placeholder="de"
+        <NativeSelect
+          aria-label={t`Language to add`}
           value={adding}
-          onInput={(event) => setAdding(event.currentTarget.value)}
-        />
+          onChange={(event) => setAdding(event.currentTarget.value)}
+        >
+          <NativeSelectOption value="">{t`Choose a language…`}</NativeSelectOption>
+          {COMMON_LOCALES.filter((code) => !current.locales.includes(code)).map(
+            (code) => (
+              <NativeSelectOption key={code} value={code}>
+                {nameOf(code)}
+              </NativeSelectOption>
+            ),
+          )}
+          <NativeSelectOption value={ANOTHER}>
+            {t`Another language…`}
+          </NativeSelectOption>
+        </NativeSelect>
+        {adding === ANOTHER ? (
+          <Input
+            className="w-32"
+            aria-label={t`Language code`}
+            placeholder="pt-BR"
+            value={typed}
+            onInput={(event) => setTyped(event.currentTarget.value)}
+          />
+        ) : null}
         <Button
           type="button"
           variant="outline"
-          disabled={busy || adding.trim() === ''}
+          disabled={busy || chosen === ''}
           onClick={() => {
-            void setLocales([...current.locales, adding.trim()]);
+            void setLocales([...current.locales, chosen]);
             setAdding('');
+            setTyped('');
           }}
         >
           <Trans>Add language</Trans>

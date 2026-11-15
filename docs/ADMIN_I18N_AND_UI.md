@@ -807,6 +807,15 @@ Phase 4 as built, in the order it landed:
     three status values and nothing else (`PLUGIN_API.md §7.8`).
   - Row actions are disabled until a row is selected; a download is not,
     since with no selection it exports everything.
+- **U12, Settings → Site.**
+  - The domain and media-domain help says what each is for and what an
+    empty one means, without "noindex", "R2" or "Worker". Diagnostics
+    under Advanced still shows both.
+  - The Languages card says "Applies immediately" where the site card has
+    its Save button.
+  - A language is added from a select of names (`COMMON_LOCALES`, shared
+    with the wizard), with "Another language…" for a typed code.
+  - The taglines were done with U10.
 
 ## 9. Risks and open questions
 

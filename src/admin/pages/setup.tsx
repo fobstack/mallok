@@ -44,7 +44,10 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { LOCALE_PATTERN } from '../../core/index.js';
 import { ApiError, api, setCsrf } from '../api.js';
-import { useContentLanguageName } from '../components/content-language.js';
+import {
+  COMMON_LOCALES,
+  useContentLanguageName,
+} from '../components/content-language.js';
 import { LanguagePicker } from '../components/language-picker.js';
 import { Code, Section } from '../components/page.js';
 import { PasswordInput } from '../components/password-input.js';
@@ -107,30 +110,6 @@ const STEP_LABELS: Readonly<Record<(typeof STEPS)[number], MessageDescriptor>> =
     starter: msg`Starting content`,
     domain: msg`Domain`,
   };
-
-/**
- * Languages offered by name after the theme's own: widely used ones, so
- * that most sites never type a code. Any other code can still be typed.
- */
-const COMMON_LOCALES = [
-  'en',
-  'zh',
-  'es',
-  'fr',
-  'de',
-  'ja',
-  'ko',
-  'pt',
-  'ru',
-  'ar',
-  'it',
-  'nl',
-  'tr',
-  'vi',
-  'id',
-  'th',
-  'pl',
-];
 
 /** The select's value for "a language not listed". */
 const ANOTHER = '*';
