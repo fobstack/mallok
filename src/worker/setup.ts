@@ -104,6 +104,9 @@ export async function getSetupStatus(env: Env): Promise<Response> {
       id: activeTheme().manifest.id,
       name: activeTheme().manifest.name,
       version: activeTheme().manifest.version,
+      // The languages the theme's own text comes in, offered first when the
+      // wizard asks for the site's languages (docs/ADMIN_I18N_AND_UI.md, U16).
+      locales: activeTheme().manifest.locales,
     },
     starters: offeredStarters().map((starter) => ({
       id: starter.id,

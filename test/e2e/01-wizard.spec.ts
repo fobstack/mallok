@@ -26,6 +26,12 @@ test('creates the administrator, the site and the starter content', async ({
   ).toBeVisible();
   await page.getByLabel('Email', { exact: true }).fill(ADMIN.email);
   await page.getByLabel('Password', { exact: true }).fill(ADMIN.password);
+  // Typed once, so it can be read back (docs/ADMIN_I18N_AND_UI.md, U17).
+  await page.getByRole('button', { name: 'Show password' }).click();
+  await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute(
+    'type',
+    'text',
+  );
 
   // The key is typed in, exactly as a site owner types the one `mallok
   // create` printed. A site with no setup key refuses to create an
@@ -41,7 +47,24 @@ test('creates the administrator, the site and the starter content', async ({
   // ---- Step 2: the site --------------------------------------------------
   await expect(page.getByLabel('Site name')).toBeVisible();
   await page.getByLabel('Site name').fill('Titanium E2E');
-  await page.getByLabel('Other languages').fill('zh');
+  // Languages are chosen by name, the theme's own first (U16).
+  await expect(page.getByLabel('Main language')).toHaveValue('en');
+  await page.getByRole('checkbox', { name: 'Chinese (zh)' }).check();
+  await page.getByRole('button', { name: 'Continue' }).click();
+
+  // Back from step 3 keeps what step 2 was given; back to step 1 says the
+  // account exists rather than offering to make it again (U17).
+  await expect(
+    page.getByRole('heading', { name: 'Start with example content?' }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByLabel('Site name')).toHaveValue('Titanium E2E');
+  await expect(
+    page.getByRole('checkbox', { name: 'Chinese (zh)' }),
+  ).toBeChecked();
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(page.getByText('The administrator account,')).toBeVisible();
+  await page.getByRole('button', { name: 'Continue' }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // ---- Step 3: the starter ----------------------------------------------

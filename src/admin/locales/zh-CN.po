@@ -45,6 +45,10 @@ msgstr "不支持“{type}”类型的文件。"
 msgid "\"{typed}\" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title."
 msgstr "“{typed}”里没有拉丁字母或数字，无法生成 slug。请用拉丁字符填写，或清空此栏，由标题自动生成。"
 
+#: src/admin/pages/setup.tsx
+msgid "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
+msgstr "“{wrong}”不是语言代码。请使用 de 或 pt-BR 这样的代码。"
+
 #. placeholder {0}: item.refCount
 #: src/admin/components/media-library.tsx
 msgid "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
@@ -176,8 +180,8 @@ msgid "a content change"
 msgstr "内容修改"
 
 #: src/admin/pages/setup.tsx
-msgid "A language code such as <0>en</0> or <1>zh</1>. It has no URL prefix; every other language does."
-msgstr "语言代码，例如 <0>en</0> 或 <1>zh</1>。主语言不带 URL 前缀，其他语言都带。"
+msgid "A domain can be added at any time; your content and its URLs stay as they are. <0>How to add a custom domain<1/></0>"
+msgstr "域名随时可以添加，内容和网址都保持不变。<0>如何添加自定义域名<1/></0>"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -257,10 +261,6 @@ msgstr "账号菜单"
 msgid "Active"
 msgstr "已生效"
 
-#: src/admin/pages/setup.tsx
-msgid "Add a custom domain in the Cloudflare dashboard under Workers & Pages → your Worker → Settings → Domains & Routes, then enter it under Settings → Site. Nothing else changes: your content, its ids and every URL stay as they are."
-msgstr "请在 Cloudflare 控制台的 Workers & Pages → 你的 Worker → Settings → Domains & Routes 中添加自定义域名，然后在“设置 → 站点”中填写。其他一切都不会改变：内容、内容 ID 和所有 URL 都保持原样。"
-
 #: src/admin/components/record-editor.tsx
 msgid "Add a row"
 msgstr "添加一行"
@@ -330,6 +330,10 @@ msgstr "管理员已存在。"
 msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
 msgstr "R2 的自定义域名，例如 https://media.example.com。留空则由 Worker 提供图片。"
 
+#: src/admin/pages/setup.tsx
+msgid "Another language…"
+msgstr "其他语言…"
+
 #: src/admin/components/plugin-panel.tsx
 msgid "any"
 msgstr "不限"
@@ -373,6 +377,10 @@ msgstr "最多 {max} 项。"
 #: src/admin/server-messages.catalog.ts
 msgid "server.field.max_rows"
 msgstr "最多 {max} 行。"
+
+#: src/admin/pages/setup.tsx
+msgid "Back"
+msgstr "上一步"
 
 #: src/admin/app.tsx
 msgid "Back to content"
@@ -568,10 +576,6 @@ msgstr "Cloudflare 未能清除缓存{status, select, none {} other {（HTTP {st
 #: src/admin/components/account-menu.tsx
 msgid "Colour scheme"
 msgstr "配色"
-
-#: src/admin/pages/setup.tsx
-msgid "Comma separated. You can add more later."
-msgstr "用逗号分隔。之后还可以添加更多。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Configured"
@@ -887,12 +891,12 @@ msgid "Files are stored by the hash of the original, so uploading the same image
 msgstr "文件按原图的哈希值存储，同一张图片上传两次不会产生额外开销，也不会出现重复。"
 
 #: src/admin/pages/setup.tsx
-msgid "Finish"
-msgstr "完成"
-
-#: src/admin/pages/setup.tsx
 msgid "Finish setup"
 msgstr "完成设置"
+
+#: src/admin/pages/setup.tsx
+msgid "For a language not listed, comma separated. Languages can also be added later."
+msgstr "用于上面没有列出的语言，以逗号分隔。之后也可以再添加语言。"
 
 #: src/admin/pages/settings-email.tsx
 msgid "From address"
@@ -987,6 +991,18 @@ msgstr "设置无效：{reason}。"
 msgid "server.settings.invalid"
 msgstr "设置无效。"
 
+#: src/admin/pages/setup.tsx
+msgid "Its email and password can be changed later in Account."
+msgstr "邮箱和密码之后可以在“账号”中修改。"
+
+#: src/admin/pages/setup.tsx
+msgid "Its pages have no URL prefix; every other language's do."
+msgstr "主语言的页面网址不带语言前缀，其他语言都带。"
+
+#: src/admin/pages/setup.tsx
+msgid "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
+msgstr "主语言的页面网址不带语言前缀，其他语言都带。主题自带的文字（例如按钮）提供以下语言：{themeLanguages}。"
+
 #: src/admin/components/record-editor.tsx
 msgid "Keep it"
 msgstr "保留"
@@ -1001,6 +1017,7 @@ msgid "server.content.kind_disabled"
 msgstr "本站点未启用内容类型“{kind}”。"
 
 #: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
 msgid "Language code"
 msgstr "语言代码"
 
@@ -1093,6 +1110,10 @@ msgstr "CSRF 令牌缺失或无效，请刷新页面后重试。"
 #: src/admin/components/ui/breadcrumb.tsx
 msgid "More"
 msgstr "更多"
+
+#: src/admin/pages/setup.tsx
+msgid "More language codes"
+msgstr "更多语言代码"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -1218,13 +1239,13 @@ msgstr "不存在属于该翻译组的 {kind}。"
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "尚未配置缓存清除令牌，保存的修改要等页面缓存过期后访客才能看到。站点运行正常，并没有出错——将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。"
 
+#: src/admin/pages/setup.tsx
+msgid "No cache-purge token is configured, so edits reach visitors within a minute instead of immediately. This is a working configuration, not a broken one; Settings → Advanced says how to make publishing instant."
+msgstr "未配置缓存清除令牌，因此修改会在 1 分钟内对访客可见，而不是立即可见。这是可以正常使用的配置，并非故障；如何让发布立即生效，见“设置 → 高级”。"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
 msgstr "未配置缓存清除令牌，因此没有清除任何缓存。已缓存的页面会自行过期。"
-
-#: src/admin/pages/setup.tsx
-msgid "No cache-purge token is configured, so the cache lifetime was set to 60 seconds — edits appear within a minute instead of immediately. Add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets for instant publishing. This is a working configuration, not a broken one."
-msgstr "尚未配置缓存清除令牌，因此缓存有效期设为 60 秒——修改会在一分钟内生效，而不是立即生效。将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。这是可正常运行的配置，并没有出错。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "No error was recorded."
@@ -1721,6 +1742,10 @@ msgstr "设置密钥"
 msgid "Show fields"
 msgstr "展开字段"
 
+#: src/admin/components/password-input.tsx
+msgid "Show password"
+msgstr "显示密码"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Shown by most themes under the site name, and as the home page description."
 msgstr "大多数主题会显示在站点名称下方，并用作首页描述。"
@@ -1861,6 +1886,14 @@ msgstr "操作失败。"
 #: src/admin/pages/content-list.tsx
 msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
 msgstr "当前主题没有声明这个类型，所以按普通页面的布局渲染。内容和 URL 都不受影响。"
+
+#: src/admin/pages/setup.tsx
+msgid "The administrator account is created."
+msgstr "管理员账号已创建。"
+
+#: src/admin/pages/setup.tsx
+msgid "The administrator account, <0>{email}</0>, is created."
+msgstr "管理员账号 <0>{email}</0> 已创建。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -2011,6 +2044,10 @@ msgstr "slug 超过了 {max} 个字符。"
 msgid "server.slug.not_canonical_use"
 msgstr "slug 只能使用小写拉丁字母、数字和单个连字符。可改用“{use}”。"
 
+#: src/admin/pages/setup.tsx
+msgid "The starter is installed. Its pages can be edited or deleted like any other."
+msgstr "示例内容已安装，其中的页面可以像其他页面一样编辑或删除。"
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.setup.starter_prefix_clash"
@@ -2126,6 +2163,10 @@ msgstr "要添加插件，请把它的目录放进 <0>src/plugins/</0>，在 <1>
 #: src/admin/components/ui/sidebar.tsx
 msgid "Toggle Sidebar"
 msgstr "展开或收起侧栏"
+
+#: src/admin/pages/setup.tsx
+msgid "Translated by the theme"
+msgstr "主题已翻译"
 
 #: src/admin/pages/editor.tsx
 msgid "Translations"
