@@ -1336,13 +1336,16 @@ A catalog is a flat map from where a word is declared to that word:
 - The admin sends its interface language as `Accept-Language`, and
   `GET /_mallok/api/plugins` lays the best match over each plugin — an exact
   tag, then the same primary language. `names` and `values` arrive on each
-  panel beside its declaration.
+  panel beside its declaration. A filter on a field whose values are named
+  is offered as a select of those names; any other filter is typed.
 - Only words change. Ids, tables, types, a `select`'s `choices` and a money
   field's currencies are as declared: a choice is a stored value, and there
   is no translated label for one yet (`ADMIN_I18N_AND_UI.md §9`).
 - It is part of the implementation, not of `plugin.json`, so a plugin
   declaring `pluginApi: 1` may have one (§13.1).
-- The official `inquiry` plugin ships `admin/zh-CN.json`, and declares
+- The official `inquiry` plugin ships `admin/zh-CN.json`, and an
+  `admin/en.json` that names only its status values, so the status filter
+  can offer them by name; it declares
   `pluginApi: 1`.
 
 ## 8. Lifecycle

@@ -338,6 +338,10 @@ msgstr "Another language…"
 msgid "any"
 msgstr "any"
 
+#: src/admin/components/plugin-panel.tsx
+msgid "Any"
+msgstr "Any"
+
 #: src/admin/pages/account.tsx
 msgid "API tokens"
 msgstr "API tokens"
@@ -1854,6 +1858,10 @@ msgstr "Tagline"
 #: src/admin/pages/settings-site.tsx
 msgid "Tagline in {taglineLanguage}"
 msgstr "Tagline in {taglineLanguage}"
+
+#: src/admin/pages/plugins.tsx
+msgid "Technical details"
+msgstr "Technical details"
 
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx

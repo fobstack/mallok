@@ -158,13 +158,23 @@ describe('the plugins, in the interface language', () => {
   });
 
   it('serves the declarations as written without a catalog for the language', async () => {
-    for (const header of [undefined, 'en', 'fr']) {
+    for (const header of [undefined, 'fr']) {
       const plugin = await inquiry(header);
       expect(plugin.name, String(header)).toBe('Inquiry');
       expect(plugin.panels[0]?.label).toBe('Inquiries');
       expect(plugin.panels[0]?.names).toEqual({});
       expect(plugin.panels[0]?.values).toEqual({});
     }
+  });
+
+  it('names the status values in English, so the filter can offer them', async () => {
+    // The English catalog names nothing else; the declarations stand.
+    const plugin = await inquiry('en');
+    expect(plugin.name).toBe('Inquiry');
+    expect(plugin.panels[0]?.names).toEqual({});
+    expect(plugin.panels[0]?.values).toEqual({
+      status: { new: 'New', replied: 'Replied', spam: 'Spam' },
+    });
   });
 });
 
