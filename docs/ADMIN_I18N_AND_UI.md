@@ -816,6 +816,9 @@ Phase 4 as built, in the order it landed:
   - A language is added from a select of names (`COMMON_LOCALES`, shared
     with the wizard), with "Another language…" for a typed code.
   - The taglines were done with U10.
+- **U13, Settings → Appearance.** The theme options come first. The
+  theme's facts, now naming content types by the theme's labels, and the
+  deploy note follow them.
 
 ## 9. Risks and open questions
 
