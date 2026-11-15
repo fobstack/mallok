@@ -873,10 +873,6 @@ msgstr "请输入金额。"
 msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
 msgstr "所有语言（包括默认语言）都在 <0>/<locale>/</0> 下提供；站点根路径会重定向到 <1>/{prefix}</1>。"
 
-#: src/admin/pages/settings-advanced.tsx
-msgid "Everything below is a platform detail. You do not need any of it to run the site."
-msgstr "以下都是平台层面的细节，日常运营站点用不到。"
-
 #: src/admin/pages/setup.tsx
 msgid "Everything the wizard set can be changed later in Settings."
 msgstr "向导中的所有设置之后都可以在“设置”中修改。"
@@ -1013,6 +1009,10 @@ msgstr "主语言的页面网址不带语言前缀，其他语言都带。"
 #: src/admin/pages/setup.tsx
 msgid "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
 msgstr "主语言的页面网址不带语言前缀，其他语言都带。主题自带的文字（例如按钮）提供以下语言：{themeLanguages}。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
+msgstr "请保留站点的备份。备份之后的内容都是平台细节，日常运营站点用不到。"
 
 #: src/admin/components/record-editor.tsx
 msgid "Keep it"
