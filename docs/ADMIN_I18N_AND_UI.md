@@ -819,6 +819,13 @@ Phase 4 as built, in the order it landed:
 - **U13, Settings → Appearance.** The theme options come first. The
   theme's facts, now naming content types by the theme's labels, and the
   deploy note follow them.
+- **U14, Settings → Advanced.**
+  - Backup comes first, and the lede says so.
+  - In Diagnostics, orange is kept for what stops something working: a
+    failed purge, and an email key with no sender. No custom domain, an
+    inactive edge cache, no purge token, no email key and media served by
+    the Worker are neutral. Each says what it means in words.
+  - The storage rows already had labels from phase 2.
 
 ## 9. Risks and open questions
 

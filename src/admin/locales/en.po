@@ -873,10 +873,6 @@ msgstr "Enter an amount."
 msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
 msgstr "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
 
-#: src/admin/pages/settings-advanced.tsx
-msgid "Everything below is a platform detail. You do not need any of it to run the site."
-msgstr "Everything below is a platform detail. You do not need any of it to run the site."
-
 #: src/admin/pages/setup.tsx
 msgid "Everything the wizard set can be changed later in Settings."
 msgstr "Everything the wizard set can be changed later in Settings."
@@ -1013,6 +1009,10 @@ msgstr "Its pages have no URL prefix; every other language's do."
 #: src/admin/pages/setup.tsx
 msgid "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
 msgstr "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
+msgstr "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
 
 #: src/admin/components/record-editor.tsx
 msgid "Keep it"

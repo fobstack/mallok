@@ -236,11 +236,14 @@ export function AdvancedPage(): JSX.Element {
       ? t`${when} — after ${cause}, Cloudflare could not be reached`
       : t`${when} — after ${cause}, Cloudflare answered HTTP ${status}`;
   })();
+  // Orange is kept for what stops something working: a failed purge, an
+  // email key with no sender. What is simply not set up yet is neutral, so
+  // a fresh site is not five warnings (docs/ADMIN_I18N_AND_UI.md, U14).
   const diagnosticsFacts: [ReactNode, ReactNode][] = [
     [
       t`Custom domain`,
       health?.customDomain === null || health === null ? (
-        <StatusBadge key="v" tone="warn">
+        <StatusBadge key="v" tone="neutral">
           <Trans>Not bound</Trans>
         </StatusBadge>
       ) : (
@@ -250,7 +253,7 @@ export function AdvancedPage(): JSX.Element {
     [
       t`Edge cache`,
       health?.customDomain == null ? (
-        <StatusBadge key="v" tone="warn">
+        <StatusBadge key="v" tone="neutral">
           <Trans>Inactive — a workers.dev URL is a preview, not a site</Trans>
         </StatusBadge>
       ) : (
@@ -266,7 +269,7 @@ export function AdvancedPage(): JSX.Element {
           <Trans>Configured</Trans>
         </StatusBadge>
       ) : (
-        <StatusBadge key="v" tone="warn">
+        <StatusBadge key="v" tone="neutral">
           <Trans>Not configured — edits go live after the cache expires</Trans>
         </StatusBadge>
       ),
@@ -291,7 +294,7 @@ export function AdvancedPage(): JSX.Element {
     [
       t`Email (Resend)`,
       current.email.resendConfigured !== true ? (
-        <StatusBadge key="v" tone="warn">
+        <StatusBadge key="v" tone="neutral">
           <Trans>No key — no email is sent</Trans>
         </StatusBadge>
       ) : current.email.fromAddress === '' ? (
@@ -309,7 +312,7 @@ export function AdvancedPage(): JSX.Element {
     [
       t`Media domain`,
       health?.mediaBaseUrl == null ? (
-        <StatusBadge key="v" tone="warn">
+        <StatusBadge key="v" tone="neutral">
           <Trans>Served through the Worker</Trans>
         </StatusBadge>
       ) : (
@@ -325,8 +328,11 @@ export function AdvancedPage(): JSX.Element {
     <Page>
       <PageHeader
         title={t`Advanced`}
-        lede={t`Everything below is a platform detail. You do not need any of it to run the site.`}
+        lede={t`Keep a backup of your site. Everything after it is a platform detail you do not need to run the site.`}
       />
+
+      {/* The one thing here an operator needs to do (U14). */}
+      <BackupSection />
 
       <Section title={t`What is instant, and what needs a deploy`}>
         <div className="grid gap-6 sm:grid-cols-2">
@@ -412,8 +418,6 @@ export function AdvancedPage(): JSX.Element {
           />
         )}
       </Section>
-
-      <BackupSection />
 
       <Section title={t`Cache`}>
         <Field>
