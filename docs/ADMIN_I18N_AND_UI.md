@@ -795,6 +795,18 @@ Phase 4 as built, in the order it landed:
     already there (D7).
   - `01-wizard` now picks "Chinese (zh)" by checkbox instead of typing
     `zh`, and it exercises Back and the password toggle.
+- **U11, Plugins.**
+  - A plugin's card is its warnings, its panels, its settings, its
+    secrets, then "Technical details" (hooks, client JavaScript, cache
+    effect, script list), closed. The panel link of the design waits for
+    U3, which moves panels into the sidebar.
+  - `inquiry`'s setting labels lost their parentheses to `help`, and the
+    autoreply body is a `text` field. Its zh-CN catalog follows.
+  - A filter on a field whose values a catalog names is a select. So that
+    English has the names too, `inquiry` ships `admin/en.json` with the
+    three status values and nothing else (`PLUGIN_API.md §7.8`).
+  - Row actions are disabled until a row is selected; a download is not,
+    since with no selection it exports everything.
 
 ## 9. Risks and open questions
 

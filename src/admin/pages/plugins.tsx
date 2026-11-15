@@ -236,35 +236,6 @@ function PluginCard({
         </CardHeader>
 
         <CardContent className="flex flex-col gap-6">
-          <Facts
-            items={[
-              [
-                t`Hooks`,
-                plugin.hooks.length === 0 ? t`None` : plugin.hooks.join(', '),
-              ],
-              [
-                t`Client JavaScript`,
-                plugin.clientScripts.length === 0 ? (
-                  <StatusBadge key="v" tone="ok">
-                    <Trans>None</Trans>
-                  </StatusBadge>
-                ) : (
-                  <StatusBadge key="v" tone="warn">
-                    <Plural
-                      value={plugin.clientScripts.length}
-                      one="# script"
-                      other="# scripts"
-                    />
-                  </StatusBadge>
-                ),
-              ],
-              [
-                t`Affects cached pages`,
-                plugin.affectsFragmentCache ? t`Yes` : t`Only at request time`,
-              ],
-            ]}
-          />
-
           {plugin.runsOnEveryRequest ? (
             <Alert role="note" className="border-warning/40 text-warning">
               <TriangleAlert />
@@ -293,21 +264,30 @@ function PluginCard({
             </Alert>
           )}
 
-          {plugin.clientScripts.length === 0 ? null : (
-            <ul className="flex flex-col divide-y rounded-lg border">
-              {plugin.clientScripts.map((script) => (
-                <li
-                  key={script.src}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"
-                >
-                  <Code>{script.src}</Code>
-                  <span className="text-muted-foreground">
-                    {script.purpose}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          {plugin.panels.map((panel) => {
+            if (panel.attachTo === undefined) {
+              return (
+                <PluginPanelView
+                  key={panel.id}
+                  pluginId={plugin.id}
+                  panel={panel}
+                />
+              );
+            }
+            const panelLabel = panel.label;
+            const kind = panel.attachTo.kind;
+            // Its records belong to one content item each; a list of all of
+            // them, with nothing to say whose they are, would only mislead.
+            return (
+              <p className="text-sm text-muted-foreground" key={panel.id}>
+                <Trans>
+                  <strong className="text-foreground">{panelLabel}</strong> is
+                  edited where it belongs: open any <Code>{kind}</Code> in
+                  Content, and it is under the editor.
+                </Trans>
+              </p>
+            );
+          })}
 
           {specs.length === 0 ? null : (
             <form
@@ -389,30 +369,63 @@ function PluginCard({
             </div>
           )}
 
-          {plugin.panels.map((panel) => {
-            if (panel.attachTo === undefined) {
-              return (
-                <PluginPanelView
-                  key={panel.id}
-                  pluginId={plugin.id}
-                  panel={panel}
-                />
-              );
-            }
-            const panelLabel = panel.label;
-            const kind = panel.attachTo.kind;
-            // Its records belong to one content item each; a list of all of
-            // them, with nothing to say whose they are, would only mislead.
-            return (
-              <p className="text-sm text-muted-foreground" key={panel.id}>
-                <Trans>
-                  <strong className="text-foreground">{panelLabel}</strong> is
-                  edited where it belongs: open any <Code>{kind}</Code> in
-                  Content, and it is under the editor.
-                </Trans>
-              </p>
-            );
-          })}
+          {/* What the plugin does to the site, which ADMIN.md §10 requires
+              to be shown; closed, because it is read once, not operated. */}
+          <details className="rounded-lg border">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-medium select-none">
+              <Trans>Technical details</Trans>
+            </summary>
+            <div className="flex flex-col gap-4 border-t px-3 py-3">
+              <Facts
+                items={[
+                  [
+                    t`Hooks`,
+                    plugin.hooks.length === 0
+                      ? t`None`
+                      : plugin.hooks.join(', '),
+                  ],
+                  [
+                    t`Client JavaScript`,
+                    plugin.clientScripts.length === 0 ? (
+                      <StatusBadge key="v" tone="ok">
+                        <Trans>None</Trans>
+                      </StatusBadge>
+                    ) : (
+                      <StatusBadge key="v" tone="warn">
+                        <Plural
+                          value={plugin.clientScripts.length}
+                          one="# script"
+                          other="# scripts"
+                        />
+                      </StatusBadge>
+                    ),
+                  ],
+                  [
+                    t`Affects cached pages`,
+                    plugin.affectsFragmentCache
+                      ? t`Yes`
+                      : t`Only at request time`,
+                  ],
+                ]}
+              />
+
+              {plugin.clientScripts.length === 0 ? null : (
+                <ul className="flex flex-col divide-y rounded-lg border">
+                  {plugin.clientScripts.map((script) => (
+                    <li
+                      key={script.src}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm"
+                    >
+                      <Code>{script.src}</Code>
+                      <span className="text-muted-foreground">
+                        {script.purpose}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </details>
         </CardContent>
       </Card>
     </section>

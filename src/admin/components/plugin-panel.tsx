@@ -22,6 +22,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -221,18 +225,43 @@ export function PluginPanelView({
             >
               {nameOf(field)}
             </FieldLabel>
-            <Input
-              id={`${titleId}-filter-${field}`}
-              value={filters[field] ?? ''}
-              placeholder={t`any`}
-              onChange={(event) => {
-                setOffset(0);
-                setFilters((previous) => ({
-                  ...previous,
-                  [field]: event.currentTarget.value,
-                }));
-              }}
-            />
+            {/* A field whose values are named is a choice among them; any
+                other is typed (docs/ADMIN_I18N_AND_UI.md, U11). */}
+            {Object.keys(panel.values?.[field] ?? {}).length > 0 ? (
+              <NativeSelect
+                id={`${titleId}-filter-${field}`}
+                value={filters[field] ?? ''}
+                onChange={(event) => {
+                  setOffset(0);
+                  setFilters((previous) => ({
+                    ...previous,
+                    [field]: event.currentTarget.value,
+                  }));
+                }}
+              >
+                <NativeSelectOption value="">{t`Any`}</NativeSelectOption>
+                {Object.entries(panel.values?.[field] ?? {}).map(
+                  ([value, label]) => (
+                    <NativeSelectOption key={value} value={value}>
+                      {label}
+                    </NativeSelectOption>
+                  ),
+                )}
+              </NativeSelect>
+            ) : (
+              <Input
+                id={`${titleId}-filter-${field}`}
+                value={filters[field] ?? ''}
+                placeholder={t`any`}
+                onChange={(event) => {
+                  setOffset(0);
+                  setFilters((previous) => ({
+                    ...previous,
+                    [field]: event.currentTarget.value,
+                  }));
+                }}
+              />
+            )}
           </Field>
         ))}
         {panel.search.length === 0 ? null : (
@@ -262,6 +291,9 @@ export function PluginPanelView({
             key={action.id}
             type="button"
             variant="outline"
+            // An action on rows waits for a row; a download takes them all
+            // when none is chosen.
+            disabled={action.type !== 'download' && selected.length === 0}
             onClick={() => void runAction(action)}
           >
             {action.label}

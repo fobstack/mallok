@@ -338,6 +338,10 @@ msgstr "其他语言…"
 msgid "any"
 msgstr "不限"
 
+#: src/admin/components/plugin-panel.tsx
+msgid "Any"
+msgstr "不限"
+
 #: src/admin/pages/account.tsx
 msgid "API tokens"
 msgstr "API 令牌"
@@ -1854,6 +1858,10 @@ msgstr "标语"
 #: src/admin/pages/settings-site.tsx
 msgid "Tagline in {taglineLanguage}"
 msgstr "{taglineLanguage}标语"
+
+#: src/admin/pages/plugins.tsx
+msgid "Technical details"
+msgstr "技术细节"
 
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx
