@@ -773,6 +773,28 @@ Phase 4 as built, in the order it landed:
   - `21-editor-layout` checks all of this at 1440 and 390 px, with axe.
     Like `05-accessibility`, it leaves the script-free preview frame out
     of the scan, because axe waits on that frame until the test times out.
+- **U16–U18, the wizard and sign-in.**
+  - U16: the setup status now names the active theme's `locales`. The
+    main language is a select of names, the theme's languages in their own
+    group first, then widely used ones, then "Another language…" with a
+    code field. It starts as the interface language. The other languages
+    are checkboxes, and a field still takes codes not listed; typed codes
+    are checked against `LOCALE_PATTERN` before anything is sent.
+  - U17: four numbered steps, and the result screen is not one of them.
+    Steps 2–4 have Back. Back to step 1 says the account exists rather than
+    offering to make it again; once a starter is installed, step 3 says so
+    and has no Back, because re-applying step 2 would drop the languages
+    the starter added. The password has a show toggle
+    (`components/password-input.tsx`). Step 4 keeps the `.workers.dev`
+    paragraph and links to Cloudflare's custom-domain guide; the no-token
+    note no longer names the secrets and points to Advanced, as U1 did.
+  - U18: there is no session-less endpoint that gives the site's name, so
+    sign-in names the site only when this browser already knows it, as
+    before. Adding one was left out: it is a new unauthenticated route, for
+    a page the operator sees rarely. The interface-language control was
+    already there (D7).
+  - `01-wizard` now picks "Chinese (zh)" by checkbox instead of typing
+    `zh`, and it exercises Back and the password toggle.
 
 ## 9. Risks and open questions
 

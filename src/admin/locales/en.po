@@ -45,6 +45,10 @@ msgstr "\"{type}\" is not accepted."
 msgid "\"{typed}\" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title."
 msgstr "\"{typed}\" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title."
 
+#: src/admin/pages/setup.tsx
+msgid "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
+msgstr "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
+
 #. placeholder {0}: item.refCount
 #: src/admin/components/media-library.tsx
 msgid "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
@@ -176,8 +180,8 @@ msgid "a content change"
 msgstr "a content change"
 
 #: src/admin/pages/setup.tsx
-msgid "A language code such as <0>en</0> or <1>zh</1>. It has no URL prefix; every other language does."
-msgstr "A language code such as <0>en</0> or <1>zh</1>. It has no URL prefix; every other language does."
+msgid "A domain can be added at any time; your content and its URLs stay as they are. <0>How to add a custom domain<1/></0>"
+msgstr "A domain can be added at any time; your content and its URLs stay as they are. <0>How to add a custom domain<1/></0>"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -257,10 +261,6 @@ msgstr "Account menu"
 msgid "Active"
 msgstr "Active"
 
-#: src/admin/pages/setup.tsx
-msgid "Add a custom domain in the Cloudflare dashboard under Workers & Pages → your Worker → Settings → Domains & Routes, then enter it under Settings → Site. Nothing else changes: your content, its ids and every URL stay as they are."
-msgstr "Add a custom domain in the Cloudflare dashboard under Workers & Pages → your Worker → Settings → Domains & Routes, then enter it under Settings → Site. Nothing else changes: your content, its ids and every URL stay as they are."
-
 #: src/admin/components/record-editor.tsx
 msgid "Add a row"
 msgstr "Add a row"
@@ -330,6 +330,10 @@ msgstr "An administrator already exists."
 msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
 msgstr "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
 
+#: src/admin/pages/setup.tsx
+msgid "Another language…"
+msgstr "Another language…"
+
 #: src/admin/components/plugin-panel.tsx
 msgid "any"
 msgstr "any"
@@ -373,6 +377,10 @@ msgstr "At most {max} entries."
 #: src/admin/server-messages.catalog.ts
 msgid "server.field.max_rows"
 msgstr "At most {max} rows."
+
+#: src/admin/pages/setup.tsx
+msgid "Back"
+msgstr "Back"
 
 #: src/admin/app.tsx
 msgid "Back to content"
@@ -568,10 +576,6 @@ msgstr "Cloudflare did not purge the cache{status, select, none {} other { (HTTP
 #: src/admin/components/account-menu.tsx
 msgid "Colour scheme"
 msgstr "Colour scheme"
-
-#: src/admin/pages/setup.tsx
-msgid "Comma separated. You can add more later."
-msgstr "Comma separated. You can add more later."
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Configured"
@@ -887,12 +891,12 @@ msgid "Files are stored by the hash of the original, so uploading the same image
 msgstr "Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate."
 
 #: src/admin/pages/setup.tsx
-msgid "Finish"
-msgstr "Finish"
-
-#: src/admin/pages/setup.tsx
 msgid "Finish setup"
 msgstr "Finish setup"
+
+#: src/admin/pages/setup.tsx
+msgid "For a language not listed, comma separated. Languages can also be added later."
+msgstr "For a language not listed, comma separated. Languages can also be added later."
 
 #: src/admin/pages/settings-email.tsx
 msgid "From address"
@@ -987,6 +991,18 @@ msgstr "Invalid settings: {reason}."
 msgid "server.settings.invalid"
 msgstr "Invalid settings."
 
+#: src/admin/pages/setup.tsx
+msgid "Its email and password can be changed later in Account."
+msgstr "Its email and password can be changed later in Account."
+
+#: src/admin/pages/setup.tsx
+msgid "Its pages have no URL prefix; every other language's do."
+msgstr "Its pages have no URL prefix; every other language's do."
+
+#: src/admin/pages/setup.tsx
+msgid "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
+msgstr "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
+
 #: src/admin/components/record-editor.tsx
 msgid "Keep it"
 msgstr "Keep it"
@@ -1001,6 +1017,7 @@ msgid "server.content.kind_disabled"
 msgstr "Kind \"{kind}\" is not enabled on this site."
 
 #: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
 msgid "Language code"
 msgstr "Language code"
 
@@ -1093,6 +1110,10 @@ msgstr "Missing or invalid CSRF token."
 #: src/admin/components/ui/breadcrumb.tsx
 msgid "More"
 msgstr "More"
+
+#: src/admin/pages/setup.tsx
+msgid "More language codes"
+msgstr "More language codes"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -1218,13 +1239,13 @@ msgstr "No {kind} with that translation group exists."
 msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 msgstr "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
 
+#: src/admin/pages/setup.tsx
+msgid "No cache-purge token is configured, so edits reach visitors within a minute instead of immediately. This is a working configuration, not a broken one; Settings → Advanced says how to make publishing instant."
+msgstr "No cache-purge token is configured, so edits reach visitors within a minute instead of immediately. This is a working configuration, not a broken one; Settings → Advanced says how to make publishing instant."
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
 msgstr "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
-
-#: src/admin/pages/setup.tsx
-msgid "No cache-purge token is configured, so the cache lifetime was set to 60 seconds — edits appear within a minute instead of immediately. Add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets for instant publishing. This is a working configuration, not a broken one."
-msgstr "No cache-purge token is configured, so the cache lifetime was set to 60 seconds — edits appear within a minute instead of immediately. Add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets for instant publishing. This is a working configuration, not a broken one."
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "No error was recorded."
@@ -1721,6 +1742,10 @@ msgstr "Setup key"
 msgid "Show fields"
 msgstr "Show fields"
 
+#: src/admin/components/password-input.tsx
+msgid "Show password"
+msgstr "Show password"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Shown by most themes under the site name, and as the home page description."
 msgstr "Shown by most themes under the site name, and as the home page description."
@@ -1861,6 +1886,14 @@ msgstr "The action failed."
 #: src/admin/pages/content-list.tsx
 msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
 msgstr "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
+
+#: src/admin/pages/setup.tsx
+msgid "The administrator account is created."
+msgstr "The administrator account is created."
+
+#: src/admin/pages/setup.tsx
+msgid "The administrator account, <0>{email}</0>, is created."
+msgstr "The administrator account, <0>{email}</0>, is created."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -2011,6 +2044,10 @@ msgstr "The slug is longer than {max} characters."
 msgid "server.slug.not_canonical_use"
 msgstr "The slug must use lowercase Latin letters, digits and single dashes. Use \"{use}\"."
 
+#: src/admin/pages/setup.tsx
+msgid "The starter is installed. Its pages can be edited or deleted like any other."
+msgstr "The starter is installed. Its pages can be edited or deleted like any other."
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.setup.starter_prefix_clash"
@@ -2126,6 +2163,10 @@ msgstr "To add one, put its folder in <0>src/plugins/</0>, list it in <1>src/plu
 #: src/admin/components/ui/sidebar.tsx
 msgid "Toggle Sidebar"
 msgstr "Toggle Sidebar"
+
+#: src/admin/pages/setup.tsx
+msgid "Translated by the theme"
+msgstr "Translated by the theme"
 
 #: src/admin/pages/editor.tsx
 msgid "Translations"
