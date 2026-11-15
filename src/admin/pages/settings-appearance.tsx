@@ -91,6 +91,10 @@ export function AppearancePage(): JSX.Element {
   const busy = form.formState.isSubmitting;
 
   const kinds = Object.entries(active.kinds);
+  const listSeparator = t({
+    comment: 'Between items of a list',
+    message: ', ',
+  });
   const scripts = active.clientScripts.length;
   const builtIn = active.available.join(', ');
   const nameOf = useContentLanguageName();
@@ -104,6 +108,38 @@ export function AppearancePage(): JSX.Element {
         lede={t`The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code.`}
       />
 
+      {specs.length === 0 ? null : (
+        <Section
+          as="form"
+          title={t`Theme options`}
+          onSubmit={(event) => void submit(event)}
+          footer={
+            <>
+              <Button type="submit" disabled={busy}>
+                {busy ? t`Saving…` : t`Save options`}
+              </Button>
+              {saved ? <SavedNote /> : null}
+            </>
+          }
+        >
+          {current.locales.length > 1 ? (
+            <ContentLanguageSelect
+              id="theme-editing-locale"
+              value={editingLocale}
+              onChange={setEditingLocale}
+              locales={current.locales}
+              defaultLocale={current.defaultLocale}
+              description={
+                editingLocale === current.defaultLocale
+                  ? t`These values apply to every language unless a language overrides them below.`
+                  : t`Values you change here apply only to ${editingLanguage}. Anything you leave alone follows the ${defaultLanguage} value.`
+              }
+            />
+          ) : null}
+          <SchemaForm specs={specs} control={form.control} idPrefix="theme" />
+        </Section>
+      )}
+
       <Section
         title={
           <>
@@ -116,7 +152,11 @@ export function AppearancePage(): JSX.Element {
       >
         <Facts
           items={[
-            [t`Content types`, kinds.map(([kind]) => kind).join(', ')],
+            [
+              t`Content types`,
+              // The theme's names for them, as the content list shows (U4).
+              kinds.map(([kind, def]) => def.label ?? kind).join(listSeparator),
+            ],
             [
               t`Client JavaScript`,
               scripts === 0 ? (
@@ -179,38 +219,6 @@ export function AppearancePage(): JSX.Element {
           </p>
         </AlertDescription>
       </Alert>
-
-      {specs.length === 0 ? null : (
-        <Section
-          as="form"
-          title={t`Theme options`}
-          onSubmit={(event) => void submit(event)}
-          footer={
-            <>
-              <Button type="submit" disabled={busy}>
-                {busy ? t`Saving…` : t`Save options`}
-              </Button>
-              {saved ? <SavedNote /> : null}
-            </>
-          }
-        >
-          {current.locales.length > 1 ? (
-            <ContentLanguageSelect
-              id="theme-editing-locale"
-              value={editingLocale}
-              onChange={setEditingLocale}
-              locales={current.locales}
-              defaultLocale={current.defaultLocale}
-              description={
-                editingLocale === current.defaultLocale
-                  ? t`These values apply to every language unless a language overrides them below.`
-                  : t`Values you change here apply only to ${editingLanguage}. Anything you leave alone follows the ${defaultLanguage} value.`
-              }
-            />
-          ) : null}
-          <SchemaForm specs={specs} control={form.control} idPrefix="theme" />
-        </Section>
-      )}
     </Page>
   );
 }

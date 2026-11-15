@@ -8,8 +8,10 @@ msgstr ""
 "Language: zh-CN\n"
 
 #. Between items of a list
+#. Between items of a list
 #: src/admin/components/plugin-panel.tsx
 #: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
 msgid ", "
 msgstr "、"
 
