@@ -327,9 +327,6 @@ msgid "server.setup.admin_exists"
 msgstr "管理员已存在。"
 
 #: src/admin/pages/settings-site.tsx
-msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
-msgstr "R2 的自定义域名，例如 https://media.example.com。留空则由 Worker 提供图片。"
-
 #: src/admin/pages/setup.tsx
 msgid "Another language…"
 msgstr "其他语言…"
@@ -354,6 +351,10 @@ msgstr "外观"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Applied migrations"
 msgstr "已执行的迁移"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Applies immediately"
+msgstr "立即生效"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -493,6 +494,10 @@ msgstr "正在检测…"
 #: src/admin/components/media-library.tsx
 msgid "Choose a file"
 msgstr "选择文件"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Choose a language…"
+msgstr "选择语言…"
 
 #: src/admin/components/media-library.tsx
 msgid "Choose an image"
@@ -1026,6 +1031,10 @@ msgid "Language code"
 msgstr "语言代码"
 
 #: src/admin/pages/settings-site.tsx
+msgid "Language to add"
+msgstr "要添加的语言"
+
+#: src/admin/pages/settings-site.tsx
 msgid "Languages"
 msgstr "语言"
 
@@ -1385,10 +1394,6 @@ msgstr "只有图片才有缩略图。"
 #: src/admin/components/related-rows.tsx
 msgid "Only the first rows are shown."
 msgstr "只显示了前面的部分行。"
-
-#: src/admin/pages/settings-site.tsx
-msgid "Only this host is indexable. Without one, every page is served noindex and the edge cache does not apply."
-msgstr "只有这个域名会被搜索引擎收录。未设置时，所有页面都带 noindex，且边缘缓存不生效。"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Open"
@@ -1895,6 +1900,10 @@ msgstr "操作失败。"
 msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
 msgstr "当前主题没有声明这个类型，所以按普通页面的布局渲染。内容和 URL 都不受影响。"
 
+#: src/admin/pages/settings-site.tsx
+msgid "The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly."
+msgstr "访客访问站点用的地址，例如 www.example.com。设置之前，搜索引擎会被告知不要收录本站，页面也不会被缓存，因此加载较慢。"
+
 #: src/admin/pages/setup.tsx
 msgid "The administrator account is created."
 msgstr "管理员账号已创建。"
@@ -2314,6 +2323,10 @@ msgstr "哪些立即生效，哪些需要部署"
 #: src/admin/pages/plugins.tsx
 msgid "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
 msgstr "这里能修改的内容——下面的开关、设置和密钥——都保存在数据库中，从下一次请求起生效。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Where images are served from, such as https://media.example.com. Empty serves them from this site."
+msgstr "图片从哪个地址提供，例如 https://media.example.com。留空则由本站直接提供。"
 
 #: src/admin/components/shell.tsx
 msgid "Why?"

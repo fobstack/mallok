@@ -19,6 +19,31 @@ import {
 } from '@/components/ui/native-select';
 
 /**
+ * Widely used languages, offered by name wherever a language is added, so
+ * that most sites never type a code; any other code can still be typed
+ * (docs/ADMIN_I18N_AND_UI.md, U12 and U16).
+ */
+export const COMMON_LOCALES: readonly string[] = [
+  'en',
+  'zh',
+  'es',
+  'fr',
+  'de',
+  'ja',
+  'ko',
+  'pt',
+  'ru',
+  'ar',
+  'it',
+  'nl',
+  'tr',
+  'vi',
+  'id',
+  'th',
+  'pl',
+];
+
+/**
  * Names a content language in the interface language, with its code:
  * "Chinese (zh)". A code `Intl` cannot name is shown as itself.
  */

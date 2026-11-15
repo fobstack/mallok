@@ -327,9 +327,6 @@ msgid "server.setup.admin_exists"
 msgstr "An administrator already exists."
 
 #: src/admin/pages/settings-site.tsx
-msgid "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
-msgstr "An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker."
-
 #: src/admin/pages/setup.tsx
 msgid "Another language…"
 msgstr "Another language…"
@@ -354,6 +351,10 @@ msgstr "Appearance"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Applied migrations"
 msgstr "Applied migrations"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Applies immediately"
+msgstr "Applies immediately"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -493,6 +494,10 @@ msgstr "Checking…"
 #: src/admin/components/media-library.tsx
 msgid "Choose a file"
 msgstr "Choose a file"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Choose a language…"
+msgstr "Choose a language…"
 
 #: src/admin/components/media-library.tsx
 msgid "Choose an image"
@@ -1026,6 +1031,10 @@ msgid "Language code"
 msgstr "Language code"
 
 #: src/admin/pages/settings-site.tsx
+msgid "Language to add"
+msgstr "Language to add"
+
+#: src/admin/pages/settings-site.tsx
 msgid "Languages"
 msgstr "Languages"
 
@@ -1385,10 +1394,6 @@ msgstr "Only images have variants."
 #: src/admin/components/related-rows.tsx
 msgid "Only the first rows are shown."
 msgstr "Only the first rows are shown."
-
-#: src/admin/pages/settings-site.tsx
-msgid "Only this host is indexable. Without one, every page is served noindex and the edge cache does not apply."
-msgstr "Only this host is indexable. Without one, every page is served noindex and the edge cache does not apply."
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Open"
@@ -1895,6 +1900,10 @@ msgstr "The action failed."
 msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
 msgstr "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
 
+#: src/admin/pages/settings-site.tsx
+msgid "The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly."
+msgstr "The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly."
+
 #: src/admin/pages/setup.tsx
 msgid "The administrator account is created."
 msgstr "The administrator account is created."
@@ -2314,6 +2323,10 @@ msgstr "What is instant, and what needs a deploy"
 #: src/admin/pages/plugins.tsx
 msgid "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
 msgstr "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Where images are served from, such as https://media.example.com. Empty serves them from this site."
+msgstr "Where images are served from, such as https://media.example.com. Empty serves them from this site."
 
 #: src/admin/components/shell.tsx
 msgid "Why?"
