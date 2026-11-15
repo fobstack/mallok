@@ -60,6 +60,11 @@ test('the sidebar passes the accessibility gate open, collapsed and on a phone',
 
   await page.getByRole('button', { name: 'Toggle Sidebar' }).click();
   await expect(page.locator('[data-state="collapsed"]').first()).toBeVisible();
+  // The group labels fade out as it collapses; scanned mid-fade, their
+  // half-transparent text failed the contrast check now and then.
+  await page.evaluate(
+    'Promise.all(document.getAnimations().map((animation) => animation.finished))',
+  );
   await clean(page, 'sidebar collapsed');
   // Collapsed to icons, the links keep their names.
   await expect(
