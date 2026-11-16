@@ -28,6 +28,7 @@ import { relativePathFor, type UploadProgress, uploadFile } from '../media.js';
 import { messageOf, notify } from '../notice.js';
 import { keys, useSettings, useTheme } from '../queries.js';
 import type { MediaItem } from '../types.js';
+import { EmptyState } from './empty-state.js';
 
 export interface MediaLibraryProps {
   /** Restricts the list; a picker for an image field passes 'image'. */
@@ -209,9 +210,10 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
           <Trans>Loading…</Trans>
         </p>
       ) : items.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          <Trans>No media yet.</Trans>
-        </p>
+        // The drop zone above is the action that fills it (U19).
+        <EmptyState>
+          <Trans>Nothing has been uploaded yet.</Trans>
+        </EmptyState>
       ) : (
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-4">
           {items.map((item) => (

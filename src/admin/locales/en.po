@@ -292,6 +292,10 @@ msgstr "Add language"
 msgid "Add row"
 msgstr "Add row"
 
+#: src/admin/components/plugin-panel.tsx
+msgid "Add the first one"
+msgstr "Add the first one"
+
 #: src/admin/pages/setup.tsx
 msgid "Administrator"
 msgstr "Administrator"
@@ -535,6 +539,7 @@ msgstr "Clear"
 msgid "Clear cached pages"
 msgstr "Clear cached pages"
 
+#: src/admin/components/plugin-panel.tsx
 #: src/admin/pages/content-list.tsx
 msgid "Clear filters"
 msgstr "Clear filters"
@@ -1270,10 +1275,6 @@ msgstr "No error was recorded."
 msgid "No key — no email is sent"
 msgstr "No key — no email is sent"
 
-#: src/admin/components/media-library.tsx
-msgid "No media yet."
-msgstr "No media yet."
-
 #: src/admin/pages/plugins.tsx
 msgid "No plugins are compiled into this build."
 msgstr "No plugins are compiled into this build."
@@ -1352,6 +1353,10 @@ msgstr "Not in theme"
 msgid "Not saved yet"
 msgstr "Not saved yet"
 
+#: src/admin/components/media-library.tsx
+msgid "Nothing has been uploaded yet."
+msgstr "Nothing has been uploaded yet."
+
 #: src/admin/pages/content-list.tsx
 msgid "Nothing has been written in {language} yet."
 msgstr "Nothing has been written in {language} yet."
@@ -1363,6 +1368,10 @@ msgstr "Nothing here yet."
 #: src/admin/pages/content-list.tsx
 msgid "Nothing in {language} matches these filters."
 msgstr "Nothing in {language} matches these filters."
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Nothing matches these filters."
+msgstr "Nothing matches these filters."
 
 #: src/admin/components/toast-host.tsx
 msgid "Notifications"

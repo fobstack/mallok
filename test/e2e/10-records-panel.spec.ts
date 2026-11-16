@@ -25,6 +25,10 @@ test('records are created, edited, sorted, searched and deleted from the declare
   await expect(power).toBeChecked();
   const panel = card.getByRole('region', { name: 'Catalog items' });
   await expect(panel.getByText('Nothing here yet.')).toBeVisible();
+  // An empty list offers the one action that fills it (U19).
+  await expect(
+    panel.getByRole('button', { name: 'Add the first one' }),
+  ).toBeVisible();
 
   // --- create, with a validation error first ------------------------------
   await panel.getByRole('button', { name: 'New' }).click();
