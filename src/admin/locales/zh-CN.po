@@ -292,6 +292,10 @@ msgstr "添加语言"
 msgid "Add row"
 msgstr "添加一行"
 
+#: src/admin/components/plugin-panel.tsx
+msgid "Add the first one"
+msgstr "添加第一条"
+
 #: src/admin/pages/setup.tsx
 msgid "Administrator"
 msgstr "管理员"
@@ -535,6 +539,7 @@ msgstr "清除"
 msgid "Clear cached pages"
 msgstr "清除页面缓存"
 
+#: src/admin/components/plugin-panel.tsx
 #: src/admin/pages/content-list.tsx
 msgid "Clear filters"
 msgstr "清除筛选"
@@ -1270,10 +1275,6 @@ msgstr "没有记录到错误信息。"
 msgid "No key — no email is sent"
 msgstr "未设置密钥 — 不会发送任何邮件"
 
-#: src/admin/components/media-library.tsx
-msgid "No media yet."
-msgstr "还没有媒体文件。"
-
 #: src/admin/pages/plugins.tsx
 msgid "No plugins are compiled into this build."
 msgstr "本次构建没有编译进任何插件。"
@@ -1352,6 +1353,10 @@ msgstr "主题未声明"
 msgid "Not saved yet"
 msgstr "尚未保存"
 
+#: src/admin/components/media-library.tsx
+msgid "Nothing has been uploaded yet."
+msgstr "还没有上传任何文件。"
+
 #: src/admin/pages/content-list.tsx
 msgid "Nothing has been written in {language} yet."
 msgstr "还没有{language}的内容。"
@@ -1363,6 +1368,10 @@ msgstr "这里还没有内容。"
 #: src/admin/pages/content-list.tsx
 msgid "Nothing in {language} matches these filters."
 msgstr "{language}内容中没有符合筛选条件的项。"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Nothing matches these filters."
+msgstr "没有符合这些筛选条件的内容。"
 
 #: src/admin/components/toast-host.tsx
 msgid "Notifications"

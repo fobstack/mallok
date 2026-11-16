@@ -826,6 +826,22 @@ Phase 4 as built, in the order it landed:
     inactive edge cache, no purge token, no email key and media served by
     the Worker are neutral. Each says what it means in words.
   - The storage rows already had labels from phase 2.
+- **U19, empty states.**
+  - The media library, a plugin panel and the Plugins page use
+    `components/empty-state.tsx`, like the content list. The dashed border is
+    left to the drop zone.
+  - A plugin panel with no rows says "Nothing here yet." and, for a
+    `records` panel, offers "Add the first one". When a filter or the search
+    is set it says "Nothing matches these filters." and offers "Clear
+    filters" instead.
+  - A plugin panel hides its pager when everything fits on one page, as the
+    content list does since U5.
+  - The media library says "Nothing has been uploaded yet." with no button:
+    the drop zone right above it is the action. An empty Plugins page has no
+    button either, because adding a plugin is a redeploy.
+  - A repeatable group's "No rows yet." stays a line of text. It sits inside
+    a form, directly above its own "Add a row" button, and a block there
+    would be heavier than the field.
 
 ## 9. Risks and open questions
 

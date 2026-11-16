@@ -27,6 +27,7 @@ import {
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Switch } from '@/components/ui/switch';
 import { ApiError, api } from '../api.js';
+import { EmptyState } from '../components/empty-state.js';
 import {
   Code,
   Facts,
@@ -86,9 +87,10 @@ export function PluginsPage(): JSX.Element {
           <Trans>Loading…</Trans>
         </p>
       ) : plugins.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
+        // Adding one is a redeploy, not a button (U19).
+        <EmptyState>
           <Trans>No plugins are compiled into this build.</Trans>
-        </p>
+        </EmptyState>
       ) : (
         plugins.map((plugin) => (
           <PluginCard key={plugin.id} plugin={plugin} onChanged={reload} />

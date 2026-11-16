@@ -43,6 +43,7 @@ import { ApiError, api, csrf } from '../api.js';
 import { notify, useReportError } from '../notice.js';
 import { panelKey } from '../queries.js';
 import type { PluginPanel } from '../types.js';
+import { EmptyState } from './empty-state.js';
 import { Facts } from './page.js';
 import { cell, RelatedRows } from './related-rows.js';
 
@@ -207,6 +208,11 @@ export function PluginPanelView({
     }
   };
 
+  /** Whether what is listed is narrowed by a filter or a search. */
+  const filtered =
+    search.trim() !== '' ||
+    Object.values(filters).some((value) => value !== '');
+
   const titleId = `panel-${pluginId}-${panel.id}`;
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-3">
@@ -306,9 +312,38 @@ export function PluginPanelView({
           <Trans>Loading…</Trans>
         </p>
       ) : rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-          <Trans>Nothing here yet.</Trans>
-        </p>
+        filtered ? (
+          // A filter that matches nothing is not an empty list (U19).
+          <EmptyState
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOffset(0);
+                  setFilters({});
+                  setSearch('');
+                }}
+              >
+                <Trans>Clear filters</Trans>
+              </Button>
+            }
+          >
+            <Trans>Nothing matches these filters.</Trans>
+          </EmptyState>
+        ) : (
+          <EmptyState
+            action={
+              editable ? (
+                <Button type="button" onClick={() => setEditing(null)}>
+                  <Trans>Add the first one</Trans>
+                </Button>
+              ) : undefined
+            }
+          >
+            <Trans>Nothing here yet.</Trans>
+          </EmptyState>
+        )
       ) : (
         <div className="rounded-lg border">
           <Table>
@@ -430,26 +465,29 @@ export function PluginPanelView({
         </div>
       )}
 
-      <nav className="flex gap-2" aria-label={t`Pagination`}>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={offset === 0}
-          onClick={() => setOffset(Math.max(0, offset - PAGE))}
-        >
-          <Trans>Previous</Trans>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={!hasNext}
-          onClick={() => setOffset(offset + PAGE)}
-        >
-          <Trans>Next</Trans>
-        </Button>
-      </nav>
+      {/* One page needs no pager, as in the content list (U5, U19). */}
+      {offset === 0 && !hasNext ? null : (
+        <nav className="flex gap-2" aria-label={t`Pagination`}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={offset === 0}
+            onClick={() => setOffset(Math.max(0, offset - PAGE))}
+          >
+            <Trans>Previous</Trans>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!hasNext}
+            onClick={() => setOffset(offset + PAGE)}
+          >
+            <Trans>Next</Trans>
+          </Button>
+        </nav>
+      )}
 
       {open === null ? null : (
         <RowDetail
