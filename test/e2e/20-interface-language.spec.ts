@@ -28,6 +28,9 @@ test('switches the shell to Simplified Chinese and keeps the choice', async ({
   await expect(sidebar.getByRole('link', { name: '媒体' })).toBeVisible();
   await expect(sidebar.getByText('设置', { exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
+  // Han characters get 13 px where Latin letters get 12 (U20).
+  const groupLabel = sidebar.locator('[data-slot="sidebar-group-label"]');
+  await expect(groupLabel.first()).toHaveCSS('font-size', '13px');
 
   await page.reload();
   await expect(sidebar.getByRole('link', { name: '媒体' })).toBeVisible();
@@ -57,6 +60,7 @@ test('switches the shell to Simplified Chinese and keeps the choice', async ({
   await page.getByRole('menuitemradio', { name: 'English' }).click();
   await expect(sidebar.getByRole('link', { name: 'Media' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(groupLabel.first()).toHaveCSS('font-size', '12px');
 });
 
 test.describe('a browser that prefers Chinese', () => {
