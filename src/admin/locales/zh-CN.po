@@ -51,6 +51,10 @@ msgstr "“{typed}”里没有拉丁字母或数字，无法生成 slug。请用
 msgid "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
 msgstr "“{wrong}”不是语言代码。请使用 de 或 pt-BR 这样的代码。"
 
+#: src/admin/components/shell.tsx
+msgid "(opens in a new tab)"
+msgstr "（在新标签页中打开）"
+
 #. placeholder {0}: item.refCount
 #: src/admin/components/media-library.tsx
 msgid "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
@@ -665,6 +669,7 @@ msgstr "无法加载诊断信息。"
 msgid "Could not load media."
 msgstr "无法加载媒体。"
 
+#: src/admin/pages/plugin-panel.tsx
 #: src/admin/pages/plugins.tsx
 msgid "Could not load plugins."
 msgstr "无法加载插件。"
@@ -914,6 +919,10 @@ msgstr "用于上面没有列出的语言，以逗号分隔。之后也可以再
 msgid "From address"
 msgstr "发件地址"
 
+#: src/admin/pages/plugin-panel.tsx
+msgid "From the {pluginName} plugin."
+msgstr "来自 {pluginName} 插件。"
+
 #: src/admin/pages/editor.tsx
 msgid "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
 msgstr "来自 {pluginName} 插件。这条内容的所有语言版本共用这些数据，它们单独保存——不随“发布”一起保存。"
@@ -1015,6 +1024,10 @@ msgstr "主语言的页面网址不带语言前缀，其他语言都带。"
 msgid "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
 msgstr "主语言的页面网址不带语言前缀，其他语言都带。主题自带的文字（例如按钮）提供以下语言：{themeLanguages}。"
 
+#: src/admin/pages/plugin-panel.tsx
+msgid "Its settings"
+msgstr "插件设置"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
 msgstr "请保留站点的备份。备份之后的内容都是平台细节，日常运营站点用不到。"
@@ -1063,6 +1076,7 @@ msgstr "浅色"
 #: src/admin/components/related-rows.tsx
 #: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
+#: src/admin/pages/plugin-panel.tsx
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/setup.tsx
@@ -1275,6 +1289,10 @@ msgstr "没有记录到错误信息。"
 msgid "No key — no email is sent"
 msgstr "未设置密钥 — 不会发送任何邮件"
 
+#: src/admin/pages/plugin-panel.tsx
+msgid "No plugin in this build has a list at this address."
+msgstr "此构建中没有插件在这个地址提供列表。"
+
 #: src/admin/pages/plugins.tsx
 msgid "No plugins are compiled into this build."
 msgstr "本次构建没有编译进任何插件。"
@@ -1337,6 +1355,7 @@ msgstr "未配置 — 修改要等缓存过期后才生效"
 
 #: src/admin/app.tsx
 #: src/admin/components/shell.tsx
+#: src/admin/pages/plugin-panel.tsx
 msgid "Not found"
 msgstr "未找到"
 
@@ -1902,6 +1921,10 @@ msgstr "该令牌已被撤销。"
 msgid "the {plugin} plugin"
 msgstr "{plugin} 插件"
 
+#: src/admin/pages/plugin-panel.tsx
+msgid "The {pluginName} plugin is off, so nothing new arrives here. What it already stored is listed below."
+msgstr "{pluginName} 插件已关闭，这里不会再有新内容。之前存下的内容仍列在下面。"
+
 #: src/admin/components/plugin-panel.tsx
 #: src/admin/components/record-editor.tsx
 msgid "The action failed."
@@ -2314,6 +2337,10 @@ msgstr "缩略图必须是 WebP 格式。"
 #: src/admin/pages/editor.tsx
 msgid "View on site"
 msgstr "在站点上查看"
+
+#: src/admin/components/shell.tsx
+msgid "View site"
+msgstr "查看站点"
 
 #: src/admin/pages/setup.tsx
 msgid "View the site"

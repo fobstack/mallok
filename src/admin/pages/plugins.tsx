@@ -9,10 +9,11 @@
 
 import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Info, TriangleAlert } from 'lucide-react';
+import { ArrowRight, Info, List, TriangleAlert } from 'lucide-react';
 import type { JSX } from 'react';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { type FieldValues, useForm } from 'react-hook-form';
+import { Link } from 'react-router';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -35,7 +36,6 @@ import {
   PageHeader,
   StatusBadge,
 } from '../components/page.js';
-import { PluginPanelView } from '../components/plugin-panel.js';
 import { SecretControl } from '../form/controls.js';
 import { SchemaForm, showServerErrors } from '../form/form.js';
 import { toSpecs } from '../form/types.js';
@@ -50,6 +50,13 @@ export function PluginsPage(): JSX.Element {
   useReportError(listed.error, t`Could not load plugins.`);
   const plugins = listed.data?.plugins ?? [];
   const loading = listed.isPending;
+  // A panel's "Its settings" link lands on its plugin's card. The router
+  // does not scroll to an anchor, and the card exists once the list is in.
+  useEffect(() => {
+    if (!loading && window.location.hash.startsWith('#plugin-')) {
+      document.getElementById(window.location.hash.slice(1))?.scrollIntoView();
+    }
+  }, [loading]);
   const reload = useCallback(
     () => client.invalidateQueries({ queryKey: pluginsQuery.queryKey }),
     [client],
@@ -204,7 +211,11 @@ function PluginCard({
   ));
   const nameId = `plugin-${plugin.id}-name`;
   return (
-    <section aria-labelledby={nameId}>
+    <section
+      id={`plugin-${plugin.id}`}
+      aria-labelledby={nameId}
+      className="scroll-mt-4"
+    >
       <Card>
         <CardHeader>
           <CardTitle
@@ -268,12 +279,21 @@ function PluginCard({
 
           {plugin.panels.map((panel) => {
             if (panel.attachTo === undefined) {
+              // The list itself is a page in the sidebar (U3); here, the
+              // way to it.
               return (
-                <PluginPanelView
+                <Button
                   key={panel.id}
-                  pluginId={plugin.id}
-                  panel={panel}
-                />
+                  asChild
+                  variant="outline"
+                  className="self-start"
+                >
+                  <Link to={`/plugins/${plugin.id}/${panel.id}`}>
+                    <List aria-hidden="true" />
+                    {panel.label}
+                    <ArrowRight aria-hidden="true" />
+                  </Link>
+                </Button>
               );
             }
             const panelLabel = panel.label;

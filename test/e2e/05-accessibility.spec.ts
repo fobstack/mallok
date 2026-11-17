@@ -94,6 +94,7 @@ const ADMIN_SCREENS = [
   ['content list', '/_mallok/app/'],
   ['media', '/_mallok/app/media'],
   ['plugins', '/_mallok/app/plugins'],
+  ['plugin panel', '/_mallok/app/plugins/inquiry/inquiries'],
   ['settings: site', '/_mallok/app/settings'],
   ['settings: appearance', '/_mallok/app/settings/appearance'],
   ['settings: email', '/_mallok/app/settings/email'],
