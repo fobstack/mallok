@@ -842,6 +842,16 @@ Phase 4 as built, in the order it landed:
   - A repeatable group's "No rows yet." stays a line of text. It sits inside
     a form, directly above its own "Add a row" button, and a block there
     would be heavier than the field.
+- **U20, type size in Chinese.**
+  - One rule at the end of `styles.css`: under `:lang(zh)`, `:lang(ja)` or
+    `:lang(ko)` on the document, the sidebar's group labels, its menu badges
+    and `Badge` are 13 px instead of 12. Line heights are unchanged, so no
+    row grows.
+  - It is outside any CSS layer so that it wins over `text-xs` without
+    touching the shadcn/ui components.
+  - `20-interface-language` checks a group label is 13 px in Chinese and
+    12 px again in English.
+  - Windows and Linux are still not measured (§5.5).
 
 ## 9. Risks and open questions
 
