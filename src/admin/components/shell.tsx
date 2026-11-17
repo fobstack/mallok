@@ -11,11 +11,14 @@
 import type { MessageDescriptor } from '@lingui/core';
 import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
+import { useQuery } from '@tanstack/react-query';
 import {
   ChevronsUpDown,
   Clock,
+  ExternalLink,
   FileText,
   Image,
+  List,
   Mail,
   Palette,
   Plug,
@@ -54,10 +57,17 @@ import {
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { formatDuration } from '../format.js';
 import { clearNotice, useNotice } from '../notice.js';
-import { useLiveDelay, useSession, useSettings } from '../queries.js';
+import {
+  pluginsQuery,
+  useLiveDelay,
+  useSession,
+  useSettings,
+} from '../queries.js';
+import type { PluginInfo } from '../types.js';
 
 interface NavItem {
-  readonly label: MessageDescriptor;
+  /** Words the admin translates, or a plugin's label already in them. */
+  readonly label: MessageDescriptor | string;
   readonly href: string;
   readonly icon: typeof FileText;
   /** Whether the item is the current section for `path`. */
@@ -154,7 +164,8 @@ function NavGroup({
         <SidebarMenu>
           {items.map((item) => {
             const active = item.active(path);
-            const label = i18n._(item.label);
+            const label =
+              typeof item.label === 'string' ? item.label : i18n._(item.label);
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={active} tooltip={label}>
@@ -228,8 +239,11 @@ const ToastHost = lazy(() =>
 let toastsWanted = false;
 
 /** Where the current page sits: a section, and the page within it. */
-function crumbsFor(path: string): readonly {
-  readonly label: MessageDescriptor;
+function crumbsFor(
+  path: string,
+  plugins: readonly PluginInfo[],
+): readonly {
+  readonly label: MessageDescriptor | string;
   readonly href?: string;
 }[] {
   if (path === '/' || path === '/content') {
@@ -255,12 +269,33 @@ function crumbsFor(path: string): readonly {
   if (path === '/account') {
     return [{ label: msg`Account` }];
   }
+  const [, section, pluginId, panelId] = path.split('/');
+  if (section === 'plugins' && panelId !== undefined) {
+    const panel = plugins
+      .find((plugin) => plugin.id === pluginId)
+      ?.panels.find((entry) => entry.id === panelId);
+    if (panel !== undefined) {
+      return [
+        { label: msg`Plugins`, href: '/plugins' },
+        { label: panel.label },
+      ];
+    }
+  }
   return [{ label: msg`Not found` }];
 }
 
-function PageBreadcrumb({ path }: { readonly path: string }): JSX.Element {
+function PageBreadcrumb({
+  path,
+  plugins,
+}: {
+  readonly path: string;
+  readonly plugins: readonly PluginInfo[];
+}): JSX.Element {
   const { i18n } = useLingui();
-  const crumbs = crumbsFor(path);
+  const crumbs = crumbsFor(path, plugins).map((crumb) => ({
+    ...crumb,
+    label: typeof crumb.label === 'string' ? crumb.label : i18n._(crumb.label),
+  }));
   return (
     <Breadcrumb>
       <BreadcrumbList>
@@ -268,10 +303,10 @@ function PageBreadcrumb({ path }: { readonly path: string }): JSX.Element {
           <BreadcrumbItem key={crumb.href ?? index}>
             {index > 0 ? <BreadcrumbSeparator /> : null}
             {crumb.href === undefined || index === crumbs.length - 1 ? (
-              <BreadcrumbPage>{i18n._(crumb.label)}</BreadcrumbPage>
+              <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
             ) : (
               <BreadcrumbLink asChild>
-                <AppLink href={crumb.href}>{i18n._(crumb.label)}</AppLink>
+                <AppLink href={crumb.href}>{crumb.label}</AppLink>
               </BreadcrumbLink>
             )}
           </BreadcrumbItem>
@@ -279,6 +314,32 @@ function PageBreadcrumb({ path }: { readonly path: string }): JSX.Element {
       </BreadcrumbList>
     </Breadcrumb>
   );
+}
+
+/**
+ * The site's sections with each plugin panel between Media and Plugins: a
+ * list that is opened every day is a section, not the foot of a settings
+ * page (docs/ADMIN_I18N_AND_UI.md, U3). A panel attached to a content kind
+ * is in that kind's editor and is not listed.
+ */
+function siteItems(plugins: readonly PluginInfo[]): readonly NavItem[] {
+  const panels: NavItem[] = plugins.flatMap((plugin) =>
+    plugin.panels
+      .filter((panel) => panel.attachTo === undefined)
+      .map((panel) => {
+        const href = `/plugins/${plugin.id}/${panel.id}`;
+        return {
+          label: panel.label,
+          href,
+          icon: List,
+          active: (path: string) => path === href,
+        };
+      }),
+  );
+  const [content, media, ...rest] = SITE;
+  return content === undefined || media === undefined
+    ? SITE
+    : [content, media, ...panels, ...rest];
 }
 
 export function Shell({
@@ -291,6 +352,8 @@ export function Shell({
   // A page reports a failure with `notify`; it is shown as a toast.
   const message = useNotice();
   const siteName = useSettings().name;
+  // Loaded with the shell (`loadShell`); empty only if that request failed.
+  const plugins = useQuery(pluginsQuery).data?.plugins ?? [];
   const { t } = useLingui();
   if (message !== '') {
     toastsWanted = true;
@@ -317,10 +380,26 @@ export function Shell({
                   </AppLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                {/* The public site, which the admin had no way to open (U3).
+                    The Worker serving this admin serves the site at its
+                    root, on whichever address the operator came in by. */}
+                <SidebarMenuButton asChild tooltip={t`View site`}>
+                  <a href="/" target="_blank" rel="noopener">
+                    <ExternalLink />
+                    <span>
+                      <Trans>View site</Trans>
+                    </span>
+                    <span className="sr-only">
+                      <Trans>(opens in a new tab)</Trans>
+                    </span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
-            <NavGroup label={t`Site`} items={SITE} path={path} />
+            <NavGroup label={t`Site`} items={siteItems(plugins)} path={path} />
             <NavGroup label={t`Settings`} items={SETTINGS} path={path} />
           </SidebarContent>
           <SidebarFooter>
@@ -341,7 +420,7 @@ export function Shell({
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"
             />
-            <PageBreadcrumb path={path} />
+            <PageBreadcrumb path={path} plugins={plugins} />
           </header>
           {/* The notice inside the column, not across the window: it, the
               page header and the page share one left edge (U2). A page that

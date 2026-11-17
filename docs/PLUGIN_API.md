@@ -965,6 +965,11 @@ cancelling a queued one.
 **A plugin ships no frontend code.** It declares a panel and the admin app
 renders it.
 
+A panel is a page of the admin at `/_mallok/app/plugins/<plugin>/<panel>`,
+listed in the sidebar under Site by its `label`, between Media and
+Plugins; the plugin's card on the Plugins page links to it. A panel with
+`attachTo` (below) is the exception: it is shown only in its kind's editor.
+
 ```jsonc
 "panels": [
   {

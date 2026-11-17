@@ -138,6 +138,15 @@ export function createAdminRouter(): ReturnType<typeof createBrowserRouter> {
                 ),
               },
               {
+                // A plugin's panel, listed in the sidebar by its label (U3).
+                path: 'plugins/:pluginId/:panelId',
+                element: page(() =>
+                  import('./pages/plugin-panel.js').then(
+                    (module) => module.PluginPanelPage,
+                  ),
+                ),
+              },
+              {
                 path: 'settings',
                 element: page(() =>
                   import('./pages/settings-site.js').then(

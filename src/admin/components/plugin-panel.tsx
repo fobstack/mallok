@@ -71,6 +71,7 @@ export function PluginPanelView({
   pluginId,
   panel,
   attachedTo,
+  standalone = false,
 }: {
   readonly pluginId: string;
   readonly panel: PluginPanel;
@@ -80,6 +81,12 @@ export function PluginPanelView({
    * ones belong to it.
    */
   readonly attachedTo?: string;
+  /**
+   * Shown as a page of its own, whose heading already names it: the
+   * panel's own heading is then read by screen readers only, still naming
+   * the region.
+   */
+  readonly standalone?: boolean;
 }): JSX.Element {
   const { t } = useLingui();
   const [offset, setOffset] = useState(0);
@@ -219,7 +226,11 @@ export function PluginPanelView({
       <div className="flex flex-wrap items-end gap-3">
         <h3
           id={titleId}
-          className="mr-auto self-center font-heading text-sm font-semibold"
+          className={
+            standalone
+              ? 'sr-only'
+              : 'mr-auto self-center font-heading text-sm font-semibold'
+          }
         >
           {panel.label}
         </h3>

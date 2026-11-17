@@ -122,6 +122,8 @@ async function fetchWorkspace(): Promise<void> {
     queryClient.fetchQuery({ ...settingsQuery, staleTime: 0 }),
     queryClient.fetchQuery({ ...themeQuery, staleTime: 0 }),
     queryClient.fetchQuery({ ...healthQuery, staleTime: 0 }),
+    // The sidebar lists the plugins' panels (U3).
+    queryClient.fetchQuery({ ...pluginsQuery, staleTime: 0 }),
   ]);
 }
 
@@ -136,6 +138,7 @@ export async function loadShell(): Promise<null> {
       queryClient.ensureQueryData(settingsQuery),
       queryClient.ensureQueryData(themeQuery),
       queryClient.ensureQueryData(healthQuery),
+      queryClient.ensureQueryData(pluginsQuery),
     ]);
   }
   return null;

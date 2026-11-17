@@ -51,6 +51,10 @@ msgstr "\"{typed}\" has no Latin letters or digits to build a slug from. Type on
 msgid "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
 msgstr "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
 
+#: src/admin/components/shell.tsx
+msgid "(opens in a new tab)"
+msgstr "(opens in a new tab)"
+
 #. placeholder {0}: item.refCount
 #: src/admin/components/media-library.tsx
 msgid "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
@@ -665,6 +669,7 @@ msgstr "Could not load diagnostics."
 msgid "Could not load media."
 msgstr "Could not load media."
 
+#: src/admin/pages/plugin-panel.tsx
 #: src/admin/pages/plugins.tsx
 msgid "Could not load plugins."
 msgstr "Could not load plugins."
@@ -914,6 +919,10 @@ msgstr "For a language not listed, comma separated. Languages can also be added 
 msgid "From address"
 msgstr "From address"
 
+#: src/admin/pages/plugin-panel.tsx
+msgid "From the {pluginName} plugin."
+msgstr "From the {pluginName} plugin."
+
 #: src/admin/pages/editor.tsx
 msgid "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
 msgstr "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
@@ -1015,6 +1024,10 @@ msgstr "Its pages have no URL prefix; every other language's do."
 msgid "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
 msgstr "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
 
+#: src/admin/pages/plugin-panel.tsx
+msgid "Its settings"
+msgstr "Its settings"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
 msgstr "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
@@ -1063,6 +1076,7 @@ msgstr "Light"
 #: src/admin/components/related-rows.tsx
 #: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
+#: src/admin/pages/plugin-panel.tsx
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/setup.tsx
@@ -1275,6 +1289,10 @@ msgstr "No error was recorded."
 msgid "No key — no email is sent"
 msgstr "No key — no email is sent"
 
+#: src/admin/pages/plugin-panel.tsx
+msgid "No plugin in this build has a list at this address."
+msgstr "No plugin in this build has a list at this address."
+
 #: src/admin/pages/plugins.tsx
 msgid "No plugins are compiled into this build."
 msgstr "No plugins are compiled into this build."
@@ -1337,6 +1355,7 @@ msgstr "Not configured — edits go live after the cache expires"
 
 #: src/admin/app.tsx
 #: src/admin/components/shell.tsx
+#: src/admin/pages/plugin-panel.tsx
 msgid "Not found"
 msgstr "Not found"
 
@@ -1902,6 +1921,10 @@ msgstr "That token was already revoked."
 msgid "the {plugin} plugin"
 msgstr "the {plugin} plugin"
 
+#: src/admin/pages/plugin-panel.tsx
+msgid "The {pluginName} plugin is off, so nothing new arrives here. What it already stored is listed below."
+msgstr "The {pluginName} plugin is off, so nothing new arrives here. What it already stored is listed below."
+
 #: src/admin/components/plugin-panel.tsx
 #: src/admin/components/record-editor.tsx
 msgid "The action failed."
@@ -2314,6 +2337,10 @@ msgstr "Variants must be WebP."
 #: src/admin/pages/editor.tsx
 msgid "View on site"
 msgstr "View on site"
+
+#: src/admin/components/shell.tsx
+msgid "View site"
+msgstr "View site"
 
 #: src/admin/pages/setup.tsx
 msgid "View the site"

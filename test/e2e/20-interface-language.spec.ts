@@ -132,7 +132,12 @@ test("a plugin's declarations are in Chinese where it has a catalog", async ({
   await expect(page.locator('html')).toHaveAttribute('lang', 'zh-CN');
   try {
     await page.goto('/_mallok/app/plugins');
-    // The fixture plugin's partial catalog (docs/PLUGIN_API.md §7.8)…
+    // The fixture plugin's partial catalog (docs/PLUGIN_API.md §7.8) names
+    // its list in the sidebar too (U3)…
+    await page
+      .locator('[data-sidebar="sidebar"]')
+      .getByRole('link', { name: '目录条目' })
+      .click();
     const panel = page.getByRole('region', { name: '目录条目' });
     await expect(panel).toBeVisible();
     await expect(panel.getByRole('button', { name: '设置状态' })).toBeVisible();

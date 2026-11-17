@@ -798,8 +798,8 @@ Phase 4 as built, in the order it landed:
 - **U11, Plugins.**
   - A plugin's card is its warnings, its panels, its settings, its
     secrets, then "Technical details" (hooks, client JavaScript, cache
-    effect, script list), closed. The panel link of the design waits for
-    U3, which moves panels into the sidebar.
+    effect, script list), closed. Since U3 the panels are links to their
+    own pages.
   - `inquiry`'s setting labels lost their parentheses to `help`, and the
     autoreply body is a `text` field. Its zh-CN catalog follows.
   - A filter on a field whose values a catalog names is a select. So that
@@ -852,6 +852,27 @@ Phase 4 as built, in the order it landed:
   - `20-interface-language` checks a group label is 13 px in Chinese and
     12 px again in English.
   - Windows and Linux are still not measured (§5.5).
+- **U3, plugin panels in the sidebar (D8 C).**
+  - Each panel that is not attached to a content kind is a page,
+    `/plugins/<plugin>/<panel>` (`pages/plugin-panel.tsx`), and a sidebar
+    entry under Site by its label, between Media and Plugins. The heading
+    is the label; the lede names the plugin and links to its card.
+  - A panel is listed whether or not its plugin is on: the panel API reads
+    what was stored either way. A plugin that is off says so above its
+    list.
+  - The Plugins page keeps the switch, settings and secrets; where a panel
+    was, a button opens its page. An attached panel is still a sentence
+    pointing to the editor.
+  - The shell loads the plugin list with the session, the settings, the
+    theme and health, in parallel, so the sidebar does not grow after the
+    first paint.
+  - "View site" in the sidebar's header opens `/` in a new tab: the Worker
+    that serves the admin serves the site at its root, whatever address the
+    operator came in by.
+  - `10-records-panel`, `14-failed-jobs` and `20-interface-language` now
+    open the panel by its link instead of finding it inside the plugin's
+    card. `17-shell` checks the sidebar entry and the site link, and
+    `05-accessibility` scans the Inquiries page in both languages.
 
 ## 9. Risks and open questions
 
