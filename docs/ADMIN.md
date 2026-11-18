@@ -44,7 +44,8 @@ From `TECH_STACK §6`, not re-argued here:
 | Markdown editing | CodeMirror 6 (`@codemirror/view`, `state`, `commands`, `lang-markdown`), themed from the design tokens |
 | Forms | The in-repository schema-driven generator (§7), on React Hook Form; Zod for the few forms with a fixed shape |
 | Preview | Reuses `src/core/`, rendering in the browser |
-| Styling | Tailwind CSS 4 with shadcn/ui's design tokens and components on Radix; light, dark or the system's, chosen per browser. `styles.css` holds the tokens and nothing else |
+| Styling | Tailwind CSS 4 with shadcn/ui's design tokens and components on Radix; light, dark or the system's, chosen per browser. `styles.css` holds the tokens and one type-size rule for Chinese, Japanese and Korean (§4.3) |
+| Interface languages | Lingui: English in the source, a catalog per language loaded on demand (§4.3) |
 | Image processing | The browser's Canvas API |
 
 **0.1 does not include Tiptap.** Visual editing belongs to 0.2
@@ -57,10 +58,11 @@ Three top-level sections plus a user menu. **A new feature must fit one of
 them**; when it does not, the first question is whether it is internal
 complexity that should not be surfaced at all.
 
-On screen they are a collapsible sidebar — Content, Media and Plugins under
-"Site"; Site, Appearance, Email and Advanced under "Settings" — with the user
-menu at its foot, and a breadcrumb above each page. On a narrow screen the
-sidebar is a sheet.
+On screen they are a collapsible sidebar — Content, Media, each plugin panel
+by its label (Inquiries, say) and Plugins under "Site"; Site, Appearance,
+Email and Advanced under "Settings" — with "View site" at its head, which
+opens the public site in a new tab, the user menu at its foot, and a
+breadcrumb above each page. On a narrow screen the sidebar is a sheet.
 
 ```
 Content     ├ All content (filter by kind, filter by language, search)
@@ -77,22 +79,25 @@ Settings    ├ Site details (name, tagline — one per language —, SEO defaul
 
 Plugins     ├ Installed plugins (switch, version, what each affects)
             ├ Each plugin's settings and secrets form
-            └ Each panel a plugin declares, such as Inquiries
+            └ Each panel a plugin declares, such as Inquiries — a page of
+              its own, listed in the sidebar (§10)
 
 User menu   ├ Account: change password, API token management
+            ├ Interface language (§4.3)
             ├ Colour scheme (the system's, light or dark)
             └ Sign out
 ```
 
 ### 4.1 What Appearance does not contain
 
-No theme list, no upload, no switch button. The page shows:
+No theme list, no upload, no switch button. The page shows, in this order:
 
-- the current theme's name, version and which content kinds it supports;
+- the options form the theme exposes (`theme.json`'s `options`), which takes
+  effect immediately — first, because it is what the operator came to change;
+- the current theme's name, version and which content kinds it supports,
+  named by the theme's own labels;
 - the `clientScripts` it declares — **stated honestly as "this theme injects N
   scripts"**, which is always zero for the official themes;
-- the options form it exposes (`theme.json`'s `options`), which takes effect
-  immediately;
 - one sentence: **changing themes requires editing source and redeploying**,
   with a link to the documentation.
 
@@ -119,6 +124,51 @@ A plugin may still carry a sender of its own — the `inquiry` plugin has an
 optional "From address" — and says on its own form that an empty field means
 the site sender is used.
 
+### 4.3 The interface language
+
+The admin speaks English or Simplified Chinese (`ADMIN_I18N_AND_UI.md`). The
+**interface language** is the operator's, not the site's: it never defaults
+from a content language, nor they from it, and it is always labelled
+"Interface language" so the two are not confused. Content languages are named
+in the interface language with their code beside them — "Chinese (zh)",
+"中文（zh）".
+
+- **Where it is chosen**: the account menu, the sign-in page and the setup
+  wizard's first screen, each language named in itself (English, 简体中文).
+- **Where it is kept**: in this browser, and with the account
+  (`admin_user.ui_locale`); after sign-in the account's choice wins. With
+  neither, the browser's languages decide, and English is the fallback. It
+  is never a cookie, so the edge cache never varies by it.
+- **What follows it**: every sentence the admin writes; dates, numbers and
+  lists (`Intl`, `src/admin/format.ts`); what themes and plugins declare —
+  kinds, fields, options, panels — through their optional
+  `admin/<language>.json` (`THEME_FORMAT.md §10.1`, `PLUGIN_API.md §7.8`);
+  and the Worker's errors, which carry a `code` the admin words itself
+  while `error` stays English for the CLI. What has no translation is
+  shown in English, never as a key or a blank.
+- **What does not**: content, the preview (it is the page a reader gets),
+  and errors a plugin's own code raises.
+- **Chinese, Japanese and Korean** set the sidebar's group labels and the
+  badges at 13 px instead of 12 (`styles.css`), because Han characters at
+  12 px lose strokes.
+
+**Adding an interface language.** The English sentence in the code is the
+message, so a new language is a translation, not a change to any page:
+
+1. Add its tag to `locales` in `lingui.config.ts`, and to
+   `InterfaceLanguage`, `INTERFACE_LANGUAGES` (named in itself) and
+   `CATALOGS` in `src/admin/i18n.ts`.
+2. Run `pnpm i18n:extract`, which writes `src/admin/locales/<tag>.po`, and
+   translate every entry. The Worker's sentences are in the same file, under
+   `server.<code>`.
+3. Optionally, give the official themes and plugins an
+   `admin/<tag>.json`; without one they show their declared English.
+4. `pnpm lint` fails while any entry is untranslated. The browser tests run
+   in English; add the language to `05-accessibility`'s scan.
+
+Nothing on the Worker changes: it stores whatever tag the account chooses and
+chooses a theme's or plugin's catalog by `Accept-Language`.
+
 ## 5. The setup wizard
 
 At `/_mallok/setup`, and **permanently closed** once complete — a non-null
@@ -129,9 +179,16 @@ At `/_mallok/setup`, and **permanently closed** once complete — a non-null
 | Step | What | Skippable |
 | --- | --- | --- |
 | 1 | Administrator email and password | No |
-| 2 | Site name, default language, enabled languages | No |
+| 2 | Site name, main language, other languages — each picked by name, a code typed only for one not listed | No |
 | 3 | Choose a starter: the site's own, if it brought any (`ARCHITECTURE §11.1`), listed first, then the official one. Each says how many pages and how many sample plugin records it brings | Yes; skipping gives an empty site |
 | 4 | Domain: detect whether a custom domain is bound, then done | Yes |
+
+The steps are numbered and steps 2–4 have Back; the result screen is not a
+step. Going back to step 1 says the account exists rather than offering to
+create it again, and once a starter is installed step 3 has no Back, because
+re-applying step 2 would drop the languages the starter added. The main
+language starts as the interface language the wizard is read in, which is
+chosen on its first screen and becomes the new account's.
 
 **Media domain (`media.<domain>`) and email (the Resend key, the sending
 domain, the DNS records) are not wizard steps in 0.1** — deliberately: both
@@ -156,17 +213,29 @@ unreachable, they are simply not part of the guided first run. Three things
 
 ### 6.1 Layout
 
-Three collapsible columns:
+The editor takes the whole window, beside the sidebar. A bar across the top,
+then three panes:
 
 ```
-┌─────────────┬────────────────────────┬──────────────┐
-│ Field form  │ Markdown source        │ Live preview │
-│ (schema)    │ (CodeMirror)           │ (core)       │
-├─────────────┴────────────────────────┴──────────────┤
-│ Status: draft/published/scheduled  language  group   │
-│ translation  Save  View                              │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ Stored status · Updated <date, time> · View on site          │
+│ English (en) · Create Chinese (zh)     Save draft   Publish  │
+├─────────────┬────────────────────────┬───────────────────────┤
+│ Field form  │ Markdown source        │ Live preview          │
+│ (schema)    │ (CodeMirror)           │ (core)                │
+└─────────────┴────────────────────────┴───────────────────────┘
 ```
+
+- The bar shows the status as stored, not as asked, and a new item says
+  "Not saved yet". "View on site" appears for a published item.
+- The field pane folds to a rail ("Hide fields" / "Show fields"), and this
+  browser remembers the choice.
+- Below `lg`, one pane is shown at a time, chosen with "Fields", "Write"
+  and "Preview", and the save buttons move to a bar pinned to the bottom of
+  the screen.
+- A successful save is the green "Saved", followed in plain text by when
+  visitors see it ("now", or "within 1 minute" without a purge token); a
+  draft gets the badge alone.
 
 ### 6.2 Markdown is the truth
 
@@ -250,9 +319,9 @@ succeeded** (`AC-CONTENT-10`, `docs/ACCEPTANCE.md §14.2` item 7).
   addresses redirecting (`ARCHITECTURE §9`); the editor's path preview
   follows it.
 
-- The language switcher sits at the top of the editor, and switching to a
-  translation that does not exist yet offers "create the `<language>`
-  version". That opens a new item in that language, in the original's
+- The language switcher sits at the top of the editor, each language named
+  ("Chinese (zh)"), and a translation that does not exist yet is offered as
+  "Create Chinese (zh)". That opens a new item in that language, in the original's
   translation group and of its kind (`/content/new?locale=…&group=…&kind=…`,
   kept across a reload). If the group has that language by the time it is
   saved, the save is refused with 409 naming the item that holds it.
@@ -340,13 +409,27 @@ See §4.1. Two additions:
   installing one means changing the repository and redeploying, with the
   concrete steps (`PLUGIN_API.md §2`). **It must not be dressed up as a
   one-click install.**
-- Each plugin shows its version, which hooks it uses, whether it injects
-  client-side JavaScript, and whether it affects the cache.
+- A plugin's card puts first what the operator uses: its warnings, then its
+  panels, its settings and its secrets. Its version, which hooks it uses,
+  whether it injects client-side JavaScript and whether it affects the cache
+  are under "Technical details", closed until opened.
 - A plugin declaring `onRequest` carries the extra note that it runs on every
   visitor request (`PLUGIN_API.md §5.1`).
+- **A panel is a page of its own** (`/_mallok/app/plugins/<plugin>/<panel>`),
+  listed in the sidebar by its label, so the inquiries an operator opens
+  every day are one click away. Its heading is the label; the line under it
+  names the plugin and links to the plugin's card, where a button opens the
+  panel in turn. A panel is listed whether or not its plugin is on: switched
+  off, it says that nothing new arrives, and what was stored stays readable.
 - Panels render from `plugin.json`'s `panels` (`PLUGIN_API.md §7.5`): a
   table with the declared columns, filters and actions; a search box and
-  sortable headings where the panel declares them.
+  sortable headings where the panel declares them. A filter on a field whose
+  values the plugin's catalog names is a select. Row actions are disabled
+  until a row is selected, except a download, which with no selection
+  exports everything. An empty panel says "Nothing here yet." — offering
+  "Add the first one" on a `records` panel — or, when a filter or the search
+  is set, "Nothing matches these filters." with "Clear filters". The pager
+  is hidden when everything fits on one page.
 - **A `records` panel adds New and Edit.** The form is generated from the
   panel's `fields`. Two controls exist only there: `money` — an amount typed
   as `99.00` beside a currency, sent as whole minor units — and `rows`, a
@@ -369,8 +452,15 @@ See §4.1. Two additions:
 
 ## 11. Advanced, under Settings
 
-This is the only place lower-level vocabulary is allowed:
+This is the only place lower-level vocabulary is allowed. **Backup** comes
+first, then the rest:
 
+- **Backup**: one-click export (`CONTENT_FORMAT §5`), with a prompt to export
+  before upgrading the Worker (`ARCHITECTURE §15`). The zip is built only if
+  every listed object downloads and matches its digest; a transient failure is
+  retried three times first, so one flaky response does not decide the
+  operator cannot have their data. Same contract as `mallok export`
+  (`CLI.md §7`).
 - **Usage**: D1 rows read and written today against the limits, R2 storage,
   Worker request count. **Exceeding D1's free tier makes it unavailable for
   the day** (`ARCHITECTURE §2`), so approaching the limit must be prominently
@@ -381,15 +471,13 @@ This is the only place lower-level vocabulary is allowed:
   next request, at the cost of that one render. **Without a purge token, say
   honestly that nothing was purged and the cache will expire on its own.
   Never claim success.**
-- **Backup**: one-click export (`CONTENT_FORMAT §5`), with a prompt to export
-  before upgrading the Worker (`ARCHITECTURE §15`). The zip is built only if
-  every listed object downloads and matches its digest; a transient failure is
-  retried three times first, so one flaky response does not decide the
-  operator cannot have their data. Same contract as `mallok export`
-  (`CLI.md §7`).
 - **Diagnostics**: whether a custom domain is bound, whether caching is in
-  effect, whether `CF_API_TOKEN` is configured, whether Resend is configured,
-  and the schema version. **Last failed purge** appears when a purge
+  effect, whether `CF_API_TOKEN` and `CF_ZONE_ID` are configured — the
+  sentence the admin's no-token note links to with "Why?" — whether Resend is
+  configured, and the schema version. Orange is kept for what stops something
+  working: a failed purge, or an email key with no sender. No custom domain,
+  no purge token, no email key and media served by the Worker are stated
+  neutrally, each with what it means. **Last failed purge** appears when a purge
   Cloudflare did not carry out is recorded (`ARCHITECTURE §6.2`): when, after
   what (a content change, a plugin by name, …), Cloudflare's status and
   answer, and what to check — for a 401 or 403, that the token needs Zone →
@@ -426,7 +514,7 @@ The complete rules are in `SECURITY.md`. On the interface side:
 | Item | Requirement |
 | --- | --- |
 | Accessibility | Fully keyboard operable; every form control has a label; focus is visible; `@axe-core/playwright` reports nothing serious or critical |
-| First load | Admin first-load JS ≤ 170 KiB gzip (React, React Router, TanStack Query, the shell; raised from 150 on 2026-11-03, `ADMIN_MIGRATION.md` D7). **Asserted by `pnpm admin:size`**, counting every script and stylesheet `index.html` references, the `modulepreload` chunks included (they were left out until 2026-10-31, `ADMIN_MIGRATION.md §8`); 161.7 KiB on React Router and TanStack Query on 2026-11-03; 124.1 KiB with the shadcn/ui shell on 2026-10-31; measured at 72.0 KB on 2026-09-06, up from 17.3 KB on Preact — real React+ReactDOM cost is ≈ 54 KB gzip in this project's own Vite build, not the ≈ 45 KB estimated from memory before switching |
+| First load | Admin first-load JS ≤ 170 KiB gzip (React, React Router, TanStack Query, the shell; raised from 150 on 2026-11-03, `ADMIN_MIGRATION.md` D7). **Asserted by `pnpm admin:size`**, counting every script and stylesheet `index.html` references, the `modulepreload` chunks included (they were left out until 2026-10-31, `ADMIN_MIGRATION.md §8`); 166.2 KiB with the interface languages and the interface review on 2026-11-17 (`ADMIN_I18N_AND_UI.md §8`), no catalog included — each loads on demand; 161.7 KiB on React Router and TanStack Query on 2026-11-03; 124.1 KiB with the shadcn/ui shell on 2026-10-31; measured at 72.0 KB on 2026-09-06, up from 17.3 KB on Preact — real React+ReactDOM cost is ≈ 54 KB gzip in this project's own Vite build, not the ≈ 45 KB estimated from memory before switching |
 | CodeMirror | Chunked and loaded only when the editor opens. **The render pipeline — unified, remark, rehype, LiquidJS — is equally on demand**: the preview uses the real renderer, so it loads with the editor rather than on first load |
 | Importing from core | **A page on the first-load path must not import from the `src/core/index.ts` barrel**, not even for a single constant — the barrel drags the whole render pipeline into the first load. This happened once, on 2026-08-31: the Appearance page imported the barrel for one string constant and the first load went from 17 KB to 137 KB, caught by `pnpm admin:size`. Dependency-free constants live in `src/core/constants.ts` |
 | Offline | No offline support. A network failure produces a clear error and never silently discards a change |
