@@ -1,11 +1,11 @@
 # Admin interface languages and interface review
 
-- Status: **decided; phases 0 and 1 implemented, phase 2's strings wrapped
-  and translated** on 2026-11-13. The owner took every recommendation in §3
-  as written ("按照建议来"): D1 A (Lingui), D2 B built as A first, D3 C, D4
-  C, D5 as an addition under plugin API 2, D6 unchanged, D7 the four rules,
-  D8 C. Phase 0's numbers are in §8; D1 stands. Phase 2's gate is not yet
-  complete — §8 says which parts ran.
+- Status: **implemented, phases 0–5**, on 2026-11-17, on
+  `feature/admin-i18n`. The owner took every recommendation in §3 as
+  written ("按照建议来"): D1 A (Lingui), D2 B built as A first, D3 C, D4 C,
+  D5 as an addition under plugin API 2, D6 unchanged, D7 the four rules, D8
+  C. §8 records each phase as built and what is still the owner's: Windows
+  and Linux screenshots, the real-site check, two wording questions.
 - Date: 2026-11-12
 - Asked for by the owner on 2026-11-12, in two parts: the admin and the setup
   wizard have no multilingual support, and the admin's interface needs
