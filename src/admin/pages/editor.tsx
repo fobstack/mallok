@@ -52,6 +52,7 @@ import { formatDateTime } from '../format.js';
 import { notify, useReportError } from '../notice.js';
 import { renderPreview } from '../preview.js';
 import { keys, pluginsQuery, useSettings, useTheme } from '../queries.js';
+import { serverMessage } from '../server-messages.js';
 import { normalizeSlugInput } from '../slug.js';
 import type { MediaItem } from '../types.js';
 
@@ -352,6 +353,8 @@ function Editor({
         path: string;
         status: string;
         warning?: string;
+        warningCode?: string;
+        warningParams?: Record<string, unknown>;
       }>('/content', {
         method: 'POST',
         body: {
@@ -377,7 +380,10 @@ function Editor({
       // The save still succeeded — this is the server saying it skipped
       // rendering and stored a draft instead, not a failure to report as one.
       if (result.warning !== undefined) {
-        notify(result.warning);
+        notify(
+          serverMessage(result.warningCode, result.warningParams) ??
+            result.warning,
+        );
       }
       if (loaded === null) {
         navigate(`/content/${result.id}`, { replace: true });

@@ -35,6 +35,12 @@ describe('serverMessage', () => {
     expect(serverMessage('account.password_short', { min: 12 })).toBe(
       'The new password must be at least 12 characters.',
     );
+    // A save's warning is named the same way (`warningCode`).
+    expect(serverMessage('content.saved_unrendered', { limitKb: 50 })).toBe(
+      "Saved as a draft without rendering: this item's body is over 50 KB, " +
+        "long enough that rendering it risks exceeding the Free plan's CPU " +
+        'limit. Nothing was lost — shorten it and save again to publish.',
+    );
   });
 
   it('says it in Chinese, with its parameters, when that is the language', () => {

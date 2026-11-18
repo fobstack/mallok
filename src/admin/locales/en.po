@@ -1653,6 +1653,11 @@ msgstr "Save settings"
 msgid "Saved"
 msgstr "Saved"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.saved_unrendered"
+msgstr "Saved as a draft without rendering: this item's body is over {limitKb} KB, long enough that rendering it risks exceeding the Free plan's CPU limit. Nothing was lost — shorten it and save again to publish."
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
 msgstr "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."

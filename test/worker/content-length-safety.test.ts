@@ -79,10 +79,15 @@ describe('the content-length safety net', () => {
       path: string;
       status: string;
       warning?: string;
+      warningCode?: string;
+      warningParams?: Record<string, unknown>;
     };
     expect(created.status).toBe('draft');
     expect(created.warning).toContain('draft');
     expect(created.warning).toContain('CPU');
+    // Named, so the admin says it in its interface language (D3).
+    expect(created.warningCode).toBe('content.saved_unrendered');
+    expect(created.warningParams).toEqual({ limitKb: 50 });
 
     // A draft never appears on a public URL (AC-CONTENT-05).
     const page = await SELF.fetch(`${ORIGIN}${created.path}`);
@@ -102,8 +107,10 @@ describe('the content-length safety net', () => {
     const created = (await response.json()) as {
       status: string;
       warning?: string;
+      warningCode?: string;
     };
     expect(created.status).toBe('published');
     expect(created.warning).toBeUndefined();
+    expect(created.warningCode).toBeUndefined();
   });
 });

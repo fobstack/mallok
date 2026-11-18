@@ -678,7 +678,10 @@ Phase 3 as built, in the order it landed:
   Field problems are named as well: `validateRecord` returns `errorCodes`
   beside `errors`, a records panel's or an action's refusal sends them, and
   `api.ts` words each field from its code. 128 codes in all; the catalog
-  holds 500 messages. First load stays 166.1 KiB.
+  holds 500 messages. First load stays 166.1 KiB. Closed in phase 5: the
+  one sentence a *successful* save can carry — a body too long to render,
+  stored as a draft — is named the same way, as `warningCode` and
+  `warningParams` beside the unchanged `warning`.
   **Still English, on purpose:** what a plugin's own code refuses with (its
   `onContentSave` refusal, a records handler's field messages — D5's
   `errors.<code>` is not built); the reasons quoted inside a coded sentence

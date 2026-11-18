@@ -484,6 +484,11 @@ export async function saveContent(
               `over ${MAX_SAFE_RENDER_BYTES / 1024} KB, long enough that ` +
               `rendering it risks exceeding the Free plan's CPU limit. ` +
               `Nothing was lost — shorten it and save again to publish.`,
+            // Named as an error is (docs/ADMIN_I18N_AND_UI.md, D3), so the
+            // admin can say it in its own language; `warning` stays the
+            // English for the CLI and anything else that reads it.
+            warningCode: 'content.saved_unrendered',
+            warningParams: { limitKb: MAX_SAFE_RENDER_BYTES / 1024 },
           }
         : {}),
     },

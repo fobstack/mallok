@@ -233,7 +233,10 @@ CPU-limit kill is not something the save request's own code can catch and
 turn into a clean error. So past `MAX_SAFE_RENDER_BYTES` (50 KB,
 `src/worker/admin-content.ts`), the save **skips rendering rather than risk
 it**: the body is stored as a draft regardless of the status requested, and
-the response carries a warning explaining why, shown in the editor. Nothing
+the response carries a warning explaining why, shown in the editor — in
+English as `warning`, and named by `warningCode` (`content.saved_unrendered`,
+with `warningParams.limitKb`) so the editor says it in the interface
+language, as it does an error (`ADMIN_I18N_AND_UI.md`, D3). Nothing
 is lost — shortening the body and saving again renders and publishes
 normally. **It does not fail silently, and it does not pretend to have
 succeeded** (`AC-CONTENT-10`, `docs/ACCEPTANCE.md §14.2` item 7).
