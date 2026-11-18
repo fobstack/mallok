@@ -169,6 +169,12 @@ export const SERVER_MESSAGES: Readonly<Record<string, MessageDescriptor>> = {
     message:
       'This translation group already has an item in {locale}: the {kind} "{slug}" at {path} (id {id}). Edit that item instead.',
   }),
+  // Not an error: the save succeeded, as a draft. Sent as `warningCode`.
+  'content.saved_unrendered': msg({
+    id: 'server.content.saved_unrendered',
+    message:
+      "Saved as a draft without rendering: this item's body is over {limitKb} KB, long enough that rendering it risks exceeding the Free plan's CPU limit. Nothing was lost — shorten it and save again to publish.",
+  }),
   'content.plugin_too_large': msg({
     id: 'server.content.plugin_too_large',
     message:

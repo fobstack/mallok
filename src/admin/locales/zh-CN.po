@@ -1653,6 +1653,11 @@ msgstr "保存设置"
 msgid "Saved"
 msgstr "已保存"
 
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.saved_unrendered"
+msgstr "已存为草稿，未渲染：这篇内容的正文超过 {limitKb} KB，渲染它可能超出免费套餐的 CPU 限制。内容没有丢失，缩短后再保存即可发布。"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
 msgstr "保存内容时会清除受影响页面的缓存，所以这是未被修改页面的缓存上限，而不是修改生效前的等待时间。"
