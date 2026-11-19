@@ -173,10 +173,6 @@ msgstr "{when} — 由{cause}触发，Cloudflare 返回 HTTP {status}"
 msgid "{when} — after {cause}, Cloudflare could not be reached"
 msgstr "{when} — 由{cause}触发，无法连接 Cloudflare"
 
-#: src/admin/pages/editor.tsx
-msgid "← All content"
-msgstr "← 全部内容"
-
 #: src/admin/pages/plugins.tsx
 msgid "<0>{panelLabel}</0> is edited where it belongs: open any <1>{kind}</1> in Content, and it is under the editor."
 msgstr "<0>{panelLabel}</0>：在所属内容中编辑——在“内容”里打开任意 <1>{kind}</1>，它就在编辑器下方。"
@@ -259,9 +255,22 @@ msgstr "修改账号需要通过浏览器登录。"
 msgid "Account menu"
 msgstr "账号菜单"
 
+#: src/admin/pages/content-list.tsx
+msgid "Actions"
+msgstr "操作"
+
+#. placeholder {0}: item.title
+#: src/admin/pages/content-list.tsx
+msgid "Actions for {0}"
+msgstr "{0} 的操作"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Active"
 msgstr "已生效"
+
+#: src/admin/pages/content-list.tsx
+msgid "Add {typeName}"
+msgstr "添加{typeName}"
 
 #: src/admin/components/record-editor.tsx
 msgid "Add a row"
@@ -275,6 +284,10 @@ msgstr "添加替代文本"
 #: src/admin/server-messages.catalog.ts
 msgid "server.field.rows_required"
 msgstr "请至少添加一行。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Add content"
+msgstr "添加内容"
 
 #: src/admin/form/controls.tsx
 msgid "Add entry"
@@ -291,6 +304,10 @@ msgstr "添加语言"
 #: src/admin/form/controls.tsx
 msgid "Add row"
 msgstr "添加一行"
+
+#: src/admin/pages/content-list.tsx
+msgid "Add the first {typeName}"
+msgstr "添加第一个{typeName}"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Add the first one"
@@ -317,6 +334,11 @@ msgstr "影响缓存页面"
 #: src/admin/pages/content-list.tsx
 msgid "All"
 msgstr "全部"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/content-list.tsx
+msgid "All content"
+msgstr "全部内容"
 
 #: src/admin/components/media-library.tsx
 msgid "already stored, skipped"
@@ -602,7 +624,6 @@ msgid "Configured"
 msgstr "已配置"
 
 #: src/admin/components/shell.tsx
-#: src/admin/pages/content-list.tsx
 msgid "Content"
 msgstr "内容"
 
@@ -631,9 +652,17 @@ msgstr "继续"
 msgid "converting"
 msgstr "正在转换"
 
+#: src/admin/pages/content-list.tsx
+msgid "Copied {address}"
+msgstr "已复制 {address}"
+
 #: src/admin/pages/account.tsx
 msgid "Copy"
 msgstr "复制"
+
+#: src/admin/pages/content-list.tsx
+msgid "Copy address"
+msgstr "复制网址"
 
 #: src/admin/pages/account.tsx
 msgid "Could not change the password."
@@ -642,6 +671,10 @@ msgstr "密码修改失败。"
 #: src/admin/pages/plugins.tsx
 msgid "Could not change."
 msgstr "修改失败。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Could not copy. The address is {address}"
+msgstr "无法复制。网址是 {address}"
 
 #: src/admin/pages/account.tsx
 msgid "Could not create."
@@ -828,6 +861,7 @@ msgstr "边缘缓存有效期（秒）"
 
 #: src/admin/components/plugin-panel.tsx
 #: src/admin/components/shell.tsx
+#: src/admin/pages/content-list.tsx
 msgid "Edit"
 msgstr "编辑"
 
@@ -1045,6 +1079,10 @@ msgstr "已设置密钥，但没有站点发件地址 — 只有自带发件地�
 msgid "server.content.kind_disabled"
 msgstr "本站点未启用内容类型“{kind}”。"
 
+#: src/admin/pages/content-list.tsx
+msgid "Language"
+msgstr "语言"
+
 #: src/admin/pages/settings-site.tsx
 #: src/admin/pages/setup.tsx
 msgid "Language code"
@@ -1057,6 +1095,10 @@ msgstr "要添加的语言"
 #: src/admin/pages/settings-site.tsx
 msgid "Languages"
 msgstr "语言"
+
+#: src/admin/pages/content-list.tsx
+msgid "Last edited"
+msgstr "最后编辑"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Last failed purge"
@@ -1233,14 +1275,6 @@ msgstr "从未使用"
 #: src/admin/components/plugin-panel.tsx
 msgid "New"
 msgstr "新建"
-
-#: src/admin/pages/content-list.tsx
-msgid "New {filteredKind}"
-msgstr "新建{filteredKind}"
-
-#: src/admin/pages/content-list.tsx
-msgid "New content"
-msgstr "新建内容"
 
 #: src/admin/components/shell.tsx
 msgid "New item"
@@ -1468,10 +1502,6 @@ msgstr "密码使用 PBKDF2-SHA256 哈希，迭代 {iterations} 次。目前的�
 msgid "Paste the value"
 msgstr "粘贴密钥值"
 
-#: src/admin/pages/content-list.tsx
-msgid "Path"
-msgstr "路径"
-
 #: src/admin/pages/media.tsx
 msgid "Photos and files used on your site."
 msgstr "网站上用到的图片和文件。"
@@ -1683,6 +1713,18 @@ msgstr "权限范围"
 msgid "Search"
 msgstr "搜索"
 
+#: src/admin/pages/content-list.tsx
+msgid "Search {typeName}…"
+msgstr "搜索{typeName}…"
+
+#: src/admin/pages/content-list.tsx
+msgid "Search by title"
+msgstr "按标题搜索"
+
+#: src/admin/pages/content-list.tsx
+msgid "Search…"
+msgstr "搜索…"
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.plugins.secret_not_string"
@@ -1825,10 +1867,6 @@ msgstr "登录失败。"
 #: src/admin/pages/login.tsx
 msgid "Signing in…"
 msgstr "正在登录…"
-
-#: src/admin/components/shell.tsx
-msgid "Site"
-msgstr "站点"
 
 #: src/admin/pages/setup.tsx
 msgid "Site and languages"
@@ -2133,6 +2171,10 @@ msgstr "当前主题提供的主题选项"
 msgid "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
 msgstr "主题位于源代码中，而不在数据库里——它们会被编译进 Worker。要更换主题，请修改 <1>src/themes/index.ts</1> 中的 <0>ACTIVE_THEME</0>，然后重新构建并部署。"
 
+#: src/admin/pages/content-list.tsx
+msgid "There is no {typeName} yet."
+msgstr "还没有{typeName}。"
+
 #: src/admin/app.tsx
 msgid "There is no page at this address in the admin."
 msgstr "后台中没有这个地址对应的页面。"
@@ -2281,10 +2323,6 @@ msgstr "未使用"
 msgid "Update"
 msgstr "更新"
 
-#: src/admin/pages/content-list.tsx
-msgid "Updated"
-msgstr "更新时间"
-
 #: src/admin/pages/editor.tsx
 msgid "Updated <0>{updated}</0>"
 msgstr "更新于 <0>{updated}</0>"
@@ -2341,6 +2379,7 @@ msgstr "缩略图宽度必须在 1 到 {max} 之间。"
 msgid "server.media.variant_not_webp"
 msgstr "缩略图必须是 WebP 格式。"
 
+#: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
 msgid "View on site"
 msgstr "在站点上查看"

@@ -180,6 +180,8 @@ function Editor({
         ? fresh.kind
         : (Object.keys(site.kinds)[0] ?? 'page')),
   );
+  /** This type's list, named as the sidebar names it. */
+  const listName = active.kinds[kind]?.label ?? kind;
   /** The language this item is written in. */
   const locale =
     loaded?.locale ??
@@ -401,7 +403,9 @@ function Editor({
         );
       }
       if (loaded === null) {
-        navigate(`/content/${result.id}`, { replace: true });
+        navigate(`/content/${result.id}?kind=${encodeURIComponent(kind)}`, {
+          replace: true,
+        });
       }
     } catch (caught) {
       notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
@@ -524,14 +528,17 @@ function Editor({
           <Button
             type="button"
             variant="ghost"
-            // Back to the list in this item's language, as it was left.
+            // Back to this type's list, in this item's language
+            // (docs/ADMIN_SIMPLE.md, D2).
             onClick={() =>
               navigate(
-                locale === site.defaultLocale ? '/' : `/?locale=${locale}`,
+                `/content?kind=${encodeURIComponent(kind)}${
+                  locale === site.defaultLocale ? '' : `&locale=${locale}`
+                }`,
               )
             }
           >
-            <Trans>← All content</Trans>
+            ← {listName}
           </Button>
           <Field className="w-auto">
             <FieldLabel htmlFor="editor-kind">
@@ -847,7 +854,11 @@ function TranslationBar(props: {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => navigate(`/content/${slot.id}`)}
+              onClick={() =>
+                navigate(
+                  `/content/${slot.id}?kind=${encodeURIComponent(props.kind)}`,
+                )
+              }
             >
               {slotLanguage}
             </Button>

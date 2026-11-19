@@ -72,6 +72,49 @@ export function useContentLanguageName(): (code: string) => string {
 }
 
 /**
+ * Names the site's content languages for daily screens: the name alone —
+ * "English", "中文" — with the code added only to languages whose names
+ * would otherwise be the same, and to a code `Intl` cannot name
+ * (docs/ADMIN_SIMPLE.md, D8). Settings → General still shows every code.
+ */
+export function useShortLanguageNames(
+  locales: readonly string[],
+): (code: string) => string {
+  const { i18n } = useLingui();
+  const long = useContentLanguageName();
+  const names = useMemo(() => {
+    let display: Intl.DisplayNames | null = null;
+    try {
+      display = new Intl.DisplayNames([i18n.locale], { type: 'language' });
+    } catch {
+      display = null;
+    }
+    const nameOf = (code: string): string | undefined => {
+      try {
+        const name = display?.of(code);
+        return name === undefined || name.toLowerCase() === code.toLowerCase()
+          ? undefined
+          : name;
+      } catch {
+        return undefined;
+      }
+    };
+    const counts = new Map<string, number>();
+    for (const code of locales) {
+      const name = nameOf(code) ?? code;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return { nameOf, counts };
+  }, [i18n.locale, locales]);
+  return (code) => {
+    const name = names.nameOf(code);
+    return name === undefined || (names.counts.get(name) ?? 0) > 1
+      ? long(code)
+      : name;
+  };
+}
+
+/**
  * The options of a content-language select, named, without the select: for
  * a control that labels itself differently or picks more than one.
  */

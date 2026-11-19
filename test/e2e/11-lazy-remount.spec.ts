@@ -29,7 +29,11 @@ test('the editor opens for a second item in the same session', async ({
 
   // Back to the list without a reload, then a different item: the editor
   // route mounts again with its code already loaded.
-  await page.getByRole('link', { name: 'Content' }).first().click();
+  // The pages' list, from its sidebar entry (docs/ADMIN_SIMPLE.md, D2).
+  await page
+    .locator('[data-sidebar="sidebar"]')
+    .getByRole('link', { name: 'Page', exact: true })
+    .click();
   await expect(links.nth(1)).toBeVisible();
   await links.nth(1).click();
   await expect(page.locator('.cm-content')).toBeVisible();

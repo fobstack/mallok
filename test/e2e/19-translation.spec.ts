@@ -32,15 +32,16 @@ test('a translation made from the language bar joins the original', async ({
   // An English page of its own: the starter's pages already have their
   // Chinese versions.
   const stamp = Date.now();
-  await page.getByRole('button', { name: 'New' }).click();
+  await page.getByRole('button', { name: 'Add content' }).click();
   await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('Our mill');
   await page.getByLabel('URL slug', { exact: true }).fill(`our-mill-${stamp}`);
   await page.getByRole('button', { name: 'Publish' }).click();
-  await expect(page).toHaveURL(/\/content\/(?!new)[^/?]+$/);
-  const original = page.url().split('/content/')[1] ?? '';
+  // The editor's address carries its type, for the sidebar (D2).
+  await expect(page).toHaveURL(/\/content\/(?!new)[^/?]+\?kind=page$/);
+  const original = page.url().split('/content/')[1]?.split('?')[0] ?? '';
   const stored = await read(page, original);
 
   await page
@@ -74,7 +75,9 @@ test('a translation made from the language bar joins the original', async ({
   expect(translation.translationGroup).toBe(stored.translationGroup);
 
   // The editor is now on the new item, and its bar leads back.
-  await expect(page).toHaveURL(new RegExp(`/content/${created.id}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/content/${created.id}\\?kind=page$`),
+  );
   await expect(
     page
       .getByRole('navigation', { name: 'Translations' })
