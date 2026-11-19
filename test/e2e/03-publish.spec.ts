@@ -73,6 +73,8 @@ test('writes and publishes a page that is immediately public', async ({
   page,
 }) => {
   await signIn(page);
+  // From the list of every type; Overview has an Add menu instead (D1).
+  await page.goto('/_mallok/app/content');
   await page.getByRole('button', { name: 'Add content' }).click();
 
   // `page` is one of the two kinds the core always has (docs/ARCHITECTURE §8).
@@ -123,6 +125,8 @@ test('shows an edit on the public page, once the cache lets it', async ({
 
 test('keeps a draft off the public site', async ({ page }) => {
   await signIn(page);
+  // From the list of every type; Overview has an Add menu instead (D1).
+  await page.goto('/_mallok/app/content');
   await page.getByRole('button', { name: 'Add content' }).click();
 
   await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
@@ -141,6 +145,8 @@ test('a published page is updated or unpublished, never saved back to a draft', 
   page,
 }) => {
   await signIn(page);
+  // From the list of every type; Overview has an Add menu instead (D1).
+  await page.goto('/_mallok/app/content');
   await page.getByRole('button', { name: 'Add content' }).click();
   await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
   await page

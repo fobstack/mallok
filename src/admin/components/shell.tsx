@@ -21,6 +21,7 @@ import {
   FileText,
   FolderTree,
   Image,
+  LayoutDashboard,
   List,
   Mail,
   Newspaper,
@@ -82,6 +83,14 @@ interface NavItem {
    */
   readonly active: (path: string, kind: string) => boolean;
 }
+
+/** The first screen after sign-in (docs/ADMIN_SIMPLE.md, D1). */
+const HOME: NavItem = {
+  label: msg`Overview`,
+  href: '/',
+  icon: LayoutDashboard,
+  active: (path) => path === '/',
+};
 
 const MEDIA: NavItem = {
   label: msg`Media`,
@@ -274,7 +283,10 @@ function crumbsFor(
     kind === ''
       ? { label: msg`All content`, href: '/content' }
       : { label: kindLabel(kind), href: `/content?kind=${kind}` };
-  if (path === '/' || path === '/content') {
+  if (path === '/') {
+    return [{ label: HOME.label }];
+  }
+  if (path === '/content') {
     return [{ label: list.label }];
   }
   if (path.startsWith('/content/')) {
@@ -454,9 +466,7 @@ export function Shell({
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
-            {panels.length === 0 ? null : (
-              <NavGroup items={panels} path={path} kind={kind} />
-            )}
+            <NavGroup items={[HOME, ...panels]} path={path} kind={kind} />
             <NavGroup
               label={t`Content`}
               items={contentItems(Object.keys(site.kinds), kindLabel)}

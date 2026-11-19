@@ -91,7 +91,8 @@ async function scan(
 
 /** Every screen of the admin, scanned in each interface language. */
 const ADMIN_SCREENS = [
-  ['content list', '/_mallok/app/'],
+  ['overview', '/_mallok/app/'],
+  ['content list', '/_mallok/app/content'],
   // A type's own list: status and language tabs, search, row menus (D2).
   ['product list', '/_mallok/app/content?kind=product'],
   ['media', '/_mallok/app/media'],
@@ -136,6 +137,8 @@ test.describe('the admin', () => {
     page,
   }) => {
     await signIn(page);
+    // From the list of every type; Overview has an Add menu instead (D1).
+    await page.goto('/_mallok/app/content');
     await page.getByRole('button', { name: 'Add content' }).click();
     await expect(page.locator('#fm-title')).toBeVisible();
 

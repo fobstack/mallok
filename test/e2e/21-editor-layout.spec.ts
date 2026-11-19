@@ -31,7 +31,8 @@ async function clean(page: Page, label: string): Promise<void> {
 
 /** Opens the starter's "About the mill" page, which is published. */
 async function openPublished(page: Page): Promise<void> {
-  await page.goto('/_mallok/app/');
+  // The pages' own list: Overview shows only the latest edits (D1, D2).
+  await page.goto('/_mallok/app/content?kind=page');
   await page.getByRole('link', { name: 'About the mill' }).first().click();
   await expect(
     page.getByRole('textbox', { name: 'Title', exact: true }),

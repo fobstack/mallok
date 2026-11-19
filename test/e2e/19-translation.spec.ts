@@ -32,6 +32,8 @@ test('a translation made from the language bar joins the original', async ({
   // An English page of its own: the starter's pages already have their
   // Chinese versions.
   const stamp = Date.now();
+  // From the list of every type; Overview has an Add menu instead (D1).
+  await page.goto('/_mallok/app/content');
   await page.getByRole('button', { name: 'Add content' }).click();
   await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
   await page
