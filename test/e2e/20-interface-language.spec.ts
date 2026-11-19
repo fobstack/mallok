@@ -142,6 +142,9 @@ test("a plugin's declarations are in Chinese where it has a catalog", async ({
       .click();
     const panel = page.getByRole('region', { name: '目录条目' });
     await expect(panel).toBeVisible();
+    // An action on rows appears once a row is chosen (ADMIN_SIMPLE §6.3);
+    // 10-records-panel left two rows here.
+    await panel.locator('tbody tr').first().getByRole('checkbox').check();
     await expect(panel.getByRole('button', { name: '设置状态' })).toBeVisible();
     await expect(panel.getByPlaceholder('名称、代码')).toBeVisible();
     // …and what it leaves out stays as declared.

@@ -1,5 +1,6 @@
 {
   "panels.inquiries.values.status.new": "New",
   "panels.inquiries.values.status.replied": "Replied",
-  "panels.inquiries.values.status.spam": "Spam"
+  "panels.inquiries.values.status.spam": "Spam",
+  "panels.inquiries.empty": "No inquiries yet. They appear here when a visitor sends the form on your contact page."
 }

@@ -1332,6 +1332,7 @@ A catalog is a flat map from where a word is declared to that word:
 | `panels.<panel>.columns.<field>` | A column's label |
 | `panels.<panel>.names.<field>` | A field's name where the panel shows the name, not a column label: a filter, the detail view, the search box |
 | `panels.<panel>.values.<field>.<value>` | How a value of a `badge` column reads (`new`, `replied`); any value of a badge column may be named |
+| `panels.<panel>.empty` | What the panel says while it has no rows, such as where its rows come from ("No inquiries yet. They appear here when a visitor sends the form on your contact page."). Words with no declaration of their own: without it the admin says "Nothing here yet." The `inquiry` plugin carries it in `en` too (`ADMIN_SIMPLE.md` §6.3) |
 | `panels.<panel>.fields.<field>.label`, `.help`; `.fields.<field>.fields.<inner>.label`, `.help`; `panels.<panel>.groups.<group>` | A record field's words, a `rows` field's inner fields', a record field group |
 | `panels.<panel>.actions.<action>.label`; `.actions.<action>.params.<field>.label`, `.help` | An action and its parameters |
 | `panels.<panel>.related.<id>.label`, `.related.<id>.columns.<field>` | A related table and its columns |

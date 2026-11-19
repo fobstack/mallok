@@ -342,7 +342,7 @@ function Inbox({
         </p>
       ) : list.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          <Trans>Nothing has arrived yet.</Trans>
+          {panel.empty ?? <Trans>Nothing has arrived yet.</Trans>}
         </p>
       ) : (
         <ul className="flex flex-col divide-y">
