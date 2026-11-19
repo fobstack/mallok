@@ -1899,6 +1899,10 @@ msgstr "Tagline"
 msgid "Tagline in {taglineLanguage}"
 msgstr "Tagline in {taglineLanguage}"
 
+#: src/admin/pages/editor.tsx
+msgid "Take this off the site? It stays here as a draft, and visitors no longer see it."
+msgstr "Take this off the site? It stays here as a draft, and visitors no longer see it."
+
 #: src/admin/pages/plugins.tsx
 msgid "Technical details"
 msgstr "Technical details"
@@ -2267,6 +2271,10 @@ msgid "unknown type"
 msgstr "unknown type"
 
 #: src/admin/pages/editor.tsx
+msgid "Unpublish"
+msgstr "Unpublish"
+
+#: src/admin/pages/editor.tsx
 msgid "Unsaved"
 msgstr "Unsaved"
 
@@ -2278,6 +2286,10 @@ msgstr "Unsupported file type. Accepted: jpg, png, gif, webp, avif, pdf, xlsx, d
 #: src/admin/components/media-library.tsx
 msgid "unused"
 msgstr "unused"
+
+#: src/admin/pages/editor.tsx
+msgid "Update"
+msgstr "Update"
 
 #: src/admin/pages/content-list.tsx
 msgid "Updated"

@@ -78,7 +78,8 @@ test('on a phone one pane is shown and the save buttons stay on screen', async (
   await signIn(page);
   await openPublished(page);
 
-  const publish = page.getByRole('button', { name: 'Publish' });
+  // A published item's primary button is "Update" (G1, D6).
+  const publish = page.getByRole('button', { name: 'Update' });
   await expect(publish).toBeInViewport();
   await clean(page, 'editor on a phone, fields');
 

@@ -1899,6 +1899,10 @@ msgstr "标语"
 msgid "Tagline in {taglineLanguage}"
 msgstr "{taglineLanguage}标语"
 
+#: src/admin/pages/editor.tsx
+msgid "Take this off the site? It stays here as a draft, and visitors no longer see it."
+msgstr "要从网站上撤下吗？它会作为草稿保留在这里，访客将看不到它。"
+
 #: src/admin/pages/plugins.tsx
 msgid "Technical details"
 msgstr "技术细节"
@@ -2267,6 +2271,10 @@ msgid "unknown type"
 msgstr "未知类型"
 
 #: src/admin/pages/editor.tsx
+msgid "Unpublish"
+msgstr "取消发布"
+
+#: src/admin/pages/editor.tsx
 msgid "Unsaved"
 msgstr "未保存"
 
@@ -2278,6 +2286,10 @@ msgstr "不支持的文件类型。支持：jpg、png、gif、webp、avif、pdf�
 #: src/admin/components/media-library.tsx
 msgid "unused"
 msgstr "未使用"
+
+#: src/admin/pages/editor.tsx
+msgid "Update"
+msgstr "更新"
 
 #: src/admin/pages/content-list.tsx
 msgid "Updated"
