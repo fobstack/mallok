@@ -1,11 +1,11 @@
 # A simpler admin: direction and plan
 
-- Status: **decided**. On 2026-11-19 the owner took every recommendation
-  in §4 as written ("可以 搞吧"): D1–D10 as recommended, D5 as option A
-  (assisted Markdown first, a Tiptap spike before anything more). Built so
-  far: G1 (`c83be67`), ahead of phase 4 because it unpublishes live pages;
-  G10's "URL 别名" (`6cdfb0c`). The width draft of §2.2 is superseded by D7
-  and kept only as a stash.
+- Status: **implemented, phases 0–9**, on 2026-11-19, on
+  `feat/admin-simple`, after the owner took every recommendation in §4
+  ("可以 搞吧") and asked for the whole plan without stopping ("你直接全部
+  都做完 中途别问我"). §7.1 records each phase as built and where it
+  departed from the plan; §9 the measurements; what is still the owner's is
+  at the end of §7.1.
 - Date: 2026-11-19
 - Asked for by the owner on 2026-11-19: "我的目的就是，如果登录到 admin 后，
   操作要简单，参考主流的 CMS 后台，而不是那么极客。" Once signed in, operating
@@ -772,6 +772,33 @@ chunk's gzip size in this build, and whether raw HTML and tables survive.
 **Gate:** a site saved with the old option strings renders the same home
 page after the change, shown by a test; the six checks of §8.
 
+### 7.1 As built
+
+| Phase | Commits | As built, and where it departed |
+| --- | --- | --- |
+| 0 | `5663c91` | Decisions recorded. The delete route was read for D6 (the row and its fragment go; images stay, their counts drop; translations stay; no redirect). An `email` column already offered a mail link. The baseline images were not taken apart from each phase's own |
+| G1 | `c83be67` | Ahead of phase 4: a live item has Update, and Unpublish asks first |
+| 1 | `43b4e1d` | As planned; the uncommitted draft is a stash |
+| 2 | `970351a` | As planned, but the sidebar group's rename waited for phase 3, to avoid "Content › Content" |
+| 3 | `1447aa0`, `2ef2d49` | As planned. **No "Other content" entry**: `site.kinds` holds every type the site accepts, so a type the theme no longer declares gets its own entry by its name; `/content` with no type is "All content". The editor's address carries the type (`?kind=`) for the sidebar and breadcrumb. First load +1.6 KiB: the row menu's dropdown, now shared with the shell, split `react-remove-scroll` into a chunk of its own; the type icons are 0.6 of it |
+| 4 | `f79e734` | One commit, not seven: the steps share one page and each alone left it half made. **Not built: "Publish now" for a scheduled item** — Update keeps the schedule, and the date is in the panel. The More menu no longer returns focus to its button, which took keystrokes away from "Edit source" |
+| 5 | `d2bb1f4` | As planned; the four steps are those of D1 |
+| 6 | `b756161` | General keeps one form with the address for images under "More options", and the languages card puts the URL-prefix switch under its own, rather than three new cards. Optional plugin secrets sit in "Optional keys" |
+| 7 | `a4342d3` | As planned; the mail link existed already |
+| 8 | `6a73274` | In a throwaway directory, Tiptap 3.33.0 (the newest at least two weeks old); §9.1 |
+| 9 | `9cb63d3`, this commit | **Atelier's version is not bumped**: no file under `assets/` changed, which is what the version marks, and a bump would move every asset address. D10b — the wizard's main language from the theme — landed here too. A list control's rows gained names when axe met one on Appearance |
+
+Gates: every phase ended with `pnpm lint && pnpm typecheck && pnpm test &&
+pnpm build && pnpm bundle:size && pnpm admin:size` and `pnpm test:e2e`
+passing (62 browser tests at the end, up from 55); `pnpm vitest run
+--project themes` after the template change. Within a phase, commits ran
+lint, typecheck and the tests they touched.
+
+**Still the owner's:** the unaided test of §8 (someone new adds a product
+with two photos, publishes, fixes a typo and answers an inquiry); Windows
+and Linux screenshots; the decision on 0.2's editor (§9.1); and the
+navigation editor, the first thing to plan next (§10, conflict 1).
+
 ## 8. Verification
 
 - **Every commit:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build
@@ -807,6 +834,10 @@ To be filled as phases run. At proposal time:
 | Interface messages | 543, both languages | `grep -c '^msgid'` on `zh-CN.po` gives 544 with the header |
 | Browser specs | 22 files (`00`–`21`) | `ls test/e2e` |
 | Tiptap's size and fidelity here | Measured in phase 8, below | Phase 8 |
+| First load, after phase 9 | **168.1 KiB** gzip of 170 | `pnpm admin:size`, 2026-11-19 |
+| Editor chunk, after phase 4 | 34.9 KiB gzip | gzip of `editor-*.js` |
+| Interface messages, after phase 9 | 603, both languages | `lingui extract` |
+| Browser tests, after phase 9 | 62, in 25 files (`00`–`24`) | `pnpm test:e2e` |
 | Benchmarks in §3 | **Not measured**; from knowledge | — |
 
 ### 9.1 Phase 8: what a visual editor would cost
@@ -875,8 +906,8 @@ by this plan**:
    this product belongs to."
 3. `ADMIN.md §8` says the media library lists "unused media" separately;
    the page marks each item "unused" in place.
-4. The owner's choice of "URL 别名" for Slug (2026-11-19) is not in
-   `zh-CN.po`.
+4. The owner's choice of "URL 别名" for Slug (2026-11-19) was not in
+   `zh-CN.po` when this was written; it is since `6cdfb0c`.
 
 Open questions:
 

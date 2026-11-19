@@ -58,35 +58,49 @@ Three top-level sections plus a user menu. **A new feature must fit one of
 them**; when it does not, the first question is whether it is internal
 complexity that should not be surfaced at all.
 
-On screen they are a collapsible sidebar — Content, Media, each plugin panel
-by its label (Inquiries, say) and Plugins under "Site"; Site, Appearance,
-Email and Advanced under "Settings" — with "View site" at its head, which
-opens the public site in a new tab, the user menu at its foot, and a
-breadcrumb above each page. On a narrow screen the sidebar is a sheet.
+On screen they are a collapsible sidebar, arranged by what the operator
+works on rather than by how it is stored (`ADMIN_SIMPLE.md`, D2): Overview
+and each plugin panel by its label (Inquiries, say) at the top; under
+"Content" one entry per content type the site has, by the theme's label
+(Pages, Products, News…), then Media; under "Settings" General, Appearance,
+Email, Plugins and Advanced. "View site" at its head opens the public site
+in a new tab, the user menu sits at its foot, and a breadcrumb above each
+page names the place ("Products › Edit"). On a narrow screen the sidebar is
+a sheet. Every page starts beside the sidebar; a form's column stops at
+56 rem, a list's at 90 rem, Overview's at 68 rem, and the editor takes the
+window (D7).
 
 ```
-Content     ├ All content (filter by kind, filter by language, search)
-            ├ The editor (source + field form + preview)
+Overview    ├ What is left to set up, each plugin list's newest rows,
+            │ and what was edited last (§4.4)
+            └ Each panel a plugin declares, such as Inquiries — a page of
+              its own (§10)
+
+Content     ├ One list per content type: status and language as tabs,
+            │ search by title, a menu on each row (§4.5)
+            ├ The editor: title, text with a toolbar, the type's fields;
+            │ a settings panel beside it (§6.1)
             └ The media library
 
-Settings    ├ Site details (name, tagline — one per language —, SEO defaults)
-            ├ Languages (which are enabled, which is default)
-            ├ Navigation (one per language)
-            ├ Appearance (what the current theme is, and its options form)
-            ├ Domain and media domain
+Settings    ├ General (name, taglines — one per language —, your domain;
+            │ languages; the address for images and URL prefixes under
+            │ "More options")
+            ├ Appearance (the theme's options, then what the theme is)
             ├ Email (Resend)
-            └ Advanced (cache TTL, usage, backup export, diagnostics)
+            ├ Plugins (switch, settings and secrets; what each affects,
+            │ for the person who deploys)
+            └ Advanced (backup, cache, diagnostics, API tokens)
 
-Plugins     ├ Installed plugins (switch, version, what each affects)
-            ├ Each plugin's settings and secrets form
-            └ Each panel a plugin declares, such as Inquiries — a page of
-              its own, listed in the sidebar (§10)
-
-User menu   ├ Account: change password, API token management
+User menu   ├ Account: change password
             ├ Interface language (§4.3)
             ├ Colour scheme (the system's, light or dark)
             └ Sign out
 ```
+
+**Navigation (one menu per language) is not built.** Earlier versions of
+this section listed it under Settings, and Advanced says navigation
+changes apply at once; the admin has no screen for it yet. It is the next
+thing to plan (`ADMIN_SIMPLE.md` §10).
 
 ### 4.1 What Appearance does not contain
 
@@ -98,8 +112,15 @@ No theme list, no upload, no switch button. The page shows, in this order:
   named by the theme's own labels;
 - the `clientScripts` it declares — **stated honestly as "this theme injects N
   scripts"**, which is always zero for the official themes;
-- one sentence: **changing themes requires editing source and redeploying**,
-  with a link to the documentation.
+- one sentence: **changing themes is done by whoever deploys the site**, and
+  content and addresses stay as they are;
+- closed, "For the person who deploys": `ACTIVE_THEME` in
+  `src/themes/index.ts`, the themes built in, the asset path and the script
+  list (`ADMIN_SIMPLE.md` §6.5).
+
+A list an option holds — Atelier's certifications, stats and capability
+features — is a `string[]` or `keyvalue` option with a list control, not a
+syntax typed into one box (`THEME_FORMAT.md §6`, D10a).
 
 The line comes from `PRODUCT_VISION §4`: content and settings belong to the
 operator; themes and plugins belong to the deployment. Making a theme switch
@@ -129,9 +150,12 @@ the site sender is used.
 The admin speaks English or Simplified Chinese (`ADMIN_I18N_AND_UI.md`). The
 **interface language** is the operator's, not the site's: it never defaults
 from a content language, nor they from it, and it is always labelled
-"Interface language" so the two are not confused. Content languages are named
-in the interface language with their code beside them — "Chinese (zh)",
-"中文（zh）".
+"Interface language" so the two are not confused — it is chosen only in the
+account menu, on the sign-in page and on the wizard's first screen. Content
+languages are named in the interface language by their name alone in daily
+screens — "Chinese", "中文" — with the code added only to two languages
+that share a name; Settings → General lists every code, and a site with one
+language shows no language control outside it (`ADMIN_SIMPLE.md`, D8).
 
 - **Where it is chosen**: the account menu, the sign-in page and the setup
   wizard's first screen, each language named in itself (English, 简体中文).
@@ -169,6 +193,34 @@ message, so a new language is a translation, not a change to any page:
 Nothing on the Worker changes: it stores whatever tag the account chooses and
 chooses a theme's or plugin's catalog by `Accept-Language`.
 
+### 4.4 Overview
+
+The first screen after sign-in, and where the wizard's last screen leads
+(`ADMIN_SIMPLE.md`, D1). It shows, from what the admin already loads and
+with no figure that needs counting:
+
+- **Finish setting up**: a required plugin setting left empty (the inquiry
+  recipient, without which inquiries go nowhere), a custom domain, email
+  sending, and content edited since setup. Each step says why it matters
+  and links to where it is done. The steps are derived, never stored; the
+  card goes with the last one.
+- Each enabled plugin's own lists — Inquiries — with their five newest rows
+  and the plugin's own sentence when there are none.
+- **Recently edited**: the five items changed last, and "All content".
+- An **Add** menu with one entry per content type.
+
+### 4.5 Content lists
+
+Each content type has its own list, reached from its sidebar entry; with
+no type in the address the list is "All content" and gains a Type column
+(`ADMIN_SIMPLE.md`, D2, D3). Status (All, Published, Draft, Scheduled) and
+the content language are tabs above the table; a search box finds words in
+titles (`GET /_mallok/api/content?q=`, one query, no count); "Last edited"
+reads "Today 07:12", "Yesterday", "3 days ago", then the date. There is no
+address column: each row's menu has Edit, View on site, Copy address,
+Unpublish and Delete, the last two asking first and saying what a visitor
+will see.
+
 ## 5. The setup wizard
 
 At `/_mallok/setup`, and **permanently closed** once complete — a non-null
@@ -187,8 +239,10 @@ The steps are numbered and steps 2–4 have Back; the result screen is not a
 step. Going back to step 1 says the account exists rather than offering to
 create it again, and once a starter is installed step 3 has no Back, because
 re-applying step 2 would drop the languages the starter added. The main
-language starts as the interface language the wizard is read in, which is
-chosen on its first screen and becomes the new account's.
+language starts as the first language the theme has words for — English,
+for every official theme — never as the interface language the wizard is
+read in, which is chosen on its first screen and becomes the new account's
+(`ADMIN_SIMPLE.md`, D10b).
 
 **Media domain (`media.<domain>`) and email (the Resend key, the sending
 domain, the DNS records) are not wizard steps in 0.1** — deliberately: both
@@ -213,26 +267,45 @@ unreachable, they are simply not part of the guided first run. Three things
 
 ### 6.1 Layout
 
-The editor takes the whole window, beside the sidebar. A bar across the top,
-then three panes:
+The editor is writing first (`ADMIN_SIMPLE.md`, D4–D6). It takes the whole
+window beside the sidebar: a bar, then the text, then a panel.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│ Stored status · Updated <date, time> · View on site          │
-│ English (en) · Create Chinese (zh)     Save draft   Publish  │
-├─────────────┬────────────────────────┬───────────────────────┤
-│ Field form  │ Markdown source        │ Live preview          │
-│ (schema)    │ (CodeMirror)           │ (core)                │
-└─────────────┴────────────────────────┴───────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│ ← Products  Published · Updated <date, time>   Preview  ⋯  Update │
+│ Language versions: English · + Chinese                           │
+├───────────────────────────────────────────────┬──────────────────┤
+│ Title                                         │ Page settings    │
+│ Grade 5 titanium bar                          │  Summary         │
+│ [H] [B] [I] [•] [1.] ["] [link] [img] [table] │  Publish date    │
+│ The text, headings and emphasis drawn as they │  Cover image     │
+│ read; the ## and ** stay where typed          │  Tags            │
+│ ┌ Product ─────────────────────────────────┐  │ ▸ Search and     │
+│ │ the type's own fields, as a card          │  │   address        │
+│ └───────────────────────────────────────────┘  │                  │
+└───────────────────────────────────────────────┴──────────────────┘
 ```
 
 - The bar shows the status as stored, not as asked, and a new item says
   "Not saved yet". "View on site" appears for a published item.
-- The field pane folds to a rail ("Hide fields" / "Show fields"), and this
-  browser remembers the choice.
-- Below `lg`, one pane is shown at a time, chosen with "Fields", "Write"
-  and "Preview", and the save buttons move to a bar pinned to the bottom of
-  the screen.
+- **The buttons follow the stored status.** A draft has "Save draft" and
+  "Publish"; a published or scheduled item has "Update", which keeps it on
+  the site. "⋯" holds View on site, "Edit source (Markdown)", Unpublish and
+  Delete; the last two ask first and say what a visitor will see. A delete
+  removes the item and its rendered copy; its images stay in Media, its
+  other language versions stay, and no redirect is written.
+- The text holds the body only. The toolbar inserts Markdown at the cursor;
+  an image comes from the media picker, or by dropping or pasting a file,
+  which is uploaded as Media uploads it. "Edit source (Markdown)" shows the
+  whole stored document, front matter included.
+- The panel holds what is not writing: the type of a new item, the
+  summary, a publish date, a cover image, tags, and "Search and address"
+  with the whole address and the URL slug — open for a new item, closed
+  after. It closes to a rail and this browser remembers.
+- "Preview" swaps the panel for the page as visitors get it; from 1600 px
+  both are shown.
+- Below `lg` it is one column, and the save buttons move to a bar pinned to
+  the bottom of the screen.
 - A successful save is the green "Saved", followed in plain text by when
   visitors see it ("now", or "within 1 minute" without a purge token); a
   draft gets the badge alone.
@@ -245,7 +318,10 @@ back into the source. That is the user deliberately editing, not an
 import/export path, so rewriting the source's formatting is allowed there.
 
 The editor must not rewrite Markdown the user has not edited. Opening an item
-and closing it again must leave `markdown` byte-identical.
+and closing it again must leave `markdown` byte-identical. The writing view
+hides the front matter but keeps it as the text it was: an edit to the body
+is joined back onto the original block, so only a field edit rewrites it
+(`13-editor-untouched`, `23-editor-content`).
 
 The **slug** is the exception, and only because it is not prose: it becomes a
 folder name in an export, so the server refuses anything `slugify` would
@@ -405,14 +481,17 @@ See §4.1. Two additions:
 - An installed plugin has a switch, **immediate**, and settings and secrets
   forms, **immediate**.
 - **Installing, updating and removing plugins are not in the admin.** The top
-  of this page says honestly that plugins ship with the source and that
-  installing one means changing the repository and redeploying, with the
-  concrete steps (`PLUGIN_API.md §2`). **It must not be dressed up as a
-  one-click install.**
+  of this page says plainly that plugins are added by whoever deploys the
+  site and that a change here applies at once; the concrete steps, with the
+  source paths, are in a closed "For the person who deploys" block
+  (`PLUGIN_API.md §2`, `ADMIN_SIMPLE.md` §6.5). **It must not be dressed up
+  as a one-click install.** The page is under Settings.
 - A plugin's card puts first what the operator uses: its warnings, then its
-  panels, its settings and its secrets. Its version, which hooks it uses,
-  whether it injects client-side JavaScript and whether it affects the cache
-  are under "Technical details", closed until opened.
+  panels, its settings and its secrets. Settings a manifest marks
+  `advanced`, and secrets when none is required, are in closed "More
+  options" and "Optional keys" blocks (D9). Its version, which hooks it
+  uses, whether it injects client-side JavaScript and whether it affects the
+  cache are under "For the person who deploys", closed until opened.
 - A plugin declaring `onRequest` carries the extra note that it runs on every
   visitor request (`PLUGIN_API.md §5.1`).
 - **A panel is a page of its own** (`/_mallok/app/plugins/<plugin>/<panel>`),
@@ -424,9 +503,13 @@ See §4.1. Two additions:
 - Panels render from `plugin.json`'s `panels` (`PLUGIN_API.md §7.5`): a
   table with the declared columns, filters and actions; a search box and
   sortable headings where the panel declares them. A filter on a field whose
-  values the plugin's catalog names is a select. Row actions are disabled
-  until a row is selected, except a download, which with no selection
-  exports everything. An empty panel says "Nothing here yet." — offering
+  values the plugin's catalog names is a row of tabs when there are four or
+  fewer, a select otherwise. Row actions appear once a row is selected,
+  after "N selected:", except a download, which is always there and with no
+  selection exports everything. A long text cell is one line; the detail
+  view has all of it. An empty panel says the plugin's own sentence when
+  its catalog has `panels.<id>.empty` (Inquiries says where inquiries come
+  from), otherwise "Nothing here yet." — offering
   "Add the first one" on a `records` panel — or, when a filter or the search
   is set, "Nothing matches these filters." with "Clear filters". The pager
   is hidden when everything fits on one page.
@@ -489,6 +572,8 @@ first, then the rest:
   error. The list is absent when there are none. It is read-only: there is no
   retry button.
 
+- **API tokens** for the CLI and scripts (§12), moved here from Account.
+
 **"Needs a deployment" and "does not" must be stated in one place**
 (`ARCHITECTURE §15`). Diagnostics carries the table: content, settings, theme
 options, plugin switches and settings are immediate; changing theme,
@@ -505,8 +590,11 @@ The complete rules are in `SECURITY.md`. On the interface side:
   option (Cloudflare Access).
 - The session cookie is `HttpOnly; Secure; SameSite=Strict`.
 - Every write carries a CSRF token.
-- API token management: create (**shown once**), name, scopes, revoke, last
-  used. A revoked token stays in the list as history, marked revoked with its
+- Account holds the password form, and says plainly "Use a long password
+  you use nowhere else", with the PBKDF2 figures under "Details".
+- API token management, under Settings → Advanced since it is for the CLI
+  and scripts (`ADMIN_SIMPLE.md`, G18): create (**shown once**), name,
+  scopes, revoke, last used. A revoked token stays in the list as history, marked revoked with its
   date and offering no Revoke; a failed revoke says why in the notice.
 
 ## 13. Quality gates
@@ -514,7 +602,7 @@ The complete rules are in `SECURITY.md`. On the interface side:
 | Item | Requirement |
 | --- | --- |
 | Accessibility | Fully keyboard operable; every form control has a label; focus is visible; `@axe-core/playwright` reports nothing serious or critical |
-| First load | Admin first-load JS ≤ 170 KiB gzip (React, React Router, TanStack Query, the shell; raised from 150 on 2026-11-03, `ADMIN_MIGRATION.md` D7). **Asserted by `pnpm admin:size`**, counting every script and stylesheet `index.html` references, the `modulepreload` chunks included (they were left out until 2026-10-31, `ADMIN_MIGRATION.md §8`); 166.2 KiB with the interface languages and the interface review on 2026-11-17 (`ADMIN_I18N_AND_UI.md §8`), no catalog included — each loads on demand; 161.7 KiB on React Router and TanStack Query on 2026-11-03; 124.1 KiB with the shadcn/ui shell on 2026-10-31; measured at 72.0 KB on 2026-09-06, up from 17.3 KB on Preact — real React+ReactDOM cost is ≈ 54 KB gzip in this project's own Vite build, not the ≈ 45 KB estimated from memory before switching |
+| First load | Admin first-load JS ≤ 170 KiB gzip (React, React Router, TanStack Query, the shell; raised from 150 on 2026-11-03, `ADMIN_MIGRATION.md` D7). **Asserted by `pnpm admin:size`**, counting every script and stylesheet `index.html` references, the `modulepreload` chunks included (they were left out until 2026-10-31, `ADMIN_MIGRATION.md §8`); 168.1 KiB with the simpler admin on 2026-11-19 (`ADMIN_SIMPLE.md` §9), +1.6 of it a dropdown chunk the shell now shares with the lists; 166.2 KiB with the interface languages and the interface review on 2026-11-17 (`ADMIN_I18N_AND_UI.md §8`), no catalog included — each loads on demand; 161.7 KiB on React Router and TanStack Query on 2026-11-03; 124.1 KiB with the shadcn/ui shell on 2026-10-31; measured at 72.0 KB on 2026-09-06, up from 17.3 KB on Preact — real React+ReactDOM cost is ≈ 54 KB gzip in this project's own Vite build, not the ≈ 45 KB estimated from memory before switching |
 | CodeMirror | Chunked and loaded only when the editor opens. **The render pipeline — unified, remark, rehype, LiquidJS — is equally on demand**: the preview uses the real renderer, so it loads with the editor rather than on first load |
 | Importing from core | **A page on the first-load path must not import from the `src/core/index.ts` barrel**, not even for a single constant — the barrel drags the whole render pipeline into the first load. This happened once, on 2026-08-31: the Appearance page imported the barrel for one string constant and the first load went from 17 KB to 137 KB, caught by `pnpm admin:size`. Dependency-free constants live in `src/core/constants.ts` |
 | Offline | No offline support. A network failure produces a clear error and never silently discards a change |

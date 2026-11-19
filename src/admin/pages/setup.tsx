@@ -143,10 +143,11 @@ export function SetupPage(): JSX.Element {
   const [password, setPassword] = useState('');
   const [setupKey, setSetupKey] = useState('');
   const [name, setName] = useState('');
-  // The main language starts as the one the wizard is being read in.
-  const [mainChoice, setMainChoice] = useState(
-    () => i18n.locale.split('-')[0] ?? 'en',
-  );
+  // Empty until chosen: the main language then starts as the first one the
+  // theme has words for, never as the language the wizard is read in — a
+  // Chinese-speaking owner setting up an export site was offered Chinese
+  // (docs/ADMIN_SIMPLE.md, D10b; ADMIN.md §4.3).
+  const [chosenMain, setMainChoice] = useState('');
   const [mainCode, setMainCode] = useState('');
   const [others, setOthers] = useState<readonly string[]>([]);
   const [otherCodes, setOtherCodes] = useState('');
@@ -256,6 +257,7 @@ export function SetupPage(): JSX.Element {
     ...themeLocales,
     ...COMMON_LOCALES.filter((code) => !themeLocales.includes(code)),
   ];
+  const mainChoice = chosenMain === '' ? (themeLocales[0] ?? 'en') : chosenMain;
   const mainLocale = mainChoice === ANOTHER ? mainCode.trim() : mainChoice;
   const themeLanguages = themeLocales.map(nameOf).join(', ');
   const back = (to: Step): JSX.Element => (
