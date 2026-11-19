@@ -109,6 +109,7 @@ interface PluginsBody {
       readonly actions: readonly { id: string; label: string }[];
       readonly names?: Record<string, string>;
       readonly values?: Record<string, Record<string, string>>;
+      readonly empty?: string;
     }[];
   }[];
 }
@@ -140,10 +141,16 @@ describe('the plugins, in the interface language', () => {
     expect(panel?.columns.map((column) => column.label)).toEqual([
       '姓名',
       '邮箱',
+      // The message is in the row since docs/ADMIN_SIMPLE.md §6.3.
+      '留言',
       '国家',
       '状态',
       '收到时间',
     ]);
+    // And says where inquiries come from while there are none.
+    expect(panel?.empty).toBe(
+      '还没有收到询盘。访客在联系页提交表单后，会显示在这里。',
+    );
     expect(panel?.actions.map((action) => action.label)).toEqual([
       '标记为已回复',
       '标记为垃圾信息',

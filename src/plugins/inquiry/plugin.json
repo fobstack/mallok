@@ -90,6 +90,10 @@
           "type": "email"
         },
         {
+          "field": "message",
+          "label": "Message"
+        },
+        {
           "field": "country",
           "label": "Country"
         },

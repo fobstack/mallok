@@ -84,6 +84,11 @@ msgstr "{0, plural, other {# 个页面}}"
 msgid "{0, plural, one {# script} other {# scripts}}"
 msgstr "{0, plural, other {# 个脚本}}"
 
+#. placeholder {0}: selected.length
+#: src/admin/components/plugin-panel.tsx
+msgid "{0, plural, one {# selected:} other {# selected:}}"
+msgstr "{0, plural, other {已选 # 项：}}"
+
 #. placeholder {0}: progress.done
 #. placeholder {1}: progress.total
 #: src/admin/pages/settings-advanced.tsx
@@ -351,6 +356,7 @@ msgid "Affects cached pages"
 msgstr "影响缓存页面"
 
 #: src/admin/components/content-language.tsx
+#: src/admin/components/plugin-panel.tsx
 #: src/admin/pages/content-list.tsx
 msgid "All"
 msgstr "全部"

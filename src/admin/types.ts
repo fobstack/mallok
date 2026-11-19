@@ -175,6 +175,8 @@ export interface PluginPanel {
   readonly names?: Readonly<Record<string, string>>;
   /** What a badge column's values read as, by field and value. */
   readonly values?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  /** What the panel says while it has no rows, when the plugin says. */
+  readonly empty?: string;
   /** `records` only: the fields of the create and edit form. */
   readonly fields?: Readonly<Record<string, RecordField>>;
   /** Columns a text search looks in; empty means no search box. */
