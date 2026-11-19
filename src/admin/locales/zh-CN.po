@@ -181,6 +181,10 @@ msgstr "<0>{panelLabel}</0>：在所属内容中编辑——在“内容”里�
 msgid "a content change"
 msgstr "内容修改"
 
+#: src/admin/pages/editor.tsx
+msgid "A date in the future publishes it then."
+msgstr "填写未来的日期，到时自动发布。"
+
 #: src/admin/pages/setup.tsx
 msgid "A domain can be added at any time; your content and its URLs stay as they are. <0>How to add a custom domain<1/></0>"
 msgstr "域名随时可以添加，内容和网址都保持不变。<0>如何添加自定义域名<1/></0>"
@@ -305,6 +309,10 @@ msgstr "添加语言"
 msgid "Add row"
 msgstr "添加一行"
 
+#: src/admin/pages/editor.tsx
+msgid "Add the {slotLanguage} version"
+msgstr "添加{slotLanguage}版本"
+
 #: src/admin/pages/content-list.tsx
 msgid "Add the first {typeName}"
 msgstr "添加第一个{typeName}"
@@ -423,6 +431,10 @@ msgstr "上一步"
 msgid "Back to content"
 msgstr "返回内容列表"
 
+#: src/admin/pages/editor.tsx
+msgid "Back to writing"
+msgstr "返回写作"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Background jobs waiting"
 msgstr "等待中的后台任务"
@@ -461,6 +473,14 @@ msgstr "请求内容必须是设置项组成的 JSON 对象。"
 msgid "server.plugins.action_ids_missing"
 msgstr "请求内容必须包含要操作的行 ID。"
 
+#: src/admin/pages/editor.tsx
+msgid "bold"
+msgstr "粗体"
+
+#: src/admin/pages/editor.tsx
+msgid "Bold"
+msgstr "粗体"
+
 #: src/admin/components/ui/breadcrumb.tsx
 msgid "breadcrumb"
 msgstr "面包屑导航"
@@ -472,6 +492,10 @@ msgstr "正在生成…"
 #: src/admin/pages/settings-appearance.tsx
 msgid "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
 msgstr "本次部署内置的主题：{builtIn}。切换主题后，内容、内容 ID 和所有 URL 都保持不变。"
+
+#: src/admin/pages/editor.tsx
+msgid "Bulleted list"
+msgstr "项目列表"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Cache"
@@ -619,6 +643,10 @@ msgstr "Cloudflare 未能清除缓存{status, select, none {} other {（HTTP {st
 msgid "Colour scheme"
 msgstr "配色"
 
+#: src/admin/pages/editor.tsx
+msgid "Column"
+msgstr "列"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Configured"
 msgstr "已配置"
@@ -632,7 +660,6 @@ msgid "Content items"
 msgstr "内容条目"
 
 #: src/admin/components/content-language.tsx
-#: src/admin/pages/editor.tsx
 msgid "Content language"
 msgstr "内容语言"
 
@@ -682,6 +709,8 @@ msgstr "创建失败。"
 
 #: src/admin/components/media-library.tsx
 #: src/admin/components/record-editor.tsx
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
 msgid "Could not delete."
 msgstr "删除失败。"
 
@@ -730,6 +759,7 @@ msgstr "无法撤销令牌。"
 
 #: src/admin/components/media-library.tsx
 #: src/admin/components/record-editor.tsx
+#: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-advanced.tsx
@@ -748,8 +778,8 @@ msgid "Could not switch."
 msgstr "切换失败。"
 
 #: src/admin/pages/editor.tsx
-msgid "Create {slotLanguage}"
-msgstr "创建{slotLanguage}版本"
+msgid "Cover image"
+msgstr "封面图"
 
 #: src/admin/pages/setup.tsx
 msgid "Create the administrator"
@@ -792,8 +822,15 @@ msgid "Default language is now {language}. {moved, plural, one {# URL moved, wit
 msgstr "默认语言已改为{language}。{moved, plural, other {已迁移 # 个 URL，均已设置重定向。}}"
 
 #: src/admin/components/media-library.tsx
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
 msgid "Delete"
 msgstr "删除"
+
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
+msgid "Delete \"{title}\"? Visitors get \"page not found\" at its address. Its other language versions and its images stay. This cannot be undone."
+msgstr "要删除“{title}”吗？访客打开它的网址会看到“页面不存在”。它的其他语言版本和图片会保留。删除后无法恢复。"
 
 #: src/admin/components/record-editor.tsx
 msgid "Delete it"
@@ -869,9 +906,17 @@ msgstr "编辑"
 msgid "Edit {rowName}"
 msgstr "编辑 {rowName}"
 
+#: src/admin/pages/editor.tsx
+msgid "Edit source (Markdown)"
+msgstr "编辑源码（Markdown）"
+
 #: src/admin/components/record-editor.tsx
 msgid "Edit: {panelLabel}"
 msgstr "编辑：{panelLabel}"
+
+#: src/admin/pages/editor.tsx
+msgid "Editor"
+msgstr "编辑器"
 
 #: src/admin/components/shell.tsx
 #: src/admin/pages/login.tsx
@@ -924,14 +969,6 @@ msgstr "全部导出"
 msgid "Failed background jobs"
 msgstr "失败的后台任务"
 
-#: src/admin/pages/editor.tsx
-msgid "Fields"
-msgstr "字段"
-
-#: src/admin/pages/editor.tsx
-msgid "Fields, Markdown and preview"
-msgstr "字段、Markdown 与预览"
-
 #: src/admin/pages/setup.tsx
 msgid "Finish setup"
 msgstr "完成设置"
@@ -943,6 +980,10 @@ msgstr "用于上面没有列出的语言，以逗号分隔。之后也可以再
 #: src/admin/pages/plugins.tsx
 msgid "For the person who deploys"
 msgstr "部署相关信息"
+
+#: src/admin/pages/editor.tsx
+msgid "Formatting"
+msgstr "格式"
 
 #: src/admin/pages/settings-email.tsx
 msgid "From address"
@@ -976,8 +1017,12 @@ msgid "hashing"
 msgstr "正在计算哈希"
 
 #: src/admin/pages/editor.tsx
-msgid "Hide fields"
-msgstr "收起字段"
+msgid "Heading"
+msgstr "小标题"
+
+#: src/admin/pages/editor.tsx
+msgid "Hide settings"
+msgstr "收起设置"
 
 #: src/admin/pages/plugins.tsx
 msgid "Hooks"
@@ -986,6 +1031,10 @@ msgstr "钩子"
 #: src/admin/pages/settings-appearance.tsx
 msgid "How your theme looks: these options change the site as soon as you save."
 msgstr "网站的外观：这些选项保存后立即在网站上生效。"
+
+#: src/admin/pages/editor.tsx
+msgid "Image"
+msgstr "图片"
 
 #: src/admin/components/media-library.tsx
 msgid "In use. Remove the references first."
@@ -1046,6 +1095,14 @@ msgstr "设置无效：{reason}。"
 msgid "server.settings.invalid"
 msgstr "设置无效。"
 
+#: src/admin/pages/editor.tsx
+msgid "italic"
+msgstr "斜体"
+
+#: src/admin/pages/editor.tsx
+msgid "Italic"
+msgstr "斜体"
+
 #: src/admin/pages/setup.tsx
 msgid "Its email and password can be changed later in Account."
 msgstr "邮箱和密码之后可以在“账号”中修改。"
@@ -1092,6 +1149,10 @@ msgstr "语言代码"
 msgid "Language to add"
 msgstr "要添加的语言"
 
+#: src/admin/pages/editor.tsx
+msgid "Language versions"
+msgstr "语言版本"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Languages"
 msgstr "语言"
@@ -1111,6 +1172,14 @@ msgstr "最近使用于 {lastUsed}"
 #: src/admin/components/account-menu.tsx
 msgid "Light"
 msgstr "浅色"
+
+#: src/admin/pages/editor.tsx
+msgid "Link"
+msgstr "链接"
+
+#: src/admin/pages/editor.tsx
+msgid "link text"
+msgstr "链接文字"
 
 #: src/admin/components/media-library.tsx
 #: src/admin/components/plugin-panel.tsx
@@ -1145,10 +1214,6 @@ msgstr "将{language}设为默认语言？\n"
 #: src/admin/pages/settings-site.tsx
 msgid "Make default"
 msgstr "设为默认"
-
-#: src/admin/pages/editor.tsx
-msgid "Markdown"
-msgstr "Markdown"
 
 #: src/admin/components/markdown-editor.tsx
 msgid "Markdown source"
@@ -1185,6 +1250,10 @@ msgstr "CSRF 令牌缺失或无效，请刷新页面后重试。"
 #: src/admin/components/ui/breadcrumb.tsx
 msgid "More"
 msgstr "更多"
+
+#: src/admin/pages/editor.tsx
+msgid "More actions"
+msgstr "更多操作"
 
 #: src/admin/pages/setup.tsx
 msgid "More language codes"
@@ -1429,6 +1498,10 @@ msgstr "没有符合这些筛选条件的内容。"
 msgid "Notifications"
 msgstr "通知"
 
+#: src/admin/pages/editor.tsx
+msgid "Numbered list"
+msgstr "编号列表"
+
 #: src/admin/pages/plugins.tsx
 msgid "Off"
 msgstr "关"
@@ -1470,6 +1543,10 @@ msgstr "进入后台"
 msgid "Other languages"
 msgstr "其他语言"
 
+#: src/admin/pages/editor.tsx
+msgid "Page settings"
+msgstr "页面设置"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Pages it named may still be served from the cache until they expire."
 msgstr "涉及的页面在缓存过期前，可能仍会显示旧内容。"
@@ -1478,10 +1555,6 @@ msgstr "涉及的页面在缓存过期前，可能仍会显示旧内容。"
 #: src/admin/pages/content-list.tsx
 msgid "Pagination"
 msgstr "分页"
-
-#: src/admin/pages/editor.tsx
-msgid "Pane shown"
-msgstr "显示的窗格"
 
 #: src/admin/pages/account.tsx
 #: src/admin/pages/login.tsx
@@ -1589,10 +1662,18 @@ msgstr "请提供目标语言以及 \"confirm\": true；此操作会改写所有
 msgid "Publish"
 msgstr "发布"
 
+#: src/admin/pages/editor.tsx
+msgid "Publish date"
+msgstr "发布日期"
+
 #: src/admin/components/content-status.tsx
 #: src/admin/pages/settings-advanced.tsx
 msgid "Published"
 msgstr "已发布"
+
+#: src/admin/pages/editor.tsx
+msgid "Quote"
+msgstr "引用"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Rebuild all pages"
@@ -1717,6 +1798,10 @@ msgstr "搜索"
 msgid "Search {typeName}…"
 msgstr "搜索{typeName}…"
 
+#: src/admin/pages/editor.tsx
+msgid "Search and address"
+msgstr "搜索与网址"
+
 #: src/admin/pages/content-list.tsx
 msgid "Search by title"
 msgstr "按标题搜索"
@@ -1823,13 +1908,13 @@ msgstr "初始设置已完成"
 msgid "Setup key"
 msgstr "设置密钥"
 
-#: src/admin/pages/editor.tsx
-msgid "Show fields"
-msgstr "展开字段"
-
 #: src/admin/components/password-input.tsx
 msgid "Show password"
 msgstr "显示密码"
+
+#: src/admin/pages/editor.tsx
+msgid "Show settings"
+msgstr "展开设置"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Shown by most themes under the site name, and as the home page description."
@@ -1931,6 +2016,10 @@ msgstr "不支持 SVG：它可能携带脚本。请导出为 PNG 或 WebP。"
 msgid "Switching to a different theme"
 msgstr "更换为其他主题"
 
+#: src/admin/pages/editor.tsx
+msgid "Table"
+msgstr "表格"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Tagline"
 msgstr "标语"
@@ -1940,6 +2029,11 @@ msgid "Tagline in {taglineLanguage}"
 msgstr "{taglineLanguage}标语"
 
 #: src/admin/pages/editor.tsx
+msgid "Tags"
+msgstr "标签"
+
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
 msgid "Take this off the site? It stays here as a draft, and visitors no longer see it."
 msgstr "要从网站上撤下吗？它会作为草稿保留在这里，访客将看不到它。"
 
@@ -1947,6 +2041,10 @@ msgstr "要从网站上撤下吗？它会作为草稿保留在这里，访客将
 #: src/admin/pages/settings-email.tsx
 msgid "Test"
 msgstr "检测"
+
+#: src/admin/components/markdown-editor.tsx
+msgid "Text"
+msgstr "正文"
 
 #: src/admin/pages/settings-advanced.tsx
 #: src/admin/pages/setup.tsx
@@ -2152,8 +2250,13 @@ msgstr "存储的内容无法安全导出：{reason}。"
 
 #: src/admin/components/media-library.tsx
 #: src/admin/media.ts
+#: src/admin/pages/editor.tsx
 msgid "The upload failed."
 msgstr "上传失败。"
+
+#: src/admin/pages/editor.tsx
+msgid "The whole document as it is stored, settings at the top. Change it here only if you know Markdown."
+msgstr "这是存储的完整文档，顶部是页面设置。熟悉 Markdown 再在这里修改。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Theme"
@@ -2302,6 +2405,7 @@ msgstr "未知的状态筛选条件。"
 msgid "unknown type"
 msgstr "未知类型"
 
+#: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
 msgid "Unpublish"
 msgstr "取消发布"
@@ -2427,10 +2531,6 @@ msgstr "重试后已放弃的任务——例如发不出去的邮件、反复失
 #: src/admin/components/record-editor.tsx
 msgid "Working…"
 msgstr "正在执行…"
-
-#: src/admin/pages/editor.tsx
-msgid "Write"
-msgstr "编写"
 
 #: src/admin/pages/setup.tsx
 msgid "written for the \"{starterTheme}\" theme, but this build runs \"{activeTheme}\", so some pages will use the plain page layout"

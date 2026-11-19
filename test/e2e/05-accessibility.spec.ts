@@ -143,6 +143,8 @@ test.describe('the admin', () => {
     // immediately can inspect an empty document. Wait for this edit in the
     // real preview rather than sleeping.
     await page.locator('#fm-title').fill('Accessibility preview');
+    // The preview is a button away in the writing-first editor (D4).
+    await page.getByRole('button', { name: 'Preview' }).first().click();
     await expect(
       page.frameLocator('iframe[title="Preview"]').getByRole('heading', {
         name: 'Accessibility preview',

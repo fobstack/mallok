@@ -74,7 +74,7 @@ test("a product's editor shows the plugin's records for that product only", asyn
     page.getByRole('link', { name: /Product notes/ }),
   ).toHaveAttribute('href', '#attached-panels');
   const panes = await page
-    .getByRole('region', { name: 'Fields, Markdown and preview' })
+    .getByRole('region', { name: 'Editor' })
     .boundingBox();
   expect(panes?.height ?? 0).toBeGreaterThan(300);
 

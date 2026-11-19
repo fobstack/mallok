@@ -1,11 +1,13 @@
 /**
- * The three-pane content editor (docs/ADMIN.md §6).
+ * The content editor (docs/ADMIN.md §6), writing first
+ * (docs/ADMIN_SIMPLE.md, D4–D6).
  *
- * It takes the window's whole width, and the field pane folds to a rail so
- * the source and the preview can share what is left (U7). The bar above the
- * panes says what state the item is in (U8). On a phone the panes become
- * three views of which one is shown, and the save buttons stay on screen
- * (U9) — docs/ADMIN_I18N_AND_UI.md.
+ * The main column is the title, the text with a toolbar, and then the
+ * type's own fields as cards; beside it one panel holds what is not
+ * writing — publishing, summary, cover, tags and the address. The preview
+ * is a button away, and "Edit source" in the More menu shows the whole
+ * stored document, front matter included. On a phone it is one column and
+ * the save buttons stay on screen.
  *
  * Two rules shape everything here:
  *
@@ -20,13 +22,35 @@
 import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import {
+  Bold,
+  Eye,
+  EyeOff,
+  Heading2,
+  ImageIcon,
+  Italic,
+  Link2,
+  List as ListIcon,
+  ListOrdered,
+  MoreHorizontal,
+  PanelRightClose,
+  PanelRightOpen,
+  Quote,
+  Table2,
+} from 'lucide-react';
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type FieldValues, useForm } from 'react-hook-form';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import {
@@ -39,16 +63,20 @@ import {
   splitFrontmatter,
 } from '../../core/index.js';
 import { ApiError, api } from '../api.js';
-import { useContentLanguageName } from '../components/content-language.js';
+import { useShortLanguageNames } from '../components/content-language.js';
 import { ContentStatusBadge } from '../components/content-status.js';
-import { MarkdownEditor } from '../components/markdown-editor.js';
+import {
+  type MarkdownCommands,
+  MarkdownEditor,
+} from '../components/markdown-editor.js';
 import { MediaPicker } from '../components/media-library.js';
 import { Page, StatusBadge } from '../components/page.js';
 import { PluginPanelView } from '../components/plugin-panel.js';
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm } from '../form/form.js';
-import { toSpecs } from '../form/types.js';
+import { type FieldSpec, toSpecs } from '../form/types.js';
 import { formatDateTime } from '../format.js';
+import { relativePathFor, uploadFile } from '../media.js';
 import { notify, useReportError } from '../notice.js';
 import { renderPreview } from '../preview.js';
 import { keys, pluginsQuery, useSettings, useTheme } from '../queries.js';
@@ -82,11 +110,8 @@ interface LoadedContent {
 
 const PREVIEW_DEBOUNCE_MS = 250;
 
-/** Where the field pane's folded state is remembered, per browser. */
-const FIELDS_OPEN_KEY = 'mallok-editor-fields';
-
-/** The three panes, as a phone shows them one at a time (U9). */
-type Pane = 'fields' | 'write' | 'preview';
+/** Where the settings panel's closed state is remembered, per browser. */
+const FIELDS_OPEN_KEY = 'mallok-editor-panel';
 
 function readFieldsOpen(): boolean {
   try {
@@ -208,8 +233,11 @@ function Editor({
   const live = stored === 'published' || stored === 'scheduled';
   const [preview, setPreview] = useState('');
   const [missing, setMissing] = useState<readonly string[]>([]);
-  const [fieldsOpen, setFieldsOpen] = useState(readFieldsOpen);
-  const [pane, setPane] = useState<Pane>('fields');
+  const [panelOpen, setPanelOpen] = useState(readFieldsOpen);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  // The whole stored document instead of the text alone (D4 option C).
+  const [source, setSource] = useState(false);
+  const [commands, setCommands] = useState<MarkdownCommands | null>(null);
   const [picker, setPicker] = useState<{
     kind: 'image' | 'file';
     resolve: (path: string | null) => void;
@@ -250,15 +278,12 @@ function Editor({
   // Whether the item is unsaved is the text's question, not the form's.
   const fieldsForm = useForm<FieldValues>({ values: frontmatter });
 
-  const specs = useMemo(() => {
+  // What every item has, in the panel; what the theme declares for this
+  // type, as cards under the text (docs/THEME_FORMAT.md §5.2). A common key
+  // the theme declares itself is the theme's, in its card.
+  const { panelSpecs, typeSpecs } = useMemo(() => {
     const declared = active.kinds[kind]?.fields ?? {};
-    // The always-present fields come first, then whatever the theme declares
-    // for this kind (docs/THEME_FORMAT.md §5.2).
-    return [
-      {
-        name: 'title',
-        field: { type: 'string' as const, label: t`Title`, required: true },
-      },
+    const common: FieldSpec[] = [
       {
         name: 'description',
         field: {
@@ -268,8 +293,32 @@ function Editor({
           help: t`Shown in lists and in search results. Empty uses the start of the text.`,
         },
       },
-      ...toSpecs(declared),
+      {
+        name: 'date',
+        field: {
+          type: 'date' as const,
+          label: t`Publish date`,
+          required: false,
+          help: t`A date in the future publishes it then.`,
+        },
+      },
+      {
+        name: 'cover',
+        field: {
+          type: 'image' as const,
+          label: t`Cover image`,
+          required: false,
+        },
+      },
+      {
+        name: 'tags',
+        field: { type: 'string[]' as const, label: t`Tags`, required: false },
+      },
     ];
+    return {
+      panelSpecs: common.filter((spec) => declared[spec.name] === undefined),
+      typeSpecs: toSpecs(declared),
+    };
   }, [active, kind, t]);
 
   const setField = (name: string, value: unknown): void => {
@@ -283,6 +332,48 @@ function Editor({
     // is allowed here (docs/ADMIN.md §6.2).
     setMarkdown(joinFrontmatter(next, parsed.body));
     setDirty(true);
+  };
+
+  // --- the text alone ---------------------------------------------------
+  // The front matter is kept as the very text it was, and only the body is
+  // shown; an edit to the body joins the two back without touching the
+  // block, so an item opened and closed stays byte-identical (§6.2, D4).
+  const head = markdown.slice(0, markdown.length - parsed.body.length);
+  const lead = parsed.body.startsWith('\r\n')
+    ? '\r\n'
+    : parsed.body.startsWith('\n')
+      ? '\n'
+      : '';
+  const bodyText = parsed.body.slice(lead.length);
+  const setBody = (value: string): void => {
+    setMarkdown(`${head}${head === '' ? '' : lead || '\n'}${value}`);
+    setDirty(true);
+  };
+  const title = typeof frontmatter.title === 'string' ? frontmatter.title : '';
+
+  // Images dropped or pasted into the text are uploaded as the media page
+  // would, and referenced by their relative path (D5 option A).
+  const uploadInto = async (
+    files: readonly File[],
+  ): Promise<readonly string[]> => {
+    const paths: string[] = [];
+    for (const file of files) {
+      try {
+        const item = await uploadFile(file, {
+          widths: active.imageWidths,
+          maxEdge: site.maxImageEdge,
+        });
+        const path = relativePathFor(item);
+        setAssets((previous) => ({ ...previous, [path]: item.sha256 }));
+        paths.push(path);
+      } catch (caught) {
+        notify(
+          caught instanceof Error ? caught.message : t`The upload failed.`,
+        );
+      }
+    }
+    void client.invalidateQueries({ queryKey: keys.media });
+    return paths;
   };
 
   // --- preview ---------------------------------------------------------
@@ -414,6 +505,50 @@ function Editor({
     }
   };
 
+  /** This type's list, in this item's language. */
+  const listHref = `/content?kind=${encodeURIComponent(kind)}${
+    locale === site.defaultLocale ? '' : `&locale=${locale}`
+  }`;
+
+  // Taking a page off the site, or out of the site, says first what a
+  // visitor will see (D6). What a delete keeps was read from the route:
+  // the row and its rendered copy go; images stay in Media, other language
+  // versions stay, and no redirect is written.
+  const unpublish = (): void => {
+    if (
+      window.confirm(
+        t`Take this off the site? It stays here as a draft, and visitors no longer see it.`,
+      )
+    ) {
+      void save('draft');
+    }
+  };
+  const remove = async (): Promise<void> => {
+    if (loaded === null) {
+      return;
+    }
+    if (
+      !window.confirm(
+        t`Delete "${title}"? Visitors get "page not found" at its address. Its other language versions and its images stay. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      await api(`/content/${loaded.id}`, { method: 'DELETE' });
+      setDirty(false);
+      await client.invalidateQueries({ queryKey: keys.content });
+      navigate(listHref);
+    } catch (caught) {
+      notify(
+        caught instanceof ApiError ? caught.message : t`Could not delete.`,
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const kinds = Object.keys(site.kinds);
   const previewPath =
     loaded?.path ??
@@ -438,20 +573,22 @@ function Editor({
               .map((panel) => ({ plugin, panel })),
           );
 
-  const toggleFields = (): void => {
-    setFieldsOpen((open) => {
+  const togglePanel = (): void => {
+    setPanelOpen((open) => {
       writeFieldsOpen(!open);
       return !open;
     });
   };
-  const paneNames: Readonly<Record<Pane, string>> = {
-    fields: t`Fields`,
-    write: t`Write`,
-    preview: t`Preview`,
+  const typeName = active.kinds[kind]?.label ?? kind;
+  const previewUrl = (path: string): string | null => {
+    const sha = assets[path];
+    return sha === undefined ? null : (media[sha]?.url ?? null);
   };
-  /** Shown on a phone only when chosen; on a wide screen always. */
-  const paneClass = (which: Pane): string =>
-    cn(pane !== which && 'max-lg:hidden');
+  const origin = typeof window === 'undefined' ? '' : window.location.origin;
+  const addressPrefix = `${origin}${previewPath.slice(
+    0,
+    previewPath.length - (slug === '' ? 'preview' : slug).length,
+  )}`;
 
   // Drawn twice — in the bar on a wide screen, pinned to the bottom on a
   // phone — with CSS showing one, so the buttons never scroll away (U9).
@@ -479,26 +616,65 @@ function Editor({
       {saved !== null && !dirty ? (
         <SavedNote draft={saved === 'draft'} />
       ) : null}
-      {live ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={() => {
-            // The one button here that takes a page away from visitors
-            // asks first, as Settings does before moving every address.
-            if (
-              window.confirm(
-                t`Take this off the site? It stays here as a draft, and visitors no longer see it.`,
-              )
-            ) {
-              void save('draft');
-            }
-          }}
+      <Button
+        type="button"
+        variant="outline"
+        aria-pressed={previewOpen}
+        onClick={() => setPreviewOpen((open) => !open)}
+      >
+        {previewOpen ? <EyeOff /> : <Eye />}
+        <Trans>Preview</Trans>
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label={t`More actions`}
+          >
+            <MoreHorizontal />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          // Not back to the button: "Edit source" opens a text the operator
+          // starts typing in, and focus returned after the menu closed took
+          // the keystrokes away from it.
+          onCloseAutoFocus={(event) => event.preventDefault()}
         >
-          <Trans>Unpublish</Trans>
-        </Button>
-      ) : (
+          {loaded?.status === 'published' ? (
+            <DropdownMenuItem asChild>
+              <a href={loaded.path} target="_blank" rel="noopener">
+                <Trans>View on site</Trans>
+              </a>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onSelect={() => setSource((open) => !open)}>
+            {source ? (
+              <Trans>Back to writing</Trans>
+            ) : (
+              <Trans>Edit source (Markdown)</Trans>
+            )}
+          </DropdownMenuItem>
+          {live || loaded !== null ? <DropdownMenuSeparator /> : null}
+          {live ? (
+            <DropdownMenuItem disabled={busy} onSelect={unpublish}>
+              <Trans>Unpublish</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          {loaded === null ? null : (
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={busy}
+              onSelect={() => void remove()}
+            >
+              <Trans>Delete</Trans>
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {live ? null : (
         <Button
           type="button"
           variant="outline"
@@ -520,54 +696,142 @@ function Editor({
 
   const updated = loaded === null ? '' : formatDateTime(loaded.updatedAt);
 
-  return (
-    // The whole width of the window: three panes need it (U7).
-    <Page width="full">
-      <div className="flex flex-col rounded-xl border bg-card lg:h-[calc(100svh-8rem)] lg:min-h-[36rem] lg:overflow-hidden">
-        <div className="flex flex-wrap items-end gap-3 border-b bg-muted/40 p-3">
-          <Button
-            type="button"
-            variant="ghost"
-            // Back to this type's list, in this item's language
-            // (docs/ADMIN_SIMPLE.md, D2).
-            onClick={() =>
-              navigate(
-                `/content?kind=${encodeURIComponent(kind)}${
-                  locale === site.defaultLocale ? '' : `&locale=${locale}`
-                }`,
-              )
-            }
+  const toolbar: readonly {
+    readonly label: string;
+    readonly icon: typeof Bold;
+    readonly run: (commands: MarkdownCommands) => void;
+  }[] = [
+    {
+      label: t`Heading`,
+      icon: Heading2,
+      run: (c) => c.prefixLines('## '),
+    },
+    { label: t`Bold`, icon: Bold, run: (c) => c.wrap('**', '**', t`bold`) },
+    {
+      label: t`Italic`,
+      icon: Italic,
+      run: (c) => c.wrap('*', '*', t`italic`),
+    },
+    {
+      label: t`Bulleted list`,
+      icon: ListIcon,
+      run: (c) => c.prefixLines('- '),
+    },
+    {
+      label: t`Numbered list`,
+      icon: ListOrdered,
+      run: (c) => c.prefixLines('1. '),
+    },
+    { label: t`Quote`, icon: Quote, run: (c) => c.prefixLines('> ') },
+    {
+      label: t`Link`,
+      icon: Link2,
+      run: (c) => c.wrap('[', '](https://)', t`link text`),
+    },
+    {
+      label: t`Image`,
+      icon: ImageIcon,
+      run: (c) => {
+        void pickMedia('image').then((path) => {
+          setPicker(null);
+          if (path !== null) {
+            c.insert(`![](${path})`, true);
+          }
+        });
+      },
+    },
+    {
+      label: t`Table`,
+      icon: Table2,
+      run: (c) =>
+        c.insert(
+          `| ${t`Column`} | ${t`Column`} |\n| --- | --- |\n|  |  |`,
+          true,
+        ),
+    },
+  ];
+
+  const settingsPanel = (
+    <aside
+      id="editor-settings"
+      aria-label={t`Page settings`}
+      className={cn(
+        'flex min-w-0 flex-col gap-5 bg-muted/20 p-4 lg:min-h-0 lg:overflow-auto lg:border-l',
+        !panelOpen && 'lg:hidden',
+        previewOpen && 'max-lg:hidden lg:max-[1599px]:hidden',
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold">
+          <Trans>Page settings</Trans>
+        </h2>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="hidden lg:inline-flex"
+          aria-expanded={true}
+          aria-controls="editor-settings"
+          onClick={togglePanel}
+        >
+          <PanelRightClose />
+          <Trans>Hide settings</Trans>
+        </Button>
+      </div>
+      {loaded === null ? (
+        // Fixed once saved; a list's "Add" already chose it (D2).
+        <Field>
+          <FieldLabel htmlFor="editor-kind">
+            <Trans>Type</Trans>
+          </FieldLabel>
+          <NativeSelect
+            id="editor-kind"
+            value={kind}
+            onChange={(event) => {
+              setKind(event.currentTarget.value);
+              setDirty(true);
+            }}
           >
-            ← {listName}
-          </Button>
-          <Field className="w-auto">
-            <FieldLabel htmlFor="editor-kind">
-              <Trans>Type</Trans>
-            </FieldLabel>
-            <NativeSelect
-              id="editor-kind"
-              className="min-w-32"
-              value={kind}
-              disabled={loaded !== null}
-              onChange={(event) => {
-                setKind(event.currentTarget.value);
-                setDirty(true);
-              }}
-            >
-              {kinds.map((entry) => (
-                <NativeSelectOption key={entry} value={entry}>
-                  {active.kinds[entry]?.label ?? entry}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </Field>
-          <Field className="w-auto">
+            {kinds.map((entry) => (
+              <NativeSelectOption key={entry} value={entry}>
+                {active.kinds[entry]?.label ?? entry}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </Field>
+      ) : null}
+      <SchemaForm
+        specs={panelSpecs}
+        control={fieldsForm.control}
+        idPrefix="fm"
+        // The Worker checks front matter on save; the form only shows it.
+        validateHere={false}
+        onFieldChange={setField}
+        pickMedia={pickMedia}
+        previewUrl={previewUrl}
+      />
+      {/* The address, closed until wanted: a new item opens it, since
+          a title in Chinese gives no address to start from (D3). */}
+      <details
+        className="group rounded-lg border bg-background p-3"
+        open={loaded === null}
+      >
+        <summary className="cursor-pointer text-sm font-medium">
+          <Trans>Search and address</Trans>
+        </summary>
+        <div className="mt-3 flex flex-col gap-2">
+          <p className="text-xs break-all text-muted-foreground">
+            {addressPrefix}
+            <span className="font-medium text-foreground">
+              {slug === '' ? '…' : slug}
+            </span>
+          </p>
+          <Field>
             <FieldLabel htmlFor="editor-slug">
               <Trans>URL slug</Trans>
             </FieldLabel>
             <Input
               id="editor-slug"
-              className="min-w-40"
               value={slug}
               placeholder={t`derived from the title`}
               onInput={(event) => {
@@ -586,14 +850,32 @@ function Editor({
               }}
             />
           </Field>
+        </div>
+      </details>
+    </aside>
+  );
+
+  return (
+    // The whole width of the window: the text and its panel need it (U7).
+    <Page width="full">
+      <div className="flex flex-col rounded-xl border bg-card lg:h-[calc(100svh-8rem)] lg:min-h-[36rem] lg:overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 border-b bg-muted/40 p-3">
+          <Button
+            type="button"
+            variant="ghost"
+            // Back to this type's list, in this item's language (D2).
+            onClick={() => navigate(listHref)}
+          >
+            ← {listName}
+          </Button>
           {/* What state the stored item is in, and where to see it (U8). */}
           {loaded === null ? (
-            <span className="self-center text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               <Trans>Not saved yet</Trans>
             </span>
           ) : (
-            <div className="flex flex-wrap items-center gap-2 self-center text-sm">
-              <ContentStatusBadge status={loaded.status} />
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <ContentStatusBadge status={stored ?? loaded.status} />
               <span className="text-muted-foreground">
                 <Trans>
                   Updated <time dateTime={loaded.updatedAt}>{updated}</time>
@@ -601,7 +883,7 @@ function Editor({
               </span>
               {loaded.status === 'published' ? (
                 <a
-                  className="text-primary underline-offset-4 hover:underline"
+                  className="text-primary underline-offset-4 hover:underline max-sm:hidden"
                   href={loaded.path}
                   target="_blank"
                   rel="noopener"
@@ -622,111 +904,159 @@ function Editor({
             current={loaded.locale}
             group={loaded.translationGroup}
             kind={loaded.kind}
+            locales={site.locales}
           />
         )}
-
-        <fieldset className="flex gap-1 border-b p-2 lg:hidden">
-          <legend className="sr-only">
-            <Trans>Pane shown</Trans>
-          </legend>
-          {(['fields', 'write', 'preview'] as const).map((which) => (
-            <Button
-              key={which}
-              type="button"
-              size="sm"
-              variant={pane === which ? 'secondary' : 'ghost'}
-              aria-pressed={pane === which}
-              className="flex-1"
-              onClick={() => setPane(which)}
-            >
-              {paneNames[which]}
-            </Button>
-          ))}
-        </fieldset>
 
         <section
           className={cn(
             'grid min-h-0 flex-1',
-            fieldsOpen
-              ? 'lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)_minmax(0,1fr)]'
-              : 'lg:grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)]',
+            previewOpen
+              ? panelOpen
+                ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1600px]:grid-cols-[minmax(0,1fr)_20rem_minmax(0,1fr)]'
+                : 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]'
+              : panelOpen
+                ? 'lg:grid-cols-[minmax(0,1fr)_22rem]'
+                : 'lg:grid-cols-[minmax(0,1fr)_2.75rem]',
           )}
-          aria-label={t`Fields, Markdown and preview`}
+          aria-label={t`Editor`}
         >
-          {fieldsOpen ? null : (
-            // Folded: a rail that opens the pane again.
-            <div className="hidden border-r bg-muted/20 p-1.5 lg:block">
+          <div
+            className={cn(
+              'flex min-w-0 flex-col gap-4 p-4 lg:min-h-0 lg:overflow-auto lg:p-6',
+              previewOpen && 'max-lg:hidden',
+            )}
+          >
+            {source ? (
+              <>
+                <p className="text-sm text-muted-foreground" role="note">
+                  <Trans>
+                    The whole document as it is stored, settings at the top.
+                    Change it here only if you know Markdown.
+                  </Trans>{' '}
+                  <button
+                    type="button"
+                    className="text-primary underline underline-offset-4"
+                    onClick={() => setSource(false)}
+                  >
+                    <Trans>Back to writing</Trans>
+                  </button>
+                </p>
+                <div className="flex min-h-[60svh] rounded-lg border lg:min-h-0 lg:flex-1">
+                  <MarkdownEditor
+                    value={markdown}
+                    missing={missing}
+                    onChange={(value) => {
+                      setMarkdown(value);
+                      setDirty(true);
+                    }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label
+                    htmlFor="fm-title"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    <Trans>Title</Trans>
+                  </label>
+                  <input
+                    id="fm-title"
+                    value={title}
+                    onChange={(event) =>
+                      setField('title', event.currentTarget.value)
+                    }
+                    className="w-full border-0 border-b bg-transparent pb-2 text-2xl font-semibold outline-none focus-visible:border-primary"
+                  />
+                </div>
+                <div className="flex flex-col rounded-lg border bg-background">
+                  <div
+                    role="toolbar"
+                    aria-label={t`Formatting`}
+                    className="flex flex-wrap gap-0.5 border-b p-1"
+                  >
+                    {toolbar.map((tool) => (
+                      <Button
+                        key={tool.label}
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={tool.label}
+                        title={tool.label}
+                        disabled={commands === null}
+                        onClick={() => {
+                          if (commands !== null) {
+                            tool.run(commands);
+                          }
+                        }}
+                      >
+                        <tool.icon />
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="flex min-h-[50svh] px-3">
+                    <MarkdownEditor
+                      variant="prose"
+                      value={bodyText}
+                      missing={missing}
+                      onChange={setBody}
+                      onReady={setCommands}
+                      onFiles={uploadInto}
+                    />
+                  </div>
+                </div>
+                {typeSpecs.length === 0 ? null : (
+                  <section
+                    aria-label={typeName}
+                    className="rounded-lg border bg-background p-4"
+                  >
+                    <h2 className="mb-3 text-sm font-semibold">{typeName}</h2>
+                    <SchemaForm
+                      specs={typeSpecs}
+                      control={fieldsForm.control}
+                      idPrefix="fm"
+                      validateHere={false}
+                      onFieldChange={setField}
+                      pickMedia={pickMedia}
+                      previewUrl={previewUrl}
+                    />
+                  </section>
+                )}
+              </>
+            )}
+          </div>
+
+          {panelOpen ? null : (
+            // Closed: a rail that opens the panel again.
+            <div
+              className={cn(
+                'hidden border-l bg-muted/20 p-1.5 lg:block',
+                previewOpen && 'lg:hidden',
+              )}
+            >
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 aria-expanded={false}
-                aria-controls="editor-fields"
-                aria-label={t`Show fields`}
-                title={t`Show fields`}
-                onClick={toggleFields}
+                aria-controls="editor-settings"
+                aria-label={t`Show settings`}
+                title={t`Show settings`}
+                onClick={togglePanel}
               >
-                <PanelLeftOpen />
+                <PanelRightOpen />
               </Button>
             </div>
           )}
-          <aside
-            id="editor-fields"
-            aria-label={paneNames.fields}
-            className={cn(
-              'min-h-0 min-w-0 overflow-auto bg-muted/20 p-4 lg:border-r',
-              paneClass('fields'),
-              !fieldsOpen && 'lg:hidden',
-            )}
-          >
-            <div className="-mt-1 mb-2 hidden justify-end lg:flex">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-expanded={true}
-                aria-controls="editor-fields"
-                onClick={toggleFields}
-              >
-                <PanelLeftClose />
-                <Trans>Hide fields</Trans>
-              </Button>
-            </div>
-            <SchemaForm
-              specs={specs}
-              control={fieldsForm.control}
-              idPrefix="fm"
-              // The Worker checks front matter on save; the form only shows it.
-              validateHere={false}
-              onFieldChange={setField}
-              pickMedia={pickMedia}
-              previewUrl={(path) => {
-                const sha = assets[path];
-                return sha === undefined ? null : (media[sha]?.url ?? null);
-              }}
-            />
-          </aside>
+          {settingsPanel}
+
           <section
-            aria-label={t`Markdown`}
+            aria-label={t`Preview`}
             className={cn(
-              'flex min-h-[60svh] min-w-0 overflow-hidden lg:min-h-0 lg:border-r',
-              paneClass('write'),
-            )}
-          >
-            <MarkdownEditor
-              value={markdown}
-              missing={missing}
-              onChange={(value) => {
-                setMarkdown(value);
-                setDirty(true);
-              }}
-            />
-          </section>
-          <section
-            aria-label={paneNames.preview}
-            className={cn(
-              'flex min-h-[60svh] min-w-0 flex-col bg-muted lg:min-h-0',
-              paneClass('preview'),
+              'flex min-h-[70svh] min-w-0 flex-col bg-muted lg:min-h-0 lg:border-l',
+              !previewOpen && 'hidden',
             )}
           >
             {/*
@@ -816,10 +1146,12 @@ function TranslationBar(props: {
   readonly current: string;
   readonly group: string;
   readonly kind: string;
+  /** The site's languages, for naming each by its name alone (D8). */
+  readonly locales: readonly string[];
 }): JSX.Element | null {
   const navigate = useNavigate();
   const { t } = useLingui();
-  const nameOf = useContentLanguageName();
+  const nameOf = useShortLanguageNames(props.locales);
   if (props.translations.length < 2) {
     return null;
   }
@@ -828,9 +1160,8 @@ function TranslationBar(props: {
       className="flex flex-wrap items-center gap-2 border-b px-3 py-2"
       aria-label={t`Translations`}
     >
-      {/* Named as everywhere else a content language is chosen (U10). */}
       <span className="text-xs font-medium text-muted-foreground">
-        <Trans>Content language</Trans>
+        <Trans>Language versions</Trans>
       </span>
       {props.translations.map((slot) => {
         const slotLanguage = nameOf(slot.locale);
@@ -870,13 +1201,14 @@ function TranslationBar(props: {
             type="button"
             variant="outline"
             size="sm"
+            aria-label={t`Add the ${slotLanguage} version`}
             onClick={() =>
               navigate(
                 `/content/new?locale=${slot.locale}&group=${props.group}&kind=${props.kind}`,
               )
             }
           >
-            {t`Create ${slotLanguage}`}
+            + {slotLanguage}
           </Button>
         );
       })}

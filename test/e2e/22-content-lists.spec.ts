@@ -95,3 +95,48 @@ test('a type has its own list, with tabs, search and a row menu', async ({
   await page.getByRole('button', { name: '← Product' }).click();
   await expect(page).toHaveURL(/\/content\?kind=product$/);
 });
+
+test('a row is unpublished or deleted from its menu, after a question', async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto('/_mallok/app/content?kind=page');
+  await page.getByRole('button', { name: 'Add Page' }).click();
+  await page
+    .getByRole('textbox', { name: 'Title', exact: true })
+    .fill('Short-lived page');
+  await page.getByLabel('URL slug', { exact: true }).fill('short-lived');
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/_mallok/api/content') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Publish' }).click();
+  expect((await saved).status()).toBeLessThan(300);
+  await page.getByRole('button', { name: '← Page' }).click();
+
+  const row = page.getByRole('row').filter({ hasText: 'Short-lived page' });
+  // The status column; the phone layout repeats it under the title.
+  await expect(row.getByText('Published').last()).toBeVisible();
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page
+    .getByRole('button', { name: 'Actions for Short-lived page' })
+    .click();
+  await page.getByRole('menuitem', { name: 'Unpublish' }).click();
+  await expect(row.getByText('Draft').last()).toBeVisible();
+
+  // Declining the delete keeps the row.
+  page.once('dialog', (dialog) => void dialog.dismiss());
+  await page
+    .getByRole('button', { name: 'Actions for Short-lived page' })
+    .click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await expect(row).toHaveCount(1);
+
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page
+    .getByRole('button', { name: 'Actions for Short-lived page' })
+    .click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await expect(row).toHaveCount(0);
+});
