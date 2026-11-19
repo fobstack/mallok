@@ -27,7 +27,7 @@ msgstr "“{base}”是存储文件专用的路径，不能用作内容的基础
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.settings.path_clash"
-msgstr "“{from}”会移到“{to}”，而这个地址已被其他内容占用。请先修改其中一个的 slug。没有做任何改动。"
+msgstr "“{from}”会移到“{to}”，而这个地址已被其他内容占用。请先修改其中一个的 URL 别名。没有做任何改动。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -45,7 +45,7 @@ msgstr "不支持“{type}”类型的文件。"
 
 #: src/admin/slug.ts
 msgid "\"{typed}\" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title."
-msgstr "“{typed}”里没有拉丁字母或数字，无法生成 slug。请用拉丁字符填写，或清空此栏，由标题自动生成。"
+msgstr "“{typed}”里没有拉丁字母或数字，无法生成 URL 别名。请用拉丁字符填写，或清空此栏，由标题自动生成。"
 
 #: src/admin/pages/setup.tsx
 msgid "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
@@ -89,7 +89,7 @@ msgstr "{0}/{1} 个文件"
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.settings.slugs_stranded"
-msgstr "{count, plural, other {有 # 个 slug 会以新设置分配给某个语言或内容类型的地址开头。请先修改它们。}}"
+msgstr "{count, plural, other {有 # 个 URL 别名会以新设置分配给某个语言或内容类型的地址开头。请先修改它们。}}"
 
 #: src/admin/components/record-editor.tsx
 msgid "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
@@ -142,7 +142,7 @@ msgstr "{panelLabel}详情"
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.content.path_taken"
-msgstr "{path} 已是 {kind}“{slug}”（{locale}）的地址。请换一个 slug。"
+msgstr "{path} 已是 {kind}“{slug}”（{locale}）的地址。请换一个 URL 别名。"
 
 #: src/admin/pages/plugins.tsx
 msgid "{pluginName} enabled"
@@ -163,7 +163,7 @@ msgstr "{scripts, plural, other {注入 # 个脚本}}"
 
 #: src/admin/form/controls.tsx
 msgid "{target} slug"
-msgstr "{target} 的 slug"
+msgstr "{target} 的 URL 别名"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "{when} — after {cause}, Cloudflare answered HTTP {status}"
@@ -214,22 +214,22 @@ msgstr "设置修改"
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.list_page"
-msgstr "slug 不能以“page/{page}”开头：那是列表第 {page} 页的地址。"
+msgstr "URL 别名不能以“page/{page}”开头：那是列表第 {page} 页的地址。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.kind_start"
-msgstr "多段 slug 不能以“{first}/”开头：那是内容类型“{kind}”的地址。"
+msgstr "多段 URL 别名不能以“{first}/”开头：那是内容类型“{kind}”的地址。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.locale_start"
-msgstr "多段 slug 不能以“{first}/”开头：那是语言“{first}”的前缀。"
+msgstr "多段 URL 别名不能以“{first}/”开头：那是语言“{first}”的前缀。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.reserved_start"
-msgstr "多段 slug 不能以“{first}/”开头：站点自身会响应这个地址。"
+msgstr "多段 URL 别名不能以“{first}/”开头：站点自身会响应这个地址。"
 
 #: src/admin/pages/setup.tsx
 msgid "A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site."
@@ -655,7 +655,7 @@ msgstr "删除失败。"
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.content.slug_underivable"
-msgstr "无法自动生成 slug，请手动填写。"
+msgstr "无法自动生成 URL 别名，请手动填写。"
 
 #: src/admin/pages/content-list.tsx
 msgid "Could not load content."
@@ -1852,7 +1852,7 @@ msgstr "跳过"
 
 #: src/admin/pages/editor.tsx
 msgid "Slug"
-msgstr "Slug"
+msgstr "URL 别名"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -2050,55 +2050,55 @@ msgstr "站点后台"
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.no_latin"
-msgstr "slug“{slug}”中没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
+msgstr "URL 别名“{slug}”中没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
 
 #: src/admin/slug.ts
 msgid "The slug became \"{normalized}\", because a slug is also a folder name in an export."
-msgstr "slug 已改为“{normalized}”，因为导出时 slug 也是目录名。"
+msgstr "URL 别名已改为“{normalized}”，因为导出时 URL 别名也是目录名。"
 
 #: src/admin/slug.ts
 msgid "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
-msgstr "slug 已改为“{normalized}”：slug 最多 {MAX_SLUG_SEGMENTS} 段。"
+msgstr "URL 别名已改为“{normalized}”：URL 别名最多 {MAX_SLUG_SEGMENTS} 段。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.too_many_segments"
-msgstr "slug 有 {count} 段，最多允许 {max} 段。"
+msgstr "URL 别名有 {count} 段，最多允许 {max} 段。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.too_many_segments_use"
-msgstr "slug 有 {count} 段，最多允许 {max} 段。可改用“{use}”。"
+msgstr "URL 别名有 {count} 段，最多允许 {max} 段。可改用“{use}”。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.empty_segment"
-msgstr "slug 中有空段：以“/”开头或结尾，或者包含“//”。"
+msgstr "URL 别名中有空段：以“/”开头或结尾，或者包含“//”。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.empty_segment_use"
-msgstr "slug 中有空段：以“/”开头或结尾，或者包含“//”。可改用“{use}”。"
+msgstr "URL 别名中有空段：以“/”开头或结尾，或者包含“//”。可改用“{use}”。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.empty"
-msgstr "slug 为空。"
+msgstr "URL 别名为空。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.empty_use"
-msgstr "slug 为空。可改用“{use}”。"
+msgstr "URL 别名为空。可改用“{use}”。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.too_long"
-msgstr "slug 超过了 {max} 个字符。"
+msgstr "URL 别名超过了 {max} 个字符。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.slug.not_canonical_use"
-msgstr "slug 只能使用小写拉丁字母、数字和单个连字符。可改用“{use}”。"
+msgstr "URL 别名只能使用小写拉丁字母、数字和单个连字符。可改用“{use}”。"
 
 #: src/admin/pages/setup.tsx
 msgid "The starter is installed. Its pages can be edited or deleted like any other."

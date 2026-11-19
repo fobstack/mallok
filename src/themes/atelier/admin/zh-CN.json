@@ -11,7 +11,7 @@
   "kinds.product.fields.lead_time.label": "交货期",
   "kinds.product.fields.specs.label": "性能参数",
   "kinds.product.fields.category.label": "产品系列",
-  "kinds.product.fields.category.help": "该产品所属系列的 slug。",
+  "kinds.product.fields.category.help": "该产品所属系列的 URL 别名。",
   "groups.Classification": "分类",
   "kinds.product.fields.gallery.label": "图库",
   "kinds.product.fields.gallery.help": "images/ 下的相对路径，以可滑动的图片条展示。",
