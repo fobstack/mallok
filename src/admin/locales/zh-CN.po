@@ -249,10 +249,6 @@ msgstr "关于密码哈希"
 msgid "Account"
 msgstr "账号"
 
-#: src/admin/components/account-menu.tsx
-msgid "Account and API tokens"
-msgstr "账号与 API 令牌"
-
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.auth.session_required"
@@ -299,6 +295,10 @@ msgstr "添加一行"
 #: src/admin/components/plugin-panel.tsx
 msgid "Add the first one"
 msgstr "添加第一条"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Address for images"
+msgstr "图片地址"
 
 #: src/admin/pages/setup.tsx
 msgid "Administrator"
@@ -739,7 +739,6 @@ msgid "Current password"
 msgstr "当前密码"
 
 #: src/admin/pages/settings-advanced.tsx
-#: src/admin/pages/settings-site.tsx
 msgid "Custom domain"
 msgstr "自定义域名"
 
@@ -782,10 +781,6 @@ msgstr "由标题自动生成"
 #: src/admin/components/media-library.tsx
 msgid "Describe the image"
 msgstr "描述这张图片"
-
-#: src/admin/pages/editor.tsx
-msgid "Description"
-msgstr "描述"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Details"
@@ -903,10 +898,6 @@ msgstr "字段"
 msgid "Fields, Markdown and preview"
 msgstr "字段、Markdown 与预览"
 
-#: src/admin/pages/media.tsx
-msgid "Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate."
-msgstr "文件按原图的哈希值存储，同一张图片上传两次不会产生额外开销，也不会出现重复。"
-
 #: src/admin/pages/setup.tsx
 msgid "Finish setup"
 msgstr "完成设置"
@@ -914,6 +905,10 @@ msgstr "完成设置"
 #: src/admin/pages/setup.tsx
 msgid "For a language not listed, comma separated. Languages can also be added later."
 msgstr "用于上面没有列出的语言，以逗号分隔。之后也可以再添加语言。"
+
+#: src/admin/pages/plugins.tsx
+msgid "For the person who deploys"
+msgstr "部署相关信息"
 
 #: src/admin/pages/settings-email.tsx
 msgid "From address"
@@ -932,6 +927,11 @@ msgstr "来自 {pluginName} 插件。这条内容的所有语言版本共用这�
 msgid "server.content.title_missing"
 msgstr "Front matter 必须包含非空的 “title”。"
 
+#: src/admin/components/shell.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "General"
+msgstr "基本设置"
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.account.ui_locale_invalid"
@@ -949,9 +949,9 @@ msgstr "收起字段"
 msgid "Hooks"
 msgstr "钩子"
 
-#: src/admin/components/media-library.tsx
-msgid "Images are converted to WebP in your browser and uploaded at {widths} pixels wide. SVG is not accepted — it can carry script."
-msgstr "图片会在浏览器中转换为 WebP，并按 {widths} 像素宽度上传。不支持 SVG——它可能携带脚本。"
+#: src/admin/pages/settings-appearance.tsx
+msgid "How your theme looks: these options change the site as soon as you save."
+msgstr "网站的外观：这些选项保存后立即在网站上生效。"
 
 #: src/admin/components/media-library.tsx
 msgid "In use. Remove the references first."
@@ -1118,7 +1118,6 @@ msgid "Media"
 msgstr "媒体"
 
 #: src/admin/pages/settings-advanced.tsx
-#: src/admin/pages/settings-site.tsx
 msgid "Media domain"
 msgstr "媒体域名"
 
@@ -1408,10 +1407,6 @@ msgstr "官方"
 msgid "On"
 msgstr "开"
 
-#: src/admin/pages/settings-email.tsx
-msgid "One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
-msgstr "整个站点共用一个 Resend 密钥和一个发件地址。所有发送邮件的插件都使用它们，修改后对下一封邮件生效——无需重新构建或部署。"
-
 #: src/admin/pages/plugins.tsx
 msgid "Only at request time"
 msgstr "仅在请求时"
@@ -1476,6 +1471,10 @@ msgstr "粘贴密钥值"
 #: src/admin/pages/content-list.tsx
 msgid "Path"
 msgstr "路径"
+
+#: src/admin/pages/media.tsx
+msgid "Photos and files used on your site."
+msgstr "网站上用到的图片和文件。"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Plugin on/off switches, settings and secrets"
@@ -1794,6 +1793,10 @@ msgstr "显示密码"
 msgid "Shown by most themes under the site name, and as the home page description."
 msgstr "大多数主题会显示在站点名称下方，并用作首页描述。"
 
+#: src/admin/pages/editor.tsx
+msgid "Shown in lists and in search results. Empty uses the start of the text."
+msgstr "显示在列表和搜索结果中。留空则取正文开头。"
+
 #: src/admin/pages/settings-site.tsx
 msgid "Shown on pages in {taglineLanguage}. Empty uses the tagline above."
 msgstr "显示在{taglineLanguage}页面上。留空则使用上面的标语。"
@@ -1824,7 +1827,6 @@ msgid "Signing in…"
 msgstr "正在登录…"
 
 #: src/admin/components/shell.tsx
-#: src/admin/pages/settings-site.tsx
 msgid "Site"
 msgstr "站点"
 
@@ -1849,10 +1851,6 @@ msgstr "站点设置、语言、导航"
 #: src/admin/pages/setup.tsx
 msgid "Skip"
 msgstr "跳过"
-
-#: src/admin/pages/editor.tsx
-msgid "Slug"
-msgstr "URL 别名"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -1883,6 +1881,10 @@ msgstr "加密保存。之后在这里或任何地方都不会再显示。"
 msgid "Stored encrypted. They are never shown again, here or anywhere else."
 msgstr "加密保存。之后在这里或任何地方都不会再显示。"
 
+#: src/admin/pages/editor.tsx
+msgid "Summary"
+msgstr "摘要"
+
 #: src/admin/media.ts
 msgid "SVG is not accepted: it can carry script. Export a PNG or WebP instead."
 msgstr "不支持 SVG：它可能携带脚本。请导出为 PNG 或 WebP。"
@@ -1902,10 +1904,6 @@ msgstr "{taglineLanguage}标语"
 #: src/admin/pages/editor.tsx
 msgid "Take this off the site? It stays here as a draft, and visitors no longer see it."
 msgstr "要从网站上撤下吗？它会作为草稿保留在这里，访客将看不到它。"
-
-#: src/admin/pages/plugins.tsx
-msgid "Technical details"
-msgstr "技术细节"
 
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-email.tsx
@@ -2019,10 +2017,6 @@ msgstr "媒体 ID 必须是十六进制的 sha256 摘要。"
 #: src/admin/server-messages.catalog.ts
 msgid "server.account.password_short"
 msgstr "新密码至少需要 {min} 个字符。"
-
-#: src/admin/pages/settings-appearance.tsx
-msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
-msgstr "以下选项是运行时设置：保存后立即生效，无需重新构建。主题本身属于源代码。"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -2142,10 +2136,6 @@ msgstr "主题位于源代码中，而不在数据库里——它们会被编译
 #: src/admin/app.tsx
 msgid "There is no page at this address in the admin."
 msgstr "后台中没有这个地址对应的页面。"
-
-#: src/admin/pages/settings-site.tsx
-msgid "These are stored the moment you save — no rebuild, no deploy."
-msgstr "点击保存即生效——无需重新构建或部署。"
 
 #: src/admin/pages/settings-appearance.tsx
 msgid "These values apply to every language unless a language overrides them below."
@@ -2312,6 +2302,10 @@ msgstr "请先上传原图，再上传它的缩略图。"
 msgid "uploading"
 msgstr "正在上传"
 
+#: src/admin/pages/editor.tsx
+msgid "URL slug"
+msgstr "URL 别名"
+
 #: src/admin/components/media-library.tsx
 msgid "Use"
 msgstr "使用"
@@ -2328,10 +2322,6 @@ msgstr "请使用 hello@example.com 或 Acme <hello@example.com> 这样的地址
 #: src/admin/components/media-library.tsx
 msgid "used {0}×"
 msgstr "已引用 {0} 次"
-
-#: src/admin/pages/editor.tsx
-msgid "Used as the meta description and in listings. Derived from the body when empty."
-msgstr "用作 meta 描述，也显示在列表中。留空则从正文中提取。"
 
 #: src/admin/form/controls.tsx
 msgid "Value"
@@ -2411,6 +2401,7 @@ msgstr "为“{starterTheme}”主题编写，但当前构建使用的是“{act
 msgid "Yes"
 msgstr "是"
 
+#: src/admin/pages/settings-site.tsx
 #: src/admin/pages/setup.tsx
 msgid "Your domain"
 msgstr "你的域名"
@@ -2418,3 +2409,7 @@ msgstr "你的域名"
 #: src/admin/pages/setup.tsx
 msgid "Your site is ready"
 msgstr "站点已就绪"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Your site sends email through Resend, an email service; the key comes from your Resend account. Every plugin that sends email, inquiries included, uses this one sender and key."
+msgstr "网站通过邮件服务 Resend 发送邮件，密钥在你的 Resend 账号里获取。询盘等所有需要发邮件的插件都使用这里的发件地址和密钥。"

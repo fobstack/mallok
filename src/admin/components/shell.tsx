@@ -97,7 +97,7 @@ const SITE: readonly NavItem[] = [
 
 const SETTINGS: readonly NavItem[] = [
   {
-    label: msg`Site`,
+    label: msg`General`,
     href: '/settings',
     icon: Settings2,
     active: (path) => path === '/settings',
@@ -275,10 +275,8 @@ function crumbsFor(
       .find((plugin) => plugin.id === pluginId)
       ?.panels.find((entry) => entry.id === panelId);
     if (panel !== undefined) {
-      return [
-        { label: msg`Plugins`, href: '/plugins' },
-        { label: panel.label },
-      ];
+      // Named by what it is, not by how it is built (ADMIN_SIMPLE.md, G13).
+      return [{ label: panel.label }];
     }
   }
   return [{ label: msg`Not found` }];

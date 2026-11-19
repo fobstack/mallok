@@ -59,7 +59,7 @@ function useSiteFields(): readonly FieldSpec[] {
       name: 'domain',
       field: {
         type: 'string',
-        label: t`Custom domain`,
+        label: t`Your domain`,
         required: false,
         max: 253,
         help: t`The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly.`,
@@ -69,7 +69,7 @@ function useSiteFields(): readonly FieldSpec[] {
       name: 'mediaBaseUrl',
       field: {
         type: 'string',
-        label: t`Media domain`,
+        label: t`Address for images`,
         required: false,
         max: 512,
         help: t`Where images are served from, such as https://media.example.com. Empty serves them from this site.`,
@@ -172,10 +172,9 @@ export function SiteSettingsPage(): JSX.Element {
 
   return (
     <Page>
-      <PageHeader
-        title={t`Site`}
-        lede={t`These are stored the moment you save — no rebuild, no deploy.`}
-      />
+      {/* What applies at once and what needs a deployment is said in one
+          place, Advanced (docs/ADMIN_SIMPLE.md §6.5), not on every page. */}
+      <PageHeader title={t`General`} />
       <Section
         as="form"
         onSubmit={(event) => void submit(event)}

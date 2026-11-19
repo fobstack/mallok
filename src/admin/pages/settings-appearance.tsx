@@ -105,7 +105,7 @@ export function AppearancePage(): JSX.Element {
     <Page>
       <PageHeader
         title={t`Appearance`}
-        lede={t`The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code.`}
+        lede={t`How your theme looks: these options change the site as soon as you save.`}
       />
 
       {specs.length === 0 ? null : (

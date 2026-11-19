@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
-import { formatNumber } from '../format.js';
 import { relativePathFor, type UploadProgress, uploadFile } from '../media.js';
 import { messageOf, notify } from '../notice.js';
 import { keys, useSettings, useTheme } from '../queries.js';
@@ -58,16 +57,6 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
   const active = useTheme();
   const site = useSettings();
   const client = useQueryClient();
-  // A conjunction list, not a `unit` one: Chinese joins a unit list with no
-  // separator at all, so 480, 960 and 1440 read as "4809601440". Pixel widths
-  // are not grouped, like the numbers in a srcset.
-  const widths = new Intl.ListFormat(i18n.locale, {
-    type: 'conjunction',
-  }).format(
-    active.imageWidths.map((width) =>
-      formatNumber(width, { useGrouping: false }),
-    ),
-  );
 
   const listed = useQuery({
     queryKey: [...keys.media, 'list', props.kind ?? 'all'],
@@ -187,12 +176,6 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
             )}
           </span>
         </label>
-        <p className="text-sm text-muted-foreground">
-          <Trans>
-            Images are converted to WebP in your browser and uploaded at{' '}
-            {widths} pixels wide. SVG is not accepted — it can carry script.
-          </Trans>
-        </p>
         {progress === null ? null : (
           <p className="text-sm text-muted-foreground" role="status">
             {progress.file}: {i18n._(STAGES[progress.stage])}
