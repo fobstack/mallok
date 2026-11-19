@@ -26,7 +26,7 @@ const EDITED = 'The second body text, after an edit.';
  */
 async function saveWith(
   page: Page,
-  name: 'Publish' | 'Save draft',
+  name: 'Publish' | 'Save draft' | 'Update',
 ): Promise<void> {
   const saved = page.waitForResponse(
     (response) =>
@@ -103,7 +103,8 @@ test('shows an edit on the public page, once the cache lets it', async ({
   await expect(page.locator('.cm-content')).toContainText(BODY);
 
   await rewriteDocument(page, `---\ntitle: ${TITLE}\n---\n\n${EDITED}`);
-  await saveWith(page, 'Publish');
+  // A page already on the site is updated, not published again (G1, D6).
+  await saveWith(page, 'Update');
 
   // The save response above already proved the new text is stored; what is
   // left to prove is when a reader sees it.
@@ -130,4 +131,55 @@ test('keeps a draft off the public site', async ({ page }) => {
 
   const response = await page.goto('/not-for-readers');
   expect(response?.status()).toBe(404);
+});
+
+test('a published page is updated or unpublished, never saved back to a draft', async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.getByRole('button', { name: 'New' }).click();
+  await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
+  await page
+    .getByRole('textbox', { name: 'Title', exact: true })
+    .fill('Live for now');
+  await page.getByLabel('Slug', { exact: true }).fill('live-for-now');
+  // Not fetched while live: that would put it in the edge cache, which with
+  // no purge token here keeps it for a minute (see the test above), and
+  // the 404 below would wait on the cache instead of on the save.
+  await saveWith(page, 'Publish');
+
+  // Once it is live, nothing reads "Save draft": the safe-looking button
+  // used to take the page off the site (docs/ADMIN_SIMPLE.md, G1).
+  await expect(page.getByRole('button', { name: 'Save draft' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Update' })).toBeVisible();
+
+  // Taking it off asks first; declining sends nothing.
+  let posted = 0;
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      request.url().endsWith('/_mallok/api/content')
+    ) {
+      posted += 1;
+    }
+  });
+  page.once('dialog', (dialog) => void dialog.dismiss());
+  await page.getByRole('button', { name: 'Unpublish' }).click();
+  await page.waitForTimeout(300);
+  expect(posted).toBe(0);
+
+  page.once('dialog', (dialog) => void dialog.accept());
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/_mallok/api/content') &&
+      response.request().method() === 'POST',
+  );
+  await page.getByRole('button', { name: 'Unpublish' }).click();
+  expect(((await (await saved).json()) as { status: string }).status).toBe(
+    'draft',
+  );
+  expect((await page.request.get('/live-for-now')).status()).toBe(404);
+  // A draft again, so the buttons are a draft's.
+  await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
 });

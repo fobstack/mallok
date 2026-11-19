@@ -71,14 +71,15 @@ test('an item that is opened and not edited is not unsaved, and saves as unchang
     await expect(page.getByText('Unsaved', { exact: true })).toHaveCount(0);
   }
 
-  // Still on the CRLF item, untouched. Publishing it stores nothing new:
+  // Still on the CRLF item, untouched and live, so its button is "Update"
+  // (G1, D6). Updating it stores nothing new:
   // the server compares bytes, and they are the bytes it already has.
   const saved = page.waitForResponse(
     (response) =>
       response.url().endsWith('/_mallok/api/content') &&
       response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Publish' }).click();
+  await page.getByRole('button', { name: 'Update' }).click();
   const answer = (await (await saved).json()) as { unchanged?: boolean };
   expect(answer.unchanged).toBe(true);
   const stored = await page.request.get(`/_mallok/api/content/${crlf}`, {

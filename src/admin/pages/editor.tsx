@@ -196,6 +196,14 @@ function Editor({
   const [busy, setBusy] = useState(false);
   // How the last save went out: a draft is saved but no visitor sees it.
   const [saved, setSaved] = useState<'draft' | 'published' | null>(null);
+  // The status the server last stored, which decides what the buttons say:
+  // an item on the site is updated or taken off it, never quietly turned
+  // back into a draft by a button that reads "Save draft" (ADMIN_SIMPLE.md,
+  // G1 and D6).
+  const [stored, setStored] = useState<LoadedContent['status'] | null>(
+    loaded?.status ?? null,
+  );
+  const live = stored === 'published' || stored === 'scheduled';
   const [preview, setPreview] = useState('');
   const [missing, setMissing] = useState<readonly string[]>([]);
   const [fieldsOpen, setFieldsOpen] = useState(readFieldsOpen);
@@ -375,6 +383,13 @@ function Editor({
       // As stored, not as asked: a body too long to render safely is kept
       // as a draft, and a draft reaches no visitor.
       setSaved(result.status === 'draft' ? 'draft' : 'published');
+      if (
+        result.status === 'draft' ||
+        result.status === 'published' ||
+        result.status === 'scheduled'
+      ) {
+        setStored(result.status);
+      }
       // Every list it appears in, and its own record, are out of date.
       void client.invalidateQueries({ queryKey: keys.content });
       // The save still succeeded — this is the server saying it skipped
@@ -460,20 +475,41 @@ function Editor({
       {saved !== null && !dirty ? (
         <SavedNote draft={saved === 'draft'} />
       ) : null}
-      <Button
-        type="button"
-        variant="outline"
-        disabled={busy}
-        onClick={() => void save('draft')}
-      >
-        <Trans>Save draft</Trans>
-      </Button>
+      {live ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() => {
+            // The one button here that takes a page away from visitors
+            // asks first, as Settings does before moving every address.
+            if (
+              window.confirm(
+                t`Take this off the site? It stays here as a draft, and visitors no longer see it.`,
+              )
+            ) {
+              void save('draft');
+            }
+          }}
+        >
+          <Trans>Unpublish</Trans>
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onClick={() => void save('draft')}
+        >
+          <Trans>Save draft</Trans>
+        </Button>
+      )}
       <Button
         type="button"
         disabled={busy}
         onClick={() => void save('published')}
       >
-        {busy ? t`Saving…` : t`Publish`}
+        {busy ? t`Saving…` : live ? t`Update` : t`Publish`}
       </Button>
     </>
   );
