@@ -39,12 +39,8 @@ async function saveWith(
 }
 
 /**
- * Appends body text at the end of the Markdown pane.
- *
- * The pane holds the **whole document**, front matter included — the fields
- * form and the source are two views of one text (docs/ADMIN.md §6.1). A
- * select-all here therefore selects the `---` block too, and typing over it
- * deletes the title the form just wrote. So this moves to the end and types.
+ * Appends body text at the end of the text pane, which holds the body
+ * alone since the editor became writing-first (docs/ADMIN_SIMPLE.md, D4).
  */
 async function appendBody(page: Page, text: string): Promise<void> {
   const editor = page.locator('.cm-content');
@@ -55,8 +51,16 @@ async function appendBody(page: Page, text: string): Promise<void> {
   await editor.pressSequentially(`\n\n${text}`);
 }
 
-/** Replaces the whole document, front matter and all. */
+/**
+ * Replaces the whole document, front matter and all, in "Edit source": the
+ * one place the stored document is shown entire (D4 option C).
+ */
 async function rewriteDocument(page: Page, text: string): Promise<void> {
+  await page.getByRole('button', { name: 'More actions' }).first().click();
+  await page.getByRole('menuitem', { name: 'Edit source (Markdown)' }).click();
+  await expect(
+    page.getByRole('textbox', { name: 'Markdown source' }),
+  ).toBeVisible();
   const editor = page.locator('.cm-content');
   await editor.waitFor({ state: 'visible' });
   await editor.click();
@@ -164,22 +168,50 @@ test('a published page is updated or unpublished, never saved back to a draft', 
     }
   });
   page.once('dialog', (dialog) => void dialog.dismiss());
-  await page.getByRole('button', { name: 'Unpublish' }).click();
+  await page.getByRole('button', { name: 'More actions' }).first().click();
+  await page.getByRole('menuitem', { name: 'Unpublish' }).click();
   await page.waitForTimeout(300);
   expect(posted).toBe(0);
 
-  page.once('dialog', (dialog) => void dialog.accept());
+  // The question says what a visitor will see (D6).
+  let asked = '';
+  page.once('dialog', (dialog) => {
+    asked = dialog.message();
+    void dialog.accept();
+  });
   const saved = page.waitForResponse(
     (response) =>
       response.url().endsWith('/_mallok/api/content') &&
       response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Unpublish' }).click();
+  await page.getByRole('button', { name: 'More actions' }).first().click();
+  await page.getByRole('menuitem', { name: 'Unpublish' }).click();
   expect(((await (await saved).json()) as { status: string }).status).toBe(
     'draft',
   );
   expect((await page.request.get('/live-for-now')).status()).toBe(404);
   // A draft again, so the buttons are a draft's.
+  expect(asked).toContain('visitors no longer see it');
   await expect(page.getByRole('button', { name: 'Publish' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save draft' })).toBeVisible();
+
+  // Deleting it, from the same menu, says what goes and what stays, and
+  // leaves its list.
+  let warned = '';
+  page.once('dialog', (dialog) => {
+    warned = dialog.message();
+    void dialog.accept();
+  });
+  const deleted = page.waitForResponse(
+    (response) =>
+      response.url().includes('/_mallok/api/content/') &&
+      response.request().method() === 'DELETE',
+  );
+  await page.getByRole('button', { name: 'More actions' }).first().click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  expect((await deleted).status()).toBeLessThan(300);
+  expect(warned).toContain('"Live for now"');
+  expect(warned).toContain('cannot be undone');
+  await expect(page).toHaveURL(/\/content\?kind=page$/);
+  await expect(page.getByRole('link', { name: 'Live for now' })).toHaveCount(0);
 });

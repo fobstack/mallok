@@ -15,7 +15,7 @@
 
 import { i18n } from '@lingui/core';
 import { Trans, useLingui } from '@lingui/react/macro';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal, Search } from 'lucide-react';
 import type { JSX } from 'react';
 import { useEffect, useState } from 'react';
@@ -25,6 +25,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -36,7 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { api } from '../api.js';
+import { ApiError, api } from '../api.js';
 import { useShortLanguageNames } from '../components/content-language.js';
 import {
   ContentStatusBadge,
@@ -46,7 +47,7 @@ import { EmptyState } from '../components/empty-state.js';
 import { FilterTabs } from '../components/filter-tabs.js';
 import { Page, PageHeader, StatusBadge } from '../components/page.js';
 import { formatLastEdited } from '../format-relative.js';
-import { useReportError } from '../notice.js';
+import { notify, useReportError } from '../notice.js';
 import { keys, useSettings, useTheme } from '../queries.js';
 import type { ContentListItem } from '../types.js';
 
@@ -156,6 +157,63 @@ export function ContentListPage(): JSX.Element {
   };
   const addLabel = kind === '' ? t`Add content` : t`Add ${typeName}`;
   const language = languageName(locale);
+
+  // Unpublish and Delete ask first and say what a visitor will see, as
+  // the editor does (docs/ADMIN_SIMPLE.md, D6).
+  const client = useQueryClient();
+  const unpublish = async (item: ContentListItem): Promise<void> => {
+    if (
+      !window.confirm(
+        t`Take this off the site? It stays here as a draft, and visitors no longer see it.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      // A save needs the whole stored item; the list holds a summary.
+      const stored = await api<{
+        id: string;
+        kind: string;
+        locale: string;
+        slug: string;
+        markdown: string;
+        assets: Record<string, string>;
+      }>(`/content/${item.id}`);
+      await api('/content', {
+        method: 'POST',
+        body: {
+          id: stored.id,
+          kind: stored.kind,
+          locale: stored.locale,
+          slug: stored.slug,
+          markdown: stored.markdown,
+          assets: stored.assets,
+          status: 'draft',
+        },
+      });
+    } catch (caught) {
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
+    }
+    await client.invalidateQueries({ queryKey: keys.content });
+  };
+  const remove = async (item: ContentListItem): Promise<void> => {
+    const title = item.title;
+    if (
+      !window.confirm(
+        t`Delete "${title}"? Visitors get "page not found" at its address. Its other language versions and its images stay. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await api(`/content/${item.id}`, { method: 'DELETE' });
+    } catch (caught) {
+      notify(
+        caught instanceof ApiError ? caught.message : t`Could not delete.`,
+      );
+    }
+    await client.invalidateQueries({ queryKey: keys.content });
+  };
 
   // "Copy address" says it worked, or why not, where the operator is.
   const [copied, setCopied] = useState('');
@@ -391,6 +449,20 @@ export function ContentListPage(): JSX.Element {
                           ) : null}
                           <DropdownMenuItem onSelect={() => copyAddress(item)}>
                             <Trans>Copy address</Trans>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {item.status === 'draft' ? null : (
+                            <DropdownMenuItem
+                              onSelect={() => void unpublish(item)}
+                            >
+                              <Trans>Unpublish</Trans>
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => void remove(item)}
+                          >
+                            <Trans>Delete</Trans>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

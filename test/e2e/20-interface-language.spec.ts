@@ -111,6 +111,8 @@ test("a theme's declarations are in Chinese, and its preview is not", async ({
     await expect(page.getByText('规格', { exact: true })).toBeVisible();
     // …while the preview is the page a reader gets, in the content's
     // language, rendered from the declarations as the theme wrote them.
+    // The preview is a button away in the writing-first editor (D4).
+    await page.getByRole('button', { name: '预览' }).first().click();
     const preview = page.frameLocator('iframe[title="预览"]');
     await expect(
       preview.getByRole('heading', { name: 'Grade 5 titanium bar' }),
