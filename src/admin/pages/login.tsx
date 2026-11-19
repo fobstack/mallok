@@ -8,6 +8,7 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Trans, useLingui } from '@lingui/react/macro';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -29,14 +30,15 @@ import {
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { ApiError } from '../api.js';
+import { LanguagePicker } from '../components/language-picker.js';
 import { invalid } from '../form/form.js';
-import { REQUIRED_MESSAGE } from '../form/types.js';
+import { requiredMessage } from '../form/types.js';
 import { signIn, useKnownSettings } from '../queries.js';
 
 /** Both are needed; whether they match is the server's to say. */
 const signInSchema = z.object({
-  email: z.string().trim().min(1, REQUIRED_MESSAGE),
-  password: z.string().min(1, REQUIRED_MESSAGE),
+  email: z.string().trim().min(1, { error: requiredMessage }),
+  password: z.string().min(1, { error: requiredMessage }),
 });
 
 export function LoginPage(): JSX.Element {
@@ -46,6 +48,7 @@ export function LoginPage(): JSX.Element {
   });
   const [error, setError] = useState('');
   const siteName = useKnownSettings()?.name;
+  const { t } = useLingui();
   const busy = form.formState.isSubmitting;
   const { errors } = form.formState;
 
@@ -54,24 +57,32 @@ export function LoginPage(): JSX.Element {
     try {
       await signIn(email, password);
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Sign-in failed.');
+      setError(
+        caught instanceof ApiError ? caught.message : t`Sign-in failed.`,
+      );
     }
   });
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-muted p-6">
+    <div className="relative flex min-h-svh items-center justify-center bg-muted p-6">
+      {/* Before a session the language is chosen here (D7). */}
+      <LanguagePicker className="absolute top-4 right-4" />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>
-            <h1 className="text-xl">Sign in</h1>
+            <h1 className="text-xl">
+              <Trans>Sign in</Trans>
+            </h1>
           </CardTitle>
-          <CardDescription>{siteName ?? "The site's admin"}</CardDescription>
+          <CardDescription>{siteName ?? t`The site's admin`}</CardDescription>
         </CardHeader>
         <CardContent>
           <form noValidate onSubmit={(event) => void submit(event)}>
             <FieldGroup>
               <Field data-invalid={errors.email !== undefined}>
-                <FieldLabel htmlFor="login-email">Email</FieldLabel>
+                <FieldLabel htmlFor="login-email">
+                  <Trans>Email</Trans>
+                </FieldLabel>
                 <Input
                   id="login-email"
                   type="email"
@@ -84,7 +95,9 @@ export function LoginPage(): JSX.Element {
                 </FieldError>
               </Field>
               <Field data-invalid={errors.password !== undefined}>
-                <FieldLabel htmlFor="login-password">Password</FieldLabel>
+                <FieldLabel htmlFor="login-password">
+                  <Trans>Password</Trans>
+                </FieldLabel>
                 <Input
                   id="login-password"
                   type="password"
@@ -102,7 +115,7 @@ export function LoginPage(): JSX.Element {
                 </Alert>
               )}
               <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? 'Signing in…' : 'Sign in'}
+                {busy ? t`Signing in…` : t`Sign in`}
               </Button>
             </FieldGroup>
           </form>

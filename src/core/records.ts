@@ -137,6 +137,31 @@ export interface RecordValidation {
    * `<field>.<index>.<sub-field>`.
    */
   readonly errors: Record<string, string>;
+  /**
+   * The same problems, named: a code and its parameters per key of
+   * `errors`, so an interface can say each in its own language
+   * (docs/ADMIN_I18N_AND_UI.md, D3). `errors` stays English.
+   */
+  readonly errorCodes: Record<string, FieldErrorCode>;
+}
+
+/** A field problem's code and the values its sentence needs. */
+export interface FieldErrorCode {
+  readonly code: string;
+  readonly params?: Readonly<Record<string, string | number>>;
+}
+
+/** A refused value: the English sentence and what names it. */
+interface Refusal extends FieldErrorCode {
+  readonly error: string;
+}
+
+function refusal(
+  error: string,
+  code: string,
+  params?: Readonly<Record<string, string | number>>,
+): Refusal {
+  return params === undefined ? { error, code } : { error, code, params };
 }
 
 function isEmpty(value: unknown): boolean {
@@ -152,52 +177,58 @@ function isEmpty(value: unknown): boolean {
 function checkScalar(
   field: ScalarShape,
   value: unknown,
-): { value: unknown } | { error: string } {
+): { value: unknown } | Refusal {
   if (isEmpty(value)) {
     return field.required
-      ? { error: 'This field is required.' }
+      ? refusal('This field is required.', 'field.required')
       : { value: null };
   }
   switch (field.type) {
     case 'number': {
       if (typeof value !== 'number' || !Number.isFinite(value)) {
-        return { error: 'Enter a number.' };
+        return refusal('Enter a number.', 'field.number');
       }
       if (field.min !== undefined && value < field.min) {
-        return { error: `Must be at least ${field.min}.` };
+        return refusal(`Must be at least ${field.min}.`, 'field.min', {
+          min: field.min,
+        });
       }
       if (field.max !== undefined && value > field.max) {
-        return { error: `Must be at most ${field.max}.` };
+        return refusal(`Must be at most ${field.max}.`, 'field.max', {
+          max: field.max,
+        });
       }
       return { value };
     }
     case 'boolean':
       return typeof value === 'boolean'
         ? { value }
-        : { error: 'Must be yes or no.' };
+        : refusal('Must be yes or no.', 'field.boolean');
     case 'select':
       return typeof value === 'string' && (field.choices ?? []).includes(value)
         ? { value }
-        : { error: 'Choose one of the listed values.' };
+        : refusal('Choose one of the listed values.', 'field.choice');
     case 'date':
       return typeof value === 'string' &&
         /^\d{4}-\d{2}-\d{2}$/.test(value) &&
         !Number.isNaN(Date.parse(value))
         ? { value }
-        : { error: 'Enter a date as YYYY-MM-DD.' };
+        : refusal('Enter a date as YYYY-MM-DD.', 'field.date');
     case 'color':
       return typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value)
         ? { value }
-        : { error: 'Enter a colour as #rrggbb.' };
+        : refusal('Enter a colour as #rrggbb.', 'field.color');
     case 'string[]': {
       if (
         !Array.isArray(value) ||
         value.some((entry) => typeof entry !== 'string')
       ) {
-        return { error: 'Must be a list of text values.' };
+        return refusal('Must be a list of text values.', 'field.text_list');
       }
       if (field.max !== undefined && value.length > field.max) {
-        return { error: `At most ${field.max} entries.` };
+        return refusal(`At most ${field.max} entries.`, 'field.max_entries', {
+          max: field.max,
+        });
       }
       return { value };
     }
@@ -209,7 +240,7 @@ function checkScalar(
           (entry) => typeof entry !== 'string',
         )
       ) {
-        return { error: 'Must be a set of name and value pairs.' };
+        return refusal('Must be a set of name and value pairs.', 'field.pairs');
       }
       return { value };
     }
@@ -222,28 +253,35 @@ function checkScalar(
         // Whole minor units, exactly: a float would lose a cent somewhere.
         !Number.isSafeInteger(money.amount)
       ) {
-        return { error: 'Enter an amount.' };
+        return refusal('Enter an amount.', 'field.amount');
       }
       if (
         typeof money.currency !== 'string' ||
         !(field.currencies ?? []).includes(money.currency)
       ) {
-        return { error: 'Choose one of the listed currencies.' };
+        return refusal(
+          'Choose one of the listed currencies.',
+          'field.currency',
+        );
       }
       if (money.amount < (field.min ?? 0)) {
-        return { error: 'The amount is too low.' };
+        return refusal('The amount is too low.', 'field.amount_low');
       }
       if (field.max !== undefined && money.amount > field.max) {
-        return { error: 'The amount is too high.' };
+        return refusal('The amount is too high.', 'field.amount_high');
       }
       return { value: { amount: money.amount, currency: money.currency } };
     }
     default: {
       if (typeof value !== 'string') {
-        return { error: 'Must be text.' };
+        return refusal('Must be text.', 'field.text');
       }
       if (field.max !== undefined && value.length > field.max) {
-        return { error: `Must be at most ${field.max} characters.` };
+        return refusal(
+          `Must be at most ${field.max} characters.`,
+          'field.max_length',
+          { max: field.max },
+        );
       }
       return { value };
     }
@@ -263,12 +301,20 @@ export function validateRecord(
 ): RecordValidation {
   const values: Record<string, unknown> = {};
   const errors: Record<string, string> = {};
+  const errorCodes: Record<string, FieldErrorCode> = {};
+  const refuse = (key: string, problem: Refusal): void => {
+    errors[key] = problem.error;
+    errorCodes[key] =
+      problem.params === undefined
+        ? { code: problem.code }
+        : { code: problem.code, params: problem.params };
+  };
   for (const [name, field] of Object.entries(fields)) {
     const submitted = input[name];
     if (field.type !== 'rows') {
       const checked = checkScalar(field, submitted);
       if ('error' in checked) {
-        errors[name] = checked.error;
+        refuse(name, checked);
       } else {
         values[name] = checked.value;
       }
@@ -277,18 +323,21 @@ export function validateRecord(
 
     if (isEmpty(submitted)) {
       if (field.required) {
-        errors[name] = 'Add at least one row.';
+        refuse(name, refusal('Add at least one row.', 'field.rows_required'));
       }
       values[name] = [];
       continue;
     }
     if (!Array.isArray(submitted)) {
-      errors[name] = 'Must be a list of rows.';
+      refuse(name, refusal('Must be a list of rows.', 'field.rows_list'));
       continue;
     }
     const limit = field.max ?? RECORD_ROWS_MAX;
     if (submitted.length > limit) {
-      errors[name] = `At most ${limit} rows.`;
+      refuse(
+        name,
+        refusal(`At most ${limit} rows.`, 'field.max_rows', { max: limit }),
+      );
       continue;
     }
     const rows: Record<string, unknown>[] = [];
@@ -301,7 +350,7 @@ export function validateRecord(
       for (const [subName, subField] of Object.entries(field.fields)) {
         const checked = checkScalar(subField, source[subName]);
         if ('error' in checked) {
-          errors[`${name}.${index}.${subName}`] = checked.error;
+          refuse(`${name}.${index}.${subName}`, checked);
         } else {
           row[subName] = checked.value;
         }
@@ -310,5 +359,5 @@ export function validateRecord(
     }
     values[name] = rows;
   }
-  return { values, errors };
+  return { values, errors, errorCodes };
 }

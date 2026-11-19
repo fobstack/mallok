@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
+import { lingui } from '@lingui/vite-plugin';
 import react from '@vitejs/plugin-react';
 import { defineConfig, type Plugin } from 'vitest/config';
 
@@ -125,7 +126,17 @@ export default defineConfig({
     },
     projects: [
       {
-        plugins: [textModules()],
+        // test/admin imports the admin's pages, whose messages are Lingui
+        // macros; they compile here as they do in vite.config.ts.
+        plugins: [
+          textModules(),
+          lingui({
+            macroTransform: true,
+            configPath: fileURLToPath(
+              new URL('./lingui.config.ts', import.meta.url),
+            ),
+          }),
+        ],
         // The admin's own alias (vite.config.ts): its pages import shadcn/ui
         // as `@/components/ui/…`, and test/admin imports its pages.
         resolve: {

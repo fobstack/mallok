@@ -69,14 +69,18 @@ async function fetchHandler(
       // a stale link into a completed site's wizard.
       const site = await loadSite(env.DB);
       if (site !== null && site.setup_completed_at !== null) {
-        return problem(404, 'Not found.');
+        return problem(404, 'Not found.', 'not_found');
       }
       return await handleApp(request, env);
     }
     if (pathname.startsWith('/_mallok/p/')) {
       const data = await loadSiteRenderData(env.DB);
       if (data.site === null) {
-        return problem(503, 'Site is not initialized.');
+        return problem(
+          503,
+          'Site is not initialized.',
+          'setup.not_initialized',
+        );
       }
       return await handlePluginRoute(
         request,
@@ -88,7 +92,7 @@ async function fetchHandler(
       );
     }
     if (pathname.startsWith('/_mallok/')) {
-      return problem(404, 'Not found.');
+      return problem(404, 'Not found.', 'not_found');
     }
     if (registryDeclaresOnRequest()) {
       const short = await runOnRequest(request, env, ctx);
@@ -109,7 +113,7 @@ async function fetchHandler(
         message: error instanceof Error ? error.message : String(error),
       }),
     );
-    return problem(500, 'Internal error.');
+    return problem(500, 'Internal error.', 'internal_error');
   }
 }
 

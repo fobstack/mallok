@@ -20,7 +20,7 @@ async function read(page: Page, id: string): Promise<Stored> {
 /**
  * Creating a translation from the editor's language bar (docs/ADMIN.md §6).
  *
- * "Create zh" opens a new item in that language and the original's
+ * "Create Chinese (zh)" opens a new item in that language and the original's
  * translation group, carried in the address. The editor used to take the
  * query for part of the item id: it never opened a new item, and Publish
  * saved in the original's language, over the original.
@@ -45,7 +45,8 @@ test('a translation made from the language bar joins the original', async ({
 
   await page
     .getByRole('navigation', { name: 'Translations' })
-    .getByRole('button', { name: 'Create zh' })
+    // Named, with the code, since U10.
+    .getByRole('button', { name: 'Create Chinese (zh)' })
     .click();
   await expect(page).toHaveURL(/\/content\/new\?locale=zh&/);
   await expect(page.locator('.cm-content')).toBeVisible();
@@ -77,6 +78,6 @@ test('a translation made from the language bar joins the original', async ({
   await expect(
     page
       .getByRole('navigation', { name: 'Translations' })
-      .getByRole('button', { name: 'en' }),
+      .getByRole('button', { name: 'English (en)' }),
   ).toBeVisible();
 });

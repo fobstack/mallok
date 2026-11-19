@@ -20,16 +20,30 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-/** A page's column: header, then sections. */
+/**
+ * A page's column: header, then sections. It takes the shell's whole column,
+ * so the notice above it, its header and its sections share one left edge
+ * and one width (docs/ADMIN_I18N_AND_UI.md, U2); a form caps its own fields
+ * instead (`Section`).
+ *
+ * The page, not the shell, says how wide that column is: `width="full"`
+ * lets the shell's column span the window, for a page such as the editor
+ * that needs the room (U7).
+ */
 export function Page({
   children,
   className,
+  width = 'column',
 }: {
   readonly children: ReactNode;
   readonly className?: string;
+  readonly width?: 'column' | 'full';
 }): JSX.Element {
   return (
-    <div className={cn('flex w-full max-w-4xl flex-col gap-6', className)}>
+    <div
+      data-page-width={width}
+      className={cn('flex w-full flex-col gap-6', className)}
+    >
       {children}
     </div>
   );
@@ -75,6 +89,8 @@ export function Section({
   as = 'section',
   onSubmit,
   className,
+  id,
+  wide = false,
 }: {
   readonly title?: ReactNode;
   readonly description?: ReactNode;
@@ -83,6 +99,14 @@ export function Section({
   readonly as?: 'section' | 'form';
   readonly onSubmit?: FormEventHandler<HTMLFormElement>;
   readonly className?: string;
+  /** An anchor another page links to, such as `#diagnostics`. */
+  readonly id?: string;
+  /**
+   * Lets fields span the card. A section of settings caps its fields at a
+   * readable width; one holding a table or a plugin's panel says so here
+   * instead of overriding the cap.
+   */
+  readonly wide?: boolean;
 }): JSX.Element {
   const titleId = useId();
   const card = (
@@ -100,7 +124,15 @@ export function Section({
         </CardHeader>
       )}
       {children === undefined ? null : (
-        <CardContent className="flex flex-col gap-4">{children}</CardContent>
+        // A field is capped at a readable width; the card spans the column.
+        <CardContent
+          className={cn(
+            'flex flex-col gap-4',
+            !wide && '[&_[data-slot=field]]:max-w-2xl',
+          )}
+        >
+          {children}
+        </CardContent>
       )}
       {footer === undefined ? null : (
         <CardFooter className="flex flex-wrap items-center gap-3">
@@ -109,7 +141,10 @@ export function Section({
       )}
     </Card>
   );
-  const named = title === undefined ? {} : { 'aria-labelledby': titleId };
+  const named = {
+    ...(title === undefined ? {} : { 'aria-labelledby': titleId }),
+    ...(id === undefined ? {} : { id }),
+  };
   return as === 'form' ? (
     <form {...named} onSubmit={onSubmit}>
       {card}
@@ -137,7 +172,10 @@ export function StatusBadge({
       role={role}
       title={title}
       className={cn(
-        'h-auto max-w-full whitespace-normal',
+        // A long status may wrap, but only where English would: `break-keep`
+        // stops Chinese from breaking between any two characters, which in a
+        // narrow table cell stacked "已发布" one character per line.
+        'h-auto max-w-full whitespace-normal break-keep',
         tone === 'ok' && 'border-success/30 bg-success/10 text-success',
         tone === 'warn' && 'border-warning/30 bg-warning/10 text-warning',
       )}

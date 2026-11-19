@@ -21,7 +21,8 @@
     },
     "from_address": {
       "type": "string",
-      "label": "From address for inquiry email (empty uses the sender in Settings → Email)"
+      "label": "From address for inquiry email",
+      "help": "Empty uses the sender in Settings → Email."
     },
     "autoreply": {
       "type": "boolean",
@@ -30,7 +31,8 @@
     },
     "turnstile_sitekey": {
       "type": "string",
-      "label": "Turnstile site key (empty disables the widget)"
+      "label": "Turnstile site key",
+      "help": "Empty turns the anti-spam widget off."
     },
     "thanks_path": {
       "type": "string",
@@ -39,19 +41,23 @@
     },
     "autoreply_subject": {
       "type": "string",
-      "label": "Autoreply subject (Liquid; empty uses the built-in per-language template)"
+      "label": "Autoreply subject",
+      "help": "Liquid. Empty uses the built-in template for each language."
     },
     "autoreply_body": {
-      "type": "string",
-      "label": "Autoreply body (Liquid; variables: name, site_name, company, message)"
+      "type": "text",
+      "label": "Autoreply body",
+      "help": "Liquid. Variables: name, site_name, company, message."
     },
     "blocked_countries": {
       "type": "string[]",
-      "label": "Blocked countries (ISO 3166-1 alpha-2); their inquiries are stored as spam"
+      "label": "Blocked countries",
+      "help": "Two-letter ISO 3166-1 codes. Their inquiries are stored as spam."
     },
     "blocked_keywords": {
       "type": "string[]",
-      "label": "Blocked keywords; matching inquiries are stored as spam"
+      "label": "Blocked keywords",
+      "help": "Inquiries that contain one are stored as spam."
     }
   },
   "secrets": {

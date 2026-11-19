@@ -5,6 +5,8 @@
  * deploy involved (docs/PRODUCT_VISION.md §5.1).
  */
 
+import { plural } from '@lingui/core/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { type FieldValues, useForm } from 'react-hook-form';
@@ -12,7 +14,16 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
 import { ApiError, api } from '../api.js';
+import {
+  COMMON_LOCALES,
+  ContentLanguageSelect,
+  useContentLanguageName,
+} from '../components/content-language.js';
 import {
   Code,
   Page,
@@ -26,42 +37,46 @@ import type { FieldSpec } from '../form/types.js';
 import { notify } from '../notice.js';
 import { reloadWorkspace, saveSettings, useSettings } from '../queries.js';
 
-const SITE_FIELDS: readonly FieldSpec[] = [
-  {
-    name: 'name',
-    field: { type: 'string', label: 'Site name', required: true, max: 120 },
-  },
-  {
-    name: 'tagline',
-    field: {
-      type: 'text',
-      label: 'Tagline',
-      required: false,
-      max: 300,
-      help: 'Shown by most themes under the site name, and as the home page description.',
+/** The site's own fields, labelled in the interface language. */
+function useSiteFields(): readonly FieldSpec[] {
+  const { t } = useLingui();
+  return [
+    {
+      name: 'name',
+      field: { type: 'string', label: t`Site name`, required: true, max: 120 },
     },
-  },
-  {
-    name: 'domain',
-    field: {
-      type: 'string',
-      label: 'Custom domain',
-      required: false,
-      max: 253,
-      help: 'Only this host is indexable. Without one, every page is served noindex and the edge cache does not apply.',
+    {
+      name: 'tagline',
+      field: {
+        type: 'text',
+        label: t`Tagline`,
+        required: false,
+        max: 300,
+        help: t`Shown by most themes under the site name, and as the home page description.`,
+      },
     },
-  },
-  {
-    name: 'mediaBaseUrl',
-    field: {
-      type: 'string',
-      label: 'Media domain',
-      required: false,
-      max: 512,
-      help: 'An R2 custom domain, e.g. https://media.example.com. Empty serves images through the Worker.',
+    {
+      name: 'domain',
+      field: {
+        type: 'string',
+        label: t`Custom domain`,
+        required: false,
+        max: 253,
+        help: t`The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly.`,
+      },
     },
-  },
-];
+    {
+      name: 'mediaBaseUrl',
+      field: {
+        type: 'string',
+        label: t`Media domain`,
+        required: false,
+        max: 512,
+        help: t`Where images are served from, such as https://media.example.com. Empty serves them from this site.`,
+      },
+    },
+  ];
+}
 
 /** The form field holding one language's own tagline. */
 function taglineField(locale: string): string {
@@ -70,6 +85,8 @@ function taglineField(locale: string): string {
 
 export function SiteSettingsPage(): JSX.Element {
   const current = useSettings();
+  const { t } = useLingui();
+  const siteFields = useSiteFields();
   /** The languages that can have a tagline of their own. */
   const otherLocales = (current.locales ?? []).filter(
     (locale) => locale !== current.defaultLocale,
@@ -97,26 +114,27 @@ export function SiteSettingsPage(): JSX.Element {
   });
   const [saved, setSaved] = useState(false);
 
-  // A tagline field per further language, right under the tagline itself.
-  const fields: readonly FieldSpec[] = SITE_FIELDS.flatMap((spec) =>
-    spec.name === 'tagline'
-      ? [
-          spec,
-          ...otherLocales.map(
-            (locale): FieldSpec => ({
-              name: taglineField(locale),
-              field: {
-                type: 'text',
-                label: `Tagline (${locale})`,
-                required: false,
-                max: 300,
-                help: `Shown on pages in ${locale}. Empty uses the tagline above.`,
-              },
-            }),
-          ),
-        ]
-      : [spec],
-  );
+  // Other languages' taglines sit under the tagline itself, one field at a
+  // time rather than one text box per language (U10, U12). With a single
+  // further language that field is simply there; with more, one
+  // content-language select says which is shown. The form keeps every
+  // language's value, so switching loses nothing.
+  const [taglineLocale, setTaglineLocale] = useState(otherLocales[0] ?? '');
+  const nameOf = useContentLanguageName();
+  const taglineLanguage = nameOf(taglineLocale);
+  const splitAt = siteFields.findIndex((spec) => spec.name === 'tagline') + 1;
+  const before = siteFields.slice(0, splitAt);
+  const after = siteFields.slice(splitAt);
+  const otherTagline: FieldSpec = {
+    name: taglineField(taglineLocale),
+    field: {
+      type: 'text',
+      label: t`Tagline in ${taglineLanguage}`,
+      required: false,
+      max: 300,
+      help: t`Shown on pages in ${taglineLanguage}. Empty uses the tagline above.`,
+    },
+  };
 
   /** One string when no language has its own tagline, otherwise the map. */
   const taglineValue = (
@@ -147,7 +165,7 @@ export function SiteSettingsPage(): JSX.Element {
       setSaved(true);
     } catch (caught) {
       showServerErrors(form.setError, caught);
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     }
   });
   const busy = form.formState.isSubmitting;
@@ -155,8 +173,8 @@ export function SiteSettingsPage(): JSX.Element {
   return (
     <Page>
       <PageHeader
-        title="Site"
-        lede="These are stored the moment you save — no rebuild, no deploy."
+        title={t`Site`}
+        lede={t`These are stored the moment you save — no rebuild, no deploy.`}
       />
       <Section
         as="form"
@@ -164,19 +182,42 @@ export function SiteSettingsPage(): JSX.Element {
         footer={
           <>
             <Button type="submit" disabled={busy}>
-              {busy ? 'Saving…' : 'Save'}
+              {busy ? t`Saving…` : t`Save`}
             </Button>
             {saved ? <SavedNote /> : null}
           </>
         }
       >
-        <SchemaForm specs={fields} control={form.control} idPrefix="site" />
+        <SchemaForm specs={before} control={form.control} idPrefix="site" />
+        {otherLocales.length < 2 ? null : (
+          <ContentLanguageSelect
+            id="site-tagline-locale"
+            value={taglineLocale}
+            onChange={setTaglineLocale}
+            locales={otherLocales}
+            description={t`Each further language can have its own tagline. What you type is kept while you switch; Save stores them all.`}
+          />
+        )}
+        {otherLocales.length === 0 ? null : (
+          <SchemaForm
+            // A different language is a different field, not the same one
+            // with another value: its control must not carry typing over.
+            key={taglineLocale}
+            specs={[otherTagline]}
+            control={form.control}
+            idPrefix="site"
+          />
+        )}
+        <SchemaForm specs={after} control={form.control} idPrefix="site" />
       </Section>
 
       <LocaleSection />
     </Page>
   );
 }
+
+/** The add-language select's value for "a language not listed". */
+const ANOTHER = '*';
 
 /**
  * Enabled languages, the default-locale switch, and whether the default
@@ -188,23 +229,30 @@ export function SiteSettingsPage(): JSX.Element {
  */
 function LocaleSection(): JSX.Element {
   const current = useSettings();
+  const { t } = useLingui();
   const [busy, setBusy] = useState(false);
+  /** The language picked to add: a code, or `ANOTHER` to type one. */
   const [adding, setAdding] = useState('');
+  const [typed, setTyped] = useState('');
+  const prefix = current.defaultLocale;
+  const chosen = adding === ANOTHER ? typed.trim() : adding;
+  const nameOf = useContentLanguageName();
 
   const setLocales = async (locales: string[]): Promise<void> => {
     setBusy(true);
     try {
       await saveSettings({ locales });
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     } finally {
       setBusy(false);
     }
   };
 
   const makeDefault = async (locale: string): Promise<void> => {
+    const language = nameOf(locale);
     const ok = window.confirm(
-      `Make "${locale}" the default language?\n\nEvery public URL is rewritten and the old URLs are redirected. This cannot be undone automatically.`,
+      t`Make ${language} the default language?\n\nEvery public URL is rewritten and the old URLs are redirected. This cannot be undone automatically.`,
     );
     if (!ok) {
       return;
@@ -216,11 +264,14 @@ function LocaleSection(): JSX.Element {
         body: { locale, confirm: true },
       });
       await reloadWorkspace();
+      const moved = result.moved;
       notify(
-        `Default language is now "${locale}". ${result.moved} URLs moved, each with a redirect.`,
+        t`Default language is now ${language}. ${plural(moved, { one: '# URL moved, with a redirect.', other: '# URLs moved, each with a redirect.' })}`,
       );
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not switch.');
+      notify(
+        caught instanceof ApiError ? caught.message : t`Could not switch.`,
+      );
     } finally {
       setBusy(false);
     }
@@ -229,8 +280,8 @@ function LocaleSection(): JSX.Element {
   const setPrefix = async (enabled: boolean): Promise<void> => {
     const ok = window.confirm(
       enabled
-        ? `Serve "${current.defaultLocale}" under /${current.defaultLocale}/ too?\n\nEvery URL of the default language moves (/about becomes /${current.defaultLocale}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /${current.defaultLocale}.`
-        : `Serve "${current.defaultLocale}" at the root again?\n\nEvery URL of the default language moves (/${current.defaultLocale}/about becomes /about) and each old URL, lists, tags and /${current.defaultLocale} included, redirects to its new one. The navigation's links to this site are rewritten to match.`,
+        ? t`Serve "${prefix}" under /${prefix}/ too?\n\nEvery URL of the default language moves (/about becomes /${prefix}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /${prefix}.`
+        : t`Serve "${prefix}" at the root again?\n\nEvery URL of the default language moves (/${prefix}/about becomes /about) and each old URL, lists, tags and /${prefix} included, redirects to its new one. The navigation's links to this site are rewritten to match.`,
     );
     if (!ok) {
       return;
@@ -242,11 +293,18 @@ function LocaleSection(): JSX.Element {
         body: { enabled, confirm: true },
       });
       await reloadWorkspace();
+      const moved = result.moved;
       notify(
-        `${result.moved} URLs moved, each with a redirect; navigation links rewritten.`,
+        plural(moved, {
+          one: '# URL moved, with a redirect; navigation links rewritten.',
+          other:
+            '# URLs moved, each with a redirect; navigation links rewritten.',
+        }),
       );
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not switch.');
+      notify(
+        caught instanceof ApiError ? caught.message : t`Could not switch.`,
+      );
     } finally {
       setBusy(false);
     }
@@ -254,19 +312,26 @@ function LocaleSection(): JSX.Element {
 
   return (
     <Section
-      title="Languages"
+      title={t`Languages`}
+      // Nothing here waits for a Save; the card says so where the button
+      // would be (U12).
+      footer={
+        <p className="text-sm text-muted-foreground">
+          <Trans>Applies immediately</Trans>
+        </p>
+      }
       description={
         current.prefixDefaultLocale ? (
-          <>
+          <Trans>
             Every language is served under <Code>/&lt;locale&gt;/</Code>, the
             default one too; the site&apos;s root redirects to{' '}
-            <Code>/{current.defaultLocale}</Code>.
-          </>
+            <Code>/{prefix}</Code>.
+          </Trans>
         ) : (
-          <>
+          <Trans>
             The default language has no URL prefix; every other language is
             served under <Code>/&lt;locale&gt;/</Code>.
-          </>
+          </Trans>
         )
       }
     >
@@ -280,20 +345,24 @@ function LocaleSection(): JSX.Element {
         <FieldLabel htmlFor="site-prefix-default">
           {/* One run of text: the label lays its children out with a gap. */}
           <span>
-            Prefix the default language too (
-            <Code>/{current.defaultLocale}/…</Code>)
+            <Trans>
+              Prefix the default language too (<Code>/{prefix}/…</Code>)
+            </Trans>
           </span>
         </FieldLabel>
       </Field>
-      <ul className="flex flex-col divide-y rounded-lg border">
+      {/* As wide as the fields above it: one right edge per card (U2). */}
+      <ul className="flex max-w-2xl flex-col divide-y rounded-lg border">
         {current.locales.map((locale) => (
           <li
             key={locale}
             className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm"
           >
-            <Code>{locale}</Code>
+            <span>{nameOf(locale)}</span>
             {locale === current.defaultLocale ? (
-              <StatusBadge tone="ok">Default</StatusBadge>
+              <StatusBadge tone="ok">
+                <Trans>Default</Trans>
+              </StatusBadge>
             ) : (
               <div className="ml-auto flex gap-2">
                 <Button
@@ -303,7 +372,7 @@ function LocaleSection(): JSX.Element {
                   disabled={busy}
                   onClick={() => void makeDefault(locale)}
                 >
-                  Make default
+                  <Trans>Make default</Trans>
                 </Button>
                 <Button
                   type="button"
@@ -316,7 +385,7 @@ function LocaleSection(): JSX.Element {
                     )
                   }
                 >
-                  Remove
+                  <Trans>Remove</Trans>
                 </Button>
               </div>
             )}
@@ -324,23 +393,43 @@ function LocaleSection(): JSX.Element {
         ))}
       </ul>
       <div className="flex flex-wrap items-center gap-2">
-        <Input
-          className="w-32"
-          aria-label="Language code"
-          placeholder="de"
+        <NativeSelect
+          aria-label={t`Language to add`}
           value={adding}
-          onInput={(event) => setAdding(event.currentTarget.value)}
-        />
+          onChange={(event) => setAdding(event.currentTarget.value)}
+        >
+          <NativeSelectOption value="">{t`Choose a language…`}</NativeSelectOption>
+          {COMMON_LOCALES.filter((code) => !current.locales.includes(code)).map(
+            (code) => (
+              <NativeSelectOption key={code} value={code}>
+                {nameOf(code)}
+              </NativeSelectOption>
+            ),
+          )}
+          <NativeSelectOption value={ANOTHER}>
+            {t`Another language…`}
+          </NativeSelectOption>
+        </NativeSelect>
+        {adding === ANOTHER ? (
+          <Input
+            className="w-32"
+            aria-label={t`Language code`}
+            placeholder="pt-BR"
+            value={typed}
+            onInput={(event) => setTyped(event.currentTarget.value)}
+          />
+        ) : null}
         <Button
           type="button"
           variant="outline"
-          disabled={busy || adding.trim() === ''}
+          disabled={busy || chosen === ''}
           onClick={() => {
-            void setLocales([...current.locales, adding.trim()]);
+            void setLocales([...current.locales, chosen]);
             setAdding('');
+            setTyped('');
           }}
         >
-          Add language
+          <Trans>Add language</Trans>
         </Button>
       </div>
     </Section>

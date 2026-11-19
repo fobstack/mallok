@@ -1,0 +1,2408 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-13 04:16-0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+
+#. Between items of a list
+#. Between items of a list
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
+msgid ", "
+msgstr ", "
+
+#: src/admin/components/plugin-panel.tsx
+msgid "\"{actionLabel}\" failed."
+msgstr "\"{actionLabel}\" failed."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.base_reserved"
+msgstr "\"{base}\" is reserved for stored files and cannot be a content base path."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.path_clash"
+msgstr "\"{from}\" would move to \"{to}\", which another item already uses. Change one of their slugs first. Nothing was changed."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_uncheckable"
+msgstr "\"{name}\" cannot be checked automatically."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.exists_create_only"
+msgstr "\"{slug}\" already exists in {locale}. Remove --create-only to update it."
+
+#: src/admin/media.ts
+msgid "\"{type}\" is not accepted."
+msgstr "\"{type}\" is not accepted."
+
+#: src/admin/slug.ts
+msgid "\"{typed}\" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title."
+msgstr "\"{typed}\" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title."
+
+#: src/admin/pages/setup.tsx
+msgid "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
+msgstr "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
+
+#: src/admin/components/shell.tsx
+msgid "(opens in a new tab)"
+msgstr "(opens in a new tab)"
+
+#. placeholder {0}: item.refCount
+#: src/admin/components/media-library.tsx
+msgid "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
+msgstr "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
+
+#. placeholder {0}: missing.length
+#: src/admin/pages/editor.tsx
+msgid "{0, plural, one {# image missing} other {# images missing}}"
+msgstr "{0, plural, one {# image missing} other {# images missing}}"
+
+#. placeholder {0}: notInstalled.length
+#: src/admin/pages/setup.tsx
+msgid "{0, plural, one {# of the starter's items could not be imported:} other {# of the starter's items could not be imported:}}"
+msgstr "{0, plural, one {# of the starter's items could not be imported:} other {# of the starter's items could not be imported:}}"
+
+#. placeholder {0}: entry.documents
+#: src/admin/pages/setup.tsx
+msgid "{0, plural, one {# page} other {# pages}}"
+msgstr "{0, plural, one {# page} other {# pages}}"
+
+#. placeholder {0}: plugin.clientScripts.length
+#: src/admin/pages/plugins.tsx
+msgid "{0, plural, one {# script} other {# scripts}}"
+msgstr "{0, plural, one {# script} other {# scripts}}"
+
+#. placeholder {0}: progress.done
+#. placeholder {1}: progress.total
+#: src/admin/pages/settings-advanced.tsx
+msgid "{0}/{1} files"
+msgstr "{0}/{1} files"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.slugs_stranded"
+msgstr "{count, plural, one {# slug would start at an address the new settings give to a language or a kind. Change it first.} other {# slugs would start at an address the new settings give to a language or a kind. Change them first.}}"
+
+#: src/admin/components/record-editor.tsx
+msgid "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
+msgstr "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
+
+#: src/admin/pages/setup.tsx
+msgid "{installed, plural, one {# page was installed.} other {# pages were installed.}}"
+msgstr "{installed, plural, one {# page was installed.} other {# pages were installed.}}"
+
+#: src/admin/pages/setup.tsx
+msgid "{installedRecords, plural, one {# sample record was added.} other {# sample records were added.}}"
+msgstr "{installedRecords, plural, one {# sample record was added.} other {# sample records were added.}}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{items, plural, one {# item} other {# items}} and {files, plural, one {# file} other {# files}} in {fileName}."
+msgstr "{items, plural, one {# item} other {# items}} and {files, plural, one {# file} other {# files}} in {fileName}."
+
+#: src/admin/components/record-editor.tsx
+msgid "{label}: currency"
+msgstr "{label}: currency"
+
+#: src/admin/components/content-language.tsx
+msgid "{language}, default"
+msgstr "{language}, default"
+
+#: src/admin/components/record-editor.tsx
+msgid "{limit, plural, one {At most # row.} other {At most # rows.}}"
+msgstr "{limit, plural, one {At most # row.} other {At most # rows.}}"
+
+#: src/admin/form/types.ts
+msgid "{max, plural, one {At most # entry.} other {At most # entries.}}"
+msgstr "{max, plural, one {At most # entry.} other {At most # entries.}}"
+
+#: src/admin/form/types.ts
+msgid "{max, plural, one {Must be at most # character.} other {Must be at most # characters.}}"
+msgstr "{max, plural, one {Must be at most # character.} other {Must be at most # characters.}}"
+
+#: src/admin/pages/settings-site.tsx
+msgid "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
+msgstr "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
+
+#: src/admin/components/content-language.tsx
+msgid "{name} ({code})"
+msgstr "{name} ({code})"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "{panelLabel} detail"
+msgstr "{panelLabel} detail"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.path_taken"
+msgstr "{path} is already the address of the {kind} \"{slug}\" ({locale}). Choose another slug."
+
+#: src/admin/pages/plugins.tsx
+msgid "{pluginName} enabled"
+msgstr "{pluginName} enabled"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.frontmatter_invalid"
+msgstr "{reason}"
+
+#: src/admin/pages/setup.tsx
+msgid "{records, plural, one {# sample record} other {# sample records}}"
+msgstr "{records, plural, one {# sample record} other {# sample records}}"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "{scripts, plural, one {Injects # script} other {Injects # scripts}}"
+msgstr "{scripts, plural, one {Injects # script} other {Injects # scripts}}"
+
+#: src/admin/form/controls.tsx
+msgid "{target} slug"
+msgstr "{target} slug"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{when} — after {cause}, Cloudflare answered HTTP {status}"
+msgstr "{when} — after {cause}, Cloudflare answered HTTP {status}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{when} — after {cause}, Cloudflare could not be reached"
+msgstr "{when} — after {cause}, Cloudflare could not be reached"
+
+#: src/admin/pages/editor.tsx
+msgid "← All content"
+msgstr "← All content"
+
+#: src/admin/pages/plugins.tsx
+msgid "<0>{panelLabel}</0> is edited where it belongs: open any <1>{kind}</1> in Content, and it is under the editor."
+msgstr "<0>{panelLabel}</0> is edited where it belongs: open any <1>{kind}</1> in Content, and it is under the editor."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a content change"
+msgstr "a content change"
+
+#: src/admin/pages/setup.tsx
+msgid "A domain can be added at any time; your content and its URLs stay as they are. <0>How to add a custom domain<1/></0>"
+msgstr "A domain can be added at any time; your content and its URLs stay as they are. <0>How to add a custom domain<1/></0>"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.plugin_too_large"
+msgstr "A plugin made this item larger than can be stored. Nothing was saved."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.plugin_rewrite_invalid"
+msgstr "A plugin rewrote this item into something that cannot be saved: {reason}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a plugin switch"
+msgstr "a plugin switch"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a scheduled publication"
+msgstr "a scheduled publication"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a settings change"
+msgstr "a settings change"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.list_page"
+msgstr "A slug cannot start with \"page/{page}\": that is the address of a list's page {page}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.kind_start"
+msgstr "A slug with several segments cannot start with \"{first}/\": that is the address of the kind \"{kind}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.locale_start"
+msgstr "A slug with several segments cannot start with \"{first}/\": that is the prefix of the language \"{first}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.reserved_start"
+msgstr "A slug with several segments cannot start with \"{first}/\": the site answers that address itself."
+
+#: src/admin/pages/setup.tsx
+msgid "A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site."
+msgstr "A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
+msgstr "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
+
+#: src/admin/pages/account.tsx
+msgid "About password hashing"
+msgstr "About password hashing"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/shell.tsx
+#: src/admin/pages/account.tsx
+msgid "Account"
+msgstr "Account"
+
+#: src/admin/components/account-menu.tsx
+msgid "Account and API tokens"
+msgstr "Account and API tokens"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.session_required"
+msgstr "Account changes require a browser session."
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/shell.tsx
+msgid "Account menu"
+msgstr "Account menu"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Active"
+msgstr "Active"
+
+#: src/admin/components/record-editor.tsx
+msgid "Add a row"
+msgstr "Add a row"
+
+#: src/admin/components/media-library.tsx
+msgid "Add alt text"
+msgstr "Add alt text"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.rows_required"
+msgstr "Add at least one row."
+
+#: src/admin/form/controls.tsx
+msgid "Add entry"
+msgstr "Add entry"
+
+#: src/admin/form/controls.tsx
+msgid "Add image…"
+msgstr "Add image…"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Add language"
+msgstr "Add language"
+
+#: src/admin/form/controls.tsx
+msgid "Add row"
+msgstr "Add row"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Add the first one"
+msgstr "Add the first one"
+
+#: src/admin/pages/setup.tsx
+msgid "Administrator"
+msgstr "Administrator"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/settings-advanced.tsx
+msgid "Advanced"
+msgstr "Advanced"
+
+#: src/admin/pages/plugins.tsx
+msgid "Affects cached pages"
+msgstr "Affects cached pages"
+
+#: src/admin/components/content-language.tsx
+#: src/admin/pages/content-list.tsx
+msgid "All"
+msgstr "All"
+
+#: src/admin/components/media-library.tsx
+msgid "already stored, skipped"
+msgstr "already stored, skipped"
+
+#: src/admin/components/media-library.tsx
+msgid "Alt text"
+msgstr "Alt text"
+
+#. placeholder {0}: item.alt
+#: src/admin/components/media-library.tsx
+msgid "Alt: {0}"
+msgstr "Alt: {0}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.admin_exists"
+msgstr "An administrator already exists."
+
+#: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
+msgid "Another language…"
+msgstr "Another language…"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "any"
+msgstr "any"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Any"
+msgstr "Any"
+
+#: src/admin/pages/account.tsx
+msgid "API tokens"
+msgstr "API tokens"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/settings-appearance.tsx
+msgid "Appearance"
+msgstr "Appearance"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Applied migrations"
+msgstr "Applied migrations"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Applies immediately"
+msgstr "Applies immediately"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.asset_path_conflict"
+msgstr "Asset path \"{path}\" conflicts with another path on a case-insensitive filesystem."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Assets"
+msgstr "Assets"
+
+#: src/admin/pages/account.tsx
+msgid "At least 12 characters."
+msgstr "At least 12 characters."
+
+#: src/admin/pages/setup.tsx
+msgid "At least 12 characters. This is the only account."
+msgstr "At least 12 characters. This is the only account."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_entries"
+msgstr "At most {max} entries."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_rows"
+msgstr "At most {max} rows."
+
+#: src/admin/pages/setup.tsx
+msgid "Back"
+msgstr "Back"
+
+#: src/admin/app.tsx
+msgid "Back to content"
+msgstr "Back to content"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Background jobs waiting"
+msgstr "Background jobs waiting"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Backup and export"
+msgstr "Backup and export"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.enabled_body_invalid"
+msgstr "Body must be {\"enabled\": true | false}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.email.body_invalid"
+msgstr "Body must be {\"fromAddress\"?: string | null, \"resendApiKey\"?: string | null}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_body_invalid"
+msgstr "Body must be {\"values\": { … }}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secrets_body_invalid"
+msgstr "Body must be a JSON object of secret values."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_body_invalid"
+msgstr "Body must be a JSON object of settings."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.action_ids_missing"
+msgstr "Body must carry the row ids to act on."
+
+#: src/admin/components/ui/breadcrumb.tsx
+msgid "breadcrumb"
+msgstr "breadcrumb"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Building…"
+msgstr "Building…"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
+msgstr "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cache"
+msgstr "Cache"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cache purge token"
+msgstr "Cache purge token"
+
+#: src/admin/form/controls.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/admin/pages/account.tsx
+msgid "Change password"
+msgstr "Change password"
+
+#: src/admin/pages/account.tsx
+msgid "Changed"
+msgstr "Changed"
+
+#: src/admin/components/shell.tsx
+msgid "Changes reach visitors within {within}"
+msgstr "Changes reach visitors within {within}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Changing anything else in the source tree"
+msgstr "Changing anything else in the source tree"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_endpoint"
+msgstr "Changing the default locale rewrites every URL. Use POST /_mallok/api/settings/default-locale."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Changing the theme takes a deploy"
+msgstr "Changing the theme takes a deploy"
+
+#: src/admin/pages/account.tsx
+msgid "Changing…"
+msgstr "Changing…"
+
+#: src/admin/components/media-library.tsx
+msgid "checking"
+msgstr "checking"
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-email.tsx
+msgid "Checking…"
+msgstr "Checking…"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose a file"
+msgstr "Choose a file"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Choose a language…"
+msgstr "Choose a language…"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose an image"
+msgstr "Choose an image"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose files, or drop them here"
+msgstr "Choose files, or drop them here"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.currency"
+msgstr "Choose one of the listed currencies."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.choice"
+msgstr "Choose one of the listed values."
+
+#: src/admin/form/types.ts
+msgid "Choose one of the listed values."
+msgstr "Choose one of the listed values."
+
+#: src/admin/form/controls.tsx
+msgid "Choose…"
+msgstr "Choose…"
+
+#: src/admin/form/controls.tsx
+msgid "Clear"
+msgstr "Clear"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clear cached pages"
+msgstr "Clear cached pages"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Clear filters"
+msgstr "Clear filters"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cleared the fragment cache."
+msgstr "Cleared the fragment cache."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cleared the page cache."
+msgstr "Cleared the page cache."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clearing caches"
+msgstr "Clearing caches"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "clearing the fragment cache"
+msgstr "clearing the fragment cache"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clearing…"
+msgstr "Clearing…"
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
+msgid "Client JavaScript"
+msgstr "Client JavaScript"
+
+#: src/admin/components/ui/dialog.tsx
+#: src/admin/components/ui/sheet.tsx
+msgid "Close"
+msgstr "Close"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_failed"
+msgstr "Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. Check that the purge token is still valid and may purge this zone. {detail}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_limited"
+msgstr "Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. Cloudflare is limiting purge requests for this account; pages expire on their own meanwhile. {detail}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_refused"
+msgstr "Cloudflare did not purge the cache{status, select, none {} other { (HTTP {status})}}. The purge token was refused. It needs Zone → Cache Purge → Purge on this zone — not Cache Rules, which purges nothing — and CF_ZONE_ID must be this zone's id. {detail}"
+
+#: src/admin/components/account-menu.tsx
+msgid "Colour scheme"
+msgstr "Colour scheme"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Configured"
+msgstr "Configured"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Content"
+msgstr "Content"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Content items"
+msgstr "Content items"
+
+#: src/admin/components/content-language.tsx
+#: src/admin/pages/editor.tsx
+msgid "Content language"
+msgstr "Content language"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Content types"
+msgstr "Content types"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Content: create, edit, publish, delete"
+msgstr "Content: create, edit, publish, delete"
+
+#: src/admin/pages/setup.tsx
+msgid "Continue"
+msgstr "Continue"
+
+#: src/admin/components/media-library.tsx
+msgid "converting"
+msgstr "converting"
+
+#: src/admin/pages/account.tsx
+msgid "Copy"
+msgstr "Copy"
+
+#: src/admin/pages/account.tsx
+msgid "Could not change the password."
+msgstr "Could not change the password."
+
+#: src/admin/pages/plugins.tsx
+msgid "Could not change."
+msgstr "Could not change."
+
+#: src/admin/pages/account.tsx
+msgid "Could not create."
+msgstr "Could not create."
+
+#: src/admin/components/media-library.tsx
+#: src/admin/components/record-editor.tsx
+msgid "Could not delete."
+msgstr "Could not delete."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.slug_underivable"
+msgstr "Could not derive a slug; provide one explicitly."
+
+#: src/admin/pages/content-list.tsx
+msgid "Could not load content."
+msgstr "Could not load content."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Could not load diagnostics."
+msgstr "Could not load diagnostics."
+
+#: src/admin/components/media-library.tsx
+msgid "Could not load media."
+msgstr "Could not load media."
+
+#: src/admin/pages/plugin-panel.tsx
+#: src/admin/pages/plugins.tsx
+msgid "Could not load plugins."
+msgstr "Could not load plugins."
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Could not load rows."
+msgstr "Could not load rows."
+
+#: src/admin/components/record-editor.tsx
+msgid "Could not load the record."
+msgstr "Could not load the record."
+
+#: src/admin/pages/account.tsx
+msgid "Could not load tokens."
+msgstr "Could not load tokens."
+
+#: src/admin/components/related-rows.tsx
+#: src/admin/pages/editor.tsx
+msgid "Could not load."
+msgstr "Could not load."
+
+#: src/admin/tokens.ts
+msgid "Could not revoke the token."
+msgstr "Could not revoke the token."
+
+#: src/admin/components/media-library.tsx
+#: src/admin/components/record-editor.tsx
+#: src/admin/pages/editor.tsx
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-appearance.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Could not save."
+msgstr "Could not save."
+
+#: src/admin/pages/setup.tsx
+msgid "Could not start setup."
+msgstr "Could not start setup."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Could not switch."
+msgstr "Could not switch."
+
+#: src/admin/pages/editor.tsx
+msgid "Create {slotLanguage}"
+msgstr "Create {slotLanguage}"
+
+#: src/admin/pages/setup.tsx
+msgid "Create the administrator"
+msgstr "Create the administrator"
+
+#: src/admin/pages/content-list.tsx
+msgid "Create the first page"
+msgstr "Create the first page"
+
+#: src/admin/pages/account.tsx
+msgid "Create token"
+msgstr "Create token"
+
+#: src/admin/pages/setup.tsx
+msgid "Creating…"
+msgstr "Creating…"
+
+#: src/admin/pages/account.tsx
+msgid "Current password"
+msgstr "Current password"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Custom domain"
+msgstr "Custom domain"
+
+#: src/admin/components/account-menu.tsx
+msgid "Dark"
+msgstr "Dark"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Database read and write quotas are shown in the Cloudflare dashboard, not here."
+msgstr "Database read and write quotas are shown in the Cloudflare dashboard, not here."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Default"
+msgstr "Default"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Default language is now {language}. {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+msgstr "Default language is now {language}. {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+
+#: src/admin/components/media-library.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: src/admin/components/record-editor.tsx
+msgid "Delete it"
+msgstr "Delete it"
+
+#: src/admin/components/media-library.tsx
+msgid "Delete permanently"
+msgstr "Delete permanently"
+
+#: src/admin/components/record-editor.tsx
+msgid "Delete…"
+msgstr "Delete…"
+
+#: src/admin/pages/editor.tsx
+msgid "derived from the title"
+msgstr "derived from the title"
+
+#: src/admin/components/media-library.tsx
+msgid "Describe the image"
+msgstr "Describe the image"
+
+#: src/admin/pages/editor.tsx
+msgid "Description"
+msgstr "Description"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Details"
+msgstr "Details"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Diagnostics"
+msgstr "Diagnostics"
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Displays the mobile sidebar."
+msgstr "Displays the mobile sidebar."
+
+#: src/admin/pages/setup.tsx
+msgid "Domain"
+msgstr "Domain"
+
+#: src/admin/components/media-library.tsx
+msgid "done"
+msgstr "done"
+
+#: src/admin/pages/account.tsx
+msgid "Done"
+msgstr "Done"
+
+#: src/admin/components/content-status.tsx
+msgid "Draft"
+msgstr "Draft"
+
+#: src/admin/components/media-library.tsx
+msgid "Drop to upload"
+msgstr "Drop to upload"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Each further language can have its own tagline. What you type is kept while you switch; Save stores them all."
+msgstr "Each further language can have its own tagline. What you type is kept while you switch; Save stores them all."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Edge cache"
+msgstr "Edge cache"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Edge cache lifetime (seconds)"
+msgstr "Edge cache lifetime (seconds)"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/components/shell.tsx
+msgid "Edit"
+msgstr "Edit"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Edit {rowName}"
+msgstr "Edit {rowName}"
+
+#: src/admin/components/record-editor.tsx
+msgid "Edit: {panelLabel}"
+msgstr "Edit: {panelLabel}"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/login.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/setup.tsx
+msgid "Email"
+msgstr "Email"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Email (Resend)"
+msgstr "Email (Resend)"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.color"
+msgstr "Enter a colour as #rrggbb."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.date"
+msgstr "Enter a date as YYYY-MM-DD."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.number"
+msgstr "Enter a number."
+
+#: src/admin/form/types.ts
+msgid "Enter a number."
+msgstr "Enter a number."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount"
+msgstr "Enter an amount."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
+msgstr "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
+
+#: src/admin/pages/setup.tsx
+msgid "Everything the wizard set can be changed later in Settings."
+msgstr "Everything the wizard set can be changed later in Settings."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Export everything"
+msgstr "Export everything"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Failed background jobs"
+msgstr "Failed background jobs"
+
+#: src/admin/pages/editor.tsx
+msgid "Fields"
+msgstr "Fields"
+
+#: src/admin/pages/editor.tsx
+msgid "Fields, Markdown and preview"
+msgstr "Fields, Markdown and preview"
+
+#: src/admin/pages/media.tsx
+msgid "Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate."
+msgstr "Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate."
+
+#: src/admin/pages/setup.tsx
+msgid "Finish setup"
+msgstr "Finish setup"
+
+#: src/admin/pages/setup.tsx
+msgid "For a language not listed, comma separated. Languages can also be added later."
+msgstr "For a language not listed, comma separated. Languages can also be added later."
+
+#: src/admin/pages/settings-email.tsx
+msgid "From address"
+msgstr "From address"
+
+#: src/admin/pages/plugin-panel.tsx
+msgid "From the {pluginName} plugin."
+msgstr "From the {pluginName} plugin."
+
+#: src/admin/pages/editor.tsx
+msgid "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
+msgstr "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.title_missing"
+msgstr "Front matter must include a non-empty \"title\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.ui_locale_invalid"
+msgstr "Give the interface language as a language tag such as \"zh-CN\", or null."
+
+#: src/admin/components/media-library.tsx
+msgid "hashing"
+msgstr "hashing"
+
+#: src/admin/pages/editor.tsx
+msgid "Hide fields"
+msgstr "Hide fields"
+
+#: src/admin/pages/plugins.tsx
+msgid "Hooks"
+msgstr "Hooks"
+
+#: src/admin/components/media-library.tsx
+msgid "Images are converted to WebP in your browser and uploaded at {widths} pixels wide. SVG is not accepted — it can carry script."
+msgstr "Images are converted to WebP in your browser and uploaded at {widths} pixels wide. SVG is not accepted — it can carry script."
+
+#: src/admin/components/media-library.tsx
+msgid "In use. Remove the references first."
+msgstr "In use. Remove the references first."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Inactive — a workers.dev URL is a preview, not a site"
+msgstr "Inactive — a workers.dev URL is a preview, not a site"
+
+#: src/admin/pages/setup.tsx
+msgid "Install"
+msgstr "Install"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Installing, updating or removing a plugin"
+msgstr "Installing, updating or removing a plugin"
+
+#: src/admin/pages/setup.tsx
+msgid "Installing…"
+msgstr "Installing…"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Instant"
+msgstr "Instant"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/language-picker.tsx
+msgid "Interface language"
+msgstr "Interface language"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.internal_error"
+msgstr "Internal error."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.asset_path_invalid"
+msgstr "Invalid asset path \"{path}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.invalid_credentials"
+msgstr "Invalid email or password."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_invalid_at"
+msgstr "Invalid settings at \"{field}\": {reason}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_invalid"
+msgstr "Invalid settings: {reason}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.invalid"
+msgstr "Invalid settings."
+
+#: src/admin/pages/setup.tsx
+msgid "Its email and password can be changed later in Account."
+msgstr "Its email and password can be changed later in Account."
+
+#: src/admin/pages/setup.tsx
+msgid "Its pages have no URL prefix; every other language's do."
+msgstr "Its pages have no URL prefix; every other language's do."
+
+#: src/admin/pages/setup.tsx
+msgid "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
+msgstr "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
+
+#: src/admin/pages/plugin-panel.tsx
+msgid "Its settings"
+msgstr "Its settings"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
+msgstr "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
+
+#: src/admin/components/record-editor.tsx
+msgid "Keep it"
+msgstr "Keep it"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Key set, no site sender — only plugins with their own send"
+msgstr "Key set, no site sender — only plugins with their own send"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.kind_disabled"
+msgstr "Kind \"{kind}\" is not enabled on this site."
+
+#: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
+msgid "Language code"
+msgstr "Language code"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Language to add"
+msgstr "Language to add"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Languages"
+msgstr "Languages"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Last failed purge"
+msgstr "Last failed purge"
+
+#: src/admin/tokens.ts
+msgid "Last used {lastUsed}"
+msgstr "Last used {lastUsed}"
+
+#: src/admin/components/account-menu.tsx
+msgid "Light"
+msgstr "Light"
+
+#: src/admin/components/media-library.tsx
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/components/record-editor.tsx
+#: src/admin/components/related-rows.tsx
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
+#: src/admin/pages/plugin-panel.tsx
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/setup.tsx
+msgid "Loading…"
+msgstr "Loading…"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.locale_disabled"
+msgstr "Locale \"{locale}\" is not enabled on this site."
+
+#: src/admin/pages/setup.tsx
+msgid "Main language"
+msgstr "Main language"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Make {language} the default language?\n"
+"\n"
+"Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
+msgstr "Make {language} the default language?\n"
+"\n"
+"Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Make default"
+msgstr "Make default"
+
+#: src/admin/pages/editor.tsx
+msgid "Markdown"
+msgstr "Markdown"
+
+#: src/admin/components/markdown-editor.tsx
+msgid "Markdown source"
+msgstr "Markdown source"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/media.tsx
+msgid "Media"
+msgstr "Media"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Media domain"
+msgstr "Media domain"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Media files"
+msgstr "Media files"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.too_large"
+msgstr "Media objects are limited to {max} bytes."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.method_not_allowed"
+msgstr "Method not allowed."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.csrf_invalid"
+msgstr "Missing or invalid CSRF token."
+
+#: src/admin/components/ui/breadcrumb.tsx
+msgid "More"
+msgstr "More"
+
+#: src/admin/pages/setup.tsx
+msgid "More language codes"
+msgstr "More language codes"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.rows_list"
+msgstr "Must be a list of rows."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.text_list"
+msgstr "Must be a list of text values."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.pairs"
+msgstr "Must be a set of name and value pairs."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.min"
+msgstr "Must be at least {min}."
+
+#: src/admin/form/types.ts
+msgid "Must be at least {min}."
+msgstr "Must be at least {min}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_length"
+msgstr "Must be at most {max} characters."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max"
+msgstr "Must be at most {max}."
+
+#: src/admin/form/types.ts
+msgid "Must be at most {max}."
+msgstr "Must be at most {max}."
+
+#: src/admin/pages/settings-email.tsx
+msgid "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
+msgstr "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.text"
+msgstr "Must be text."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.boolean"
+msgstr "Must be yes or no."
+
+#: src/admin/form/controls.tsx
+msgid "Name"
+msgstr "Name"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_missing"
+msgstr "Name a starter to install."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.related_parent_missing"
+msgstr "Name the row with ?parent=<id>."
+
+#: src/admin/pages/setup.tsx
+msgid "Name your site"
+msgstr "Name your site"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Needs a rebuild and deploy"
+msgstr "Needs a rebuild and deploy"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Neither of these loses anything. Cached pages and fragments are both derived from your content and are rebuilt on the next request — the only cost is that the next visitor waits for a render."
+msgstr "Neither of these loses anything. Cached pages and fragments are both derived from your content and are rebuilt on the next request — the only cost is that the next visitor waits for a render."
+
+#: src/admin/tokens.ts
+msgid "Never used"
+msgstr "Never used"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "New"
+msgstr "New"
+
+#: src/admin/pages/content-list.tsx
+msgid "New {filteredKind}"
+msgstr "New {filteredKind}"
+
+#: src/admin/pages/content-list.tsx
+msgid "New content"
+msgstr "New content"
+
+#: src/admin/components/shell.tsx
+msgid "New item"
+msgstr "New item"
+
+#: src/admin/pages/account.tsx
+msgid "New password"
+msgstr "New password"
+
+#: src/admin/pages/account.tsx
+msgid "New token name"
+msgstr "New token name"
+
+#: src/admin/components/record-editor.tsx
+msgid "New: {panelLabel}"
+msgstr "New: {panelLabel}"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Next"
+msgstr "Next"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.attached_owner_missing"
+msgstr "No {kind} with that translation group exists."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
+msgstr "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
+
+#: src/admin/pages/setup.tsx
+msgid "No cache-purge token is configured, so edits reach visitors within a minute instead of immediately. This is a working configuration, not a broken one; Settings → Advanced says how to make publishing instant."
+msgstr "No cache-purge token is configured, so edits reach visitors within a minute instead of immediately. This is a working configuration, not a broken one; Settings → Advanced says how to make publishing instant."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
+msgstr "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No error was recorded."
+msgstr "No error was recorded."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No key — no email is sent"
+msgstr "No key — no email is sent"
+
+#: src/admin/pages/plugin-panel.tsx
+msgid "No plugin in this build has a list at this address."
+msgstr "No plugin in this build has a list at this address."
+
+#: src/admin/pages/plugins.tsx
+msgid "No plugins are compiled into this build."
+msgstr "No plugins are compiled into this build."
+
+#: src/admin/components/record-editor.tsx
+msgid "No rows yet."
+msgstr "No rows yet."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_unknown"
+msgstr "No starter named \"{starter}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.action_unknown"
+msgstr "No such panel action."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.panel_unknown"
+msgstr "No such panel."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.unknown"
+msgstr "No such plugin is compiled into this build."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_unknown"
+msgstr "No such record."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.records_panel_unknown"
+msgstr "No such records panel."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.related_unknown"
+msgstr "No such related table."
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
+msgid "None"
+msgstr "None"
+
+#: src/admin/components/related-rows.tsx
+msgid "None."
+msgstr "None."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Not bound"
+msgstr "Not bound"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Not configured — edits go live after the cache expires"
+msgstr "Not configured — edits go live after the cache expires"
+
+#: src/admin/app.tsx
+#: src/admin/components/shell.tsx
+#: src/admin/pages/plugin-panel.tsx
+msgid "Not found"
+msgstr "Not found"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.not_found"
+msgstr "Not found."
+
+#: src/admin/pages/content-list.tsx
+msgid "Not in theme"
+msgstr "Not in theme"
+
+#: src/admin/pages/editor.tsx
+msgid "Not saved yet"
+msgstr "Not saved yet"
+
+#: src/admin/components/media-library.tsx
+msgid "Nothing has been uploaded yet."
+msgstr "Nothing has been uploaded yet."
+
+#: src/admin/pages/content-list.tsx
+msgid "Nothing has been written in {language} yet."
+msgstr "Nothing has been written in {language} yet."
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Nothing here yet."
+msgstr "Nothing here yet."
+
+#: src/admin/pages/content-list.tsx
+msgid "Nothing in {language} matches these filters."
+msgstr "Nothing in {language} matches these filters."
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Nothing matches these filters."
+msgstr "Nothing matches these filters."
+
+#: src/admin/components/toast-host.tsx
+msgid "Notifications"
+msgstr "Notifications"
+
+#: src/admin/pages/plugins.tsx
+msgid "Off"
+msgstr "Off"
+
+#: src/admin/pages/plugins.tsx
+msgid "Official"
+msgstr "Official"
+
+#: src/admin/pages/plugins.tsx
+msgid "On"
+msgstr "On"
+
+#: src/admin/pages/settings-email.tsx
+msgid "One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+msgstr "One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+
+#: src/admin/pages/plugins.tsx
+msgid "Only at request time"
+msgstr "Only at request time"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_not_image"
+msgstr "Only images have variants."
+
+#: src/admin/components/related-rows.tsx
+msgid "Only the first rows are shown."
+msgstr "Only the first rows are shown."
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Open"
+msgstr "Open"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Open {id}"
+msgstr "Open {id}"
+
+#: src/admin/pages/setup.tsx
+msgid "Open the admin"
+msgstr "Open the admin"
+
+#: src/admin/pages/setup.tsx
+msgid "Other languages"
+msgstr "Other languages"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Pages it named may still be served from the cache until they expire."
+msgstr "Pages it named may still be served from the cache until they expire."
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Pagination"
+msgstr "Pagination"
+
+#: src/admin/pages/editor.tsx
+msgid "Pane shown"
+msgstr "Pane shown"
+
+#: src/admin/pages/account.tsx
+#: src/admin/pages/login.tsx
+#: src/admin/pages/setup.tsx
+msgid "Password"
+msgstr "Password"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.session_required_password"
+msgstr "Password changes require a browser session."
+
+#: src/admin/pages/account.tsx
+msgid "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Current guidance is {recommended}, but a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU budget, so the cost is capped."
+msgstr "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Current guidance is {recommended}, but a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU budget, so the cost is capped."
+
+#: src/admin/form/controls.tsx
+msgid "Paste the value"
+msgstr "Paste the value"
+
+#: src/admin/pages/content-list.tsx
+msgid "Path"
+msgstr "Path"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Plugin on/off switches, settings and secrets"
+msgstr "Plugin on/off switches, settings and secrets"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.state_missing"
+msgstr "Plugin state row is missing."
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/plugins.tsx
+msgid "Plugins"
+msgstr "Plugins"
+
+#: src/admin/pages/plugins.tsx
+msgid "Plugins ship with your source, not through this page"
+msgstr "Plugins ship with your source, not through this page"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
+msgstr "Prefix the default language too (<0>/{prefix}/…</0>)"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.locale_prefix_endpoint"
+msgstr "Prefixing the default locale rewrites every URL. Use POST /_mallok/api/settings/locale-prefix."
+
+#: src/admin/pages/editor.tsx
+msgid "Preview"
+msgstr "Preview"
+
+#: src/admin/pages/editor.tsx
+msgid "Preview failed: {reason}"
+msgstr "Preview failed: {reason}"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Previous"
+msgstr "Previous"
+
+#: src/admin/pages/setup.tsx
+msgid "Printed once by <0>mallok create</0>. It proves this site is yours: without it, whoever found the address first could claim it. It stops working the moment setup succeeds."
+msgstr "Printed once by <0>mallok create</0>. It proves this site is yours: without it, whoever found the address first could claim it. It stops working the moment setup succeeds."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.locale_prefix_confirm"
+msgstr "Provide \"enabled\": true or false, and \"confirm\": true; this rewrites every URL."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.hashes_missing"
+msgstr "Provide a list of sha256 hashes."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.tokens.incomplete"
+msgstr "Provide a name and at least one scope."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.site_incomplete"
+msgstr "Provide a site name, a default language and a language list."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.alt_invalid"
+msgstr "Provide an \"alt\" string or null."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.credentials_incomplete"
+msgstr "Provide an email and a password of at least {min} characters."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_confirm"
+msgstr "Provide the target locale and \"confirm\": true; this rewrites every URL."
+
+#: src/admin/pages/editor.tsx
+msgid "Publish"
+msgstr "Publish"
+
+#: src/admin/components/content-status.tsx
+#: src/admin/pages/settings-advanced.tsx
+msgid "Published"
+msgstr "Published"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Rebuild all pages"
+msgstr "Rebuild all pages"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_not_removable"
+msgstr "Records of this panel cannot be deleted here."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Redirects"
+msgstr "Redirects"
+
+#: src/admin/form/controls.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: src/admin/components/record-editor.tsx
+msgid "Remove {item} {number}"
+msgstr "Remove {item} {number}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Render pipeline"
+msgstr "Render pipeline"
+
+#: src/admin/pages/editor.tsx
+msgid "Rendered by the same code the site runs — {previewPath}"
+msgstr "Rendered by the same code the site runs — {previewPath}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Rendered fragments"
+msgstr "Rendered fragments"
+
+#: src/admin/form/controls.tsx
+msgid "Replace"
+msgstr "Replace"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Resend API key"
+msgstr "Resend API key"
+
+#: src/admin/pages/account.tsx
+msgid "Revoke"
+msgstr "Revoke"
+
+#: src/admin/tokens.ts
+msgid "Revoked {revoked} · last used {lastUsed}"
+msgstr "Revoked {revoked} · last used {lastUsed}"
+
+#: src/admin/tokens.ts
+msgid "Revoked {revoked} · never used"
+msgstr "Revoked {revoked} · never used"
+
+#: src/admin/components/account-menu.tsx
+msgid "Same as the system"
+msgstr "Same as the system"
+
+#: src/admin/components/media-library.tsx
+#: src/admin/components/record-editor.tsx
+#: src/admin/form/controls.tsx
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Save"
+msgstr "Save"
+
+#: src/admin/pages/editor.tsx
+msgid "Save draft"
+msgstr "Save draft"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Save options"
+msgstr "Save options"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Save sender"
+msgstr "Save sender"
+
+#: src/admin/pages/plugins.tsx
+msgid "Save settings"
+msgstr "Save settings"
+
+#: src/admin/components/saved-note.tsx
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-email.tsx
+msgid "Saved"
+msgstr "Saved"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.saved_unrendered"
+msgstr "Saved as a draft without rendering: this item's body is over {limitKb} KB, long enough that rendering it risks exceeding the Free plan's CPU limit. Nothing was lost — shorten it and save again to publish."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
+msgstr "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
+
+#: src/admin/components/record-editor.tsx
+#: src/admin/pages/editor.tsx
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-appearance.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
+msgid "Saving…"
+msgstr "Saving…"
+
+#: src/admin/components/content-status.tsx
+msgid "Scheduled"
+msgstr "Scheduled"
+
+#: src/admin/pages/account.tsx
+msgid "Scopes"
+msgstr "Scopes"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Search"
+msgstr "Search"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_not_string"
+msgstr "Secret \"{name}\" must be a string or null."
+
+#: src/admin/pages/plugins.tsx
+msgid "Secrets"
+msgstr "Secrets"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_no_latin"
+msgstr "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
+
+#: src/admin/slug.ts
+msgid "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
+msgstr "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_no_latin_use"
+msgstr "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters. Use \"{use}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_not_canonical"
+msgstr "Segment {position} (\"{segment}\") must use lowercase Latin letters, digits and single dashes."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_not_canonical_use"
+msgstr "Segment {position} (\"{segment}\") must use lowercase Latin letters, digits and single dashes. Use \"{use}\"."
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Select"
+msgstr "Select"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Select {id}"
+msgstr "Select {id}"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Select at least one row first."
+msgstr "Select at least one row first."
+
+#: src/admin/pages/settings-email.tsx
+msgid "Sender"
+msgstr "Sender"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Serve \"{prefix}\" at the root again?\n"
+"\n"
+"Every URL of the default language moves (/{prefix}/about becomes /about) and each old URL, lists, tags and /{prefix} included, redirects to its new one. The navigation's links to this site are rewritten to match."
+msgstr "Serve \"{prefix}\" at the root again?\n"
+"\n"
+"Every URL of the default language moves (/{prefix}/about becomes /about) and each old URL, lists, tags and /{prefix} included, redirects to its new one. The navigation's links to this site are rewritten to match."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Serve \"{prefix}\" under /{prefix}/ too?\n"
+"\n"
+"Every URL of the default language moves (/about becomes /{prefix}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /{prefix}."
+msgstr "Serve \"{prefix}\" under /{prefix}/ too?\n"
+"\n"
+"Every URL of the default language moves (/about becomes /{prefix}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /{prefix}."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Served through the Worker"
+msgstr "Served through the Worker"
+
+#: src/admin/pages/setup.tsx
+msgid "Serving <0>{customDomain}</0>. The edge cache is active."
+msgstr "Serving <0>{customDomain}</0>. The edge cache is active."
+
+#: src/admin/form/controls.tsx
+msgid "Set"
+msgstr "Set"
+
+#: src/admin/pages/setup.tsx
+msgid "Set up your site"
+msgstr "Set up your site"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/plugins.tsx
+msgid "Settings"
+msgstr "Settings"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "setup"
+msgstr "setup"
+
+#: src/admin/pages/setup.tsx
+msgid "Setup is finished"
+msgstr "Setup is finished"
+
+#: src/admin/pages/setup.tsx
+msgid "Setup key"
+msgstr "Setup key"
+
+#: src/admin/pages/editor.tsx
+msgid "Show fields"
+msgstr "Show fields"
+
+#: src/admin/components/password-input.tsx
+msgid "Show password"
+msgstr "Show password"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Shown by most themes under the site name, and as the home page description."
+msgstr "Shown by most themes under the site name, and as the home page description."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Shown on pages in {taglineLanguage}. Empty uses the tagline above."
+msgstr "Shown on pages in {taglineLanguage}. Empty uses the tagline above."
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Sidebar"
+msgstr "Sidebar"
+
+#: src/admin/pages/login.tsx
+msgid "Sign in"
+msgstr "Sign in"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.sign_in_required"
+msgstr "Sign in as the administrator to continue."
+
+#: src/admin/components/account-menu.tsx
+msgid "Sign out"
+msgstr "Sign out"
+
+#: src/admin/pages/login.tsx
+msgid "Sign-in failed."
+msgstr "Sign-in failed."
+
+#: src/admin/pages/login.tsx
+msgid "Signing in…"
+msgstr "Signing in…"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Site"
+msgstr "Site"
+
+#: src/admin/pages/setup.tsx
+msgid "Site and languages"
+msgstr "Site and languages"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.not_initialized"
+msgstr "Site is not initialized."
+
+#: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
+msgid "Site name"
+msgstr "Site name"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Site settings, languages, navigation"
+msgstr "Site settings, languages, navigation"
+
+#: src/admin/pages/setup.tsx
+msgid "Skip"
+msgstr "Skip"
+
+#: src/admin/pages/editor.tsx
+msgid "Slug"
+msgstr "Slug"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.fields_invalid"
+msgstr "Some fields need attention."
+
+#: src/admin/pages/setup.tsx
+msgid "Start with example content?"
+msgstr "Start with example content?"
+
+#: src/admin/pages/setup.tsx
+msgid "Starting content"
+msgstr "Starting content"
+
+#: src/admin/pages/content-list.tsx
+msgid "Status"
+msgstr "Status"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Storage"
+msgstr "Storage"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Stored encrypted. It is never shown again, here or anywhere else."
+msgstr "Stored encrypted. It is never shown again, here or anywhere else."
+
+#: src/admin/pages/plugins.tsx
+msgid "Stored encrypted. They are never shown again, here or anywhere else."
+msgstr "Stored encrypted. They are never shown again, here or anywhere else."
+
+#: src/admin/media.ts
+msgid "SVG is not accepted: it can carry script. Export a PNG or WebP instead."
+msgstr "SVG is not accepted: it can carry script. Export a PNG or WebP instead."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Switching to a different theme"
+msgstr "Switching to a different theme"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Tagline"
+msgstr "Tagline"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Tagline in {taglineLanguage}"
+msgstr "Tagline in {taglineLanguage}"
+
+#: src/admin/pages/plugins.tsx
+msgid "Technical details"
+msgstr "Technical details"
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-email.tsx
+msgid "Test"
+msgstr "Test"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/setup.tsx
+msgid "That did not work."
+msgstr "That did not work."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_wrong"
+msgstr "That setup key is not correct. It was printed once, by `mallok create`."
+
+#: src/admin/tokens.ts
+msgid "That token was already revoked."
+msgstr "That token was already revoked."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "the {plugin} plugin"
+msgstr "the {plugin} plugin"
+
+#: src/admin/pages/plugin-panel.tsx
+msgid "The {pluginName} plugin is off, so nothing new arrives here. What it already stored is listed below."
+msgstr "The {pluginName} plugin is off, so nothing new arrives here. What it already stored is listed below."
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/components/record-editor.tsx
+msgid "The action failed."
+msgstr "The action failed."
+
+#: src/admin/pages/content-list.tsx
+msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
+msgstr "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
+
+#: src/admin/pages/settings-site.tsx
+msgid "The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly."
+msgstr "The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly."
+
+#: src/admin/pages/setup.tsx
+msgid "The administrator account is created."
+msgstr "The administrator account is created."
+
+#: src/admin/pages/setup.tsx
+msgid "The administrator account, <0>{email}</0>, is created."
+msgstr "The administrator account, <0>{email}</0>, is created."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount_high"
+msgstr "The amount is too high."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount_low"
+msgstr "The amount is too low."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.hash_mismatch"
+msgstr "The body does not match the sha256 in the path."
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-email.tsx
+msgid "The check failed."
+msgstr "The check failed."
+
+#: src/admin/pages/account.tsx
+msgid "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
+msgstr "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.current_password_wrong"
+msgstr "The current password is not correct."
+
+#: src/admin/pages/plugins.tsx
+msgid "The current theme has no layout for {layouts}. Those pages are shown in a plain built-in layout, without the site’s design. Adding the layouts to the theme needs a new build and deploy."
+msgstr "The current theme has no layout for {layouts}. Those pages are shown in a plain built-in layout, without the site’s design. Adding the layouts to the theme needs a new build and deploy."
+
+#: src/admin/pages/settings-site.tsx
+msgid "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
+msgstr "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_unlisted"
+msgstr "The enabled locales must include the default locale \"{locale}\"."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "The export failed."
+msgstr "The export failed."
+
+#: src/admin/components/account-menu.tsx
+msgid "The language applies in this browser, but your account could not remember it."
+msgstr "The language applies in this browser, but your account could not remember it."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.default_locale_unlisted"
+msgstr "The language list must include the default language."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.id_invalid"
+msgstr "The media id must be a sha256 hex digest."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.password_short"
+msgstr "The new password must be at least {min} characters."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
+msgstr "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.body_empty"
+msgstr "The request body is empty."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.email.sender_invalid"
+msgstr "The sender must be an address such as \"hello@example.com\" or \"Acme <hello@example.com>\"."
+
+#: src/admin/api.ts
+msgid "The server could not be reached. Nothing was saved."
+msgstr "The server could not be reached. Nothing was saved."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_used"
+msgstr "The setup key has already been used. Deploy a new key with `wrangler secret put MALLOK_SETUP_KEY` if you need to run setup again."
+
+#: src/admin/pages/setup.tsx
+msgid "The site is empty and waiting for its first page."
+msgstr "The site is empty and waiting for its first page."
+
+#: src/admin/pages/login.tsx
+msgid "The site's admin"
+msgstr "The site's admin"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.no_latin"
+msgstr "The slug \"{slug}\" has no Latin letters or digits to build a folder name from. Provide one written in Latin characters."
+
+#: src/admin/slug.ts
+msgid "The slug became \"{normalized}\", because a slug is also a folder name in an export."
+msgstr "The slug became \"{normalized}\", because a slug is also a folder name in an export."
+
+#: src/admin/slug.ts
+msgid "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
+msgstr "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_many_segments"
+msgstr "The slug has {count} segments; at most {max} are allowed."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_many_segments_use"
+msgstr "The slug has {count} segments; at most {max} are allowed. Use \"{use}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_segment"
+msgstr "The slug has an empty segment: it starts or ends with \"/\", or has \"//\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_segment_use"
+msgstr "The slug has an empty segment: it starts or ends with \"/\", or has \"//\". Use \"{use}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty"
+msgstr "The slug is empty."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_use"
+msgstr "The slug is empty. Use \"{use}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_long"
+msgstr "The slug is longer than {max} characters."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.not_canonical_use"
+msgstr "The slug must use lowercase Latin letters, digits and single dashes. Use \"{use}\"."
+
+#: src/admin/pages/setup.tsx
+msgid "The starter is installed. Its pages can be edited or deleted like any other."
+msgstr "The starter is installed. Its pages can be edited or deleted like any other."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_prefix_clash"
+msgstr "The starter prefixes the default locale, but \"{from}\" would move to \"{to}\", which another item already uses."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.export.unsafe"
+msgstr "The stored content cannot be exported safely: {reason}."
+
+#: src/admin/components/media-library.tsx
+#: src/admin/media.ts
+msgid "The upload failed."
+msgstr "The upload failed."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Theme"
+msgstr "Theme"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Theme options"
+msgstr "Theme options"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Theme options this theme declares"
+msgstr "Theme options this theme declares"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
+msgstr "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
+
+#: src/admin/app.tsx
+msgid "There is no page at this address in the admin."
+msgstr "There is no page at this address in the admin."
+
+#: src/admin/pages/settings-site.tsx
+msgid "These are stored the moment you save — no rebuild, no deploy."
+msgstr "These are stored the moment you save — no rebuild, no deploy."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "These values apply to every language unless a language overrides them below."
+msgstr "These values apply to every language unless a language overrides them below."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.required"
+msgstr "This field is required."
+
+#: src/admin/form/types.ts
+msgid "This field is required."
+msgstr "This field is required."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.in_use"
+msgstr "This file is in use."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.in_use_count"
+msgstr "This file is used by {count} item(s). Remove those references first."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.operation_scope"
+msgstr "This operation needs the \"{scope}\" scope."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.attached_to_missing"
+msgstr "This panel belongs to a content item: send its translation group as \"attachedTo\"."
+
+#: src/admin/pages/plugins.tsx
+msgid "This plugin runs on <0>every visitor request</0>, including ones the cache would otherwise answer for free."
+msgstr "This plugin runs on <0>every visitor request</0>, including ones the cache would otherwise answer for free."
+
+#: src/admin/pages/setup.tsx
+msgid "This site has already been set up. Everything the wizard did can be changed in <0>Settings</0>."
+msgstr "This site has already been set up. Everything the wizard did can be changed in <0>Settings</0>."
+
+#: src/admin/pages/content-list.tsx
+msgid "This site has no content yet."
+msgstr "This site has no content yet."
+
+#: src/admin/pages/setup.tsx
+msgid "This site has no custom domain yet, so it is running on a <0>.workers.dev</0> address. That address is a preview: <1>Cloudflare's edge cache does not apply to it</1>, so pages are rendered on every request and will feel slower than the real site."
+msgstr "This site has no custom domain yet, so it is running on a <0>.workers.dev</0> address. That address is a preview: <1>Cloudflare's edge cache does not apply to it</1>, so pages are rendered on every request and will feel slower than the real site."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_unconfigured"
+msgstr "This site has no setup key, so it will not create an administrator. Run `mallok create .` in the project directory to finish provisioning it, or `mallok setup-key` to issue one."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.token_scope"
+msgstr "This token lacks the \"{scope}\" scope."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.translation_exists"
+msgstr "This translation group already has an item in {locale}: the {kind} \"{slug}\" at {path} (id {id}). Edit that item instead."
+
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
+msgid "Title"
+msgstr "Title"
+
+#: src/admin/pages/plugins.tsx
+msgid "To add one, put its folder in <0>src/plugins/</0>, list it in <1>src/plugins/index.ts</1>, then build and deploy. Removing one is the reverse. There is no upload here because there is no way to make an upload take effect without a new build."
+msgstr "To add one, put its folder in <0>src/plugins/</0>, list it in <1>src/plugins/index.ts</1>, then build and deploy. Removing one is the reverse. There is no upload here because there is no way to make an upload take effect without a new build."
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Toggle Sidebar"
+msgstr "Toggle Sidebar"
+
+#: src/admin/pages/setup.tsx
+msgid "Translated by the theme"
+msgstr "Translated by the theme"
+
+#: src/admin/pages/editor.tsx
+msgid "Translations"
+msgstr "Translations"
+
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
+msgid "Type"
+msgstr "Type"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.unauthorized"
+msgstr "Unauthorized."
+
+#: src/admin/pages/editor.tsx
+msgid "unknown error"
+msgstr "unknown error"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.kind_filter_unknown"
+msgstr "Unknown kind filter."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.tokens.scope_unknown"
+msgstr "Unknown scope: {scopes}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_unknown"
+msgstr "Unknown secret \"{name}\"."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.status_filter_unknown"
+msgstr "Unknown status filter."
+
+#: src/admin/media.ts
+msgid "unknown type"
+msgstr "unknown type"
+
+#: src/admin/pages/editor.tsx
+msgid "Unsaved"
+msgstr "Unsaved"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.type_unsupported"
+msgstr "Unsupported file type. Accepted: jpg, png, gif, webp, avif, pdf, xlsx, docx, zip."
+
+#: src/admin/components/media-library.tsx
+msgid "unused"
+msgstr "unused"
+
+#: src/admin/pages/content-list.tsx
+msgid "Updated"
+msgstr "Updated"
+
+#: src/admin/pages/editor.tsx
+msgid "Updated <0>{updated}</0>"
+msgstr "Updated <0>{updated}</0>"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Upgrading Mallok itself"
+msgstr "Upgrading Mallok itself"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.original_missing"
+msgstr "Upload the original before its variants."
+
+#: src/admin/components/media-library.tsx
+msgid "uploading"
+msgstr "uploading"
+
+#: src/admin/components/media-library.tsx
+msgid "Use"
+msgstr "Use"
+
+#: src/admin/pages/account.tsx
+msgid "Use a long, unique password. For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
+msgstr "Use a long, unique password. For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
+
+#: src/admin/pages/settings-email.tsx
+msgid "Use an address such as hello@example.com or Acme <hello@example.com>."
+msgstr "Use an address such as hello@example.com or Acme <hello@example.com>."
+
+#. placeholder {0}: item.refCount
+#: src/admin/components/media-library.tsx
+msgid "used {0}×"
+msgstr "used {0}×"
+
+#: src/admin/pages/editor.tsx
+msgid "Used as the meta description and in listings. Derived from the body when empty."
+msgstr "Used as the meta description and in listings. Derived from the body when empty."
+
+#: src/admin/form/controls.tsx
+msgid "Value"
+msgstr "Value"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Values you change here apply only to {editingLanguage}. Anything you leave alone follows the {defaultLanguage} value."
+msgstr "Values you change here apply only to {editingLanguage}. Anything you leave alone follows the {defaultLanguage} value."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_width"
+msgstr "Variant width must be 1..{max}."
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_not_webp"
+msgstr "Variants must be WebP."
+
+#: src/admin/pages/editor.tsx
+msgid "View on site"
+msgstr "View on site"
+
+#: src/admin/components/shell.tsx
+msgid "View site"
+msgstr "View site"
+
+#: src/admin/pages/setup.tsx
+msgid "View the site"
+msgstr "View the site"
+
+#: src/admin/components/saved-note.tsx
+msgid "Visitors see it now."
+msgstr "Visitors see it now."
+
+#: src/admin/components/saved-note.tsx
+msgid "Visitors see it within {within}."
+msgstr "Visitors see it within {within}."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "What is instant, and what needs a deploy"
+msgstr "What is instant, and what needs a deploy"
+
+#: src/admin/pages/plugins.tsx
+msgid "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
+msgstr "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
+
+#: src/admin/pages/settings-site.tsx
+msgid "Where images are served from, such as https://media.example.com. Empty serves them from this site."
+msgstr "Where images are served from, such as https://media.example.com. Empty serves them from this site."
+
+#: src/admin/components/shell.tsx
+msgid "Why?"
+msgstr "Why?"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."
+msgstr "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."
+msgstr "Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."
+
+#: src/admin/components/record-editor.tsx
+msgid "Working…"
+msgstr "Working…"
+
+#: src/admin/pages/editor.tsx
+msgid "Write"
+msgstr "Write"
+
+#: src/admin/pages/setup.tsx
+msgid "written for the \"{starterTheme}\" theme, but this build runs \"{activeTheme}\", so some pages will use the plain page layout"
+msgstr "written for the \"{starterTheme}\" theme, but this build runs \"{activeTheme}\", so some pages will use the plain page layout"
+
+#: src/admin/pages/plugins.tsx
+msgid "Yes"
+msgstr "Yes"
+
+#: src/admin/pages/setup.tsx
+msgid "Your domain"
+msgstr "Your domain"
+
+#: src/admin/pages/setup.tsx
+msgid "Your site is ready"
+msgstr "Your site is ready"

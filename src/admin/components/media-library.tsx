@@ -6,6 +6,9 @@
  * stores URLs cannot be exported and moved (docs/CONTENT_FORMAT.md §4).
  */
 
+import { i18n, type MessageDescriptor } from '@lingui/core';
+import { msg, plural } from '@lingui/core/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { Upload } from 'lucide-react';
@@ -20,10 +23,12 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { ApiError, api } from '../api.js';
+import { formatNumber } from '../format.js';
 import { relativePathFor, type UploadProgress, uploadFile } from '../media.js';
 import { messageOf, notify } from '../notice.js';
 import { keys, useSettings, useTheme } from '../queries.js';
 import type { MediaItem } from '../types.js';
+import { EmptyState } from './empty-state.js';
 
 export interface MediaLibraryProps {
   /** Restricts the list; a picker for an image field passes 'image'. */
@@ -33,7 +38,18 @@ export interface MediaLibraryProps {
   readonly onClose?: () => void;
 }
 
+/** What each stage of an upload is called while it runs. */
+const STAGES: Readonly<Record<UploadProgress['stage'], MessageDescriptor>> = {
+  hashing: msg`hashing`,
+  checking: msg`checking`,
+  converting: msg`converting`,
+  uploading: msg`uploading`,
+  done: msg`done`,
+  skipped: msg`already stored, skipped`,
+};
+
 export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
+  const { t } = useLingui();
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
@@ -42,6 +58,16 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
   const active = useTheme();
   const site = useSettings();
   const client = useQueryClient();
+  // A conjunction list, not a `unit` one: Chinese joins a unit list with no
+  // separator at all, so 480, 960 and 1440 read as "4809601440". Pixel widths
+  // are not grouped, like the numbers in a srcset.
+  const widths = new Intl.ListFormat(i18n.locale, {
+    type: 'conjunction',
+  }).format(
+    active.imageWidths.map((width) =>
+      formatNumber(width, { useGrouping: false }),
+    ),
+  );
 
   const listed = useQuery({
     queryKey: [...keys.media, 'list', props.kind ?? 'all'],
@@ -55,7 +81,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
   const loadError =
     listed.error === null
       ? ''
-      : messageOf(listed.error, 'Could not load media.');
+      : messageOf(listed.error, t`Could not load media.`);
   /** The library changed: every list of it, and every item's row. */
   const reload = (): Promise<void> =>
     client.invalidateQueries({ queryKey: keys.media });
@@ -74,7 +100,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
         });
       } catch (caught) {
         setError(
-          caught instanceof Error ? caught.message : 'The upload failed.',
+          caught instanceof Error ? caught.message : t`The upload failed.`,
         );
       }
     }
@@ -84,8 +110,12 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
 
   const remove = async (item: MediaItem): Promise<void> => {
     if (item.refCount > 0) {
+      const name = item.originalName;
       notify(
-        `"${item.originalName}" is used by ${item.refCount} item${item.refCount === 1 ? '' : 's'}. Remove the references first.`,
+        plural(item.refCount, {
+          one: `"${name}" is used by # item. Remove the reference first.`,
+          other: `"${name}" is used by # items. Remove the references first.`,
+        }),
       );
       return;
     }
@@ -93,7 +123,9 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
       await api(`/media/${item.sha256}`, { method: 'DELETE' });
       await reload();
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not delete.');
+      notify(
+        caught instanceof ApiError ? caught.message : t`Could not delete.`,
+      );
     }
   };
 
@@ -106,7 +138,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
       setEditing(null);
       await reload();
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     }
   };
 
@@ -148,17 +180,22 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
             }}
           />
           <span className="font-medium text-foreground">
-            {dragging ? 'Drop to upload' : 'Choose files, or drop them here'}
+            {dragging ? (
+              <Trans>Drop to upload</Trans>
+            ) : (
+              <Trans>Choose files, or drop them here</Trans>
+            )}
           </span>
         </label>
         <p className="text-sm text-muted-foreground">
-          Images are converted to WebP in your browser and uploaded at{' '}
-          {active.imageWidths.join(', ')} pixels wide. SVG is not accepted — it
-          can carry script.
+          <Trans>
+            Images are converted to WebP in your browser and uploaded at{' '}
+            {widths} pixels wide. SVG is not accepted — it can carry script.
+          </Trans>
         </p>
         {progress === null ? null : (
           <p className="text-sm text-muted-foreground" role="status">
-            {progress.file}: {progress.stage}
+            {progress.file}: {i18n._(STAGES[progress.stage])}
           </p>
         )}
         {error === '' && loadError === '' ? null : (
@@ -169,11 +206,14 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : items.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          No media yet.
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
         </p>
+      ) : items.length === 0 ? (
+        // The drop zone above is the action that fills it (U19).
+        <EmptyState>
+          <Trans>Nothing has been uploaded yet.</Trans>
+        </EmptyState>
       ) : (
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-4">
           {items.map((item) => (
@@ -204,16 +244,15 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                   {item.width === null
                     ? `${Math.round(item.bytes / 1024)} KB`
                     : `${item.width}×${item.height}`}
-                  {item.refCount === 0
-                    ? ' · unused'
-                    : ` · used ${item.refCount}×`}
+                  {' · '}
+                  {item.refCount === 0 ? t`unused` : t`used ${item.refCount}×`}
                 </span>
                 {item.kind !== 'image' ? null : editing === item.sha256 ? (
                   <div className="flex gap-1.5">
                     <Input
                       className="h-7 text-xs"
-                      aria-label="Alt text"
-                      placeholder="Describe the image"
+                      aria-label={t`Alt text`}
+                      placeholder={t`Describe the image`}
                       value={altDraft}
                       onInput={(event) =>
                         setAltDraft(event.currentTarget.value)
@@ -225,7 +264,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                       size="sm"
                       onClick={() => void saveAlt(item)}
                     >
-                      Save
+                      <Trans>Save</Trans>
                     </Button>
                   </div>
                 ) : (
@@ -240,8 +279,8 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                     }}
                   >
                     {item.alt === null || item.alt === ''
-                      ? 'Add alt text'
-                      : `Alt: ${item.alt}`}
+                      ? t`Add alt text`
+                      : t`Alt: ${item.alt}`}
                   </Button>
                 )}
               </div>
@@ -252,7 +291,7 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                     size="sm"
                     onClick={() => props.onPick?.(relativePathFor(item), item)}
                   >
-                    Use
+                    <Trans>Use</Trans>
                   </Button>
                 )}
                 <Button
@@ -262,12 +301,12 @@ export function MediaLibrary(props: MediaLibraryProps): JSX.Element {
                   disabled={item.refCount > 0}
                   title={
                     item.refCount > 0
-                      ? 'In use. Remove the references first.'
-                      : 'Delete permanently'
+                      ? t`In use. Remove the references first.`
+                      : t`Delete permanently`
                   }
                   onClick={() => void remove(item)}
                 >
-                  Delete
+                  <Trans>Delete</Trans>
                 </Button>
               </div>
             </li>
@@ -306,7 +345,11 @@ export function MediaPicker(props: {
       >
         <DialogHeader>
           <DialogTitle>
-            Choose {props.kind === 'image' ? 'an image' : 'a file'}
+            {props.kind === 'image' ? (
+              <Trans>Choose an image</Trans>
+            ) : (
+              <Trans>Choose a file</Trans>
+            )}
           </DialogTitle>
         </DialogHeader>
         <MediaLibrary

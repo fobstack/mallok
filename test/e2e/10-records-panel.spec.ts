@@ -23,8 +23,21 @@ test('records are created, edited, sorted, searched and deleted from the declare
     await power.click();
   }
   await expect(power).toBeChecked();
-  const panel = card.getByRole('region', { name: 'Catalog items' });
+  // The plugin's card points to its list, which is a page of its own and
+  // a sidebar entry (docs/ADMIN_I18N_AND_UI.md, U3).
+  await card.getByRole('link', { name: 'Catalog items' }).click();
+  await expect(page).toHaveURL('/_mallok/app/plugins/catalog/items');
+  await expect(
+    page
+      .locator('[data-sidebar="sidebar"]')
+      .getByRole('link', { name: 'Catalog items' }),
+  ).toHaveAttribute('aria-current', 'page');
+  const panel = page.getByRole('region', { name: 'Catalog items' });
   await expect(panel.getByText('Nothing here yet.')).toBeVisible();
+  // An empty list offers the one action that fills it (U19).
+  await expect(
+    panel.getByRole('button', { name: 'Add the first one' }),
+  ).toBeVisible();
 
   // --- create, with a validation error first ------------------------------
   await panel.getByRole('button', { name: 'New' }).click();
@@ -156,7 +169,11 @@ test('records are created, edited, sorted, searched and deleted from the declare
   await expect.poll(names).toEqual(['Alpha bar']);
 
   // A panel whose plugin gave no `remove` offers no delete at all.
-  const log = card.getByRole('region', { name: 'Catalog log' });
+  await page
+    .locator('[data-sidebar="sidebar"]')
+    .getByRole('link', { name: 'Catalog log' })
+    .click();
+  const log = page.getByRole('region', { name: 'Catalog log' });
   await log.getByRole('button', { name: 'New' }).click();
   const note = page.getByRole('dialog', { name: 'New: Catalog log' });
   await note.getByLabel('Note').fill('first entry');

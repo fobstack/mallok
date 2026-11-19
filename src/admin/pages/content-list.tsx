@@ -4,8 +4,15 @@
  * Kinds a theme does not declare are marked rather than hidden: the content
  * and its URL survive a theme change, and the list has to say so
  * (docs/THEME_FORMAT.md §5.3).
+ *
+ * Every value is shown as an operator reads it — a kind by the theme's
+ * label, a status by name, a date in the interface language — and a phone
+ * gets one row per item rather than a table that scrolls sideways
+ * (docs/ADMIN_I18N_AND_UI.md, U4–U6).
  */
 
+import { i18n } from '@lingui/core';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
@@ -24,20 +31,25 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { api } from '../api.js';
+import {
+  ContentLanguageSelect,
+  useContentLanguageName,
+} from '../components/content-language.js';
+import {
+  ContentStatusBadge,
+  STATUS_LABELS,
+} from '../components/content-status.js';
+import { EmptyState } from '../components/empty-state.js';
 import { Page, PageHeader, StatusBadge } from '../components/page.js';
+import { formatDate } from '../format.js';
 import { useReportError } from '../notice.js';
 import { keys, useSettings, useTheme } from '../queries.js';
 import type { ContentListItem } from '../types.js';
 
 const PAGE = 25;
 
-/** A status's badge colour: live is good, waiting is a caution. */
-const STATUS_TONE: Readonly<Record<string, 'ok' | 'warn'>> = {
-  published: 'ok',
-  scheduled: 'warn',
-};
-
 export function ContentListPage(): JSX.Element {
+  const { t } = useLingui();
   const site = useSettings();
   const active = useTheme();
   const navigate = useNavigate();
@@ -92,45 +104,53 @@ export function ContentListPage(): JSX.Element {
         `/content?${query.toString()}`,
       ),
   });
-  useReportError(listed.error, 'Could not load content.');
+  useReportError(listed.error, t`Could not load content.`);
   const items = listed.data?.items ?? [];
   const hasNext = listed.data?.hasNext ?? false;
   const loading = listed.isPending;
 
   const kinds = Object.keys(site.kinds);
+  const nameOf = useContentLanguageName();
+  /** A kind by the theme's label; one the theme lacks keeps its id. */
+  const kindLabel = (id: string): string => active.kinds[id]?.label ?? id;
+  const filtered = kind !== '' || status !== '';
+
+  // "New" says what it makes: the filtered kind when there is one. The
+  // editor opens in the list's language and, when filtered, that kind.
+  const newQuery = new URLSearchParams({ locale });
+  if (kind !== '') {
+    newQuery.set('kind', kind);
+  }
+  const createNew = (): void => {
+    void navigate(`/content/new?${newQuery.toString()}`);
+  };
+  const filteredKind = kind === '' ? '' : kindLabel(kind);
+  const newLabel = kind === '' ? t`New content` : t`New ${filteredKind}`;
+  const language = nameOf(locale);
 
   return (
-    <Page className="max-w-6xl">
+    <Page>
       <PageHeader
-        title="Content"
+        title={t`Content`}
+        // No "Media" here: the sidebar has it one link away (U5).
         actions={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/media')}
-            >
-              Media
-            </Button>
-            <Button
-              type="button"
-              onClick={() => navigate(`/content/new?locale=${locale}`)}
-            >
-              New
-            </Button>
-          </>
+          <Button type="button" onClick={createNew}>
+            {newLabel}
+          </Button>
         }
       />
 
       <div className="flex flex-wrap gap-4">
         <Field className="w-auto">
-          <FieldLabel htmlFor="filter-kind">Type</FieldLabel>
+          <FieldLabel htmlFor="filter-kind">
+            <Trans>Type</Trans>
+          </FieldLabel>
           <NativeSelect
             id="filter-kind"
             value={kind}
             onChange={(event) => filter('kind', event.currentTarget.value)}
           >
-            <NativeSelectOption value="">All</NativeSelectOption>
+            <NativeSelectOption value="">{t`All`}</NativeSelectOption>
             {kinds.map((entry) => (
               <NativeSelectOption key={entry} value={entry}>
                 {active.kinds[entry]?.label ?? entry}
@@ -138,60 +158,112 @@ export function ContentListPage(): JSX.Element {
             ))}
           </NativeSelect>
         </Field>
+        <ContentLanguageSelect
+          id="filter-locale"
+          value={locale}
+          onChange={(value) => filter('locale', value)}
+          locales={site.locales}
+          defaultLocale={site.defaultLocale}
+        />
         <Field className="w-auto">
-          <FieldLabel htmlFor="filter-locale">Language</FieldLabel>
-          <NativeSelect
-            id="filter-locale"
-            value={locale}
-            onChange={(event) => filter('locale', event.currentTarget.value)}
-          >
-            {site.locales.map((entry) => (
-              <NativeSelectOption key={entry} value={entry}>
-                {entry}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Field>
-        <Field className="w-auto">
-          <FieldLabel htmlFor="filter-status">Status</FieldLabel>
+          <FieldLabel htmlFor="filter-status">
+            <Trans>Status</Trans>
+          </FieldLabel>
           <NativeSelect
             id="filter-status"
             value={status}
             onChange={(event) => filter('status', event.currentTarget.value)}
           >
-            <NativeSelectOption value="">All</NativeSelectOption>
-            <NativeSelectOption value="published">Published</NativeSelectOption>
-            <NativeSelectOption value="draft">Draft</NativeSelectOption>
-            <NativeSelectOption value="scheduled">Scheduled</NativeSelectOption>
+            <NativeSelectOption value="">{t`All`}</NativeSelectOption>
+            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+              <NativeSelectOption key={value} value={value}>
+                {i18n._(label)}
+              </NativeSelectOption>
+            ))}
           </NativeSelect>
         </Field>
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : items.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-          Nothing here yet.
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
         </p>
+      ) : items.length === 0 && filtered ? (
+        // A filter that matches nothing is not an empty site (U5).
+        <EmptyState
+          action={
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                setSearch(
+                  search.get('locale') === null
+                    ? {}
+                    : { locale: search.get('locale') ?? '' },
+                )
+              }
+            >
+              <Trans>Clear filters</Trans>
+            </Button>
+          }
+        >
+          <Trans>Nothing in {language} matches these filters.</Trans>
+        </EmptyState>
+      ) : items.length === 0 ? (
+        <EmptyState
+          action={
+            <Button type="button" onClick={createNew}>
+              <Trans>Create the first page</Trans>
+            </Button>
+          }
+        >
+          {locale === site.defaultLocale ? (
+            <Trans>This site has no content yet.</Trans>
+          ) : (
+            <Trans>Nothing has been written in {language} yet.</Trans>
+          )}
+        </EmptyState>
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead scope="col" className="pl-3">
-                  Title
+                  <Trans>Title</Trans>
                 </TableHead>
-                <TableHead scope="col">Type</TableHead>
-                <TableHead scope="col">Status</TableHead>
-                <TableHead scope="col">Path</TableHead>
-                <TableHead scope="col" className="pr-3">
-                  Updated
+                {/* Below `md` a row is the title with its type and status
+                    under it; Path and Updated are left out on purpose (U6). */}
+                <TableHead scope="col" className="hidden md:table-cell">
+                  <Trans>Type</Trans>
+                </TableHead>
+                <TableHead scope="col" className="hidden md:table-cell">
+                  <Trans>Status</Trans>
+                </TableHead>
+                <TableHead scope="col" className="hidden md:table-cell">
+                  <Trans>Path</Trans>
+                </TableHead>
+                <TableHead scope="col" className="hidden pr-3 md:table-cell">
+                  <Trans>Updated</Trans>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {items.map((item) => {
                 const known = active.kinds[item.kind] !== undefined;
+                const typeCell = (
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {kindLabel(item.kind)}
+                    {known ? null : (
+                      <StatusBadge
+                        tone="warn"
+                        title={t`The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched.`}
+                      >
+                        <Trans>Not in theme</Trans>
+                      </StatusBadge>
+                    )}
+                  </span>
+                );
+                const statusBadge = <ContentStatusBadge status={item.status} />;
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="min-w-40 pl-3 whitespace-normal">
@@ -201,26 +273,18 @@ export function ContentListPage(): JSX.Element {
                       >
                         {item.title}
                       </Link>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex flex-wrap items-center gap-1.5">
-                        {item.kind}
-                        {known ? null : (
-                          <StatusBadge
-                            tone="warn"
-                            title="The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
-                          >
-                            Not in theme
-                          </StatusBadge>
-                        )}
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground md:hidden">
+                        {typeCell}
+                        {statusBadge}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <StatusBadge tone={STATUS_TONE[item.status] ?? 'neutral'}>
-                        {item.status}
-                      </StatusBadge>
+                    <TableCell className="hidden md:table-cell">
+                      {typeCell}
                     </TableCell>
-                    <TableCell className="max-w-72 min-w-48 whitespace-normal">
+                    <TableCell className="hidden md:table-cell">
+                      {statusBadge}
+                    </TableCell>
+                    <TableCell className="hidden max-w-72 min-w-48 whitespace-normal md:table-cell">
                       <a
                         className="font-mono text-xs break-all text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                         href={item.path}
@@ -228,8 +292,10 @@ export function ContentListPage(): JSX.Element {
                         {item.path}
                       </a>
                     </TableCell>
-                    <TableCell className="pr-3 text-muted-foreground tabular-nums">
-                      {item.updatedAt.slice(0, 10)}
+                    <TableCell className="hidden pr-3 text-muted-foreground tabular-nums md:table-cell">
+                      <time dateTime={item.updatedAt}>
+                        {formatDate(item.updatedAt)}
+                      </time>
                     </TableCell>
                   </TableRow>
                 );
@@ -239,24 +305,27 @@ export function ContentListPage(): JSX.Element {
         </div>
       )}
 
-      <nav className="flex gap-2" aria-label="Pagination">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={offset === 0}
-          onClick={() => page(Math.max(0, offset - PAGE))}
-        >
-          Previous
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={!hasNext}
-          onClick={() => page(offset + PAGE)}
-        >
-          Next
-        </Button>
-      </nav>
+      {/* Nothing to page through on a single page, so no pager (U5). */}
+      {offset === 0 && !hasNext ? null : (
+        <nav className="flex gap-2" aria-label={t`Pagination`}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={offset === 0}
+            onClick={() => page(Math.max(0, offset - PAGE))}
+          >
+            <Trans>Previous</Trans>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!hasNext}
+            onClick={() => page(offset + PAGE)}
+          >
+            <Trans>Next</Trans>
+          </Button>
+        </nav>
+      )}
     </Page>
   );
 }

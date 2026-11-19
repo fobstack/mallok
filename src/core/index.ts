@@ -6,6 +6,18 @@
  */
 
 export {
+  ADMIN_CATALOG_PATH,
+  type AdminCatalog,
+  adminCatalogLanguage,
+  adminCatalogProblem,
+  catalogObjectProblem,
+  isCatalogLanguage,
+  localizeThemeManifest,
+  matchCatalogLanguage,
+  pickAdminCatalog,
+  themeCatalogKeys,
+} from './admin-catalog.js';
+export {
   type AssetMap,
   buildFileUrls,
   buildImageViews,
@@ -121,6 +133,13 @@ export {
   settingsValidator,
 } from './plugin.js';
 export {
+  localizePluginManifest,
+  type PanelWords,
+  panelWords,
+  pluginCatalogAllows,
+} from './plugin-catalog.js';
+export {
+  type FieldErrorCode,
   type MoneyValue,
   RECORD_ROWS_MAX,
   type RecordField,

@@ -12,6 +12,7 @@
  * only the plugin can produce, such as "this code is already taken".
  */
 
+import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { FormEventHandler, JSX, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
@@ -154,6 +155,7 @@ function MoneyField({
     );
   };
   const label = labelOf(name, field);
+  const { t } = useLingui();
   return (
     <Field data-invalid={error === undefined ? undefined : true}>
       <FieldLabel htmlFor={id}>
@@ -182,7 +184,7 @@ function MoneyField({
         />
         <NativeSelect
           className="shrink-0"
-          aria-label={`${label}: currency`}
+          aria-label={t`${label}: currency`}
           value={currency}
           onChange={(event) => emit(text, event.currentTarget.value)}
         >
@@ -269,6 +271,7 @@ function RowsField({
   const message = typeof fault?.message === 'string' ? fault.message : '';
   const limit = field.max ?? ROWS_MAX;
   const label = labelOf(name, field);
+  const { t } = useLingui();
   return (
     <FieldSet className="gap-3">
       <FieldLegend variant="label">
@@ -289,36 +292,44 @@ function RowsField({
         </p>
       )}
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No rows yet.</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>No rows yet.</Trans>
+        </p>
       ) : null}
-      {rows.map((row, index) => (
-        <fieldset
-          className="flex flex-col gap-3 rounded-lg border p-3"
-          key={row.id}
-          aria-label={`${label} ${index + 1}`}
-        >
-          {Object.entries(field.fields).map(([subName, subField]) => (
-            <ScalarField
-              key={subName}
-              control={control}
-              idPrefix={`${idPrefix}-${name}-${row.id}`}
-              namePrefix={`${name}.${index}.`}
-              name={subName}
-              field={subField}
-            />
-          ))}
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => remove(index)}
-            >
-              Remove {label.toLowerCase()} {index + 1}
-            </Button>
-          </div>
-        </fieldset>
-      ))}
+      {rows.map((row, index) => {
+        const number = index + 1;
+        // Mid-sentence in English ("Remove variants 1"); a no-op for a
+        // language without case.
+        const item = label.toLowerCase();
+        return (
+          <fieldset
+            className="flex flex-col gap-3 rounded-lg border p-3"
+            key={row.id}
+            aria-label={`${label} ${index + 1}`}
+          >
+            {Object.entries(field.fields).map(([subName, subField]) => (
+              <ScalarField
+                key={subName}
+                control={control}
+                idPrefix={`${idPrefix}-${name}-${row.id}`}
+                namePrefix={`${name}.${index}.`}
+                name={subName}
+                field={subField}
+              />
+            ))}
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => remove(index)}
+              >
+                {t`Remove ${item} ${number}`}
+              </Button>
+            </div>
+          </fieldset>
+        );
+      })}
       <div className="flex flex-wrap items-center gap-3">
         <Button
           type="button"
@@ -326,10 +337,16 @@ function RowsField({
           disabled={rows.length >= limit}
           onClick={() => append({})}
         >
-          Add a row
+          <Trans>Add a row</Trans>
         </Button>
         {rows.length >= limit ? (
-          <p className="text-sm text-muted-foreground">At most {limit} rows.</p>
+          <p className="text-sm text-muted-foreground">
+            <Plural
+              value={limit}
+              one="At most # row."
+              other="At most # rows."
+            />
+          </p>
         ) : null}
       </div>
     </FieldSet>
@@ -407,6 +424,7 @@ export function RecordEditor({
   /** `changed` is true when the list behind the form is now out of date. */
   readonly onClose: (changed: boolean) => void;
 }): JSX.Element {
+  const { t } = useLingui();
   const fields = panel.fields ?? {};
   const base = `/plugins/${pluginId}/panels/${panel.id}/records`;
   const stored = useQuery({
@@ -419,10 +437,10 @@ export function RecordEditor({
   });
   useEffect(() => {
     if (stored.error !== null) {
-      notify(messageOf(stored.error, 'Could not load the record.'));
+      notify(messageOf(stored.error, t`Could not load the record.`));
       onClose(false);
     }
-  }, [stored.error, onClose]);
+  }, [stored.error, onClose, t]);
   const values: Values | null =
     recordId === null
       ? Object.fromEntries(
@@ -438,11 +456,15 @@ export function RecordEditor({
         )
       : (stored.data?.values ?? null);
 
-  const title = `${recordId === null ? 'New' : 'Edit'}: ${panel.label}`;
+  const panelLabel = panel.label;
+  const title =
+    recordId === null ? t`New: ${panelLabel}` : t`Edit: ${panelLabel}`;
   if (values === null) {
     return (
       <FormSheet title={title} onClose={() => onClose(false)}>
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
+        </p>
       </FormSheet>
     );
   }
@@ -477,6 +499,7 @@ function RecordForm({
   readonly onClose: (changed: boolean) => void;
   readonly attachedTo?: string;
 }): JSX.Element {
+  const { t } = useLingui();
   const fields = panel.fields ?? {};
   const base = `/plugins/${pluginId}/panels/${panel.id}/records`;
   const form = useForm<FieldValues>({ defaultValues: initial });
@@ -499,7 +522,7 @@ function RecordForm({
     } catch (caught) {
       showServerErrors(form.setError, caught);
       setFailure(
-        caught instanceof ApiError ? caught.message : 'Could not save.',
+        caught instanceof ApiError ? caught.message : t`Could not save.`,
       );
     }
   });
@@ -516,7 +539,7 @@ function RecordForm({
       onClose(true);
     } catch (caught) {
       setFailure(
-        caught instanceof ApiError ? caught.message : 'Could not delete.',
+        caught instanceof ApiError ? caught.message : t`Could not delete.`,
       );
       setDeleting(false);
     }
@@ -531,7 +554,7 @@ function RecordForm({
       footer={
         <>
           <Button type="submit" disabled={busy}>
-            {busy ? 'Saving…' : 'Save'}
+            {busy ? t`Saving…` : t`Save`}
           </Button>
           {recordId === null || !panel.canRemove ? null : confirming ? (
             <>
@@ -541,14 +564,14 @@ function RecordForm({
                 disabled={busy}
                 onClick={() => void remove()}
               >
-                Delete it
+                <Trans>Delete it</Trans>
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setConfirming(false)}
               >
-                Keep it
+                <Trans>Keep it</Trans>
               </Button>
             </>
           ) : (
@@ -557,7 +580,7 @@ function RecordForm({
               variant="outline"
               onClick={() => setConfirming(true)}
             >
-              Delete…
+              <Trans>Delete…</Trans>
             </Button>
           )}
         </>
@@ -614,6 +637,7 @@ export function ActionParamsDialog({
   /** `done` is true when the action ran. */
   readonly onClose: (done: boolean) => void;
 }): JSX.Element {
+  const { t } = useLingui();
   const fields = action.params ?? {};
   const form = useForm<FieldValues>({
     defaultValues: Object.fromEntries(
@@ -636,7 +660,7 @@ export function ActionParamsDialog({
     } catch (caught) {
       showServerErrors(form.setError, caught);
       setFailure(
-        caught instanceof ApiError ? caught.message : 'The action failed.',
+        caught instanceof ApiError ? caught.message : t`The action failed.`,
       );
     }
   });
@@ -649,12 +673,16 @@ export function ActionParamsDialog({
       onSubmit={(event) => void run(event)}
       footer={
         <Button type="submit" disabled={busy}>
-          {busy ? 'Working…' : action.label}
+          {busy ? t`Working…` : action.label}
         </Button>
       }
     >
       <p className="text-sm text-muted-foreground">
-        Applies to {count} selected row{count === 1 ? '' : 's'}.
+        <Plural
+          value={count}
+          one="Applies to # selected row."
+          other="Applies to # selected rows."
+        />
       </p>
       {Object.entries(fields).map(([name, field]) => (
         <ScalarField

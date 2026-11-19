@@ -8,7 +8,9 @@
  * byte for byte.
  */
 
+import { t } from '@lingui/core/macro';
 import { api, csrf } from './api.js';
+import { serverMessage } from './server-messages.js';
 import type { MediaItem } from './types.js';
 
 /** Types the API accepts. SVG is deliberately absent. */
@@ -140,11 +142,12 @@ export async function uploadFile(
 
   if (file.type === 'image/svg+xml') {
     throw new Error(
-      'SVG is not accepted: it can carry script. Export a PNG or WebP instead.',
+      t`SVG is not accepted: it can carry script. Export a PNG or WebP instead.`,
     );
   }
   if (!ACCEPTED.has(file.type)) {
-    throw new Error(`"${file.type || 'unknown type'}" is not accepted.`);
+    const type = file.type === '' ? t`unknown type` : file.type;
+    throw new Error(t`"${type}" is not accepted.`);
   }
 
   const isImage = file.type.startsWith('image/');
@@ -180,8 +183,15 @@ export async function uploadFile(
     bitmap?.close();
     const body = (await response.json().catch(() => null)) as {
       error?: string;
+      code?: string;
+      params?: unknown;
     } | null;
-    throw new Error(body?.error ?? 'The upload failed.');
+    // A raw PUT, not `api()`, so the code is read here (D3).
+    throw new Error(
+      serverMessage(body?.code, body?.params) ??
+        body?.error ??
+        t`The upload failed.`,
+    );
   }
 
   if (bitmap !== null) {

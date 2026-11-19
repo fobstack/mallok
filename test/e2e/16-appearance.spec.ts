@@ -21,9 +21,13 @@ async function choose(page: Page, scheme: string): Promise<void> {
 /** Opens the account menu and reads which scheme is checked. */
 async function chosen(page: Page): Promise<string> {
   await page.getByRole('button', { name: 'Account menu' }).click();
+  // Within its own group: the menu also holds the interface language, whose
+  // choice is checked too (docs/ADMIN_I18N_AND_UI.md, D7).
   const name =
-    (await page.getByRole('menuitemradio', { checked: true }).textContent()) ??
-    '';
+    (await page
+      .getByRole('group', { name: 'Colour scheme' })
+      .getByRole('menuitemradio', { checked: true })
+      .textContent()) ?? '';
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menu')).toHaveCount(0);
   return name.trim();

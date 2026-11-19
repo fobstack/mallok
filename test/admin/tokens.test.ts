@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { i18n } from '@lingui/core';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { ApiError } from '../../src/admin/api.js';
 import {
   describeToken,
@@ -11,6 +12,10 @@ import {
  * `revokedAt`, so a revoked token looked active and offered Revoke again, and
  * the second click's 404 was swallowed — revoking looked like a dead button.
  */
+beforeAll(() => {
+  i18n.loadAndActivate({ locale: 'en', messages: {} });
+});
+
 const live: TokenSummary = {
   id: 'tok_1',
   name: 'ci',

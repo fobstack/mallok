@@ -60,6 +60,11 @@ test('the sidebar passes the accessibility gate open, collapsed and on a phone',
 
   await page.getByRole('button', { name: 'Toggle Sidebar' }).click();
   await expect(page.locator('[data-state="collapsed"]').first()).toBeVisible();
+  // The group labels fade out as it collapses; scanned mid-fade, their
+  // half-transparent text failed the contrast check now and then.
+  await page.evaluate(
+    'Promise.all(document.getAnimations().map((animation) => animation.finished))',
+  );
   await clean(page, 'sidebar collapsed');
   // Collapsed to icons, the links keep their names.
   await expect(
@@ -93,6 +98,28 @@ test('the sidebar passes the accessibility gate open, collapsed and on a phone',
   await clean(page, 'sidebar as a sheet');
   await sheet.getByRole('link', { name: 'Plugins', exact: true }).click();
   await expect(page).toHaveURL('/_mallok/app/plugins');
+});
+
+test('the sidebar lists plugin panels and opens the public site', async ({
+  page,
+}) => {
+  await signIn(page);
+  const sidebar = page.locator('[data-sidebar="sidebar"]').first();
+  // A plugin's list is a section of the site, between Media and Plugins
+  // (docs/ADMIN_I18N_AND_UI.md, U3)…
+  const inquiries = sidebar.getByRole('link', { name: 'Inquiries' });
+  await inquiries.click();
+  await expect(page).toHaveURL('/_mallok/app/plugins/inquiry/inquiries');
+  await expect(inquiries).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inquiries');
+  // …while a panel attached to a content kind stays in that kind's editor.
+  await expect(
+    sidebar.getByRole('link', { name: 'Product notes' }),
+  ).toHaveCount(0);
+  // The public site opens in a tab of its own.
+  const site = sidebar.getByRole('link', { name: /^View site/ });
+  await expect(site).toHaveAttribute('href', '/');
+  await expect(site).toHaveAttribute('target', '_blank');
 });
 
 test('the account menu opens from the keyboard and offers the account page', async ({

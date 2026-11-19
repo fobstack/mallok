@@ -69,7 +69,11 @@ describe('the public cache boundary', () => {
 
     const unknown = await get('/_mallok/whatever');
     expect(unknown.status).toBe(404);
-    expect(await unknown.text()).toBe('{"error":"Not found."}');
+    // Nothing but the sentence and the code that names it (D3 of
+    // docs/ADMIN_I18N_AND_UI.md): no path, no stack, no binding.
+    expect(await unknown.text()).toBe(
+      '{"error":"Not found.","code":"not_found"}',
+    );
   });
 
   it('still exposes a scheduled handler', async () => {

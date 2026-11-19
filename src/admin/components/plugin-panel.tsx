@@ -8,6 +8,7 @@
  * boundary intact while still letting a plugin have a real interface.
  */
 
+import { Trans, useLingui } from '@lingui/react/macro';
 import {
   keepPreviousData,
   useQuery,
@@ -20,6 +21,10 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Field, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from '@/components/ui/native-select';
 import {
   Sheet,
   SheetContent,
@@ -38,6 +43,7 @@ import { ApiError, api, csrf } from '../api.js';
 import { notify, useReportError } from '../notice.js';
 import { panelKey } from '../queries.js';
 import type { PluginPanel } from '../types.js';
+import { EmptyState } from './empty-state.js';
 import { Facts } from './page.js';
 import { cell, RelatedRows } from './related-rows.js';
 
@@ -65,6 +71,7 @@ export function PluginPanelView({
   pluginId,
   panel,
   attachedTo,
+  standalone = false,
 }: {
   readonly pluginId: string;
   readonly panel: PluginPanel;
@@ -74,7 +81,14 @@ export function PluginPanelView({
    * ones belong to it.
    */
   readonly attachedTo?: string;
+  /**
+   * Shown as a page of its own, whose heading already names it: the
+   * panel's own heading is then read by screen readers only, still naming
+   * the region.
+   */
+  readonly standalone?: boolean;
 }): JSX.Element {
+  const { t } = useLingui();
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<readonly string[]>([]);
@@ -93,6 +107,9 @@ export function PluginPanelView({
   );
 
   const base = `/plugins/${pluginId}/panels/${panel.id}`;
+  /** A field's name in the interface language, or a readable form of it. */
+  const nameOf = (field: string): string =>
+    panel.names?.[field] ?? field.replace(/_/g, ' ');
 
   const query = new URLSearchParams({
     limit: String(PAGE),
@@ -121,7 +138,7 @@ export function PluginPanelView({
     // A new filter or page keeps the rows on screen until the next arrive.
     placeholderData: keepPreviousData,
   });
-  useReportError(listed.error, 'Could not load rows.');
+  useReportError(listed.error, t`Could not load rows.`);
   const rows = listed.data?.rows ?? [];
   const hasNext = listed.data?.hasNext ?? false;
   const loading = listed.isPending;
@@ -158,7 +175,8 @@ export function PluginPanelView({
         body: JSON.stringify({ ids: selected }),
       });
       if (!response.ok) {
-        notify(`"${action.label}" failed.`);
+        const actionLabel = action.label;
+        notify(t`"${actionLabel}" failed.`);
         return;
       }
       const blob = await response.blob();
@@ -175,7 +193,7 @@ export function PluginPanelView({
     }
 
     if (selected.length === 0) {
-      notify('Select at least one row first.');
+      notify(t`Select at least one row first.`);
       return;
     }
     if (action.params !== undefined) {
@@ -192,10 +210,15 @@ export function PluginPanelView({
       await reload();
     } catch (caught) {
       notify(
-        caught instanceof ApiError ? caught.message : 'The action failed.',
+        caught instanceof ApiError ? caught.message : t`The action failed.`,
       );
     }
   };
+
+  /** Whether what is listed is narrowed by a filter or a search. */
+  const filtered =
+    search.trim() !== '' ||
+    Object.values(filters).some((value) => value !== '');
 
   const titleId = `panel-${pluginId}-${panel.id}`;
   return (
@@ -203,7 +226,11 @@ export function PluginPanelView({
       <div className="flex flex-wrap items-end gap-3">
         <h3
           id={titleId}
-          className="mr-auto self-center font-heading text-sm font-semibold"
+          className={
+            standalone
+              ? 'sr-only'
+              : 'mr-auto self-center font-heading text-sm font-semibold'
+          }
         >
           {panel.label}
         </h3>
@@ -211,34 +238,59 @@ export function PluginPanelView({
           <Field key={field} className="w-40">
             <FieldLabel
               htmlFor={`${titleId}-filter-${field}`}
-              className="capitalize"
+              className={panel.names?.[field] === undefined ? 'capitalize' : ''}
             >
-              {field.replace(/_/g, ' ')}
+              {nameOf(field)}
             </FieldLabel>
-            <Input
-              id={`${titleId}-filter-${field}`}
-              value={filters[field] ?? ''}
-              placeholder="any"
-              onChange={(event) => {
-                setOffset(0);
-                setFilters((previous) => ({
-                  ...previous,
-                  [field]: event.currentTarget.value,
-                }));
-              }}
-            />
+            {/* A field whose values are named is a choice among them; any
+                other is typed (docs/ADMIN_I18N_AND_UI.md, U11). */}
+            {Object.keys(panel.values?.[field] ?? {}).length > 0 ? (
+              <NativeSelect
+                id={`${titleId}-filter-${field}`}
+                value={filters[field] ?? ''}
+                onChange={(event) => {
+                  setOffset(0);
+                  setFilters((previous) => ({
+                    ...previous,
+                    [field]: event.currentTarget.value,
+                  }));
+                }}
+              >
+                <NativeSelectOption value="">{t`Any`}</NativeSelectOption>
+                {Object.entries(panel.values?.[field] ?? {}).map(
+                  ([value, label]) => (
+                    <NativeSelectOption key={value} value={value}>
+                      {label}
+                    </NativeSelectOption>
+                  ),
+                )}
+              </NativeSelect>
+            ) : (
+              <Input
+                id={`${titleId}-filter-${field}`}
+                value={filters[field] ?? ''}
+                placeholder={t`any`}
+                onChange={(event) => {
+                  setOffset(0);
+                  setFilters((previous) => ({
+                    ...previous,
+                    [field]: event.currentTarget.value,
+                  }));
+                }}
+              />
+            )}
           </Field>
         ))}
         {panel.search.length === 0 ? null : (
           <Field className="w-56">
-            <FieldLabel htmlFor={`${titleId}-search`}>Search</FieldLabel>
+            <FieldLabel htmlFor={`${titleId}-search`}>
+              <Trans>Search</Trans>
+            </FieldLabel>
             <Input
               id={`${titleId}-search`}
               type="search"
               value={search}
-              placeholder={panel.search
-                .map((field) => field.replace(/_/g, ' '))
-                .join(', ')}
+              placeholder={panel.search.map(nameOf).join(t`, `)}
               onChange={(event) => {
                 setOffset(0);
                 setSearch(event.currentTarget.value);
@@ -248,7 +300,7 @@ export function PluginPanelView({
         )}
         {editable ? (
           <Button type="button" onClick={() => setEditing(null)}>
-            New
+            <Trans>New</Trans>
           </Button>
         ) : null}
         {panel.actions.map((action) => (
@@ -256,6 +308,9 @@ export function PluginPanelView({
             key={action.id}
             type="button"
             variant="outline"
+            // An action on rows waits for a row; a download takes them all
+            // when none is chosen.
+            disabled={action.type !== 'download' && selected.length === 0}
             onClick={() => void runAction(action)}
           >
             {action.label}
@@ -264,18 +319,51 @@ export function PluginPanelView({
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
-          Nothing here yet.
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
         </p>
+      ) : rows.length === 0 ? (
+        filtered ? (
+          // A filter that matches nothing is not an empty list (U19).
+          <EmptyState
+            action={
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setOffset(0);
+                  setFilters({});
+                  setSearch('');
+                }}
+              >
+                <Trans>Clear filters</Trans>
+              </Button>
+            }
+          >
+            <Trans>Nothing matches these filters.</Trans>
+          </EmptyState>
+        ) : (
+          <EmptyState
+            action={
+              editable ? (
+                <Button type="button" onClick={() => setEditing(null)}>
+                  <Trans>Add the first one</Trans>
+                </Button>
+              ) : undefined
+            }
+          >
+            <Trans>Nothing here yet.</Trans>
+          </EmptyState>
+        )
       ) : (
         <div className="rounded-lg border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead scope="col" className="w-10 pl-3">
-                  <span className="sr-only">Select</span>
+                  <span className="sr-only">
+                    <Trans>Select</Trans>
+                  </span>
                 </TableHead>
                 {panel.columns.map((column) => {
                   const sorted = sort?.field === column.field;
@@ -326,13 +414,18 @@ export function PluginPanelView({
                   );
                 })}
                 <TableHead scope="col" className="pr-3">
-                  <span className="sr-only">Details</span>
+                  <span className="sr-only">
+                    <Trans>Details</Trans>
+                  </span>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => {
                 const id = String(row.id ?? '');
+                const rowName = String(
+                  row[panel.columns[0]?.field ?? 'id'] ?? id,
+                );
                 return (
                   <TableRow
                     key={id}
@@ -340,7 +433,7 @@ export function PluginPanelView({
                   >
                     <TableCell className="pl-3">
                       <Checkbox
-                        aria-label={`Select ${id}`}
+                        aria-label={t`Select ${id}`}
                         checked={selected.includes(id)}
                         onCheckedChange={(checked) =>
                           setSelected(
@@ -353,7 +446,11 @@ export function PluginPanelView({
                     </TableCell>
                     {panel.columns.map((column) => (
                       <TableCell key={column.field}>
-                        {cell(row[column.field], column.type)}
+                        {cell(
+                          row[column.field],
+                          column.type,
+                          panel.values?.[column.field],
+                        )}
                       </TableCell>
                     ))}
                     <TableCell className="pr-3 text-right">
@@ -362,15 +459,13 @@ export function PluginPanelView({
                         variant="outline"
                         size="sm"
                         aria-label={
-                          editable
-                            ? `Edit ${String(row[panel.columns[0]?.field ?? 'id'] ?? id)}`
-                            : `Open ${id}`
+                          editable ? t`Edit ${rowName}` : t`Open ${id}`
                         }
                         onClick={() =>
                           editable ? setEditing(id) : setOpen(row)
                         }
                       >
-                        {editable ? 'Edit' : 'Open'}
+                        {editable ? t`Edit` : t`Open`}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -381,26 +476,29 @@ export function PluginPanelView({
         </div>
       )}
 
-      <nav className="flex gap-2" aria-label="Pagination">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={offset === 0}
-          onClick={() => setOffset(Math.max(0, offset - PAGE))}
-        >
-          Previous
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={!hasNext}
-          onClick={() => setOffset(offset + PAGE)}
-        >
-          Next
-        </Button>
-      </nav>
+      {/* One page needs no pager, as in the content list (U5, U19). */}
+      {offset === 0 && !hasNext ? null : (
+        <nav className="flex gap-2" aria-label={t`Pagination`}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={offset === 0}
+            onClick={() => setOffset(Math.max(0, offset - PAGE))}
+          >
+            <Trans>Previous</Trans>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!hasNext}
+            onClick={() => setOffset(offset + PAGE)}
+          >
+            <Trans>Next</Trans>
+          </Button>
+        </nav>
+      )}
 
       {open === null ? null : (
         <RowDetail
@@ -455,6 +553,8 @@ function RowDetail({
   readonly row: Row;
   readonly onClose: () => void;
 }): JSX.Element {
+  const { t } = useLingui();
+  const panelLabel = panel.label;
   const fields = [
     ...panel.columns.map((column) => column.field),
     ...panel.detail,
@@ -473,7 +573,7 @@ function RowDetail({
         // The dialog keeps the name it had: the panel's label is the title,
         // and "detail" says which view of it this is.
         aria-labelledby={undefined}
-        aria-label={`${panel.label} detail`}
+        aria-label={t`${panelLabel} detail`}
         aria-describedby={undefined}
       >
         <SheetHeader>
@@ -481,12 +581,19 @@ function RowDetail({
         </SheetHeader>
         <div className="flex flex-col gap-6 px-4 pb-4">
           <Facts
-            items={fields.map((field) => [
-              <span key="t" className="capitalize">
-                {field.replace(/_/g, ' ')}
-              </span>,
-              String(row[field] ?? '—'),
-            ])}
+            items={fields.map((field) => {
+              const name = panel.names?.[field];
+              return [
+                name === undefined ? (
+                  <span key="t" className="capitalize">
+                    {field.replace(/_/g, ' ')}
+                  </span>
+                ) : (
+                  name
+                ),
+                String(row[field] ?? '—'),
+              ];
+            })}
           />
           <RelatedRows
             pluginId={pluginId}

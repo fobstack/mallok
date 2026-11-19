@@ -8,10 +8,17 @@
  * because it is true until someone configures the token.
  */
 
+import type { MessageDescriptor } from '@lingui/core';
+import { msg } from '@lingui/core/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { useQuery } from '@tanstack/react-query';
 import {
   ChevronsUpDown,
+  Clock,
+  ExternalLink,
   FileText,
   Image,
+  List,
   Mail,
   Palette,
   Plug,
@@ -21,6 +28,7 @@ import {
 import type { JSX, ReactNode } from 'react';
 import { lazy, Suspense, useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { Alert, AlertTitle } from '@/components/ui/alert';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -47,12 +55,19 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { formatDuration } from '../format.js';
 import { clearNotice, useNotice } from '../notice.js';
-import { useSession, useSettings } from '../queries.js';
-import { PurgeNotice } from './saved-note.js';
+import {
+  pluginsQuery,
+  useLiveDelay,
+  useSession,
+  useSettings,
+} from '../queries.js';
+import type { PluginInfo } from '../types.js';
 
 interface NavItem {
-  readonly label: string;
+  /** Words the admin translates, or a plugin's label already in them. */
+  readonly label: MessageDescriptor | string;
   readonly href: string;
   readonly icon: typeof FileText;
   /** Whether the item is the current section for `path`. */
@@ -61,19 +76,19 @@ interface NavItem {
 
 const SITE: readonly NavItem[] = [
   {
-    label: 'Content',
+    label: msg`Content`,
     href: '/',
     icon: FileText,
     active: (path) => path === '/' || path.startsWith('/content'),
   },
   {
-    label: 'Media',
+    label: msg`Media`,
     href: '/media',
     icon: Image,
     active: (path) => path === '/media',
   },
   {
-    label: 'Plugins',
+    label: msg`Plugins`,
     href: '/plugins',
     icon: Plug,
     active: (path) => path === '/plugins',
@@ -82,25 +97,25 @@ const SITE: readonly NavItem[] = [
 
 const SETTINGS: readonly NavItem[] = [
   {
-    label: 'Site',
+    label: msg`Site`,
     href: '/settings',
     icon: Settings2,
     active: (path) => path === '/settings',
   },
   {
-    label: 'Appearance',
+    label: msg`Appearance`,
     href: '/settings/appearance',
     icon: Palette,
     active: (path) => path === '/settings/appearance',
   },
   {
-    label: 'Email',
+    label: msg`Email`,
     href: '/settings/email',
     icon: Mail,
     active: (path) => path === '/settings/email',
   },
   {
-    label: 'Advanced',
+    label: msg`Advanced`,
     href: '/settings/advanced',
     icon: Wrench,
     active: (path) => path === '/settings/advanced',
@@ -141,6 +156,7 @@ function NavGroup({
   readonly items: readonly NavItem[];
   readonly path: string;
 }): JSX.Element {
+  const { i18n } = useLingui();
   return (
     <SidebarGroup>
       <SidebarGroupLabel>{label}</SidebarGroupLabel>
@@ -148,19 +164,17 @@ function NavGroup({
         <SidebarMenu>
           {items.map((item) => {
             const active = item.active(path);
+            const label =
+              typeof item.label === 'string' ? item.label : i18n._(item.label);
             return (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={active}
-                  tooltip={item.label}
-                >
+                <SidebarMenuButton asChild isActive={active} tooltip={label}>
                   <AppLink
                     href={item.href}
                     {...(active ? { 'aria-current': 'page' as const } : {})}
                   >
                     <item.icon />
-                    <span>{item.label}</span>
+                    <span>{label}</span>
                   </AppLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -189,15 +203,16 @@ function AccountButton({
   readonly busy?: boolean;
   readonly onOpen?: () => void;
 }): JSX.Element {
+  const { t } = useLingui();
   return (
     <SidebarMenuButton
       size="lg"
-      aria-label="Account menu"
+      aria-label={t`Account menu`}
       aria-haspopup="menu"
       {...(busy ? { 'aria-busy': true } : {})}
       onClick={onOpen}
     >
-      <span className="truncate">{email === '' ? 'Account' : email}</span>
+      <span className="truncate">{email === '' ? t`Account` : email}</span>
       <ChevronsUpDown className="ml-auto" />
     </SidebarMenuButton>
   );
@@ -224,40 +239,68 @@ const ToastHost = lazy(() =>
 let toastsWanted = false;
 
 /** Where the current page sits: a section, and the page within it. */
-function crumbsFor(path: string): readonly {
-  readonly label: string;
+function crumbsFor(
+  path: string,
+  plugins: readonly PluginInfo[],
+): readonly {
+  readonly label: MessageDescriptor | string;
   readonly href?: string;
 }[] {
   if (path === '/' || path === '/content') {
-    return [{ label: 'Content' }];
+    return [{ label: msg`Content` }];
   }
   if (path.startsWith('/content/')) {
     return [
-      { label: 'Content', href: '/' },
-      { label: path === '/content/new' ? 'New item' : 'Edit' },
+      { label: msg`Content`, href: '/' },
+      { label: path === '/content/new' ? msg`New item` : msg`Edit` },
     ];
   }
   const setting = SETTINGS.find((item) => item.href === path);
   if (setting !== undefined) {
-    return [{ label: 'Settings', href: '/settings' }, { label: setting.label }];
+    return [
+      { label: msg`Settings`, href: '/settings' },
+      { label: setting.label },
+    ];
   }
   const area = SITE.find((item) => item.href === path);
   if (area !== undefined) {
     return [{ label: area.label }];
   }
   if (path === '/account') {
-    return [{ label: 'Account' }];
+    return [{ label: msg`Account` }];
   }
-  return [{ label: 'Not found' }];
+  const [, section, pluginId, panelId] = path.split('/');
+  if (section === 'plugins' && panelId !== undefined) {
+    const panel = plugins
+      .find((plugin) => plugin.id === pluginId)
+      ?.panels.find((entry) => entry.id === panelId);
+    if (panel !== undefined) {
+      return [
+        { label: msg`Plugins`, href: '/plugins' },
+        { label: panel.label },
+      ];
+    }
+  }
+  return [{ label: msg`Not found` }];
 }
 
-function PageBreadcrumb({ path }: { readonly path: string }): JSX.Element {
-  const crumbs = crumbsFor(path);
+function PageBreadcrumb({
+  path,
+  plugins,
+}: {
+  readonly path: string;
+  readonly plugins: readonly PluginInfo[];
+}): JSX.Element {
+  const { i18n } = useLingui();
+  const crumbs = crumbsFor(path, plugins).map((crumb) => ({
+    ...crumb,
+    label: typeof crumb.label === 'string' ? crumb.label : i18n._(crumb.label),
+  }));
   return (
     <Breadcrumb>
       <BreadcrumbList>
         {crumbs.map((crumb, index) => (
-          <BreadcrumbItem key={crumb.label}>
+          <BreadcrumbItem key={crumb.href ?? index}>
             {index > 0 ? <BreadcrumbSeparator /> : null}
             {crumb.href === undefined || index === crumbs.length - 1 ? (
               <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
@@ -273,6 +316,32 @@ function PageBreadcrumb({ path }: { readonly path: string }): JSX.Element {
   );
 }
 
+/**
+ * The site's sections with each plugin panel between Media and Plugins: a
+ * list that is opened every day is a section, not the foot of a settings
+ * page (docs/ADMIN_I18N_AND_UI.md, U3). A panel attached to a content kind
+ * is in that kind's editor and is not listed.
+ */
+function siteItems(plugins: readonly PluginInfo[]): readonly NavItem[] {
+  const panels: NavItem[] = plugins.flatMap((plugin) =>
+    plugin.panels
+      .filter((panel) => panel.attachTo === undefined)
+      .map((panel) => {
+        const href = `/plugins/${plugin.id}/${panel.id}`;
+        return {
+          label: panel.label,
+          href,
+          icon: List,
+          active: (path: string) => path === href,
+        };
+      }),
+  );
+  const [content, media, ...rest] = SITE;
+  return content === undefined || media === undefined
+    ? SITE
+    : [content, media, ...panels, ...rest];
+}
+
 export function Shell({
   children,
 }: {
@@ -283,6 +352,9 @@ export function Shell({
   // A page reports a failure with `notify`; it is shown as a toast.
   const message = useNotice();
   const siteName = useSettings().name;
+  // Loaded with the shell (`loadShell`); empty only if that request failed.
+  const plugins = useQuery(pluginsQuery).data?.plugins ?? [];
+  const { t } = useLingui();
   if (message !== '') {
     toastsWanted = true;
   }
@@ -308,11 +380,27 @@ export function Shell({
                   </AppLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                {/* The public site, which the admin had no way to open (U3).
+                    The Worker serving this admin serves the site at its
+                    root, on whichever address the operator came in by. */}
+                <SidebarMenuButton asChild tooltip={t`View site`}>
+                  <a href="/" target="_blank" rel="noopener">
+                    <ExternalLink />
+                    <span>
+                      <Trans>View site</Trans>
+                    </span>
+                    <span className="sr-only">
+                      <Trans>(opens in a new tab)</Trans>
+                    </span>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
-            <NavGroup label="Site" items={SITE} path={path} />
-            <NavGroup label="Settings" items={SETTINGS} path={path} />
+            <NavGroup label={t`Site`} items={siteItems(plugins)} path={path} />
+            <NavGroup label={t`Settings`} items={SETTINGS} path={path} />
           </SidebarContent>
           <SidebarFooter>
             <SidebarMenu>
@@ -332,10 +420,14 @@ export function Shell({
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"
             />
-            <PageBreadcrumb path={path} />
+            <PageBreadcrumb path={path} plugins={plugins} />
           </header>
-          <PurgeNotice />
-          <div className="mx-auto w-full max-w-[68rem] p-[clamp(1.2rem,3vw,2.2rem)]">
+          {/* The notice inside the column, not across the window: it, the
+              page header and the page share one left edge (U2). A page that
+              asks for the full width (`Page width="full"`) widens the whole
+              column, the notice with it, so the edge stays shared. */}
+          <div className="mx-auto flex w-full max-w-[68rem] flex-col gap-6 p-[clamp(1.2rem,3vw,2.2rem)] has-[[data-page-width=full]]:max-w-none">
+            <PurgeNotice />
             {children}
           </div>
         </SidebarInset>
@@ -346,5 +438,38 @@ export function Shell({
         ) : null}
       </SidebarProvider>
     </TooltipProvider>
+  );
+}
+
+/**
+ * The standing note shown while no purge token is configured. It stays up
+ * rather than appearing once, because the condition is permanent until
+ * someone configures the token. One line, above every page: what it means
+ * for the operator, and a link to the infrastructure detail, which belongs
+ * on Advanced (docs/ADMIN.md §2; docs/ADMIN_I18N_AND_UI.md, U1).
+ */
+function PurgeNotice(): JSX.Element | null {
+  const delay = useLiveDelay();
+  if (delay.instant) {
+    return null;
+  }
+  const within = formatDuration(delay.seconds);
+  return (
+    // A standing note, not an alert: it is true from the first render until
+    // someone configures the token, and must not interrupt a screen reader.
+    <Alert role="note" className="py-2">
+      <Clock />
+      <AlertTitle className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-normal">
+        <span className="font-medium">
+          <Trans>Changes reach visitors within {within}</Trans>
+        </span>
+        <Link
+          to="/settings/advanced#diagnostics"
+          className="text-muted-foreground underline underline-offset-4 hover:text-foreground"
+        >
+          <Trans>Why?</Trans>
+        </Link>
+      </AlertTitle>
+    </Alert>
   );
 }

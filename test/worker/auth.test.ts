@@ -205,6 +205,91 @@ describe('authentication', () => {
     expect(body.passwordRecommendedIterations).toBe(600_000);
   });
 
+  it('names its errors with a code the admin can translate', async () => {
+    // `error` stays English for the CLI; `code` and `params` let the admin
+    // say it in the operator's language (docs/ADMIN_I18N_AND_UI.md, D3).
+    const refused = await post('/_mallok/api/auth/login', {
+      email: EMAIL,
+      password: 'not the password at all',
+    });
+    expect(refused.status).toBe(401);
+    expect(await refused.json()).toEqual({
+      error: 'Invalid email or password.',
+      code: 'auth.invalid_credentials',
+    });
+
+    const session = await signIn();
+    const short = await post(
+      '/_mallok/api/auth/password',
+      { currentPassword: PASSWORD, newPassword: 'short' },
+      { cookie: session.cookie, 'x-mallok-csrf': session.csrf },
+    );
+    expect(short.status).toBe(400);
+    expect(await short.json()).toEqual({
+      error: 'The new password must be at least 12 characters.',
+      code: 'account.password_short',
+      params: { min: 12 },
+    });
+  });
+
+  it('keeps the interface language with the account, not the browser', async () => {
+    const session = await signIn();
+    const read = async (): Promise<unknown> => {
+      const me = await SELF.fetch(`${ORIGIN}/_mallok/api/auth/me`, {
+        headers: { cookie: session.cookie },
+      });
+      return ((await me.json()) as { uiLocale: unknown }).uiLocale;
+    };
+    const patch = (body: unknown, csrf = session.csrf): Promise<Response> =>
+      SELF.fetch(`${ORIGIN}/_mallok/api/auth/me`, {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          cookie: session.cookie,
+          'x-mallok-csrf': csrf,
+        },
+        body: JSON.stringify(body),
+      });
+
+    // Bootstrapped without one: nothing chosen yet.
+    expect(await read()).toBeNull();
+
+    expect((await patch({ uiLocale: 'zh-CN' })).status).toBe(200);
+    expect(await read()).toBe('zh-CN');
+    // A sign-in on another browser is told it at once (D2).
+    const login = await post('/_mallok/api/auth/login', {
+      email: EMAIL,
+      password: PASSWORD,
+    });
+    expect(((await login.json()) as { uiLocale: unknown }).uiLocale).toBe(
+      'zh-CN',
+    );
+
+    // Only something shaped like a language tag is kept.
+    expect((await patch({ uiLocale: '<b>zh</b>' })).status).toBe(400);
+    expect((await patch({})).status).toBe(400);
+    expect(await read()).toBe('zh-CN');
+    // A write without the session's CSRF token is refused like any other.
+    expect((await patch({ uiLocale: 'en' }, 'wrong')).status).toBe(403);
+
+    expect((await patch({ uiLocale: null })).status).toBe(200);
+    expect(await read()).toBeNull();
+  });
+
+  it('gives an API token no account language to change', async () => {
+    const session = await signIn();
+    const token = await mintToken(session, ['settings:write']);
+    const response = await SELF.fetch(`${ORIGIN}/_mallok/api/auth/me`, {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ uiLocale: 'zh-CN' }),
+    });
+    expect(response.status).toBe(403);
+  });
+
   it('drops every session when the password changes', async () => {
     const session = await signIn();
     const newPassword = 'an even longer replacement password';

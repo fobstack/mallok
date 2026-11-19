@@ -1,0 +1,11 @@
+{
+  "description": "高端文档主题：居中的首屏、快速入门卡片、指南列表，每篇文章自动编号章节。",
+  "kinds.page.label": "页面",
+  "kinds.article.label": "指南",
+  "options.hero_badge.label": "首屏徽标",
+  "options.hero_title.label": "首屏标题（留空则使用站点名称）",
+  "options.help_title.label": "帮助框标题",
+  "options.help_text.label": "帮助框文字",
+  "options.help_label.label": "帮助框链接文字",
+  "options.help_href.label": "帮助框链接（留空则隐藏帮助框）"
+}

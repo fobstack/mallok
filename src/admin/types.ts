@@ -15,6 +15,8 @@ export interface Session {
   readonly csrf: string;
   readonly passwordIterations: number;
   readonly passwordRecommendedIterations: number;
+  /** The interface language kept with the account, or null (D2). */
+  readonly uiLocale: string | null;
 }
 
 /** Site settings the admin may edit. */
@@ -58,6 +60,19 @@ export interface ThemeInfo {
   readonly defaultLocale: string;
   readonly imageWidths: readonly number[];
   readonly clientScripts: ThemeManifest['clientScripts'];
+  /**
+   * The manifest's words as the theme wrote them. The fields above are in
+   * the interface language when the theme has an admin catalog for it; the
+   * preview renders from these, because a page reads a kind's label
+   * (docs/THEME_FORMAT.md §10.1).
+   */
+  readonly declared: {
+    readonly name: string;
+    readonly description: string;
+    readonly kinds: ThemeManifest['kinds'];
+    readonly options: ThemeManifest['options'];
+    readonly clientScripts: ThemeManifest['clientScripts'];
+  };
   readonly assetBase: string;
   /** Templates and locale bundles, so the editor can render a real preview. */
   readonly files: Readonly<Record<string, string>>;
@@ -153,6 +168,13 @@ export interface PluginPanel {
   readonly id: string;
   readonly label: string;
   readonly type: 'table' | 'records';
+  /**
+   * What a filter, a detail row or a search field is called in the
+   * interface language, by field; a field it lacks is shown by its name.
+   */
+  readonly names?: Readonly<Record<string, string>>;
+  /** What a badge column's values read as, by field and value. */
+  readonly values?: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** `records` only: the fields of the create and edit form. */
   readonly fields?: Readonly<Record<string, RecordField>>;
   /** Columns a text search looks in; empty means no search box. */

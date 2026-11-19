@@ -13,6 +13,7 @@
  */
 
 import type { DecorationSet } from '@codemirror/view';
+import { useLingui } from '@lingui/react/macro';
 import type { JSX } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -74,14 +75,16 @@ function tokenTheme(
 }
 
 export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
+  const { t } = useLingui();
+  const label = t`Markdown source`;
   const host = useRef<HTMLDivElement>(null);
   const handle = useRef<EditorHandle | null>(null);
   const currentMissing = useRef<readonly string[]>([]);
   const [rich, setRich] = useState(false);
 
   // The newest props, so the mount effect never closes over stale values.
-  const latest = useRef(props);
-  latest.current = props;
+  const latest = useRef({ ...props, label });
+  latest.current = { ...props, label };
 
   useEffect(() => {
     let cancelled = false;
@@ -163,7 +166,9 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
             // focusable, and reported a long document's scroll area as one
             // the keyboard could not reach.
             view.EditorView.contentAttributes.of({
-              'aria-label': 'Markdown source',
+              // The language of the moment it mounted; an editor stays
+              // open for one sitting, not across a change of language.
+              'aria-label': latest.current.label,
               tabindex: '0',
             }),
             view.EditorView.updateListener.of((update) => {
@@ -234,7 +239,7 @@ export function MarkdownEditor(props: MarkdownEditorProps): JSX.Element {
       {rich ? null : (
         <textarea
           className="flex-1 resize-none border-0 bg-transparent p-3 font-mono text-sm outline-none"
-          aria-label="Markdown source"
+          aria-label={label}
           value={props.value}
           spellCheck={false}
           onInput={(event) => props.onChange(event.currentTarget.value)}

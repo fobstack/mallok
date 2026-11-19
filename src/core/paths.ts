@@ -179,7 +179,15 @@ const RESERVED_FIRST_SEGMENTS = new Set(['tags', 'media', 'theme']);
 
 /** Why a slug cannot be used, and the value that could, if there is one. */
 export interface SlugProblem {
+  /** The reason in English, for the CLI and every client without a catalog. */
   readonly message: string;
+  /**
+   * Names the reason, so an interface can say it in its own language with
+   * `params` (docs/ADMIN_I18N_AND_UI.md, D3). A reason given with a
+   * suggestion has its own code, ending in `_use`, with `use` in `params`.
+   */
+  readonly code: string;
+  readonly params: Readonly<Record<string, string | number>>;
   /** A value that would be accepted, when one follows from the input. */
   readonly suggestion?: string;
 }
@@ -209,27 +217,41 @@ export function canonicalSlug(slug: string): string {
 export function slugProblem(slug: string): SlugProblem | null {
   const segments = slug.split('/');
   const suggestion = canonicalSlug(slug);
-  const withSuggestion = (message: string): SlugProblem =>
+  const withSuggestion = (
+    message: string,
+    code: string,
+    params: Readonly<Record<string, string | number>> = {},
+  ): SlugProblem =>
     suggestion !== '' && suggestion !== slug
-      ? { message: `${message} Use "${suggestion}".`, suggestion }
-      : { message };
+      ? {
+          message: `${message} Use "${suggestion}".`,
+          code: `${code}_use`,
+          params: { ...params, use: suggestion },
+          suggestion,
+        }
+      : { message, code, params };
   if (slug.length > MAX_SLUG_LENGTH) {
     return {
       message: `The slug is longer than ${MAX_SLUG_LENGTH} characters.`,
+      code: 'slug.too_long',
+      params: { max: MAX_SLUG_LENGTH },
     };
   }
   if (segments.length > MAX_SLUG_SEGMENTS) {
     return withSuggestion(
       `The slug has ${segments.length} segments; at most ${MAX_SLUG_SEGMENTS} are allowed.`,
+      'slug.too_many_segments',
+      { count: segments.length, max: MAX_SLUG_SEGMENTS },
     );
   }
   const empty = segments.indexOf('');
   if (empty !== -1) {
-    return withSuggestion(
-      slug === ''
-        ? 'The slug is empty.'
-        : 'The slug has an empty segment: it starts or ends with "/", or has "//".',
-    );
+    return slug === ''
+      ? withSuggestion('The slug is empty.', 'slug.empty')
+      : withSuggestion(
+          'The slug has an empty segment: it starts or ends with "/", or has "//".',
+          'slug.empty_segment',
+        );
   }
   for (const [index, segment] of segments.entries()) {
     const canonical = slugify(segment);
@@ -241,20 +263,29 @@ export function slugProblem(slug: string): SlugProblem | null {
       return canonical === ''
         ? {
             message: `The slug "${slug}" has no Latin letters or digits to build a folder name from. Provide one written in Latin characters.`,
+            code: 'slug.no_latin',
+            params: { slug },
           }
         : {
             message: `The slug must use lowercase Latin letters, digits and single dashes. Use "${canonical}".`,
+            code: 'slug.not_canonical_use',
+            params: { use: canonical },
             suggestion: canonical,
           };
     }
     const which = `Segment ${index + 1} ("${segment}")`;
+    const params = { position: index + 1, segment };
     if (canonical === '') {
       return withSuggestion(
         `${which} has no Latin letters or digits to build a folder name from. Write it in Latin characters.`,
+        'slug.segment_no_latin',
+        params,
       );
     }
     return withSuggestion(
       `${which} must use lowercase Latin letters, digits and single dashes.`,
+      'slug.segment_not_canonical',
+      params,
     );
   }
   if (
@@ -264,6 +295,8 @@ export function slugProblem(slug: string): SlugProblem | null {
   ) {
     return {
       message: `A slug cannot start with "page/${segments[1]}": that is the address of a list's page ${segments[1]}.`,
+      code: 'slug.list_page',
+      params: { page: segments[1] ?? '' },
     };
   }
   return null;
@@ -292,6 +325,8 @@ export function slugPlacementProblem(
   if (RESERVED_FIRST_SEGMENTS.has(first)) {
     return {
       message: `A slug with several segments cannot start with "${first}/": the site answers that address itself.`,
+      code: 'slug.reserved_start',
+      params: { first },
     };
   }
   const kind = Object.entries(site.kinds).find(
@@ -300,11 +335,15 @@ export function slugPlacementProblem(
   if (kind !== undefined) {
     return {
       message: `A slug with several segments cannot start with "${first}/": that is the address of the kind "${kind[0]}".`,
+      code: 'slug.kind_start',
+      params: { first, kind: kind[0] },
     };
   }
   if (site.locales.includes(first)) {
     return {
       message: `A slug with several segments cannot start with "${first}/": that is the prefix of the language "${first}".`,
+      code: 'slug.locale_start',
+      params: { first },
     };
   }
   return null;

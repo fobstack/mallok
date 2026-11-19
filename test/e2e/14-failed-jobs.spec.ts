@@ -21,7 +21,8 @@ test('a job that gave up is listed in diagnostics with its last error', async ({
     await power.click();
   }
   await expect(power).toBeChecked();
-  const panel = card.getByRole('region', { name: 'Catalog items' });
+  await card.getByRole('link', { name: 'Catalog items' }).click();
+  const panel = page.getByRole('region', { name: 'Catalog items' });
 
   await panel.getByRole('button', { name: 'New' }).click();
   const form = page.getByRole('dialog', { name: 'New: Catalog items' });

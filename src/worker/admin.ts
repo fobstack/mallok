@@ -15,6 +15,7 @@ import {
   logout,
   postToken,
   revokeToken,
+  updateMe,
   whoami,
 } from './admin-auth.js';
 import { postClearFragments, postPurgeAll } from './admin-cache.js';
@@ -78,7 +79,7 @@ export async function handleAdmin(
 
   const principal = await authenticate(request, env, now);
   if (principal === null) {
-    return problem(401, 'Unauthorized.');
+    return problem(401, 'Unauthorized.', 'auth.unauthorized');
   }
 
   // Every state-changing request from a browser session must carry the CSRF
@@ -88,7 +89,7 @@ export async function handleAdmin(
     method !== 'HEAD' &&
     !(await csrfOk(request, principal))
   ) {
-    return problem(403, 'Missing or invalid CSRF token.');
+    return problem(403, 'Missing or invalid CSRF token.', 'auth.csrf_invalid');
   }
 
   const url = new URL(request.url);
@@ -103,6 +104,8 @@ export async function handleAdmin(
       return logout(env, principal);
     case 'GET auth/me':
       return whoami(env, principal);
+    case 'PATCH auth/me':
+      return updateMe(request, env, principal);
     case 'POST auth/password':
       return changePassword(request, env, principal);
 
@@ -121,7 +124,7 @@ export async function handleAdmin(
       );
 
     case 'GET theme':
-      return getTheme();
+      return getTheme(request);
 
     case 'POST cache/purge':
       return withScope(principal, 'settings:write', () => postPurgeAll(env));
@@ -205,7 +208,7 @@ export async function handleAdmin(
           putVariant(request, env, sha, width),
         );
       }
-      return problem(404, 'Not found.');
+      return problem(404, 'Not found.', 'not_found');
     }
     if (method === 'GET') {
       return getMediaItem(env, media.sha);
@@ -227,7 +230,7 @@ export async function handleAdmin(
     }
   }
 
-  return problem(404, 'Not found.');
+  return problem(404, 'Not found.', 'not_found');
 }
 
 /** Runs `handler` only when the principal carries `scope`. */
@@ -238,7 +241,14 @@ function withScope(
 ): Promise<Response> {
   if (!hasScope(principal, scope)) {
     return Promise.resolve(
-      problem(403, `This token lacks the "${scope}" scope.`),
+      problem(
+        403,
+        `This token lacks the "${scope}" scope.`,
+        'auth.token_scope',
+        {
+          scope,
+        },
+      ),
     );
   }
   return handler();

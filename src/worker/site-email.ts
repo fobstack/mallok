@@ -82,6 +82,7 @@ export async function putSiteEmail(
     return problem(
       400,
       'Body must be {"fromAddress"?: string | null, "resendApiKey"?: string | null}.',
+      'email.body_invalid',
     );
   }
   const { fromAddress, resendApiKey } = parsed.data;
@@ -93,11 +94,12 @@ export async function putSiteEmail(
     return problem(
       400,
       'The sender must be an address such as "hello@example.com" or "Acme <hello@example.com>".',
+      'email.sender_invalid',
     );
   }
   const existing = await loadSite(env.DB);
   if (existing === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   await updateSite(
     env.DB,
@@ -129,7 +131,7 @@ export async function putSiteEmail(
 export async function checkSiteEmail(env: Env): Promise<Response> {
   const row = await loadSite(env.DB);
   if (row === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   if (row.email_resend_key === null) {
     return json({ ok: false, message: 'No key is stored.' });
