@@ -37,7 +37,7 @@ test('a translation made from the language bar joins the original', async ({
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('Our mill');
-  await page.getByLabel('Slug', { exact: true }).fill(`our-mill-${stamp}`);
+  await page.getByLabel('URL slug', { exact: true }).fill(`our-mill-${stamp}`);
   await page.getByRole('button', { name: 'Publish' }).click();
   await expect(page).toHaveURL(/\/content\/(?!new)[^/?]+$/);
   const original = page.url().split('/content/')[1] ?? '';
@@ -58,7 +58,7 @@ test('a translation made from the language bar joins the original', async ({
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('关于工厂');
-  await page.getByLabel('Slug', { exact: true }).fill(slug);
+  await page.getByLabel('URL slug', { exact: true }).fill(slug);
   const saved = page.waitForResponse(
     (response) =>
       response.url().endsWith('/_mallok/api/content') &&

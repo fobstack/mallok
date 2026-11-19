@@ -74,7 +74,7 @@ test('writes and publishes a page that is immediately public', async ({
   // `page` is one of the two kinds the core always has (docs/ARCHITECTURE §8).
   await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill(TITLE);
-  await page.getByLabel('Slug', { exact: true }).fill(SLUG);
+  await page.getByLabel('URL slug', { exact: true }).fill(SLUG);
   await appendBody(page, BODY);
 
   await saveWith(page, 'Publish');
@@ -125,7 +125,7 @@ test('keeps a draft off the public site', async ({ page }) => {
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('Not for readers');
-  await page.getByLabel('Slug', { exact: true }).fill('not-for-readers');
+  await page.getByLabel('URL slug', { exact: true }).fill('not-for-readers');
   await appendBody(page, 'This page is a draft and must stay invisible.');
   await saveWith(page, 'Save draft');
 
@@ -142,7 +142,7 @@ test('a published page is updated or unpublished, never saved back to a draft', 
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('Live for now');
-  await page.getByLabel('Slug', { exact: true }).fill('live-for-now');
+  await page.getByLabel('URL slug', { exact: true }).fill('live-for-now');
   // Not fetched while live: that would put it in the edge cache, which with
   // no purge token here keeps it for a minute (see the test above), and
   // the 404 below would wait on the cache instead of on the save.

@@ -11,7 +11,7 @@ export function MediaPage(): JSX.Element {
     <Page width="list">
       <PageHeader
         title={t`Media`}
-        lede={t`Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate.`}
+        lede={t`Photos and files used on your site.`}
       />
       <MediaLibrary />
     </Page>

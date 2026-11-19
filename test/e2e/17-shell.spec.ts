@@ -28,7 +28,7 @@ const SECTIONS = [
   ['Content', '/_mallok/app/'],
   ['Media', '/_mallok/app/media'],
   ['Plugins', '/_mallok/app/plugins'],
-  ['Site', '/_mallok/app/settings'],
+  ['General', '/_mallok/app/settings'],
   ['Appearance', '/_mallok/app/settings/appearance'],
   ['Email', '/_mallok/app/settings/email'],
   ['Advanced', '/_mallok/app/settings/advanced'],
@@ -132,7 +132,7 @@ test('the account menu opens from the keyboard and offers the account page', asy
   const menu = page.getByRole('menu');
   await expect(menu).toBeVisible();
   await clean(page, 'account menu open');
-  await menu.getByRole('menuitem', { name: 'Account and API tokens' }).click();
+  await menu.getByRole('menuitem', { name: 'Account' }).click();
   await expect(page).toHaveURL('/_mallok/app/account');
 });
 

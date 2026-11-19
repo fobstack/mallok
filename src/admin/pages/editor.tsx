@@ -261,9 +261,9 @@ function Editor({
         name: 'description',
         field: {
           type: 'text' as const,
-          label: t`Description`,
+          label: t`Summary`,
           required: false,
-          help: t`Used as the meta description and in listings. Derived from the body when empty.`,
+          help: t`Shown in lists and in search results. Empty uses the start of the text.`,
         },
       },
       ...toSpecs(declared),
@@ -556,7 +556,7 @@ function Editor({
           </Field>
           <Field className="w-auto">
             <FieldLabel htmlFor="editor-slug">
-              <Trans>Slug</Trans>
+              <Trans>URL slug</Trans>
             </FieldLabel>
             <Input
               id="editor-slug"

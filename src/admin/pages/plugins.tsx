@@ -395,7 +395,7 @@ function PluginCard({
               to be shown; closed, because it is read once, not operated. */}
           <details className="rounded-lg border">
             <summary className="cursor-pointer px-3 py-2 text-sm font-medium select-none">
-              <Trans>Technical details</Trans>
+              <Trans>For the person who deploys</Trans>
             </summary>
             <div className="flex flex-col gap-4 border-t px-3 py-3">
               <Facts
