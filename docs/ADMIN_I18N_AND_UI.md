@@ -5,7 +5,7 @@
   written ("按照建议来"): D1 A (Lingui), D2 B built as A first, D3 C, D4 C,
   D5 as an addition under plugin API 2, D6 unchanged, D7 the four rules, D8
   C. §8 records each phase as built and what is still the owner's: Windows
-  and Linux screenshots, the real-site check, two wording questions.
+  and Linux screenshots, the real-site check, one wording question.
 - Date: 2026-11-12
 - Asked for by the owner on 2026-11-12, in two parts: the admin and the setup
   wizard have no multilingual support, and the admin's interface needs
@@ -548,7 +548,7 @@ Phase 2 as built (commits `bb278c7` to the commit adding this note):
   every two or three pages and confirmed the wording each time; the agreed
   terms are 邮箱, 标语, 部署 / 重新构建, 缓存清除令牌, 边缘缓存, 片段, 询盘,
   密钥 (for both a Worker secret and an API key), API 令牌, 权限范围, 撤销,
-  替代文本, 定时发布.
+  替代文本, 定时发布, and (from 2026-11-19) URL 别名 for Slug.
 - English changed where it was wrong, and only there: "1 pages · 1 sample
   records" in the wizard (and `01-wizard`'s assertion), "used by 1 items",
   "1 image(s) missing" and similar became real plurals.
@@ -898,9 +898,12 @@ Phase 5 as built:
 - `GETTING_STARTED.md` and its Chinese translation no longer tell the reader
   to type `en` and `zh` in the wizard.
 - **Not done, and the owner's:** screenshots on Windows and Linux (§5.5);
-  the real-site check on a deployed site; and two wording questions —
-  whether "Slug" becomes "URL 别名", and whether the wizard's main language
-  should start as English rather than as the interface language.
+  the real-site check on a deployed site; and whether the wizard's main
+  language should start as English rather than as the interface language.
+- **After phase 5**, on 2026-11-19, the owner chose "URL 别名" for "Slug":
+  the field's label and every sentence that names a slug, in the admin's
+  catalog and in Atelier's admin catalog. `{slug}` placeholders, which carry
+  the value itself, are unchanged.
 
 ## 9. Risks and open questions
 
