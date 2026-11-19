@@ -14,7 +14,8 @@ test('a revoked token is shown as revoked and offers no Revoke', async ({
 }) => {
   const name = `e2e-revoke-${Date.now()}`;
   await signIn(page);
-  await page.goto('/_mallok/app/account');
+  // Tokens live under Advanced since ADMIN_SIMPLE G18.
+  await page.goto('/_mallok/app/settings/advanced');
 
   await page.getByLabel('New token name').fill(name);
   await page.getByRole('button', { name: 'Create token' }).click();

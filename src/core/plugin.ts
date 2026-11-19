@@ -146,8 +146,17 @@ const pluginSettingSchema = z
     choices: z.array(z.string()).optional(),
     max: z.number().optional(),
     min: z.number().optional(),
+    /**
+     * Drawn after the others, in a closed "More options" block: what a
+     * daily operator rarely needs (docs/ADMIN_SIMPLE.md, D9). A required
+     * field may not be marked.
+     */
+    advanced: z.boolean().optional(),
   })
   .strict()
+  .refine((field) => !(field.required && field.advanced === true), {
+    message: 'A required field cannot be "advanced": it would be hidden.',
+  })
   .refine(
     (field) => field.type !== 'select' || (field.choices?.length ?? 0) > 0,
     { message: 'A "select" field must list its choices.' },

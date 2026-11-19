@@ -252,7 +252,11 @@ Supported types:
 | `reference[]` | array of slugs | A list of slugs, typed (there is no content picker for a list yet) | `kind` is required. Resolved for templates like `reference`, as a list (§7.5); at most 24 are resolved |
 
 Optional keys on any field: `label`, `required` (default `false`), `help`,
-`default`, `group` (the admin form's grouping).
+`default`, `group` (the admin form's grouping), and `advanced` (default
+`false`): the admin draws a field so marked after the others, in a closed
+"More options" block, for what a daily operator rarely needs. A required
+field may not be marked, and the build refuses one that is
+(`ADMIN_SIMPLE.md`, D9).
 
 Three hard rules:
 
@@ -289,7 +293,9 @@ fallback path lands on.
 ```
 
 Types: `string`, `text`, `number`, `boolean`, `color`, `select` — matching
-`themeOptionSchema` in `src/core/theme.ts`. `select` requires `choices`.
+`themeOptionSchema` in `src/core/theme.ts`. `select` requires `choices`. An
+option may carry `"advanced": true`, as a field may (§5.2), to sit in the
+closed "More options" block of the Appearance page.
 
 Values the user sets live in `site.theme_options`, and templates read them as
 `theme.options.<key>`; an unset option falls back to its `default`. When the

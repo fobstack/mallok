@@ -47,7 +47,8 @@ test('an item that is opened and not edited is not unsaved, and saves as unchang
   await signIn(page);
 
   // A token, to create an item whose bytes the test controls exactly.
-  await page.goto('/_mallok/app/account');
+  // Tokens live under Advanced since ADMIN_SIMPLE G18.
+  await page.goto('/_mallok/app/settings/advanced');
   await page.getByLabel('New token name').fill(`e2e-untouched-${Date.now()}`);
   await page.getByRole('button', { name: 'Create token' }).click();
   const token = (

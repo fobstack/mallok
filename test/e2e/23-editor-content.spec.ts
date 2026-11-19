@@ -13,7 +13,8 @@ const HEAD =
   '---\ntitle: Kept as typed\n# a comment the YAML writer would drop\nextra_note:   spaced   value\nweight: 3\n---\n';
 
 async function token(page: Page): Promise<string> {
-  await page.goto('/_mallok/app/account');
+  // Tokens live under Advanced since ADMIN_SIMPLE G18.
+  await page.goto('/_mallok/app/settings/advanced');
   await page.getByLabel('New token name').fill(`e2e-content-${Date.now()}`);
   await page.getByRole('button', { name: 'Create token' }).click();
   const value = (
