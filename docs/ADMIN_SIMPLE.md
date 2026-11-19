@@ -806,8 +806,45 @@ To be filled as phases run. At proposal time:
 | Loaded on demand | 478.6 KiB gzip | The same run |
 | Interface messages | 543, both languages | `grep -c '^msgid'` on `zh-CN.po` gives 544 with the header |
 | Browser specs | 22 files (`00`–`21`) | `ls test/e2e` |
-| Tiptap's size and fidelity here | **Not measured** | Phase 8 |
+| Tiptap's size and fidelity here | Measured in phase 8, below | Phase 8 |
 | Benchmarks in §3 | **Not measured**; from knowledge | — |
+
+### 9.1 Phase 8: what a visual editor would cost
+
+Measured 2026-11-19 in a throwaway directory (`.tmp/tiptap-spike`, never
+in the repository's dependencies), with `@tiptap/core`, `@tiptap/pm`,
+`@tiptap/starter-kit`, `@tiptap/markdown` and `@tiptap/extension-table` at
+**3.33.0** — published 2026-11-05, the newest release at least two weeks
+old (3.34.0 was six days old). Each document's body, front matter removed,
+was loaded with `contentType: 'markdown'` and written back with
+`getMarkdown()` in happy-dom.
+
+| Corpus | Files | Byte-identical | Whitespace only | Changed |
+| --- | ---: | ---: | ---: | ---: |
+| `content/` — the starter's pages and the site's own | 22 | 0 | 14 | **8** |
+| `demo/content/` | 8 | 0 | 8 | 0 |
+| `docs/` — long documents, the owner's own writing | 24 | 0 | 0 | **24** |
+
+- **Every one of the eight changed pages has the same change:** the
+  plugin embed `[[inquiry]]` comes back as `\[\[inquiry\]\]`, which would
+  remove the inquiry form from every product and the contact page on the
+  first save. A Tiptap extension for Mallok's embeds would be needed first.
+- **Whitespace:** the blank line between the front matter and the body,
+  and the final newline, are dropped from every document.
+- **The long documents** change in many small ways: `_` inside link text
+  is escaped (`RELEASE\_STATUS.md`), the indentation of a list item's
+  continued lines is removed, and so on. All 23 with tables keep them as
+  tables; the one with raw HTML loses it.
+- **Size:** the five packages bundled and minified (esbuild) are
+  **155.2 KiB gzip**, 140.6 without tables. It would load with the editor,
+  not on first load, but the editor's chunk is 34.9 KiB today.
+- **Verdict for the owner's decision on 0.2:** with this release,
+  "unchanged unless edited" cannot hold — no document came back
+  unchanged, and a third of the site's pages would lose their inquiry
+  form. Adopting it means (1) an embed extension, (2) relaxing
+  `CONTENT_FORMAT.md §3` to "unchanged paragraphs are kept", and (3) a
+  four- to five-fold editor chunk. The assisted Markdown of phase 4 stays
+  the editor until those three are chosen.
 
 ## 10. Risks and open questions
 
