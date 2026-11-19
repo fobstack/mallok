@@ -100,11 +100,10 @@ export function createAdminRouter(): ReturnType<typeof createBrowserRouter> {
             errorElement: <RouteError />,
             children: [
               {
+                // Overview: what to do next and what is new (ADMIN_SIMPLE.md, D1).
                 index: true,
                 element: page(() =>
-                  import('./pages/content-list.js').then(
-                    (module) => module.ContentListPage,
-                  ),
+                  import('./pages/home.js').then((module) => module.HomePage),
                 ),
               },
               {
@@ -262,7 +261,7 @@ function NotFound(): JSX.Element {
         <CardContent>
           <Button asChild>
             <Link to="/">
-              <Trans>Back to content</Trans>
+              <Trans>Back to the overview</Trans>
             </Link>
           </Button>
         </CardContent>

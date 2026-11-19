@@ -51,6 +51,10 @@ msgstr "\"{typed}\" has no Latin letters or digits to build a slug from. Type on
 msgid "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
 msgstr "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
 
+#: src/admin/pages/home.tsx
+msgid "(done)"
+msgstr "(done)"
+
 #: src/admin/components/shell.tsx
 msgid "(opens in a new tab)"
 msgstr "(opens in a new tab)"
@@ -94,6 +98,10 @@ msgstr "{count, plural, one {# slug would start at an address the new settings g
 #: src/admin/components/record-editor.tsx
 msgid "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
 msgstr "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
+
+#: src/admin/pages/home.tsx
+msgid "{done} of {total} done"
+msgstr "{done} of {total} done"
 
 #: src/admin/pages/setup.tsx
 msgid "{installed, plural, one {# page was installed.} other {# pages were installed.}}"
@@ -147,6 +155,10 @@ msgstr "{path} is already the address of the {kind} \"{slug}\" ({locale}). Choos
 #: src/admin/pages/plugins.tsx
 msgid "{pluginName} enabled"
 msgstr "{pluginName} enabled"
+
+#: src/admin/pages/home.tsx
+msgid "{pluginName}: fill in {label}"
+msgstr "{pluginName}: fill in {label}"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -272,6 +284,10 @@ msgstr "Actions for {0}"
 msgid "Active"
 msgstr "Active"
 
+#: src/admin/pages/home.tsx
+msgid "Add"
+msgstr "Add"
+
 #: src/admin/pages/content-list.tsx
 msgid "Add {typeName}"
 msgstr "Add {typeName}"
@@ -343,8 +359,13 @@ msgstr "Affects cached pages"
 msgid "All"
 msgstr "All"
 
+#: src/admin/pages/home.tsx
+msgid "All {label}"
+msgstr "All {label}"
+
 #: src/admin/components/shell.tsx
 #: src/admin/pages/content-list.tsx
+#: src/admin/pages/home.tsx
 msgid "All content"
 msgstr "All content"
 
@@ -428,8 +449,8 @@ msgid "Back"
 msgstr "Back"
 
 #: src/admin/app.tsx
-msgid "Back to content"
-msgstr "Back to content"
+msgid "Back to the overview"
+msgstr "Back to the overview"
 
 #: src/admin/pages/editor.tsx
 msgid "Back to writing"
@@ -651,6 +672,10 @@ msgstr "Column"
 msgid "Configured"
 msgstr "Configured"
 
+#: src/admin/pages/home.tsx
+msgid "Connect your domain"
+msgstr "Connect your domain"
+
 #: src/admin/components/shell.tsx
 msgid "Content"
 msgstr "Content"
@@ -720,6 +745,7 @@ msgid "server.content.slug_underivable"
 msgstr "Could not derive a slug; provide one explicitly."
 
 #: src/admin/pages/content-list.tsx
+#: src/admin/pages/home.tsx
 msgid "Could not load content."
 msgstr "Could not load content."
 
@@ -737,6 +763,7 @@ msgid "Could not load plugins."
 msgstr "Could not load plugins."
 
 #: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/home.tsx
 msgid "Could not load rows."
 msgstr "Could not load rows."
 
@@ -969,6 +996,14 @@ msgstr "Export everything"
 msgid "Failed background jobs"
 msgstr "Failed background jobs"
 
+#: src/admin/pages/home.tsx
+msgid "Fill in"
+msgstr "Fill in"
+
+#: src/admin/pages/home.tsx
+msgid "Finish setting up"
+msgstr "Finish setting up"
+
 #: src/admin/pages/setup.tsx
 msgid "Finish setup"
 msgstr "Finish setup"
@@ -1095,6 +1130,10 @@ msgstr "Invalid settings: {reason}."
 msgid "server.settings.invalid"
 msgstr "Invalid settings."
 
+#: src/admin/pages/home.tsx
+msgid "It is required, and {pluginName} cannot work without it."
+msgstr "It is required, and {pluginName} cannot work without it."
+
 #: src/admin/pages/editor.tsx
 msgid "italic"
 msgstr "italic"
@@ -1187,6 +1226,7 @@ msgstr "link text"
 #: src/admin/components/related-rows.tsx
 #: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
+#: src/admin/pages/home.tsx
 #: src/admin/pages/plugin-panel.tsx
 #: src/admin/pages/plugins.tsx
 #: src/admin/pages/settings-advanced.tsx
@@ -1214,6 +1254,10 @@ msgstr "Make {language} the default language?\n"
 #: src/admin/pages/settings-site.tsx
 msgid "Make default"
 msgstr "Make default"
+
+#: src/admin/pages/home.tsx
+msgid "Make the example pages your own"
+msgstr "Make the example pages your own"
 
 #: src/admin/components/markdown-editor.tsx
 msgid "Markdown source"
@@ -1474,6 +1518,10 @@ msgstr "Not in theme"
 msgid "Not saved yet"
 msgstr "Not saved yet"
 
+#: src/admin/pages/home.tsx
+msgid "Nothing has arrived yet."
+msgstr "Nothing has arrived yet."
+
 #: src/admin/components/media-library.tsx
 msgid "Nothing has been uploaded yet."
 msgstr "Nothing has been uploaded yet."
@@ -1481,6 +1529,10 @@ msgstr "Nothing has been uploaded yet."
 #: src/admin/pages/content-list.tsx
 msgid "Nothing has been written in {language} yet."
 msgstr "Nothing has been written in {language} yet."
+
+#: src/admin/pages/home.tsx
+msgid "Nothing has been written yet."
+msgstr "Nothing has been written yet."
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Nothing here yet."
@@ -1535,6 +1587,10 @@ msgstr "Open"
 msgid "Open {id}"
 msgstr "Open {id}"
 
+#: src/admin/pages/home.tsx
+msgid "Open pages"
+msgstr "Open pages"
+
 #: src/admin/pages/setup.tsx
 msgid "Open the admin"
 msgstr "Open the admin"
@@ -1542,6 +1598,11 @@ msgstr "Open the admin"
 #: src/admin/pages/setup.tsx
 msgid "Other languages"
 msgstr "Other languages"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/home.tsx
+msgid "Overview"
+msgstr "Overview"
 
 #: src/admin/pages/editor.tsx
 msgid "Page settings"
@@ -1678,6 +1739,10 @@ msgstr "Quote"
 #: src/admin/pages/settings-advanced.tsx
 msgid "Rebuild all pages"
 msgstr "Rebuild all pages"
+
+#: src/admin/pages/home.tsx
+msgid "Recently edited"
+msgstr "Recently edited"
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -1886,6 +1951,14 @@ msgstr "Serving <0>{customDomain}</0>. The edge cache is active."
 #: src/admin/form/controls.tsx
 msgid "Set"
 msgstr "Set"
+
+#: src/admin/pages/home.tsx
+msgid "Set up"
+msgstr "Set up"
+
+#: src/admin/pages/home.tsx
+msgid "Set up email sending"
+msgstr "Set up email sending"
 
 #: src/admin/pages/setup.tsx
 msgid "Set up your site"
@@ -2153,6 +2226,10 @@ msgstr "The media id must be a sha256 hex digest."
 #: src/admin/server-messages.catalog.ts
 msgid "server.account.password_short"
 msgstr "The new password must be at least {min} characters."
+
+#: src/admin/pages/home.tsx
+msgid "The pages the site started with are examples; edit or replace them."
+msgstr "The pages the site started with are examples; edit or replace them."
 
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
@@ -2504,6 +2581,10 @@ msgstr "Visitors see it now."
 msgid "Visitors see it within {within}."
 msgstr "Visitors see it within {within}."
 
+#: src/admin/pages/home.tsx
+msgid "Visitors still see a preview address, and search engines are asked not to list the site."
+msgstr "Visitors still see a preview address, and search engines are asked not to list the site."
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "What is instant, and what needs a deploy"
 msgstr "What is instant, and what needs a deploy"
@@ -2523,6 +2604,10 @@ msgstr "Why?"
 #: src/admin/pages/settings-email.tsx
 msgid "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."
 msgstr "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."
+
+#: src/admin/pages/home.tsx
+msgid "Without it, no email reaches you or your visitors."
+msgstr "Without it, no email reaches you or your visitors."
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."
