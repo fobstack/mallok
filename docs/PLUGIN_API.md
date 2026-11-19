@@ -167,7 +167,11 @@ receiving an origin badge it can award itself.
 
 The field types in `settings` match the table in `THEME_FORMAT.md §5.2`,
 excluding `image`, `file` and `reference`. Validation uses zod, with the
-schema generated from `plugin.json`.
+schema generated from `plugin.json`. A setting may carry `"advanced": true`
+(any API version): the admin draws it after the others in a closed "More
+options" block, with the plugin's optional secrets. A required setting may
+not be marked, and the manifest is refused if one is (`ADMIN_SIMPLE.md`,
+D9).
 
 ## 5. Hooks
 

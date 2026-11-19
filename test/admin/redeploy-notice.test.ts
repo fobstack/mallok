@@ -62,9 +62,9 @@ describe('AC-PLUGIN-07: the plugin page has no install control', () => {
 
   it('states plainly that plugins ship with the source', () => {
     const flat = flatten(page);
-    expect(flat).toContain(
-      'Plugins ship with your source, not through this page',
-    );
+    // In the operator's words first, the paths in the block for whoever
+    // deploys (docs/ADMIN_SIMPLE.md §6.5).
+    expect(flat).toContain('Plugins are added by whoever deploys the site');
     expect(page).toContain('src/plugins/');
     expect(flat).toContain(
       'There is no upload here because there is no way to make an upload take effect without a new build.',

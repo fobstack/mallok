@@ -251,10 +251,6 @@ msgstr "示例内容会为站点填充真实的页面，之后可以编辑或删
 msgid "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
 msgstr "一个 zip 压缩包，包含所有页面的 Markdown、图片、站点设置和询盘。它是一个完整的站点，在哪里都能读取——随时可以带去 Astro、Hugo 或 Obsidian。升级前请先导出。"
 
-#: src/admin/pages/account.tsx
-msgid "About password hashing"
-msgstr "关于密码哈希"
-
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/shell.tsx
 #: src/admin/pages/account.tsx
@@ -400,7 +396,7 @@ msgstr "不限"
 msgid "Any"
 msgstr "不限"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "API tokens"
 msgstr "API 令牌"
 
@@ -511,8 +507,8 @@ msgid "Building…"
 msgstr "正在生成…"
 
 #: src/admin/pages/settings-appearance.tsx
-msgid "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
-msgstr "本次部署内置的主题：{builtIn}。切换主题后，内容、内容 ID 和所有 URL 都保持不变。"
+msgid "Built into this deployment: {builtIn}."
+msgstr "这次部署包含的主题：{builtIn}。"
 
 #: src/admin/pages/editor.tsx
 msgid "Bulleted list"
@@ -708,7 +704,7 @@ msgstr "正在转换"
 msgid "Copied {address}"
 msgstr "已复制 {address}"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Copy"
 msgstr "复制"
 
@@ -728,7 +724,7 @@ msgstr "修改失败。"
 msgid "Could not copy. The address is {address}"
 msgstr "无法复制。网址是 {address}"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Could not create."
 msgstr "创建失败。"
 
@@ -771,7 +767,7 @@ msgstr "无法加载数据。"
 msgid "Could not load the record."
 msgstr "无法加载这条记录。"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Could not load tokens."
 msgstr "无法加载令牌。"
 
@@ -816,7 +812,7 @@ msgstr "创建管理员"
 msgid "Create the first page"
 msgstr "创建第一个页面"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Create token"
 msgstr "创建令牌"
 
@@ -880,6 +876,7 @@ msgid "Describe the image"
 msgstr "描述这张图片"
 
 #: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/account.tsx
 msgid "Details"
 msgstr "详情"
 
@@ -899,7 +896,7 @@ msgstr "域名"
 msgid "done"
 msgstr "完成"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Done"
 msgstr "完成"
 
@@ -1012,7 +1009,12 @@ msgstr "完成设置"
 msgid "For a language not listed, comma separated. Languages can also be added later."
 msgstr "用于上面没有列出的语言，以逗号分隔。之后也可以再添加语言。"
 
+#: src/admin/pages/account.tsx
+msgid "For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
+msgstr "如需更强的保护，可以在 <0>/_mallok/</0> 前加上 Cloudflare Access。"
+
 #: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
 msgid "For the person who deploys"
 msgstr "部署相关信息"
 
@@ -1054,6 +1056,10 @@ msgstr "正在计算哈希"
 #: src/admin/pages/editor.tsx
 msgid "Heading"
 msgstr "小标题"
+
+#: src/admin/pages/plugins.tsx
+msgid "Here you switch them on and set them up; a change applies at once."
+msgstr "在这里可以开关插件并设置它们，修改立即生效。"
 
 #: src/admin/pages/editor.tsx
 msgid "Hide settings"
@@ -1303,6 +1309,11 @@ msgstr "更多操作"
 msgid "More language codes"
 msgstr "更多语言代码"
 
+#: src/admin/form/form.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "More options"
+msgstr "更多选项"
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.field.rows_list"
@@ -1397,7 +1408,7 @@ msgstr "新建"
 msgid "New password"
 msgstr "新密码"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "New token name"
 msgstr "新令牌名称"
 
@@ -1595,6 +1606,10 @@ msgstr "打开页面"
 msgid "Open the admin"
 msgstr "进入后台"
 
+#: src/admin/pages/plugins.tsx
+msgid "Optional keys"
+msgstr "可选密钥"
+
 #: src/admin/pages/setup.tsx
 msgid "Other languages"
 msgstr "其他语言"
@@ -1655,8 +1670,8 @@ msgid "Plugins"
 msgstr "插件"
 
 #: src/admin/pages/plugins.tsx
-msgid "Plugins ship with your source, not through this page"
-msgstr "插件随源代码发布，而不是通过这个页面安装"
+msgid "Plugins are added by whoever deploys the site"
+msgstr "插件由部署网站的人添加"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
@@ -1782,7 +1797,7 @@ msgstr "替换"
 msgid "Resend API key"
 msgstr "Resend API 密钥"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Revoke"
 msgstr "撤销"
 
@@ -1851,7 +1866,7 @@ msgstr "正在保存…"
 msgid "Scheduled"
 msgstr "定时发布"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Scopes"
 msgstr "权限范围"
 
@@ -2182,7 +2197,7 @@ msgstr "上传的内容与路径中的 sha256 不一致。"
 msgid "The check failed."
 msgstr "检测失败。"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
 msgstr "CLI 和各种脚本都通过令牌访问。令牌只显示一次——请立即复制，之后无法再次查看。"
 
@@ -2413,6 +2428,10 @@ msgstr "这个站点还没有自定义域名，目前运行在 <0>.workers.dev</
 msgid "server.setup.key_unconfigured"
 msgstr "这个站点没有设置密钥，因此不会创建管理员。请在项目目录中运行 `mallok create .` 完成配置，或运行 `mallok setup-key` 生成一个。"
 
+#: src/admin/pages/account.tsx
+msgid "This site's hosting limits how strongly passwords can be protected."
+msgstr "受托管环境限制，本站对密码的保护强度有限。"
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.auth.token_scope"
@@ -2530,8 +2549,8 @@ msgid "Use"
 msgstr "使用"
 
 #: src/admin/pages/account.tsx
-msgid "Use a long, unique password. For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
-msgstr "请使用足够长且不与其他地方重复的密码。如需更强的保护，可以在 <0>/_mallok/</0> 前面加上 Cloudflare Access。"
+msgid "Use a long password you use nowhere else"
+msgstr "请使用足够长、且不在别处使用的密码"
 
 #: src/admin/pages/settings-email.tsx
 msgid "Use an address such as hello@example.com or Acme <hello@example.com>."
@@ -2589,13 +2608,13 @@ msgstr "访客现在看到的是预览地址，搜索引擎也被要求不收录
 msgid "What is instant, and what needs a deploy"
 msgstr "哪些立即生效，哪些需要部署"
 
-#: src/admin/pages/plugins.tsx
-msgid "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
-msgstr "这里能修改的内容——下面的开关、设置和密钥——都保存在数据库中，从下一次请求起生效。"
-
 #: src/admin/pages/settings-site.tsx
 msgid "Where images are served from, such as https://media.example.com. Empty serves them from this site."
 msgstr "图片从哪个地址提供，例如 https://media.example.com。留空则由本站直接提供。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Whoever deploys the site changes its theme. Your content, its ids and every address stay exactly as they are."
+msgstr "主题由部署网站的人更换。你的内容、编号和所有网址都会保持不变。"
 
 #: src/admin/components/shell.tsx
 msgid "Why?"

@@ -62,6 +62,15 @@ export const themeFieldSchema = z
     min: z.number().optional(),
     /** `file` only: accepted extensions. */
     accept: z.array(z.string()).optional(),
+    /**
+     * Drawn after the others, in a closed "More options" block: what a
+     * daily operator rarely needs (docs/ADMIN_SIMPLE.md, D9). A required
+     * field may not be marked.
+     */
+    advanced: z.boolean().optional(),
+  })
+  .refine((field) => !(field.required && field.advanced === true), {
+    message: 'A required field cannot be "advanced": it would be hidden.',
   })
   .refine(
     (field) => field.type !== 'select' || (field.choices?.length ?? 0) > 0,
@@ -109,6 +118,8 @@ export const themeOptionSchema = z.object({
   label: z.string(),
   default: z.union([z.string(), z.number(), z.boolean()]),
   choices: z.array(z.string()).optional(),
+  /** Drawn in the closed "More options" block (docs/ADMIN_SIMPLE.md, D9). */
+  advanced: z.boolean().optional(),
 });
 
 /** Schema for `theme.json`. */

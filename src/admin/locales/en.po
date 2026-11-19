@@ -251,10 +251,6 @@ msgstr "A starter fills the site with real pages you can edit or delete. Skippin
 msgid "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
 msgstr "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
 
-#: src/admin/pages/account.tsx
-msgid "About password hashing"
-msgstr "About password hashing"
-
 #: src/admin/components/account-menu.tsx
 #: src/admin/components/shell.tsx
 #: src/admin/pages/account.tsx
@@ -400,7 +396,7 @@ msgstr "any"
 msgid "Any"
 msgstr "Any"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "API tokens"
 msgstr "API tokens"
 
@@ -511,8 +507,8 @@ msgid "Building…"
 msgstr "Building…"
 
 #: src/admin/pages/settings-appearance.tsx
-msgid "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
-msgstr "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
+msgid "Built into this deployment: {builtIn}."
+msgstr "Built into this deployment: {builtIn}."
 
 #: src/admin/pages/editor.tsx
 msgid "Bulleted list"
@@ -708,7 +704,7 @@ msgstr "converting"
 msgid "Copied {address}"
 msgstr "Copied {address}"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Copy"
 msgstr "Copy"
 
@@ -728,7 +724,7 @@ msgstr "Could not change."
 msgid "Could not copy. The address is {address}"
 msgstr "Could not copy. The address is {address}"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Could not create."
 msgstr "Could not create."
 
@@ -771,7 +767,7 @@ msgstr "Could not load rows."
 msgid "Could not load the record."
 msgstr "Could not load the record."
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Could not load tokens."
 msgstr "Could not load tokens."
 
@@ -816,7 +812,7 @@ msgstr "Create the administrator"
 msgid "Create the first page"
 msgstr "Create the first page"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Create token"
 msgstr "Create token"
 
@@ -880,6 +876,7 @@ msgid "Describe the image"
 msgstr "Describe the image"
 
 #: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/account.tsx
 msgid "Details"
 msgstr "Details"
 
@@ -899,7 +896,7 @@ msgstr "Domain"
 msgid "done"
 msgstr "done"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Done"
 msgstr "Done"
 
@@ -1012,7 +1009,12 @@ msgstr "Finish setup"
 msgid "For a language not listed, comma separated. Languages can also be added later."
 msgstr "For a language not listed, comma separated. Languages can also be added later."
 
+#: src/admin/pages/account.tsx
+msgid "For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
+msgstr "For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
+
 #: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
 msgid "For the person who deploys"
 msgstr "For the person who deploys"
 
@@ -1054,6 +1056,10 @@ msgstr "hashing"
 #: src/admin/pages/editor.tsx
 msgid "Heading"
 msgstr "Heading"
+
+#: src/admin/pages/plugins.tsx
+msgid "Here you switch them on and set them up; a change applies at once."
+msgstr "Here you switch them on and set them up; a change applies at once."
 
 #: src/admin/pages/editor.tsx
 msgid "Hide settings"
@@ -1303,6 +1309,11 @@ msgstr "More actions"
 msgid "More language codes"
 msgstr "More language codes"
 
+#: src/admin/form/form.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "More options"
+msgstr "More options"
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.field.rows_list"
@@ -1397,7 +1408,7 @@ msgstr "New item"
 msgid "New password"
 msgstr "New password"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "New token name"
 msgstr "New token name"
 
@@ -1595,6 +1606,10 @@ msgstr "Open pages"
 msgid "Open the admin"
 msgstr "Open the admin"
 
+#: src/admin/pages/plugins.tsx
+msgid "Optional keys"
+msgstr "Optional keys"
+
 #: src/admin/pages/setup.tsx
 msgid "Other languages"
 msgstr "Other languages"
@@ -1655,8 +1670,8 @@ msgid "Plugins"
 msgstr "Plugins"
 
 #: src/admin/pages/plugins.tsx
-msgid "Plugins ship with your source, not through this page"
-msgstr "Plugins ship with your source, not through this page"
+msgid "Plugins are added by whoever deploys the site"
+msgstr "Plugins are added by whoever deploys the site"
 
 #: src/admin/pages/settings-site.tsx
 msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
@@ -1782,7 +1797,7 @@ msgstr "Replace"
 msgid "Resend API key"
 msgstr "Resend API key"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Revoke"
 msgstr "Revoke"
 
@@ -1851,7 +1866,7 @@ msgstr "Saving…"
 msgid "Scheduled"
 msgstr "Scheduled"
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "Scopes"
 msgstr "Scopes"
 
@@ -2182,7 +2197,7 @@ msgstr "The body does not match the sha256 in the path."
 msgid "The check failed."
 msgstr "The check failed."
 
-#: src/admin/pages/account.tsx
+#: src/admin/components/api-tokens.tsx
 msgid "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
 msgstr "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
 
@@ -2413,6 +2428,10 @@ msgstr "This site has no custom domain yet, so it is running on a <0>.workers.de
 msgid "server.setup.key_unconfigured"
 msgstr "This site has no setup key, so it will not create an administrator. Run `mallok create .` in the project directory to finish provisioning it, or `mallok setup-key` to issue one."
 
+#: src/admin/pages/account.tsx
+msgid "This site's hosting limits how strongly passwords can be protected."
+msgstr "This site's hosting limits how strongly passwords can be protected."
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.auth.token_scope"
@@ -2530,8 +2549,8 @@ msgid "Use"
 msgstr "Use"
 
 #: src/admin/pages/account.tsx
-msgid "Use a long, unique password. For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
-msgstr "Use a long, unique password. For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
+msgid "Use a long password you use nowhere else"
+msgstr "Use a long password you use nowhere else"
 
 #: src/admin/pages/settings-email.tsx
 msgid "Use an address such as hello@example.com or Acme <hello@example.com>."
@@ -2589,13 +2608,13 @@ msgstr "Visitors still see a preview address, and search engines are asked not t
 msgid "What is instant, and what needs a deploy"
 msgstr "What is instant, and what needs a deploy"
 
-#: src/admin/pages/plugins.tsx
-msgid "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
-msgstr "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
-
 #: src/admin/pages/settings-site.tsx
 msgid "Where images are served from, such as https://media.example.com. Empty serves them from this site."
 msgstr "Where images are served from, such as https://media.example.com. Empty serves them from this site."
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Whoever deploys the site changes its theme. Your content, its ids and every address stay exactly as they are."
+msgstr "Whoever deploys the site changes its theme. Your content, its ids and every address stay exactly as they are."
 
 #: src/admin/components/shell.tsx
 msgid "Why?"

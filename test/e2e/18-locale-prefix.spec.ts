@@ -18,6 +18,12 @@ test('the default language can be prefixed, and the root then redirects', async 
   const box = page.getByRole('checkbox', {
     name: /Prefix the default language too/,
   });
+  // A rare switch that moves every address, so it starts closed (G16).
+  await page
+    .locator('details')
+    .filter({ hasText: 'Prefix the default language too' })
+    .locator('summary')
+    .click();
   await expect(box).not.toBeChecked();
 
   const asked: string[] = [];

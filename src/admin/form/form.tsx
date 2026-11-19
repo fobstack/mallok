@@ -8,6 +8,7 @@
  * touching admin code.
  */
 
+import { Trans } from '@lingui/react/macro';
 import type { JSX } from 'react';
 import {
   type Control,
@@ -173,8 +174,33 @@ export function errorIdFor(id: string): string {
   return `${id}-error`;
 }
 
-/** The generator itself. */
+/**
+ * The generator itself. Fields a manifest marks `advanced` come after the
+ * rest, inside a closed "More options" block (docs/ADMIN_SIMPLE.md, D9).
+ */
 export function SchemaForm(props: SchemaFormProps): JSX.Element {
+  const common = props.specs.filter((spec) => spec.field.advanced !== true);
+  const advanced = props.specs.filter((spec) => spec.field.advanced === true);
+  if (advanced.length === 0) {
+    return <SchemaFields {...props} />;
+  }
+  return (
+    <FieldGroup>
+      {common.length === 0 ? null : <SchemaFields {...props} specs={common} />}
+      <details className="group rounded-lg border p-3">
+        <summary className="cursor-pointer text-sm font-medium">
+          <Trans>More options</Trans>
+        </summary>
+        <div className="mt-4">
+          <SchemaFields {...props} specs={advanced} />
+        </div>
+      </details>
+    </FieldGroup>
+  );
+}
+
+/** The fields of one block, grouped by their `group`. */
+function SchemaFields(props: SchemaFormProps): JSX.Element {
   const groups = byGroup(props.specs);
   const prefix = props.namePrefix ?? '';
   const validateHere = props.validateHere ?? true;
