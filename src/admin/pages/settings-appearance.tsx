@@ -7,19 +7,19 @@
  * (docs/PRODUCT_VISION.md §4).
  */
 
+import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { Info } from 'lucide-react';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { type FieldValues, useForm } from 'react-hook-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select';
 import { LOCALE_OPTIONS_KEY } from '../../core/constants.js';
 import { ApiError } from '../api.js';
+import {
+  ContentLanguageSelect,
+  useContentLanguageName,
+} from '../components/content-language.js';
 import {
   Code,
   Facts,
@@ -37,6 +37,7 @@ import { saveSettings, useSettings, useTheme } from '../queries.js';
 export function AppearancePage(): JSX.Element {
   const active = useTheme();
   const current = useSettings();
+  const { t } = useLingui();
   const [editingLocale, setEditingLocale] = useState(current.defaultLocale);
   const [saved, setSaved] = useState(false);
 
@@ -84,19 +85,60 @@ export function AppearancePage(): JSX.Element {
       setSaved(true);
     } catch (caught) {
       showServerErrors(form.setError, caught);
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     }
   });
   const busy = form.formState.isSubmitting;
 
   const kinds = Object.entries(active.kinds);
+  const listSeparator = t({
+    comment: 'Between items of a list',
+    message: ', ',
+  });
+  const scripts = active.clientScripts.length;
+  const builtIn = active.available.join(', ');
+  const nameOf = useContentLanguageName();
+  const editingLanguage = nameOf(editingLocale);
+  const defaultLanguage = nameOf(current.defaultLocale);
 
   return (
     <Page>
       <PageHeader
-        title="Appearance"
-        lede="The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
+        title={t`Appearance`}
+        lede={t`The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code.`}
       />
+
+      {specs.length === 0 ? null : (
+        <Section
+          as="form"
+          title={t`Theme options`}
+          onSubmit={(event) => void submit(event)}
+          footer={
+            <>
+              <Button type="submit" disabled={busy}>
+                {busy ? t`Saving…` : t`Save options`}
+              </Button>
+              {saved ? <SavedNote /> : null}
+            </>
+          }
+        >
+          {current.locales.length > 1 ? (
+            <ContentLanguageSelect
+              id="theme-editing-locale"
+              value={editingLocale}
+              onChange={setEditingLocale}
+              locales={current.locales}
+              defaultLocale={current.defaultLocale}
+              description={
+                editingLocale === current.defaultLocale
+                  ? t`These values apply to every language unless a language overrides them below.`
+                  : t`Values you change here apply only to ${editingLanguage}. Anything you leave alone follows the ${defaultLanguage} value.`
+              }
+            />
+          ) : null}
+          <SchemaForm specs={specs} control={form.control} idPrefix="theme" />
+        </Section>
+      )}
 
       <Section
         title={
@@ -110,21 +152,28 @@ export function AppearancePage(): JSX.Element {
       >
         <Facts
           items={[
-            ['Content types', kinds.map(([kind]) => kind).join(', ')],
             [
-              'Client JavaScript',
-              active.clientScripts.length === 0 ? (
+              t`Content types`,
+              // The theme's names for them, as the content list shows (U4).
+              kinds.map(([kind, def]) => def.label ?? kind).join(listSeparator),
+            ],
+            [
+              t`Client JavaScript`,
+              scripts === 0 ? (
                 <StatusBadge key="scripts" tone="ok">
-                  None
+                  <Trans>None</Trans>
                 </StatusBadge>
               ) : (
                 <StatusBadge key="scripts" tone="warn">
-                  Injects {active.clientScripts.length} script
-                  {active.clientScripts.length === 1 ? '' : 's'}
+                  <Plural
+                    value={scripts}
+                    one="Injects # script"
+                    other="Injects # scripts"
+                  />
                 </StatusBadge>
               ),
             ],
-            ['Assets', <Code key="assets">{active.assetBase}</Code>],
+            [t`Assets`, <Code key="assets">{active.assetBase}</Code>],
           ]}
         />
         {active.clientScripts.length === 0 ? null : (
@@ -151,62 +200,25 @@ export function AppearancePage(): JSX.Element {
       <Alert role="note">
         <Info />
         <AlertTitle role="heading" aria-level={2}>
-          Changing the theme takes a deploy
+          <Trans>Changing the theme takes a deploy</Trans>
         </AlertTitle>
         <AlertDescription>
           <p>
-            Themes live in the source tree, not the database — they are compiled
-            into the Worker. To switch, edit <Code>ACTIVE_THEME</Code> in{' '}
-            <Code>src/themes/index.ts</Code>, then build and deploy again.
+            <Trans>
+              Themes live in the source tree, not the database — they are
+              compiled into the Worker. To switch, edit{' '}
+              <Code>ACTIVE_THEME</Code> in <Code>src/themes/index.ts</Code>,
+              then build and deploy again.
+            </Trans>
           </p>
           <p>
-            Built into this deployment: {active.available.join(', ')}. Your
-            content, its ids and every URL stay exactly as they are.
+            <Trans>
+              Built into this deployment: {builtIn}. Your content, its ids and
+              every URL stay exactly as they are.
+            </Trans>
           </p>
         </AlertDescription>
       </Alert>
-
-      {specs.length === 0 ? null : (
-        <Section
-          as="form"
-          title="Theme options"
-          onSubmit={(event) => void submit(event)}
-          footer={
-            <>
-              <Button type="submit" disabled={busy}>
-                {busy ? 'Saving…' : 'Save options'}
-              </Button>
-              {saved ? <SavedNote /> : null}
-            </>
-          }
-        >
-          {current.locales.length > 1 ? (
-            <Field>
-              <FieldLabel htmlFor="theme-editing-locale">Editing</FieldLabel>
-              <NativeSelect
-                id="theme-editing-locale"
-                value={editingLocale}
-                onChange={(event) =>
-                  setEditingLocale(event.currentTarget.value)
-                }
-              >
-                {current.locales.map((locale) => (
-                  <NativeSelectOption key={locale} value={locale}>
-                    {locale}
-                    {locale === current.defaultLocale ? ' (default)' : ''}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-              <FieldDescription>
-                {editingLocale === current.defaultLocale
-                  ? 'These values apply to every language unless a language overrides them below.'
-                  : `Values you change here apply only to ${editingLocale}. Anything you leave alone follows the ${current.defaultLocale} value.`}
-              </FieldDescription>
-            </Field>
-          ) : null}
-          <SchemaForm specs={specs} control={form.control} idPrefix="theme" />
-        </Section>
-      )}
     </Page>
   );
 }

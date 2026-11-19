@@ -173,9 +173,16 @@ describe('cache maintenance', () => {
         const response = await postPurgeAll(withToken);
         // Not a 200 with a cheerful body: the admin shows this as an error.
         expect(response.status).toBe(502);
-        expect(((await response.json()) as { error: string }).error).toMatch(
-          message,
-        );
+        const body = (await response.json()) as {
+          error: string;
+          code: string;
+          params: { status: string | number; detail: string };
+        };
+        expect(body.error).toMatch(message);
+        // Named for the admin, with Cloudflare's own words as a parameter
+        // (docs/ADMIN_I18N_AND_UI.md, D3).
+        expect(body.code).toMatch(/^cache\.purge_(refused|limited|failed)$/);
+        expect(body.error).toContain(body.params.detail);
         expect(
           logged.mock.calls.map(
             (call) => (JSON.parse(String(call[0])) as { event: string }).event,

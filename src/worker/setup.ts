@@ -104,6 +104,9 @@ export async function getSetupStatus(env: Env): Promise<Response> {
       id: activeTheme().manifest.id,
       name: activeTheme().manifest.name,
       version: activeTheme().manifest.version,
+      // The languages the theme's own text comes in, offered first when the
+      // wizard asks for the site's languages (docs/ADMIN_I18N_AND_UI.md, U16).
+      locales: activeTheme().manifest.locales,
     },
     starters: offeredStarters().map((starter) => ({
       id: starter.id,
@@ -135,14 +138,14 @@ export async function handleSetup(
   const row = await loadSite(env.DB);
   if (row !== null && row.setup_completed_at !== null) {
     // Setup is over for good; the routes stop existing.
-    return problem(404, 'Not found.');
+    return problem(404, 'Not found.', 'not_found');
   }
 
   if (request.method === 'GET' && step === 'status') {
     return getSetupStatus(env);
   }
   if (request.method !== 'POST') {
-    return problem(405, 'Method not allowed.');
+    return problem(405, 'Method not allowed.', 'method_not_allowed');
   }
 
   // The first step creates the administrator and is the only unauthenticated
@@ -152,7 +155,11 @@ export async function handleSetup(
   }
   const principal = await authenticate(request, env, new Date());
   if (principal === null) {
-    return problem(401, 'Sign in as the administrator to continue.');
+    return problem(
+      401,
+      'Sign in as the administrator to continue.',
+      'setup.sign_in_required',
+    );
   }
 
   switch (step) {
@@ -163,7 +170,7 @@ export async function handleSetup(
     case 'complete':
       return complete(env, ctx);
     default:
-      return problem(404, 'Not found.');
+      return problem(404, 'Not found.', 'not_found');
   }
 }
 
@@ -179,11 +186,16 @@ async function applySite(
     return problem(
       400,
       'Provide a site name, a default language and a language list.',
+      'setup.site_incomplete',
     );
   }
   const input = parsed.data;
   if (!input.locales.includes(input.defaultLocale)) {
-    return problem(400, 'The language list must include the default language.');
+    return problem(
+      400,
+      'The language list must include the default language.',
+      'setup.default_locale_unlisted',
+    );
   }
   const purgeConfigured =
     env.CF_API_TOKEN !== undefined && env.CF_ZONE_ID !== undefined;
@@ -216,18 +228,23 @@ async function applyStarter(
     await request.json().catch(() => null),
   );
   if (!parsed.success) {
-    return problem(400, 'Name a starter to install.');
+    return problem(400, 'Name a starter to install.', 'setup.starter_missing');
   }
   const starter = offeredStarters().find(
     (candidate) => candidate.id === parsed.data.starter,
   );
   if (starter === undefined) {
-    return problem(404, `No starter named "${parsed.data.starter}".`);
+    return problem(
+      404,
+      `No starter named "${parsed.data.starter}".`,
+      'setup.starter_unknown',
+      { starter: parsed.data.starter },
+    );
   }
 
   const row = await loadSite(env.DB);
   if (row === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const settings = parseSiteSettings(row);
 
@@ -271,6 +288,8 @@ async function applyStarter(
       return problem(
         409,
         `The starter prefixes the default locale, but "${changed.clash.from}" would move to "${changed.clash.to}", which another item already uses.`,
+        'setup.starter_prefix_clash',
+        { from: changed.clash.from, to: changed.clash.to },
       );
     }
   }

@@ -72,6 +72,8 @@ describe('the setup wizard', () => {
     const created = await post('/_mallok/api/setup/admin', {
       email: EMAIL,
       password: PASSWORD,
+      // The language the wizard was used in becomes the account's (D2).
+      uiLocale: 'zh-CN',
     });
     expect([200, 201]).toContain(created.status);
 
@@ -80,8 +82,10 @@ describe('the setup wizard', () => {
       password: PASSWORD,
     });
     cookie = (session.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
-    csrf = ((await session.json()) as { csrf: string }).csrf;
+    const body = (await session.json()) as { csrf: string; uiLocale: unknown };
+    csrf = body.csrf;
     expect(cookie).not.toBe('');
+    expect(body.uiLocale).toBe('zh-CN');
   });
 
   it('refuses later steps without that account', async () => {

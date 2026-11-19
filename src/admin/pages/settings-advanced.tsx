@@ -6,9 +6,12 @@
  * and has to be stated once, plainly (docs/ARCHITECTURE.md §15).
  */
 
+import { i18n, type MessageDescriptor } from '@lingui/core';
+import { msg, plural } from '@lingui/core/macro';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { JSX, ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -23,6 +26,7 @@ import {
   StatusBadge,
 } from '../components/page.js';
 import type { ExportProgress } from '../export.js';
+import { formatDateTime, formatNumber } from '../format.js';
 import { notify, useReportError } from '../notice.js';
 import { healthQuery, keys, saveSettings, useSettings } from '../queries.js';
 
@@ -42,18 +46,18 @@ interface Diagnostics {
 /** Exported for `AC-INV-10` (docs/ACCEPTANCE.md §11): the interface's own
  * words for what is instant and what needs a deploy, asserted directly
  * rather than re-derived from rendered markup. */
-export const INSTANT = [
-  'Content: create, edit, publish, delete',
-  'Site settings, languages, navigation',
-  'Theme options this theme declares',
-  'Plugin on/off switches, settings and secrets',
+export const INSTANT: readonly MessageDescriptor[] = [
+  msg`Content: create, edit, publish, delete`,
+  msg`Site settings, languages, navigation`,
+  msg`Theme options this theme declares`,
+  msg`Plugin on/off switches, settings and secrets`,
 ];
 
-export const NEEDS_DEPLOY = [
-  'Switching to a different theme',
-  'Installing, updating or removing a plugin',
-  'Upgrading Mallok itself',
-  'Changing anything else in the source tree',
+export const NEEDS_DEPLOY: readonly MessageDescriptor[] = [
+  msg`Switching to a different theme`,
+  msg`Installing, updating or removing a plugin`,
+  msg`Upgrading Mallok itself`,
+  msg`Changing anything else in the source tree`,
 ];
 
 /**
@@ -68,6 +72,7 @@ function BackupSection(): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [result, setResult] = useState<string>('');
+  const { t } = useLingui();
 
   const run = async (): Promise<void> => {
     setBusy(true);
@@ -76,11 +81,14 @@ function BackupSection(): JSX.Element {
       const { buildExportZip, downloadBlob } = await import('../export.js');
       const built = await buildExportZip(setProgress);
       downloadBlob(built.blob, built.fileName);
+      const items = built.counts.content;
+      const files = built.counts.media;
+      const fileName = built.fileName;
       setResult(
-        `${built.counts.content} items and ${built.counts.media} files in ${built.fileName}.`,
+        t`${plural(items, { one: '# item', other: '# items' })} and ${plural(files, { one: '# file', other: '# files' })} in ${fileName}.`,
       );
     } catch (caught) {
-      notify(caught instanceof Error ? caught.message : 'The export failed.');
+      notify(caught instanceof Error ? caught.message : t`The export failed.`);
     } finally {
       setBusy(false);
       setProgress(null);
@@ -89,16 +97,18 @@ function BackupSection(): JSX.Element {
 
   return (
     <Section
-      title="Backup and export"
-      description="A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
+      title={t`Backup and export`}
+      description={t`A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading.`}
       footer={
         <>
           <Button type="button" disabled={busy} onClick={() => void run()}>
-            {busy ? 'Building…' : 'Export everything'}
+            {busy ? t`Building…` : t`Export everything`}
           </Button>
           {progress === null ? null : (
             <span className="text-sm text-muted-foreground" role="status">
-              {progress.done}/{progress.total} files
+              <Trans>
+                {progress.done}/{progress.total} files
+              </Trans>
             </span>
           )}
           {result === '' ? null : <StatusBadge tone="ok">{result}</StatusBadge>}
@@ -108,30 +118,46 @@ function BackupSection(): JSX.Element {
   );
 }
 
-/** Names what asked for a purge, in the operator's terms. */
+/** What asked for a purge, in the operator's terms. */
+const PURGE_SOURCES: Readonly<Record<string, MessageDescriptor>> = {
+  manual: msg`Clear cached pages`,
+  content: msg`a content change`,
+  settings: msg`a settings change`,
+  plugins: msg`a plugin switch`,
+  setup: msg`setup`,
+  scheduled: msg`a scheduled publication`,
+  fragments: msg`clearing the fragment cache`,
+};
+
+/** What each storage count is, by the key the Worker reports it under. */
+const STORAGE_COUNTS: Readonly<Record<string, MessageDescriptor>> = {
+  content: msg`Content items`,
+  published: msg`Published`,
+  media: msg`Media files`,
+  redirects: msg`Redirects`,
+  fragments: msg`Rendered fragments`,
+  jobsPending: msg`Background jobs waiting`,
+};
+
+/** Names what asked for a purge, joined the interface language's way. */
 function describePurgeSource(source: string): string {
-  const named: Readonly<Record<string, string>> = {
-    manual: 'Clear cached pages',
-    content: 'a content change',
-    settings: 'a settings change',
-    plugins: 'a plugin switch',
-    setup: 'setup',
-    scheduled: 'a scheduled publication',
-    fragments: 'clearing the fragment cache',
-  };
-  return source
-    .split(',')
-    .map((part) =>
-      part.startsWith('plugin:')
-        ? `the ${part.slice('plugin:'.length)} plugin`
-        : (named[part] ?? part),
-    )
-    .join(' and ');
+  const parts = source.split(',').map((part) => {
+    if (part.startsWith('plugin:')) {
+      const plugin = part.slice('plugin:'.length);
+      return i18n._(msg`the ${plugin} plugin`);
+    }
+    const named = PURGE_SOURCES[part];
+    return named === undefined ? part : i18n._(named);
+  });
+  return new Intl.ListFormat(i18n.locale, { type: 'conjunction' }).format(
+    parts,
+  );
 }
 
 export function AdvancedPage(): JSX.Element {
   const current = useSettings();
   const client = useQueryClient();
+  const { t } = useLingui();
   // Fresh on every visit: this page is where an operator comes to check.
   const healthNow = useQuery({ ...healthQuery, refetchOnMount: 'always' });
   const loadedDiagnostics = useQuery({
@@ -140,10 +166,18 @@ export function AdvancedPage(): JSX.Element {
   });
   useReportError(
     healthNow.error ?? loadedDiagnostics.error,
-    'Could not load diagnostics.',
+    t`Could not load diagnostics.`,
   );
   const health = healthNow.data ?? null;
   const diagnostics = loadedDiagnostics.data ?? null;
+  // The standing note's "Why?" lands here (U1). The router does not scroll
+  // to an anchor, and the section has a height only once its data is in.
+  const loaded = diagnostics !== null;
+  useEffect(() => {
+    if (loaded && window.location.hash === '#diagnostics') {
+      document.getElementById('diagnostics')?.scrollIntoView();
+    }
+  }, [loaded]);
   const [ttl, setTtl] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [clearing, setClearing] = useState('');
@@ -157,7 +191,7 @@ export function AdvancedPage(): JSX.Element {
       await saveSettings({ cacheTtl: effectiveTtl });
       setTtl(null);
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     } finally {
       setBusy(false);
     }
@@ -167,18 +201,23 @@ export function AdvancedPage(): JSX.Element {
     setClearing(what);
     setCacheResult('');
     try {
-      const result = await api<{ note?: string; cleared?: number }>(
+      const result = await api<{ attempted?: boolean; cleared?: number }>(
         `/cache/${what}`,
         { method: 'POST' },
       );
       // The server says when it could not purge; repeat that rather than
-      // claiming success (docs/ADMIN.md §5).
-      setCacheResult(result.note ?? done);
+      // claiming success (docs/ADMIN.md §5). Its `note` is English for the
+      // CLI; the admin says the same in the interface language.
+      setCacheResult(
+        result.attempted === false
+          ? t`No cache-purge token is configured, so nothing was purged. Cached pages expire on their own.`
+          : done,
+      );
       // A whole-site purge that worked clears a recorded failure; show that.
       await client.invalidateQueries({ queryKey: keys.health });
     } catch (caught) {
       notify(
-        caught instanceof ApiError ? caught.message : 'That did not work.',
+        caught instanceof ApiError ? caught.message : t`That did not work.`,
       );
     } finally {
       setClearing('');
@@ -186,38 +225,52 @@ export function AdvancedPage(): JSX.Element {
   };
 
   const purgeFailure = health?.lastPurgeFailure ?? null;
+  const failedPurge = (() => {
+    if (purgeFailure === null) {
+      return '';
+    }
+    const when = formatDateTime(purgeFailure.at);
+    const cause = describePurgeSource(purgeFailure.source);
+    const status = purgeFailure.status;
+    return status === undefined
+      ? t`${when} — after ${cause}, Cloudflare could not be reached`
+      : t`${when} — after ${cause}, Cloudflare answered HTTP ${status}`;
+  })();
+  // Orange is kept for what stops something working: a failed purge, an
+  // email key with no sender. What is simply not set up yet is neutral, so
+  // a fresh site is not five warnings (docs/ADMIN_I18N_AND_UI.md, U14).
   const diagnosticsFacts: [ReactNode, ReactNode][] = [
     [
-      'Custom domain',
+      t`Custom domain`,
       health?.customDomain === null || health === null ? (
-        <StatusBadge key="v" tone="warn">
-          Not bound
+        <StatusBadge key="v" tone="neutral">
+          <Trans>Not bound</Trans>
         </StatusBadge>
       ) : (
         <Code key="v">{health.customDomain}</Code>
       ),
     ],
     [
-      'Edge cache',
+      t`Edge cache`,
       health?.customDomain == null ? (
-        <StatusBadge key="v" tone="warn">
-          Inactive — a workers.dev URL is a preview, not a site
+        <StatusBadge key="v" tone="neutral">
+          <Trans>Inactive — a workers.dev URL is a preview, not a site</Trans>
         </StatusBadge>
       ) : (
         <StatusBadge key="v" tone="ok">
-          Active
+          <Trans>Active</Trans>
         </StatusBadge>
       ),
     ],
     [
-      'Cache purge token',
+      t`Cache purge token`,
       health?.purgeConfigured === true ? (
         <StatusBadge key="v" tone="ok">
-          Configured
+          <Trans>Configured</Trans>
         </StatusBadge>
       ) : (
-        <StatusBadge key="v" tone="warn">
-          Not configured — edits go live after the cache expires
+        <StatusBadge key="v" tone="neutral">
+          <Trans>Not configured — edits go live after the cache expires</Trans>
         </StatusBadge>
       ),
     ],
@@ -225,73 +278,75 @@ export function AdvancedPage(): JSX.Element {
       ? []
       : [
           [
-            'Last failed purge',
+            t`Last failed purge`,
             <div key="v" className="flex flex-col items-start gap-1">
-              <StatusBadge tone="warn">
-                {new Date(purgeFailure.at).toLocaleString()} — after{' '}
-                {describePurgeSource(purgeFailure.source)}
-                {purgeFailure.status === undefined
-                  ? ', Cloudflare could not be reached'
-                  : `, Cloudflare answered HTTP ${purgeFailure.status}`}
-              </StatusBadge>
+              <StatusBadge tone="warn">{failedPurge}</StatusBadge>
               <p className="text-muted-foreground">
-                Pages it named may still be served from the cache until they
-                expire. {purgeFailure.advice} {purgeFailure.detail}
+                <Trans>
+                  Pages it named may still be served from the cache until they
+                  expire.
+                </Trans>{' '}
+                {purgeFailure.advice} {purgeFailure.detail}
               </p>
             </div>,
           ] as [ReactNode, ReactNode],
         ]),
     [
-      'Email (Resend)',
+      t`Email (Resend)`,
       current.email.resendConfigured !== true ? (
-        <StatusBadge key="v" tone="warn">
-          No key — no email is sent
+        <StatusBadge key="v" tone="neutral">
+          <Trans>No key — no email is sent</Trans>
         </StatusBadge>
       ) : current.email.fromAddress === '' ? (
         <StatusBadge key="v" tone="warn">
-          Key set, no site sender — only plugins with their own send
+          <Trans>
+            Key set, no site sender — only plugins with their own send
+          </Trans>
         </StatusBadge>
       ) : (
         <StatusBadge key="v" tone="ok">
-          Configured
+          <Trans>Configured</Trans>
         </StatusBadge>
       ),
     ],
     [
-      'Media domain',
+      t`Media domain`,
       health?.mediaBaseUrl == null ? (
-        <StatusBadge key="v" tone="warn">
-          Served through the Worker
+        <StatusBadge key="v" tone="neutral">
+          <Trans>Served through the Worker</Trans>
         </StatusBadge>
       ) : (
         <Code key="v">{health.mediaBaseUrl}</Code>
       ),
     ],
-    ['Theme', <Code key="v">{health?.theme ?? '—'}</Code>],
-    ['Render pipeline', <Code key="v">{health?.pipeline ?? '—'}</Code>],
-    ['Applied migrations', diagnostics?.migrations.join(', ') ?? '—'],
+    [t`Theme`, <Code key="v">{health?.theme ?? '—'}</Code>],
+    [t`Render pipeline`, <Code key="v">{health?.pipeline ?? '—'}</Code>],
+    [t`Applied migrations`, diagnostics?.migrations.join(', ') ?? '—'],
   ];
 
   return (
     <Page>
       <PageHeader
-        title="Advanced"
-        lede="Everything below is a platform detail. You do not need any of it to run the site."
+        title={t`Advanced`}
+        lede={t`Keep a backup of your site. Everything after it is a platform detail you do not need to run the site.`}
       />
 
-      <Section title="What is instant, and what needs a deploy">
+      {/* The one thing here an operator needs to do (U14). */}
+      <BackupSection />
+
+      <Section title={t`What is instant, and what needs a deploy`}>
         <div className="grid gap-6 sm:grid-cols-2">
           {(
             [
-              ['Instant', INSTANT],
-              ['Needs a rebuild and deploy', NEEDS_DEPLOY],
+              [t`Instant`, INSTANT],
+              [t`Needs a rebuild and deploy`, NEEDS_DEPLOY],
             ] as const
           ).map(([heading, lines]) => (
             <div key={heading} className="flex flex-col gap-2">
               <h3 className="text-sm font-medium">{heading}</h3>
               <ul className="ml-4 flex list-disc flex-col gap-1 text-sm text-muted-foreground">
                 {lines.map((line) => (
-                  <li key={line}>{line}</li>
+                  <li key={line.id}>{i18n._(line)}</li>
                 ))}
               </ul>
             </div>
@@ -299,14 +354,27 @@ export function AdvancedPage(): JSX.Element {
         </div>
       </Section>
 
-      <Section title="Diagnostics">
+      <Section title={t`Diagnostics`} id="diagnostics">
         <Facts items={diagnosticsFacts} />
+        {health?.purgeConfigured === false ? (
+          // What the standing note on every page links to (U1): the one
+          // place the secret names appear.
+          <p className="max-w-prose text-sm text-muted-foreground">
+            <Trans>
+              No cache-purge token is configured, so a saved change reaches
+              visitors only after the cached page expires. This is a working
+              site, not a broken one — add <Code>CF_API_TOKEN</Code> and{' '}
+              <Code>CF_ZONE_ID</Code> as Worker secrets to get instant
+              publishing.
+            </Trans>
+          </p>
+        ) : null}
       </Section>
 
       {diagnostics === null || diagnostics.failedJobs.length === 0 ? null : (
         <Section
-          title="Failed background jobs"
-          description="Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."
+          title={t`Failed background jobs`}
+          description={t`Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself.`}
         >
           <ul className="flex flex-col divide-y rounded-lg border text-sm">
             {diagnostics.failedJobs.map((job) => (
@@ -316,7 +384,7 @@ export function AdvancedPage(): JSX.Element {
               >
                 <Code>{job.type}</Code>
                 <span className="min-w-0 break-words">
-                  {job.lastError ?? 'No error was recorded.'}
+                  {job.lastError ?? t`No error was recorded.`}
                 </span>
                 <span className="text-muted-foreground tabular-nums">
                   {job.updatedAt.slice(0, 16).replace('T', ' ')}
@@ -328,28 +396,33 @@ export function AdvancedPage(): JSX.Element {
       )}
 
       <Section
-        title="Storage"
-        {...(diagnostics === null || diagnostics.quotaUsageNote === ''
-          ? {}
-          : { description: diagnostics.quotaUsageNote })}
+        title={t`Storage`}
+        // The Worker's `quotaUsageNote` is English for the CLI; this is the
+        // same fact in the interface language.
+        description={t`Database read and write quotas are shown in the Cloudflare dashboard, not here.`}
       >
         {diagnostics === null ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">
+            <Trans>Loading…</Trans>
+          </p>
         ) : (
           <Facts
-            items={Object.entries(diagnostics.counts).map(
-              ([key, count]) => [key, count] as const,
-            )}
+            items={Object.entries(diagnostics.counts).map(([key, count]) => {
+              // A count this admin does not know yet keeps the Worker's key.
+              const label = STORAGE_COUNTS[key];
+              return [
+                label === undefined ? key : i18n._(label),
+                formatNumber(count),
+              ] as const;
+            })}
           />
         )}
       </Section>
 
-      <BackupSection />
-
-      <Section title="Cache">
+      <Section title={t`Cache`}>
         <Field>
           <FieldLabel htmlFor="cache-ttl">
-            Edge cache lifetime (seconds)
+            <Trans>Edge cache lifetime (seconds)</Trans>
           </FieldLabel>
           <div className="flex flex-wrap items-center gap-2">
             <Input
@@ -366,42 +439,48 @@ export function AdvancedPage(): JSX.Element {
               disabled={busy || ttl === null}
               onClick={() => void saveTtl()}
             >
-              {busy ? 'Saving…' : 'Save'}
+              {busy ? t`Saving…` : t`Save`}
             </Button>
           </div>
           <FieldDescription>
-            Saving content purges the pages it affects, so this is a ceiling for
-            pages nothing touched — not the delay before an edit appears.
+            <Trans>
+              Saving content purges the pages it affects, so this is a ceiling
+              for pages nothing touched — not the delay before an edit appears.
+            </Trans>
           </FieldDescription>
         </Field>
 
         <Separator />
 
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium">Clearing caches</h3>
+          <h3 className="text-sm font-medium">
+            <Trans>Clearing caches</Trans>
+          </h3>
           <p className="text-sm text-muted-foreground">
-            Neither of these loses anything. Cached pages and fragments are both
-            derived from your content and are rebuilt on the next request — the
-            only cost is that the next visitor waits for a render.
+            <Trans>
+              Neither of these loses anything. Cached pages and fragments are
+              both derived from your content and are rebuilt on the next request
+              — the only cost is that the next visitor waits for a render.
+            </Trans>
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
               disabled={clearing !== ''}
-              onClick={() => void clear('purge', 'Cleared the page cache.')}
+              onClick={() => void clear('purge', t`Cleared the page cache.`)}
             >
-              {clearing === 'purge' ? 'Clearing…' : 'Clear cached pages'}
+              {clearing === 'purge' ? t`Clearing…` : t`Clear cached pages`}
             </Button>
             <Button
               type="button"
               variant="outline"
               disabled={clearing !== ''}
               onClick={() =>
-                void clear('fragments', 'Cleared the fragment cache.')
+                void clear('fragments', t`Cleared the fragment cache.`)
               }
             >
-              {clearing === 'fragments' ? 'Clearing…' : 'Rebuild all pages'}
+              {clearing === 'fragments' ? t`Clearing…` : t`Rebuild all pages`}
             </Button>
             {cacheResult === '' ? null : (
               <StatusBadge tone="ok">{cacheResult}</StatusBadge>

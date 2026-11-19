@@ -8,8 +8,9 @@
  * the `.dark` class on `<html>`, which `theme-mode.ts` sets from the
  * operator's choice or, by default, from the system.
  *
- * Nothing else lives here: every page is built from shadcn/ui components
- * and Tailwind utilities (docs/ADMIN_MIGRATION.md, phase 3).
+ * Nothing else lives here but one size rule: every page is built from
+ * shadcn/ui components and Tailwind utilities (docs/ADMIN_MIGRATION.md,
+ * phase 3).
  */
 
 @import "tailwindcss";
@@ -160,4 +161,21 @@
   html {
     @apply font-sans;
   }
+}
+
+/*
+ * Under a Chinese, Japanese or Korean interface language, the sidebar's
+ * group labels and the badges go from 12 px to 13 px: Latin letters survive
+ * 12 px, Han characters are at the edge of comfortable there
+ * (docs/ADMIN_I18N_AND_UI.md, U20). `i18n.ts` sets `lang` on the document
+ * before the first paint. Outside any layer on purpose, so it wins over the
+ * `text-xs` utility; the line height is left as it was, so nothing moves.
+ */
+:root:is(:lang(zh), :lang(ja), :lang(ko))
+:is(
+  [data-slot="sidebar-group-label"],
+  [data-slot="sidebar-menu-badge"],
+  [data-slot="badge"]
+) {
+  font-size: 0.8125rem;
 }

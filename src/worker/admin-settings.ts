@@ -12,7 +12,9 @@ import {
   joinTagline,
   LOCALE_PATTERN,
   linkForPrefix,
+  localizeThemeManifest,
   PIPELINE_VERSION,
+  pickAdminCatalog,
   type SiteLocales,
   slugPlacementProblem,
   splitTagline,
@@ -42,7 +44,7 @@ import {
 } from './cache.js';
 import { activeTheme } from './composition.js';
 import type { Env } from './env.js';
-import { json, problem, readJson } from './http.js';
+import { json, preferredLanguages, problem, readJson } from './http.js';
 import { parseSiteSettings, type SiteSettings } from './site.js';
 import { siteEmailView } from './site-email.js';
 
@@ -111,7 +113,7 @@ function taglinePatch(
 export async function getSettings(env: Env): Promise<Response> {
   const row = await loadSite(env.DB);
   if (row === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const settings = parseSiteSettings(row);
   return json({
@@ -142,13 +144,17 @@ export async function patchSettings(
   const parsed = settingsSchema.safeParse(await readJson(request));
   if (!parsed.success) {
     return json(
-      { error: 'Invalid settings.', issues: parsed.error.issues },
+      {
+        error: 'Invalid settings.',
+        code: 'settings.invalid',
+        issues: parsed.error.issues,
+      },
       { status: 400 },
     );
   }
   const row = await loadSite(env.DB);
   if (row === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const input = parsed.data;
 
@@ -161,6 +167,7 @@ export async function patchSettings(
     return problem(
       409,
       'Changing the default locale rewrites every URL. Use POST /_mallok/api/settings/default-locale.',
+      'settings.default_locale_endpoint',
     );
   }
 
@@ -171,6 +178,7 @@ export async function patchSettings(
     return problem(
       409,
       'Prefixing the default locale rewrites every URL. Use POST /_mallok/api/settings/locale-prefix.',
+      'settings.locale_prefix_endpoint',
     );
   }
 
@@ -182,6 +190,8 @@ export async function patchSettings(
       return problem(
         400,
         `"${clash[1].base}" is reserved for stored files and cannot be a content base path.`,
+        'settings.base_reserved',
+        { base: clash[1].base },
       );
     }
   }
@@ -193,6 +203,8 @@ export async function patchSettings(
     return problem(
       400,
       `The enabled locales must include the default locale "${row.default_locale}".`,
+      'settings.default_locale_unlisted',
+      { locale: row.default_locale },
     );
   }
 
@@ -206,6 +218,8 @@ export async function patchSettings(
       return json(
         {
           error: `${stranded.length} slug${stranded.length === 1 ? '' : 's'} would start at an address the new settings give to a language or a kind. Change ${stranded.length === 1 ? 'it' : 'them'} first.`,
+          code: 'settings.slugs_stranded',
+          params: { count: stranded.length },
           stranded,
         },
         { status: 409 },
@@ -321,11 +335,12 @@ export async function postDefaultLocale(
     return problem(
       400,
       'Provide the target locale and "confirm": true; this rewrites every URL.',
+      'settings.default_locale_confirm',
     );
   }
   const row = await loadSite(env.DB);
   if (row === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const settings = parseSiteSettings(row);
   const target = parsed.data.locale;
@@ -334,7 +349,12 @@ export async function postDefaultLocale(
     return json({ defaultLocale: target, moved: 0, unchanged: true });
   }
   if (!settings.locales.includes(target)) {
-    return problem(400, `Locale "${target}" is not enabled on this site.`);
+    return problem(
+      400,
+      `Locale "${target}" is not enabled on this site.`,
+      'content.locale_disabled',
+      { locale: target },
+    );
   }
 
   const locations = await listContentLocations(env.DB);
@@ -404,11 +424,12 @@ export async function postLocalePrefix(
     return problem(
       400,
       'Provide "enabled": true or false, and "confirm": true; this rewrites every URL.',
+      'settings.locale_prefix_confirm',
     );
   }
   const row = await loadSite(env.DB);
   if (row === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const settings = parseSiteSettings(row);
   const enabled = parsed.data.enabled;
@@ -420,6 +441,8 @@ export async function postLocalePrefix(
     return problem(
       409,
       `"${result.clash.from}" would move to "${result.clash.to}", which another item already uses. Change one of their slugs first. Nothing was changed.`,
+      'settings.path_clash',
+      { from: result.clash.from, to: result.clash.to },
     );
   }
   ctx.waitUntil(purgeTags(env, ['site'], 'settings'));
@@ -581,9 +604,24 @@ export async function changeLocalePrefix(
  * render as the site does (docs/ADMIN.md §6.3), and it needs the manifest to
  * generate the field and option forms. There is nothing to POST here: the
  * theme is a build-time constant.
+ *
+ * The words of the manifest — kind, field, group and option labels, help,
+ * the description — are in the admin's interface language when the theme
+ * has an admin catalog for it (`Accept-Language`; docs/THEME_FORMAT.md
+ * §10.1). `declared` keeps them as the theme wrote them, because the preview
+ * must render exactly what the site renders, and a page reads a kind's
+ * label. No response under `/_mallok/` is cached, so the header varies
+ * nothing at the edge.
  */
-export function getTheme(): Response {
-  const { manifest, files } = activeTheme();
+export function getTheme(request: Request): Response {
+  const { manifest: declared, files } = activeTheme();
+  const manifest = localizeThemeManifest(
+    declared,
+    pickAdminCatalog(
+      files,
+      preferredLanguages(request.headers.get('accept-language')),
+    ),
+  );
   return json({
     id: manifest.id,
     name: manifest.name,
@@ -591,6 +629,13 @@ export function getTheme(): Response {
     description: manifest.description ?? '',
     kinds: manifest.kinds,
     options: manifest.options,
+    declared: {
+      name: declared.name,
+      description: declared.description ?? '',
+      kinds: declared.kinds,
+      options: declared.options,
+      clientScripts: declared.clientScripts,
+    },
     locales: manifest.locales,
     defaultLocale: manifest.defaultLocale,
     imageWidths: manifest.imageWidths,

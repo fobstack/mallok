@@ -204,7 +204,7 @@ export async function getExport(
 ): Promise<Response> {
   const siteRow = await loadSite(env.DB);
   if (siteRow === null) {
-    return problem(503, 'Site is not initialized.');
+    return problem(503, 'Site is not initialized.', 'setup.not_initialized');
   }
   const settings = parseSiteSettings(siteRow);
 
@@ -294,6 +294,8 @@ export async function getExport(
     return problem(
       500,
       `The stored content cannot be exported safely: ${invalidCoreFile}.`,
+      'export.unsafe',
+      { reason: invalidCoreFile },
     );
   }
 

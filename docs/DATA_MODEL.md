@@ -233,7 +233,8 @@ CREATE TABLE admin_user (
   email           TEXT NOT NULL UNIQUE,
   password_hash   TEXT NOT NULL,                  -- the PBKDF2-SHA256 output, base64
   password_params TEXT NOT NULL,                  -- JSON: {iterations, salt}; the count comes from the spike
-  created_at      TEXT NOT NULL
+  created_at      TEXT NOT NULL,
+  ui_locale       TEXT                            -- the admin's interface language, 'zh-CN'; NULL until chosen (migration 0010)
 );
 CREATE TABLE session (
   id         TEXT PRIMARY KEY,                    -- sha256(cookie token); the cookie itself is never stored
@@ -253,6 +254,14 @@ CREATE TABLE api_token (
 ```
 
 0.1 has one administrator, but the schema makes no single-row assumption.
+
+`ui_locale` (migration `0010_admin_ui_locale`) is the language the admin
+speaks to this person, so a second browser follows the choice
+(`ADMIN_I18N_AND_UI.md`, D2). It is not a content language and nothing on
+the public site reads it. The wizard writes the language it was used in;
+`PATCH /_mallok/api/auth/me` changes it; `GET /_mallok/api/auth/me` and the
+sign-in response return it. The Worker checks only that it is shaped like a
+language tag: which languages have a catalog is the admin's business.
 
 ### 2.9 `job`
 

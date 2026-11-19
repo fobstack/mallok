@@ -17,6 +17,11 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query';
 import { api, setCsrf } from './api.js';
+import {
+  adoptAccountLanguage,
+  type InterfaceLanguage,
+  setInterfaceLanguage,
+} from './i18n.js';
 import type {
   Health,
   PluginInfo,
@@ -72,6 +77,9 @@ export const sessionQuery = queryOptions({
     try {
       const me = await api<Session>('/auth/me');
       setCsrf(me.csrf);
+      // Before the shell renders, so it never paints in the browser's
+      // language and then switches.
+      await adoptAccountLanguage(me.uiLocale);
       return me;
     } catch {
       return null;
@@ -114,6 +122,8 @@ async function fetchWorkspace(): Promise<void> {
     queryClient.fetchQuery({ ...settingsQuery, staleTime: 0 }),
     queryClient.fetchQuery({ ...themeQuery, staleTime: 0 }),
     queryClient.fetchQuery({ ...healthQuery, staleTime: 0 }),
+    // The sidebar lists the plugins' panels (U3).
+    queryClient.fetchQuery({ ...pluginsQuery, staleTime: 0 }),
   ]);
 }
 
@@ -128,6 +138,7 @@ export async function loadShell(): Promise<null> {
       queryClient.ensureQueryData(settingsQuery),
       queryClient.ensureQueryData(themeQuery),
       queryClient.ensureQueryData(healthQuery),
+      queryClient.ensureQueryData(pluginsQuery),
     ]);
   }
   return null;
@@ -141,9 +152,36 @@ export async function signIn(email: string, password: string): Promise<void> {
   });
   setCsrf(result.csrf);
   const me = await api<Session>('/auth/me');
-  // The workspace first: the shell renders the moment the session lands.
+  // The language before the workspace: the theme's declarations are asked
+  // for in it. Then the workspace, because the shell renders the moment the
+  // session lands.
+  await adoptAccountLanguage(me.uiLocale);
   await fetchWorkspace();
   queryClient.setQueryData(keys.session, me);
+}
+
+/**
+ * Chooses the interface language for this browser at once, and for the
+ * account, so another browser follows (D2). Throws when the account could
+ * not be told; the language still applies here.
+ */
+export async function chooseInterfaceLanguage(
+  language: InterfaceLanguage,
+): Promise<void> {
+  await setInterfaceLanguage(language);
+  // What the theme and the plugins declare is worded in the interface
+  // language; ask for it again in the new one.
+  void queryClient.invalidateQueries({ queryKey: keys.theme });
+  void queryClient.invalidateQueries({ queryKey: keys.plugins });
+  const saved = await api<{ uiLocale: string | null }>('/auth/me', {
+    method: 'PATCH',
+    body: { uiLocale: language },
+  });
+  queryClient.setQueryData<Session | null>(keys.session, (previous) =>
+    previous === null || previous === undefined
+      ? previous
+      : { ...previous, uiLocale: saved.uiLocale },
+  );
 }
 
 /** Signs out; the next sign-in loads the workspace again. */

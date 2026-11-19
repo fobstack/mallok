@@ -4,6 +4,7 @@
  * table shares.
  */
 
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import type { JSX } from 'react';
 import {
@@ -34,8 +35,16 @@ const BADGE_TONE: Readonly<Record<string, 'ok' | 'warn'>> = {
   scheduled: 'warn',
 };
 
-/** Formats one cell by its declared column type. */
-export function cell(value: unknown, type: ColumnType): JSX.Element | string {
+/**
+ * Formats one cell by its declared column type. `words` is what a badge's
+ * values read as in the interface language, when the plugin says (§7.8);
+ * the tone still follows the stored value.
+ */
+export function cell(
+  value: unknown,
+  type: ColumnType,
+  words?: Readonly<Record<string, string>>,
+): JSX.Element | string {
   if (value === null || value === undefined || value === '') {
     return '—';
   }
@@ -55,7 +64,9 @@ export function cell(value: unknown, type: ColumnType): JSX.Element | string {
   }
   if (type === 'badge') {
     return (
-      <StatusBadge tone={BADGE_TONE[text] ?? 'neutral'}>{text}</StatusBadge>
+      <StatusBadge tone={BADGE_TONE[text] ?? 'neutral'}>
+        {words?.[text] ?? text}
+      </StatusBadge>
     );
   }
   return text;
@@ -66,12 +77,15 @@ function RelatedTable({
   panelId,
   related,
   parentId,
+  values,
 }: {
   readonly pluginId: string;
   readonly panelId: string;
   readonly related: PluginPanel['related'][number];
   readonly parentId: string;
+  readonly values: PluginPanel['values'];
 }): JSX.Element {
+  const { t } = useLingui();
   const loaded = useQuery({
     queryKey: panelKey(pluginId, panelId, 'related', related.id, parentId),
     queryFn: () =>
@@ -86,7 +100,7 @@ function RelatedTable({
       ? ''
       : loaded.error instanceof ApiError
         ? loaded.error.message
-        : 'Could not load.';
+        : t`Could not load.`;
 
   return (
     <section className="flex flex-col gap-2" aria-label={related.label}>
@@ -96,9 +110,13 @@ function RelatedTable({
           {failure}
         </p>
       ) : rows === null ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>Loading…</Trans>
+        </p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">None.</p>
+        <p className="text-sm text-muted-foreground">
+          <Trans>None.</Trans>
+        </p>
       ) : (
         <div className="rounded-lg border">
           <Table>
@@ -125,7 +143,11 @@ function RelatedTable({
                       key={column.field}
                       className="first:pl-3 last:pr-3"
                     >
-                      {cell(row[column.field], column.type)}
+                      {cell(
+                        row[column.field],
+                        column.type,
+                        values?.[column.field],
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -136,7 +158,7 @@ function RelatedTable({
       )}
       {more ? (
         <p className="text-sm text-muted-foreground">
-          Only the first rows are shown.
+          <Trans>Only the first rows are shown.</Trans>
         </p>
       ) : null}
     </section>
@@ -165,6 +187,7 @@ export function RelatedRows({
           panelId={panel.id}
           related={related}
           parentId={parentId}
+          values={panel.values}
         />
       ))}
     </>

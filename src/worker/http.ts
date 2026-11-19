@@ -10,9 +10,32 @@ export function json(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), { ...init, headers });
 }
 
-/** Plain-text error response that never leaks internals. */
-export function problem(status: number, message: string): Response {
-  return json({ error: message }, { status });
+/** The variable parts of an error's sentence, by name. */
+export type ProblemParams = Readonly<Record<string, string | number>>;
+
+/**
+ * Plain-text error response that never leaks internals.
+ *
+ * `error` is English and stays exactly as written: the CLI prints it and it
+ * is every client's fallback. A `code`, when given, names the sentence so
+ * the admin can say it in its interface language, with `params` filling in
+ * what varies (docs/ADMIN_I18N_AND_UI.md, D3). A code never changes once
+ * shipped; a new sentence gets a new code.
+ */
+export function problem(
+  status: number,
+  message: string,
+  code?: string,
+  params?: ProblemParams,
+): Response {
+  return json(
+    {
+      error: message,
+      ...(code === undefined ? {} : { code }),
+      ...(params === undefined ? {} : { params }),
+    },
+    { status },
+  );
 }
 
 /** HTML response for public pages. */
@@ -49,4 +72,36 @@ export async function readJson(request: Request): Promise<unknown | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * The languages an `Accept-Language` header asks for, most wanted first:
+ * `zh-CN,zh;q=0.9,en;q=0.8` gives `["zh-CN", "zh", "en"]`. A `*`, a zero
+ * weight and anything unparseable are left out.
+ */
+export function preferredLanguages(header: string | null): string[] {
+  if (header === null) {
+    return [];
+  }
+  return header
+    .split(',')
+    .map((part, index) => {
+      const [tag = '', ...params] = part.trim().split(';');
+      const weight = params
+        .map((param) => /^\s*q=([0-9.]+)\s*$/.exec(param)?.[1])
+        .find((value) => value !== undefined);
+      return {
+        tag: tag.trim(),
+        q: weight === undefined ? 1 : Number(weight),
+        index,
+      };
+    })
+    .filter(
+      (entry) =>
+        /^[A-Za-z]{1,8}(?:-[A-Za-z0-9]{1,8})*$/.test(entry.tag) &&
+        Number.isFinite(entry.q) &&
+        entry.q > 0,
+    )
+    .sort((a, b) => b.q - a.q || a.index - b.index)
+    .map((entry) => entry.tag);
 }

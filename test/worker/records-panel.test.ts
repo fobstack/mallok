@@ -238,9 +238,12 @@ describe('records panels', () => {
         },
       });
       expect(response.status).toBe(422);
-      expect(
-        ((await response.json()) as { errors: Record<string, string> }).errors,
-      ).toEqual({
+      const refused = (await response.json()) as {
+        code: string;
+        errors: Record<string, string>;
+        errorCodes: Record<string, unknown>;
+      };
+      expect(refused.errors).toEqual({
         name: 'This field is required.',
         status: 'Choose one of the listed values.',
         price: 'Enter an amount.',
@@ -248,6 +251,18 @@ describe('records panels', () => {
         'variants.0.sku': 'This field is required.',
         'variants.0.stock': 'Must be at least 0.',
         'variants.0.price': 'Choose one of the listed currencies.',
+      });
+      // The same problems named, field by field, for the admin to say in the
+      // operator's language (docs/ADMIN_I18N_AND_UI.md, D3).
+      expect(refused.code).toBe('plugins.fields_invalid');
+      expect(refused.errorCodes).toEqual({
+        name: { code: 'field.required' },
+        status: { code: 'field.choice' },
+        price: { code: 'field.amount' },
+        featured: { code: 'field.boolean' },
+        'variants.0.sku': { code: 'field.required' },
+        'variants.0.stock': { code: 'field.min', params: { min: 0 } },
+        'variants.0.price': { code: 'field.currency' },
       });
       expect(await list()).toHaveLength(1);
 
@@ -274,9 +289,15 @@ describe('records panels', () => {
         values: item({ name: 'A second bar' }),
       });
       expect(response.status).toBe(422);
-      expect(
-        ((await response.json()) as { errors: Record<string, string> }).errors,
-      ).toEqual({ code: 'Another item already uses this code.' });
+      const refused = (await response.json()) as {
+        errors: Record<string, string>;
+        errorCodes?: unknown;
+      };
+      expect(refused.errors).toEqual({
+        code: 'Another item already uses this code.',
+      });
+      // A plugin's own words carry no code: the admin shows them as written.
+      expect(refused.errorCodes).toBeUndefined();
     });
 
     it('never hands a plugin a field it did not declare', async () => {

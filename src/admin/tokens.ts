@@ -8,6 +8,7 @@
  * looked like the button did nothing.
  */
 
+import { t } from '@lingui/core/macro';
 import { ApiError } from './api.js';
 
 /** One row of `GET /_mallok/api/tokens`. Secrets are never included. */
@@ -28,17 +29,23 @@ export interface TokenView {
 
 /** Status text for a row; only a token that is still live can be revoked. */
 export function describeToken(token: TokenSummary): TokenView {
-  const used =
-    token.lastUsedAt === null
-      ? 'Never used'
-      : `Last used ${token.lastUsedAt.slice(0, 10)}`;
+  const lastUsed = token.lastUsedAt?.slice(0, 10);
   if (token.revokedAt !== null) {
+    const revoked = token.revokedAt.slice(0, 10);
+    // Whole sentences, not a status glued to a lower-cased "used" phrase:
+    // case and word order are the translation's to decide.
     return {
-      status: `Revoked ${token.revokedAt.slice(0, 10)} · ${used.toLowerCase()}`,
+      status:
+        lastUsed === undefined
+          ? t`Revoked ${revoked} · never used`
+          : t`Revoked ${revoked} · last used ${lastUsed}`,
       revocable: false,
     };
   }
-  return { status: used, revocable: true };
+  return {
+    status: lastUsed === undefined ? t`Never used` : t`Last used ${lastUsed}`,
+    revocable: true,
+  };
 }
 
 /**
@@ -49,8 +56,8 @@ export function describeToken(token: TokenSummary): TokenView {
 export function revokeFailureMessage(caught: unknown): string {
   if (caught instanceof ApiError) {
     return caught.status === 404
-      ? 'That token was already revoked.'
+      ? t`That token was already revoked.`
       : caught.message;
   }
-  return 'Could not revoke the token.';
+  return t`Could not revoke the token.`;
 }

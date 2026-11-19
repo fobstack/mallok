@@ -6,11 +6,20 @@
  * requests carry the CSRF header on every write (docs/SECURITY.md §3).
  */
 
+import { i18n } from '@lingui/core';
+import { t } from '@lingui/core/macro';
+import { serverMessage } from './server-messages.js';
+
 const BASE = '/_mallok/api';
 
-/** A failed request, carrying the server's own message. */
+/**
+ * A failed request. Its message is the server's, in the interface language
+ * when the server named it with a code the admin knows (D3).
+ */
 export class ApiError extends Error {
   readonly status: number;
+  /** The server's code for the message, when it sent one. */
+  readonly code: string | undefined;
   /**
    * Per-field messages, when the server sent any: a form shows each one
    * beside the field it is about rather than as one line at the top.
@@ -21,11 +30,13 @@ export class ApiError extends Error {
     status: number,
     message: string,
     fields: Readonly<Record<string, string>> = {},
+    code?: string,
   ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.fields = fields;
+    this.code = code;
   }
 }
 
@@ -50,6 +61,38 @@ interface RequestOptions {
 }
 
 /**
+ * The per-field messages of an error body, each in the interface language
+ * when `errorCodes` names it with a code the catalog has (D3), else the
+ * server's English.
+ */
+function fieldMessages(parsed: unknown): Record<string, string> {
+  if (parsed === null || typeof parsed !== 'object') {
+    return {};
+  }
+  const { errors, errorCodes } = parsed as {
+    errors?: unknown;
+    errorCodes?: unknown;
+  };
+  if (errors === null || typeof errors !== 'object' || Array.isArray(errors)) {
+    return {};
+  }
+  const codes =
+    errorCodes !== null && typeof errorCodes === 'object'
+      ? (errorCodes as Record<string, { code?: unknown; params?: unknown }>)
+      : {};
+  return Object.fromEntries(
+    Object.entries(errors as Record<string, unknown>)
+      .filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      )
+      .map(([field, english]) => {
+        const named = codes[field];
+        return [field, serverMessage(named?.code, named?.params) ?? english];
+      }),
+  );
+}
+
+/**
  * Performs one API call and returns the parsed body.
  *
  * Network failures surface as errors rather than empty state: the admin must
@@ -61,6 +104,10 @@ export async function api<T>(
 ): Promise<T> {
   const method = options.method ?? 'GET';
   const headers = new Headers(options.headers);
+  // The interface language: what a theme's or plugin's declarations are
+  // worded in when they have an admin catalog for it (docs/THEME_FORMAT.md
+  // §10.1). Nothing under /_mallok/ is cached, so it varies nothing.
+  headers.set('accept-language', i18n.locale || 'en');
   if (method !== 'GET' && method !== 'HEAD') {
     headers.set('x-mallok-csrf', csrfToken);
   }
@@ -83,7 +130,7 @@ export async function api<T>(
   } catch {
     throw new ApiError(
       0,
-      'The server could not be reached. Nothing was saved.',
+      t`The server could not be reached. Nothing was saved.`,
     );
   }
 
@@ -98,22 +145,22 @@ export async function api<T>(
     parsed = null;
   }
   if (!response.ok) {
-    const message =
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      typeof (parsed as { error?: unknown }).error === 'string'
-        ? (parsed as { error: string }).error
-        : `Request failed (${response.status}).`;
-    const errors =
+    const body =
       parsed !== null && typeof parsed === 'object'
-        ? (parsed as { errors?: unknown }).errors
-        : undefined;
+        ? (parsed as { error?: unknown; code?: unknown; params?: unknown })
+        : {};
+    const english =
+      typeof body.error === 'string'
+        ? body.error
+        : `Request failed (${response.status}).`;
+    // Translated now, in the language of the moment it is said: every
+    // place that shows `caught.message` gets it without knowing codes.
+    const message = serverMessage(body.code, body.params) ?? english;
     throw new ApiError(
       response.status,
       message,
-      errors !== null && typeof errors === 'object' && !Array.isArray(errors)
-        ? (errors as Record<string, string>)
-        : {},
+      fieldMessages(parsed),
+      typeof body.code === 'string' ? body.code : undefined,
     );
   }
   return parsed as T;

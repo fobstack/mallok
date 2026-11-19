@@ -15,6 +15,8 @@ export interface AdminUserRow {
   /** JSON `{ iterations, salt }`. */
   readonly password_params: string;
   readonly created_at: string;
+  /** The interface language this person chose, or null (migration 0010). */
+  readonly ui_locale: string | null;
 }
 
 /** Row of the `session` table. */
@@ -54,6 +56,8 @@ export interface NewAdminUser {
   readonly passwordHash: string;
   readonly passwordParams: string;
   readonly now: string;
+  /** The interface language the wizard was used in, when it said one. */
+  readonly uiLocale?: string | null;
 }
 
 /** Creates an administrator. Fails if the email already exists. */
@@ -63,10 +67,17 @@ export async function createAdminUser(
 ): Promise<void> {
   await db
     .prepare(
-      `INSERT INTO admin_user (id, email, password_hash, password_params, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO admin_user (id, email, password_hash, password_params, created_at, ui_locale)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .bind(user.id, user.email, user.passwordHash, user.passwordParams, user.now)
+    .bind(
+      user.id,
+      user.email,
+      user.passwordHash,
+      user.passwordParams,
+      user.now,
+      user.uiLocale ?? null,
+    )
     .run();
 }
 
@@ -94,8 +105,8 @@ export async function claimSite(
       .bind(user.id, user.now),
     db
       .prepare(
-        `INSERT INTO admin_user (id, email, password_hash, password_params, created_at)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO admin_user (id, email, password_hash, password_params, created_at, ui_locale)
+         VALUES (?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         user.id,
@@ -103,6 +114,7 @@ export async function claimSite(
         user.passwordHash,
         user.passwordParams,
         user.now,
+        user.uiLocale ?? null,
       ),
   ];
   // The site row says it is claimed, because the render path reads that row
@@ -171,6 +183,18 @@ export async function updateAdminPassword(
       'UPDATE admin_user SET password_hash = ?, password_params = ? WHERE id = ?',
     )
     .bind(passwordHash, passwordParams, id)
+    .run();
+}
+
+/** Stores an administrator's interface language; null forgets it. */
+export async function updateAdminUiLocale(
+  db: D1Database,
+  id: string,
+  uiLocale: string | null,
+): Promise<void> {
+  await db
+    .prepare('UPDATE admin_user SET ui_locale = ? WHERE id = ?')
+    .bind(uiLocale, id)
     .run();
 }
 

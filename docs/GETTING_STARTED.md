@@ -57,10 +57,17 @@ claims your new Mallok admin. Neither is a Mallok content API token.
 
 Open the setup URL printed by the CLI (`/_mallok/setup` on your site).
 
+The wizard's own language is chosen on its first screen. It is the admin's
+interface language, kept with the account, and has nothing to do with the
+languages the site publishes in.
+
 1. Create the administrator with a password of at least 12 characters and
    the setup key.
-2. Set the site name. Use `en` as the main language for an English-first site;
-   add `zh` or other languages as needed. Secondary languages have URL prefixes.
+2. Set the site name and pick the main language by name — English (en) for an
+   English-first site. Tick any other languages the site publishes in, such
+   as Chinese (zh); a language not listed is added by its code (`de`,
+   `pt-BR`). The main language has no URL prefix; every other language's
+   pages do.
 3. Choose example content or skip it. Sample businesses, products and claims
    are placeholders: replace them before presenting the site as your business.
 4. Review the domain step and finish setup.

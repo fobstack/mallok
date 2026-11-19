@@ -1,6 +1,7 @@
 /** The `folio` theme: a studio's work, indexed by year. */
 
 import { parseThemeManifest, type ThemeFiles } from '../../core/index.js';
+import adminZhCnJson from './admin/zh-CN.json';
 import articleLiquid from './layouts/article.liquid';
 import baseLiquid from './layouts/base.liquid';
 import homeLiquid from './layouts/home.liquid';
@@ -28,4 +29,7 @@ export const folioFiles: ThemeFiles = {
   'partials/footer.liquid': footerLiquid,
   'locales/en.json': JSON.stringify(enJson),
   'locales/zh.json': JSON.stringify(zhJson),
+  // What the admin calls this theme's kinds, fields and options in
+  // Simplified Chinese (docs/THEME_FORMAT.md §10.1).
+  'admin/zh-CN.json': JSON.stringify(adminZhCnJson),
 };

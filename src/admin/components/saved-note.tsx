@@ -7,66 +7,46 @@
  * (docs/ADMIN.md §5, docs/ARCHITECTURE.md §6.2).
  */
 
-import { Clock } from 'lucide-react';
+import { Trans } from '@lingui/react/macro';
 import type { JSX } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { formatDuration } from '../format.js';
 import { useLiveDelay } from '../queries.js';
-import { Code, StatusBadge } from './page.js';
-
-/** Human-readable form of a cache lifetime. */
-function humanize(seconds: number): string {
-  if (seconds >= 3600) {
-    const hours = Math.round(seconds / 3600);
-    return `${hours} hour${hours === 1 ? '' : 's'}`;
-  }
-  if (seconds >= 60) {
-    const minutes = Math.round(seconds / 60);
-    return `${minutes} minute${minutes === 1 ? '' : 's'}`;
-  }
-  return `${seconds} seconds`;
-}
-
-export function SavedNote(): JSX.Element {
-  const delay = useLiveDelay();
-  if (delay.instant) {
-    return <StatusBadge tone="ok">Saved — live now</StatusBadge>;
-  }
-  return (
-    <StatusBadge
-      tone="warn"
-      title="Configure a cache-purge token to make saves appear immediately."
-    >
-      Saved — visitors see it within {humanize(delay.seconds)}
-    </StatusBadge>
-  );
-}
+import { StatusBadge } from './page.js';
 
 /**
- * The standing banner shown while no purge token is configured. It stays up
- * rather than appearing once, because the condition is permanent until
- * someone configures the token.
+ * Success reads as success: always the green "Saved", with when visitors
+ * see it as plain text after it. A delay is how this site works without a
+ * purge token, not a problem with the save, so it is not drawn as a warning
+ * (docs/ADMIN_I18N_AND_UI.md, U15).
+ *
+ * A draft is saved but reaches no visitor, so it gets the badge alone:
+ * telling when visitors see it would be untrue.
  */
-export function PurgeNotice(): JSX.Element | null {
+export function SavedNote({
+  draft = false,
+}: {
+  readonly draft?: boolean;
+}): JSX.Element {
   const delay = useLiveDelay();
-  if (delay.instant) {
-    return null;
-  }
   return (
-    // A standing note, not an alert: it is true from the first render until
-    // someone configures the token, and must not interrupt a screen reader.
-    <Alert role="note" className="mx-4 mt-4 w-auto">
-      <Clock />
-      <AlertTitle>
-        Changes reach visitors within {humanize(delay.seconds)}
-      </AlertTitle>
-      <AlertDescription>
-        <p>
-          No cache-purge token is configured, so a saved change reaches visitors
-          only after the cached page expires. This is a working site, not a
-          broken one — add <Code>CF_API_TOKEN</Code> and <Code>CF_ZONE_ID</Code>{' '}
-          as Worker secrets to get instant publishing.
-        </p>
-      </AlertDescription>
-    </Alert>
+    <span role="status" className="flex flex-wrap items-center gap-2 text-sm">
+      <StatusBadge tone="ok">
+        <Trans>Saved</Trans>
+      </StatusBadge>
+      {draft ? null : (
+        <span className="text-muted-foreground">
+          {delay.instant ? (
+            <Trans>Visitors see it now.</Trans>
+          ) : (
+            <DelayNote seconds={delay.seconds} />
+          )}
+        </span>
+      )}
+    </span>
   );
+}
+
+function DelayNote({ seconds }: { readonly seconds: number }): JSX.Element {
+  const within = formatDuration(seconds);
+  return <Trans>Visitors see it within {within}.</Trans>;
 }

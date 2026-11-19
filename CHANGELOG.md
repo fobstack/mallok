@@ -4,6 +4,90 @@ Notable changes to Mallok. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+The admin speaks Simplified Chinese as well as English, and its pages were
+reviewed and reworked for the operator who uses them every day
+(`docs/ADMIN_I18N_AND_UI.md`). One schema migration runs on the first request
+after deploying. Every API change is an addition: an `error` that was English
+stays English, so the CLI and scripts read what they always did.
+
+### Added
+
+- **Interface languages: English and 简体中文** (`docs/ADMIN.md §4.3`). The
+  admin, the sign-in page and the setup wizard are translated, dates and
+  numbers follow the language, and it is chosen in the account menu, on the
+  sign-in page or on the wizard's first screen. It is kept in the browser and
+  with the account — migration `0010_admin_ui_locale`, `uiLocale` on
+  `GET`/`PATCH /_mallok/api/auth/me` and the sign-in response — and never in
+  a cookie, so the edge cache does not vary by it. It is not a content
+  language and neither defaults from the other.
+- **The Worker's errors are named.** Beside the unchanged English `error`, an
+  error carries a `code` (`auth.invalid_credentials`) and `params`, and a
+  refused record or action carries `errorCodes` beside `errors`; 129 codes,
+  from sign-in and setup to content saves, media, settings, plugins and
+  purges. A save stored as a draft because its body is too long to render
+  says so with `warningCode` beside `warning`. The admin words each in its
+  language; a code it does not know is shown in the Worker's English.
+- **Admin catalogs for themes and plugins**: an optional
+  `admin/<language>.json` beside `theme.json` (`docs/THEME_FORMAT.md §10.1`),
+  and `adminCatalogs` in `definePlugin` (`docs/PLUGIN_API.md §7.8`), word
+  kinds, fields, options, panels, actions and badge values in the operator's
+  language. The five official themes and the `inquiry` plugin ship `zh-CN`.
+  Without one, the declared English is shown. The preview stays in the
+  content's language.
+- **Plugin panels in the sidebar.** Each panel not attached to a content kind
+  is a page of its own (`/_mallok/app/plugins/<plugin>/<panel>`), listed
+  under Site by its label — Inquiries is one click away. "View site" in the
+  sidebar opens the public site in a new tab.
+- **The editor on a phone**: one pane at a time ("Fields", "Write",
+  "Preview") with the save buttons pinned to the bottom. On a wide screen it
+  takes the whole window and the field pane folds to a rail.
+- The setup wizard has numbered steps with Back, a password you can show,
+  and languages picked by name.
+
+### Changed
+
+- **"Saved" means saved.** A successful save is always the green "Saved",
+  followed by when visitors see it. Without a purge token it was an orange
+  badge that read as a problem; a draft no longer claims visitors will see
+  it.
+- **Content languages are named** ("Chinese (zh)", "中文（zh）") wherever a
+  code stood alone — the content list's filter, the editor's language bar,
+  the Languages card, the wizard. A language is added from a list of names,
+  with "Another language…" for a code not listed. Other languages' taglines
+  are one field behind the content-language select, not a box per language.
+- **The content list** shows the theme's label for each type and the date in
+  the interface language; "New content" (or "New Product", filtered to a
+  kind) says what it makes; empty and filtered-out lists say so and offer
+  the way on; a row on a phone is the title with type and status under it.
+- **The editor's bar** shows the stored status, when it was last updated,
+  and "View on site" for a published item.
+- **A plugin's card** puts its panels and settings first and its hooks,
+  client JavaScript and cache effect under "Technical details", closed. Row
+  actions wait for a selection, except a download. A filter on a named value
+  is a select. Empty panels, the media library and the Plugins page share
+  one empty state; a panel's pager is hidden when there is one page.
+- **Settings.** Appearance puts the theme's options before its facts.
+  Advanced puts the backup first, and Diagnostics keeps orange for what
+  stops something working — a failed purge, an email key with no sender —
+  instead of for every optional thing not configured. The domain help says
+  what each domain is for without "noindex", "R2" or "Worker". The
+  no-token note is one line, linking to Diagnostics, which names
+  `CF_API_TOKEN` and `CF_ZONE_ID`.
+- The `inquiry` plugin's setting labels lost their parentheses to help text,
+  and its autoreply body is a multi-line field.
+- Every page shares one left edge and width with its header and the notice
+  above it.
+
+### Fixed
+
+- **Plurals**: "1 pages · 1 sample records" in the wizard, "used by 1
+  items", "1 image(s) missing" and their like now agree with their number.
+- A list of numbers in Chinese is separated (`Intl.ListFormat` with
+  `type: 'unit'` joined them with nothing), and a status badge no longer
+  breaks "已发布" one character per line in a narrow cell.
+
 ## [0.1.0-rc.12] — 2026-11-05
 
 Purges that take effect and say when they do not, the default language under

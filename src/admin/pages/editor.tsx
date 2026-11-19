@@ -1,6 +1,12 @@
 /**
  * The three-pane content editor (docs/ADMIN.md §6).
  *
+ * It takes the window's whole width, and the field pane folds to a rail so
+ * the source and the preview can share what is left (U7). The bar above the
+ * panes says what state the item is in (U8). On a phone the panes become
+ * three views of which one is shown, and the save buttons stay on screen
+ * (U9) — docs/ADMIN_I18N_AND_UI.md.
+ *
  * Two rules shape everything here:
  *
  * 1. **The Markdown is the truth.** The field form edits front matter; on
@@ -11,7 +17,10 @@
  *    look-alike, so it cannot drift from what visitors get.
  */
 
+import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { cn } from 'cn';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import type { JSX } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { type FieldValues, useForm } from 'react-hook-form';
@@ -30,16 +39,20 @@ import {
   splitFrontmatter,
 } from '../../core/index.js';
 import { ApiError, api } from '../api.js';
+import { useContentLanguageName } from '../components/content-language.js';
+import { ContentStatusBadge } from '../components/content-status.js';
 import { MarkdownEditor } from '../components/markdown-editor.js';
 import { MediaPicker } from '../components/media-library.js';
-import { StatusBadge } from '../components/page.js';
+import { Page, StatusBadge } from '../components/page.js';
 import { PluginPanelView } from '../components/plugin-panel.js';
 import { SavedNote } from '../components/saved-note.js';
 import { SchemaForm } from '../form/form.js';
 import { toSpecs } from '../form/types.js';
+import { formatDateTime } from '../format.js';
 import { notify, useReportError } from '../notice.js';
 import { renderPreview } from '../preview.js';
 import { keys, pluginsQuery, useSettings, useTheme } from '../queries.js';
+import { serverMessage } from '../server-messages.js';
 import { normalizeSlugInput } from '../slug.js';
 import type { MediaItem } from '../types.js';
 
@@ -60,6 +73,7 @@ interface LoadedContent {
   readonly slug: string;
   readonly path: string;
   readonly status: 'draft' | 'scheduled' | 'published';
+  readonly updatedAt: string;
   readonly translationGroup: string;
   readonly markdown: string;
   readonly assets: Readonly<Record<string, string>>;
@@ -67,6 +81,28 @@ interface LoadedContent {
 }
 
 const PREVIEW_DEBOUNCE_MS = 250;
+
+/** Where the field pane's folded state is remembered, per browser. */
+const FIELDS_OPEN_KEY = 'mallok-editor-fields';
+
+/** The three panes, as a phone shows them one at a time (U9). */
+type Pane = 'fields' | 'write' | 'preview';
+
+function readFieldsOpen(): boolean {
+  try {
+    return localStorage.getItem(FIELDS_OPEN_KEY) !== 'closed';
+  } catch {
+    return true;
+  }
+}
+
+function writeFieldsOpen(open: boolean): void {
+  try {
+    localStorage.setItem(FIELDS_OPEN_KEY, open ? 'open' : 'closed');
+  } catch {
+    // A convenience only: without storage the pane opens each time.
+  }
+}
 
 /** What a new item starts from when it is a translation of another. */
 interface NewItem {
@@ -102,6 +138,7 @@ function EditorPage({
   readonly fresh: NewItem;
 }): JSX.Element {
   const isNew = id === 'new';
+  const { t } = useLingui();
   const item = useQuery({
     queryKey: [...keys.content, 'item', id],
     queryFn: () => api<LoadedContent>(`/content/${id}`),
@@ -109,9 +146,13 @@ function EditorPage({
     // Opened to be edited: always as stored now, never as last seen.
     gcTime: 0,
   });
-  useReportError(item.error, 'Could not load.');
+  useReportError(item.error, t`Could not load.`);
   if (!isNew && item.data === undefined) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return (
+      <p className="text-sm text-muted-foreground">
+        <Trans>Loading…</Trans>
+      </p>
+    );
   }
   return <Editor loaded={item.data ?? null} fresh={fresh} />;
 }
@@ -128,6 +169,7 @@ function Editor({
   const active = useTheme();
   const navigate = useNavigate();
   const client = useQueryClient();
+  const { t } = useLingui();
 
   const [markdown, setMarkdown] = useState(
     loaded?.markdown ?? '---\ntitle: Untitled\n---\n\n',
@@ -152,9 +194,12 @@ function Editor({
   );
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [saved, setSaved] = useState(false);
+  // How the last save went out: a draft is saved but no visitor sees it.
+  const [saved, setSaved] = useState<'draft' | 'published' | null>(null);
   const [preview, setPreview] = useState('');
   const [missing, setMissing] = useState<readonly string[]>([]);
+  const [fieldsOpen, setFieldsOpen] = useState(readFieldsOpen);
+  const [pane, setPane] = useState<Pane>('fields');
   const [picker, setPicker] = useState<{
     kind: 'image' | 'file';
     resolve: (path: string | null) => void;
@@ -202,20 +247,20 @@ function Editor({
     return [
       {
         name: 'title',
-        field: { type: 'string' as const, label: 'Title', required: true },
+        field: { type: 'string' as const, label: t`Title`, required: true },
       },
       {
         name: 'description',
         field: {
           type: 'text' as const,
-          label: 'Description',
+          label: t`Description`,
           required: false,
-          help: 'Used as the meta description and in listings. Derived from the body when empty.',
+          help: t`Used as the meta description and in listings. Derived from the body when empty.`,
         },
       },
       ...toSpecs(declared),
     ];
-  }, [active, kind]);
+  }, [active, kind, t]);
 
   const setField = (name: string, value: unknown): void => {
     const next = { ...frontmatter };
@@ -252,10 +297,10 @@ function Editor({
           setPreview(result.html);
           setMissing(result.missing);
         } catch (caught) {
+          const reason =
+            caught instanceof Error ? caught.message : t`unknown error`;
           setPreview(
-            `<p style="padding:1rem;color:#a11d33">Preview failed: ${
-              caught instanceof Error ? caught.message : 'unknown error'
-            }</p>`,
+            `<p style="padding:1rem;color:#a11d33">${t`Preview failed: ${reason}`}</p>`,
           );
         }
       })();
@@ -301,12 +346,15 @@ function Editor({
     }
 
     setBusy(true);
-    setSaved(false);
+    setSaved(null);
     try {
       const result = await api<{
         id: string;
         path: string;
+        status: string;
         warning?: string;
+        warningCode?: string;
+        warningParams?: Record<string, unknown>;
       }>('/content', {
         method: 'POST',
         body: {
@@ -324,19 +372,24 @@ function Editor({
         },
       });
       setDirty(false);
-      setSaved(true);
+      // As stored, not as asked: a body too long to render safely is kept
+      // as a draft, and a draft reaches no visitor.
+      setSaved(result.status === 'draft' ? 'draft' : 'published');
       // Every list it appears in, and its own record, are out of date.
       void client.invalidateQueries({ queryKey: keys.content });
       // The save still succeeded — this is the server saying it skipped
       // rendering and stored a draft instead, not a failure to report as one.
       if (result.warning !== undefined) {
-        notify(result.warning);
+        notify(
+          serverMessage(result.warningCode, result.warningParams) ??
+            result.warning,
+        );
       }
       if (loaded === null) {
         navigate(`/content/${result.id}`, { replace: true });
       }
     } catch (caught) {
-      notify(caught instanceof ApiError ? caught.message : 'Could not save.');
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
     } finally {
       setBusy(false);
     }
@@ -366,9 +419,71 @@ function Editor({
               .map((panel) => ({ plugin, panel })),
           );
 
-  return (
+  const toggleFields = (): void => {
+    setFieldsOpen((open) => {
+      writeFieldsOpen(!open);
+      return !open;
+    });
+  };
+  const paneNames: Readonly<Record<Pane, string>> = {
+    fields: t`Fields`,
+    write: t`Write`,
+    preview: t`Preview`,
+  };
+  /** Shown on a phone only when chosen; on a wide screen always. */
+  const paneClass = (which: Pane): string =>
+    cn(pane !== which && 'max-lg:hidden');
+
+  // Drawn twice — in the bar on a wide screen, pinned to the bottom on a
+  // phone — with CSS showing one, so the buttons never scroll away (U9).
+  const actions = (
     <>
-      <div className="flex flex-col overflow-hidden rounded-xl border bg-card lg:h-[calc(100svh-8rem)] lg:min-h-[36rem]">
+      {attached.map(({ plugin, panel }) => (
+        <Badge variant="outline" asChild key={`${plugin.id}/${panel.id}`}>
+          <a href="#attached-panels">{panel.label} ↓</a>
+        </Badge>
+      ))}
+      {missing.length === 0 ? null : (
+        <StatusBadge tone="warn" title={missing.join(', ')}>
+          <Plural
+            value={missing.length}
+            one="# image missing"
+            other="# images missing"
+          />
+        </StatusBadge>
+      )}
+      {dirty ? (
+        <StatusBadge tone="neutral">
+          <Trans>Unsaved</Trans>
+        </StatusBadge>
+      ) : null}
+      {saved !== null && !dirty ? (
+        <SavedNote draft={saved === 'draft'} />
+      ) : null}
+      <Button
+        type="button"
+        variant="outline"
+        disabled={busy}
+        onClick={() => void save('draft')}
+      >
+        <Trans>Save draft</Trans>
+      </Button>
+      <Button
+        type="button"
+        disabled={busy}
+        onClick={() => void save('published')}
+      >
+        {busy ? t`Saving…` : t`Publish`}
+      </Button>
+    </>
+  );
+
+  const updated = loaded === null ? '' : formatDateTime(loaded.updatedAt);
+
+  return (
+    // The whole width of the window: three panes need it (U7).
+    <Page width="full">
+      <div className="flex flex-col rounded-xl border bg-card lg:h-[calc(100svh-8rem)] lg:min-h-[36rem] lg:overflow-hidden">
         <div className="flex flex-wrap items-end gap-3 border-b bg-muted/40 p-3">
           <Button
             type="button"
@@ -380,10 +495,12 @@ function Editor({
               )
             }
           >
-            ← All content
+            <Trans>← All content</Trans>
           </Button>
           <Field className="w-auto">
-            <FieldLabel htmlFor="editor-kind">Type</FieldLabel>
+            <FieldLabel htmlFor="editor-kind">
+              <Trans>Type</Trans>
+            </FieldLabel>
             <NativeSelect
               id="editor-kind"
               className="min-w-32"
@@ -402,12 +519,14 @@ function Editor({
             </NativeSelect>
           </Field>
           <Field className="w-auto">
-            <FieldLabel htmlFor="editor-slug">Slug</FieldLabel>
+            <FieldLabel htmlFor="editor-slug">
+              <Trans>Slug</Trans>
+            </FieldLabel>
             <Input
               id="editor-slug"
               className="min-w-40"
               value={slug}
-              placeholder="derived from the title"
+              placeholder={t`derived from the title`}
               onInput={(event) => {
                 setSlug(event.currentTarget.value);
                 setDirty(true);
@@ -424,34 +543,33 @@ function Editor({
               }}
             />
           </Field>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {attached.map(({ plugin, panel }) => (
-              <Badge variant="outline" asChild key={`${plugin.id}/${panel.id}`}>
-                <a href="#attached-panels">{panel.label} ↓</a>
-              </Badge>
-            ))}
-            {missing.length === 0 ? null : (
-              <StatusBadge tone="warn" title={missing.join(', ')}>
-                {missing.length} image{missing.length === 1 ? '' : 's'} missing
-              </StatusBadge>
-            )}
-            {dirty ? <StatusBadge tone="neutral">Unsaved</StatusBadge> : null}
-            {saved && !dirty ? <SavedNote /> : null}
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => void save('draft')}
-            >
-              Save draft
-            </Button>
-            <Button
-              type="button"
-              disabled={busy}
-              onClick={() => void save('published')}
-            >
-              {busy ? 'Saving…' : 'Publish'}
-            </Button>
+          {/* What state the stored item is in, and where to see it (U8). */}
+          {loaded === null ? (
+            <span className="self-center text-sm text-muted-foreground">
+              <Trans>Not saved yet</Trans>
+            </span>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 self-center text-sm">
+              <ContentStatusBadge status={loaded.status} />
+              <span className="text-muted-foreground">
+                <Trans>
+                  Updated <time dateTime={loaded.updatedAt}>{updated}</time>
+                </Trans>
+              </span>
+              {loaded.status === 'published' ? (
+                <a
+                  className="text-primary underline-offset-4 hover:underline"
+                  href={loaded.path}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <Trans>View on site</Trans>
+                </a>
+              ) : null}
+            </div>
+          )}
+          <div className="ml-auto hidden flex-wrap items-center gap-2 lg:flex">
+            {actions}
           </div>
         </div>
 
@@ -464,11 +582,73 @@ function Editor({
           />
         )}
 
+        <fieldset className="flex gap-1 border-b p-2 lg:hidden">
+          <legend className="sr-only">
+            <Trans>Pane shown</Trans>
+          </legend>
+          {(['fields', 'write', 'preview'] as const).map((which) => (
+            <Button
+              key={which}
+              type="button"
+              size="sm"
+              variant={pane === which ? 'secondary' : 'ghost'}
+              aria-pressed={pane === which}
+              className="flex-1"
+              onClick={() => setPane(which)}
+            >
+              {paneNames[which]}
+            </Button>
+          ))}
+        </fieldset>
+
         <section
-          className="grid min-h-0 flex-1 lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)_minmax(0,1fr)]"
-          aria-label="Fields, Markdown and preview"
+          className={cn(
+            'grid min-h-0 flex-1',
+            fieldsOpen
+              ? 'lg:grid-cols-[minmax(16rem,22rem)_minmax(0,1fr)_minmax(0,1fr)]'
+              : 'lg:grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1fr)]',
+          )}
+          aria-label={t`Fields, Markdown and preview`}
         >
-          <aside className="min-h-0 min-w-0 overflow-auto border-b bg-muted/20 p-4 lg:border-r lg:border-b-0">
+          {fieldsOpen ? null : (
+            // Folded: a rail that opens the pane again.
+            <div className="hidden border-r bg-muted/20 p-1.5 lg:block">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-expanded={false}
+                aria-controls="editor-fields"
+                aria-label={t`Show fields`}
+                title={t`Show fields`}
+                onClick={toggleFields}
+              >
+                <PanelLeftOpen />
+              </Button>
+            </div>
+          )}
+          <aside
+            id="editor-fields"
+            aria-label={paneNames.fields}
+            className={cn(
+              'min-h-0 min-w-0 overflow-auto bg-muted/20 p-4 lg:border-r',
+              paneClass('fields'),
+              !fieldsOpen && 'lg:hidden',
+            )}
+          >
+            <div className="-mt-1 mb-2 hidden justify-end lg:flex">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-expanded={true}
+                aria-controls="editor-fields"
+                onClick={toggleFields}
+              >
+                <PanelLeftClose />
+                <Trans>Hide fields</Trans>
+              </Button>
+            </div>
             <SchemaForm
               specs={specs}
               control={fieldsForm.control}
@@ -483,7 +663,13 @@ function Editor({
               }}
             />
           </aside>
-          <section className="flex min-h-96 min-w-0 overflow-hidden border-b lg:min-h-0 lg:border-r lg:border-b-0">
+          <section
+            aria-label={t`Markdown`}
+            className={cn(
+              'flex min-h-[60svh] min-w-0 overflow-hidden lg:min-h-0 lg:border-r',
+              paneClass('write'),
+            )}
+          >
             <MarkdownEditor
               value={markdown}
               missing={missing}
@@ -493,7 +679,13 @@ function Editor({
               }}
             />
           </section>
-          <section className="flex min-h-96 min-w-0 flex-col bg-muted lg:min-h-0">
+          <section
+            aria-label={paneNames.preview}
+            className={cn(
+              'flex min-h-[60svh] min-w-0 flex-col bg-muted lg:min-h-0',
+              paneClass('preview'),
+            )}
+          >
             {/*
             `allow-same-origin` **without** `allow-scripts` is the safe
             combination: the frame can load the theme's stylesheet (a fully
@@ -504,7 +696,7 @@ function Editor({
             dangerous pairing. The body is sanitized before it gets here.
           */}
             <iframe
-              title="Preview"
+              title={t`Preview`}
               // A theme's page is designed on white; the frame keeps it so in
               // the admin's dark scheme too.
               className="w-full flex-1 border-0 bg-white"
@@ -512,10 +704,16 @@ function Editor({
               srcDoc={preview}
             />
             <p className="border-t px-3 py-1.5 text-xs text-muted-foreground">
-              Rendered by the same code the site runs — {previewPath}
+              <Trans>
+                Rendered by the same code the site runs — {previewPath}
+              </Trans>
             </p>
           </section>
         </section>
+
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 rounded-b-xl border-t bg-card p-3 lg:hidden">
+          {actions}
+        </div>
 
         {picker === null ? null : (
           <MediaPicker
@@ -537,26 +735,31 @@ function Editor({
         written. The bar above links down to these.
       */}
       {loaded === null || attached.length === 0 ? null : (
-        <div className="mt-6 flex flex-col gap-4" id="attached-panels">
-          {attached.map(({ plugin, panel }) => (
-            <section
-              className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground"
-              key={`${plugin.id}/${panel.id}`}
-            >
-              <p className="text-sm text-muted-foreground">
-                From the {plugin.name} plugin. Shared by every language of this
-                item, and saved on its own — not with Publish.
-              </p>
-              <PluginPanelView
-                pluginId={plugin.id}
-                panel={panel}
-                attachedTo={loaded.translationGroup}
-              />
-            </section>
-          ))}
+        <div className="flex flex-col gap-4" id="attached-panels">
+          {attached.map(({ plugin, panel }) => {
+            const pluginName = plugin.name;
+            return (
+              <section
+                className="flex flex-col gap-3 rounded-xl border bg-card p-4 text-card-foreground"
+                key={`${plugin.id}/${panel.id}`}
+              >
+                <p className="text-sm text-muted-foreground">
+                  <Trans>
+                    From the {pluginName} plugin. Shared by every language of
+                    this item, and saved on its own — not with Publish.
+                  </Trans>
+                </p>
+                <PluginPanelView
+                  pluginId={plugin.id}
+                  panel={panel}
+                  attachedTo={loaded.translationGroup}
+                />
+              </section>
+            );
+          })}
         </div>
       )}
-    </>
+    </Page>
   );
 }
 
@@ -572,20 +775,33 @@ function TranslationBar(props: {
   readonly kind: string;
 }): JSX.Element | null {
   const navigate = useNavigate();
+  const { t } = useLingui();
+  const nameOf = useContentLanguageName();
   if (props.translations.length < 2) {
     return null;
   }
   return (
     <nav
       className="flex flex-wrap items-center gap-2 border-b px-3 py-2"
-      aria-label="Translations"
+      aria-label={t`Translations`}
     >
+      {/* Named as everywhere else a content language is chosen (U10). */}
+      <span className="text-xs font-medium text-muted-foreground">
+        <Trans>Content language</Trans>
+      </span>
       {props.translations.map((slot) => {
+        const slotLanguage = nameOf(slot.locale);
         if (slot.locale === props.current) {
+          // The one open, marked as such rather than in a status colour:
+          // green is what "Published" looks like.
           return (
-            <StatusBadge key={slot.locale} tone="ok">
-              {slot.locale}
-            </StatusBadge>
+            <span
+              key={slot.locale}
+              aria-current="page"
+              className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+            >
+              {slotLanguage}
+            </span>
           );
         }
         if (slot.exists && slot.id !== undefined) {
@@ -597,7 +813,7 @@ function TranslationBar(props: {
               size="sm"
               onClick={() => navigate(`/content/${slot.id}`)}
             >
-              {slot.locale}
+              {slotLanguage}
             </Button>
           );
         }
@@ -613,7 +829,7 @@ function TranslationBar(props: {
               )
             }
           >
-            Create {slot.locale}
+            {t`Create ${slotLanguage}`}
           </Button>
         );
       })}

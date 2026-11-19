@@ -1,0 +1,2408 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-11-13 04:16-0800\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: zh-CN\n"
+
+#. Between items of a list
+#. Between items of a list
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
+msgid ", "
+msgstr "、"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "\"{actionLabel}\" failed."
+msgstr "“{actionLabel}”执行失败。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.base_reserved"
+msgstr "“{base}”是存储文件专用的路径，不能用作内容的基础路径。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.path_clash"
+msgstr "“{from}”会移到“{to}”，而这个地址已被其他内容占用。请先修改其中一个的 slug。没有做任何改动。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_uncheckable"
+msgstr "“{name}”无法自动检测。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.exists_create_only"
+msgstr "“{slug}”在 {locale} 中已存在。去掉 --create-only 即可更新它。"
+
+#: src/admin/media.ts
+msgid "\"{type}\" is not accepted."
+msgstr "不支持“{type}”类型的文件。"
+
+#: src/admin/slug.ts
+msgid "\"{typed}\" has no Latin letters or digits to build a slug from. Type one using Latin characters, or clear the field to derive it from the title."
+msgstr "“{typed}”里没有拉丁字母或数字，无法生成 slug。请用拉丁字符填写，或清空此栏，由标题自动生成。"
+
+#: src/admin/pages/setup.tsx
+msgid "\"{wrong}\" is not a language code. Use one such as de or pt-BR."
+msgstr "“{wrong}”不是语言代码。请使用 de 或 pt-BR 这样的代码。"
+
+#: src/admin/components/shell.tsx
+msgid "(opens in a new tab)"
+msgstr "（在新标签页中打开）"
+
+#. placeholder {0}: item.refCount
+#: src/admin/components/media-library.tsx
+msgid "{0, plural, one {\"{name}\" is used by # item. Remove the reference first.} other {\"{name}\" is used by # items. Remove the references first.}}"
+msgstr "{0, plural, other {“{name}”正被 # 项内容引用，请先移除引用。}}"
+
+#. placeholder {0}: missing.length
+#: src/admin/pages/editor.tsx
+msgid "{0, plural, one {# image missing} other {# images missing}}"
+msgstr "{0, plural, other {缺少 # 张图片}}"
+
+#. placeholder {0}: notInstalled.length
+#: src/admin/pages/setup.tsx
+msgid "{0, plural, one {# of the starter's items could not be imported:} other {# of the starter's items could not be imported:}}"
+msgstr "{0, plural, other {示例内容中有 # 项未能导入：}}"
+
+#. placeholder {0}: entry.documents
+#: src/admin/pages/setup.tsx
+msgid "{0, plural, one {# page} other {# pages}}"
+msgstr "{0, plural, other {# 个页面}}"
+
+#. placeholder {0}: plugin.clientScripts.length
+#: src/admin/pages/plugins.tsx
+msgid "{0, plural, one {# script} other {# scripts}}"
+msgstr "{0, plural, other {# 个脚本}}"
+
+#. placeholder {0}: progress.done
+#. placeholder {1}: progress.total
+#: src/admin/pages/settings-advanced.tsx
+msgid "{0}/{1} files"
+msgstr "{0}/{1} 个文件"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.slugs_stranded"
+msgstr "{count, plural, other {有 # 个 slug 会以新设置分配给某个语言或内容类型的地址开头。请先修改它们。}}"
+
+#: src/admin/components/record-editor.tsx
+msgid "{count, plural, one {Applies to # selected row.} other {Applies to # selected rows.}}"
+msgstr "{count, plural, other {将应用于已选的 # 行。}}"
+
+#: src/admin/pages/setup.tsx
+msgid "{installed, plural, one {# page was installed.} other {# pages were installed.}}"
+msgstr "{installed, plural, other {已安装 # 个页面。}}"
+
+#: src/admin/pages/setup.tsx
+msgid "{installedRecords, plural, one {# sample record was added.} other {# sample records were added.}}"
+msgstr "{installedRecords, plural, other {已添加 # 条示例记录。}}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{items, plural, one {# item} other {# items}} and {files, plural, one {# file} other {# files}} in {fileName}."
+msgstr "{fileName} 中包含 {items, plural, other {# 项内容}}和 {files, plural, other {# 个文件}}。"
+
+#: src/admin/components/record-editor.tsx
+msgid "{label}: currency"
+msgstr "{label}：币种"
+
+#: src/admin/components/content-language.tsx
+msgid "{language}, default"
+msgstr "{language} · 默认"
+
+#: src/admin/components/record-editor.tsx
+msgid "{limit, plural, one {At most # row.} other {At most # rows.}}"
+msgstr "{limit, plural, other {最多 # 行。}}"
+
+#: src/admin/form/types.ts
+msgid "{max, plural, one {At most # entry.} other {At most # entries.}}"
+msgstr "{max, plural, other {最多 # 项。}}"
+
+#: src/admin/form/types.ts
+msgid "{max, plural, one {Must be at most # character.} other {Must be at most # characters.}}"
+msgstr "{max, plural, other {不能超过 # 个字符。}}"
+
+#: src/admin/pages/settings-site.tsx
+msgid "{moved, plural, one {# URL moved, with a redirect; navigation links rewritten.} other {# URLs moved, each with a redirect; navigation links rewritten.}}"
+msgstr "{moved, plural, other {已迁移 # 个 URL，均已设置重定向；导航链接已同步改写。}}"
+
+#: src/admin/components/content-language.tsx
+msgid "{name} ({code})"
+msgstr "{name}（{code}）"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "{panelLabel} detail"
+msgstr "{panelLabel}详情"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.path_taken"
+msgstr "{path} 已是 {kind}“{slug}”（{locale}）的地址。请换一个 slug。"
+
+#: src/admin/pages/plugins.tsx
+msgid "{pluginName} enabled"
+msgstr "启用 {pluginName}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.frontmatter_invalid"
+msgstr "Front matter 有误：{reason}"
+
+#: src/admin/pages/setup.tsx
+msgid "{records, plural, one {# sample record} other {# sample records}}"
+msgstr "{records, plural, other {# 条示例记录}}"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "{scripts, plural, one {Injects # script} other {Injects # scripts}}"
+msgstr "{scripts, plural, other {注入 # 个脚本}}"
+
+#: src/admin/form/controls.tsx
+msgid "{target} slug"
+msgstr "{target} 的 slug"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{when} — after {cause}, Cloudflare answered HTTP {status}"
+msgstr "{when} — 由{cause}触发，Cloudflare 返回 HTTP {status}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "{when} — after {cause}, Cloudflare could not be reached"
+msgstr "{when} — 由{cause}触发，无法连接 Cloudflare"
+
+#: src/admin/pages/editor.tsx
+msgid "← All content"
+msgstr "← 全部内容"
+
+#: src/admin/pages/plugins.tsx
+msgid "<0>{panelLabel}</0> is edited where it belongs: open any <1>{kind}</1> in Content, and it is under the editor."
+msgstr "<0>{panelLabel}</0>：在所属内容中编辑——在“内容”里打开任意 <1>{kind}</1>，它就在编辑器下方。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a content change"
+msgstr "内容修改"
+
+#: src/admin/pages/setup.tsx
+msgid "A domain can be added at any time; your content and its URLs stay as they are. <0>How to add a custom domain<1/></0>"
+msgstr "域名随时可以添加，内容和网址都保持不变。<0>如何添加自定义域名<1/></0>"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.plugin_too_large"
+msgstr "某个插件让这条内容超出了可存储的大小。没有保存任何内容。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.plugin_rewrite_invalid"
+msgstr "某个插件把这条内容改写成了无法保存的形式：{reason}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a plugin switch"
+msgstr "插件开关"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a scheduled publication"
+msgstr "定时发布"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "a settings change"
+msgstr "设置修改"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.list_page"
+msgstr "slug 不能以“page/{page}”开头：那是列表第 {page} 页的地址。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.kind_start"
+msgstr "多段 slug 不能以“{first}/”开头：那是内容类型“{kind}”的地址。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.locale_start"
+msgstr "多段 slug 不能以“{first}/”开头：那是语言“{first}”的前缀。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.reserved_start"
+msgstr "多段 slug 不能以“{first}/”开头：站点自身会响应这个地址。"
+
+#: src/admin/pages/setup.tsx
+msgid "A starter fills the site with real pages you can edit or delete. Skipping gives you an empty site."
+msgstr "示例内容会为站点填充真实的页面，之后可以编辑或删除。跳过则得到一个空站点。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "A zip containing every page as Markdown, its images, your settings and your inquiries. It is a complete site you can read anywhere — take it to Astro, Hugo or Obsidian whenever you like. Export before upgrading."
+msgstr "一个 zip 压缩包，包含所有页面的 Markdown、图片、站点设置和询盘。它是一个完整的站点，在哪里都能读取——随时可以带去 Astro、Hugo 或 Obsidian。升级前请先导出。"
+
+#: src/admin/pages/account.tsx
+msgid "About password hashing"
+msgstr "关于密码哈希"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/shell.tsx
+#: src/admin/pages/account.tsx
+msgid "Account"
+msgstr "账号"
+
+#: src/admin/components/account-menu.tsx
+msgid "Account and API tokens"
+msgstr "账号与 API 令牌"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.session_required"
+msgstr "修改账号需要通过浏览器登录。"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/shell.tsx
+msgid "Account menu"
+msgstr "账号菜单"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Active"
+msgstr "已生效"
+
+#: src/admin/components/record-editor.tsx
+msgid "Add a row"
+msgstr "添加一行"
+
+#: src/admin/components/media-library.tsx
+msgid "Add alt text"
+msgstr "添加替代文本"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.rows_required"
+msgstr "请至少添加一行。"
+
+#: src/admin/form/controls.tsx
+msgid "Add entry"
+msgstr "添加一项"
+
+#: src/admin/form/controls.tsx
+msgid "Add image…"
+msgstr "添加图片…"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Add language"
+msgstr "添加语言"
+
+#: src/admin/form/controls.tsx
+msgid "Add row"
+msgstr "添加一行"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Add the first one"
+msgstr "添加第一条"
+
+#: src/admin/pages/setup.tsx
+msgid "Administrator"
+msgstr "管理员"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/settings-advanced.tsx
+msgid "Advanced"
+msgstr "高级"
+
+#: src/admin/pages/plugins.tsx
+msgid "Affects cached pages"
+msgstr "影响缓存页面"
+
+#: src/admin/components/content-language.tsx
+#: src/admin/pages/content-list.tsx
+msgid "All"
+msgstr "全部"
+
+#: src/admin/components/media-library.tsx
+msgid "already stored, skipped"
+msgstr "已存在，已跳过"
+
+#: src/admin/components/media-library.tsx
+msgid "Alt text"
+msgstr "替代文本"
+
+#. placeholder {0}: item.alt
+#: src/admin/components/media-library.tsx
+msgid "Alt: {0}"
+msgstr "替代文本：{0}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.admin_exists"
+msgstr "管理员已存在。"
+
+#: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
+msgid "Another language…"
+msgstr "其他语言…"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "any"
+msgstr "不限"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Any"
+msgstr "不限"
+
+#: src/admin/pages/account.tsx
+msgid "API tokens"
+msgstr "API 令牌"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/settings-appearance.tsx
+msgid "Appearance"
+msgstr "外观"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Applied migrations"
+msgstr "已执行的迁移"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Applies immediately"
+msgstr "立即生效"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.asset_path_conflict"
+msgstr "资源路径“{path}”在不区分大小写的文件系统上与另一个路径冲突。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Assets"
+msgstr "静态资源"
+
+#: src/admin/pages/account.tsx
+msgid "At least 12 characters."
+msgstr "至少 12 个字符。"
+
+#: src/admin/pages/setup.tsx
+msgid "At least 12 characters. This is the only account."
+msgstr "至少 12 个字符。这是唯一的账号。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_entries"
+msgstr "最多 {max} 项。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_rows"
+msgstr "最多 {max} 行。"
+
+#: src/admin/pages/setup.tsx
+msgid "Back"
+msgstr "上一步"
+
+#: src/admin/app.tsx
+msgid "Back to content"
+msgstr "返回内容列表"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Background jobs waiting"
+msgstr "等待中的后台任务"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Backup and export"
+msgstr "备份与导出"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.enabled_body_invalid"
+msgstr "请求内容必须是 {\"enabled\": true | false}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.email.body_invalid"
+msgstr "请求内容必须是 {\"fromAddress\"?: string | null, \"resendApiKey\"?: string | null}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_body_invalid"
+msgstr "请求内容必须是 {\"values\": { … }}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secrets_body_invalid"
+msgstr "请求内容必须是密钥值组成的 JSON 对象。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_body_invalid"
+msgstr "请求内容必须是设置项组成的 JSON 对象。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.action_ids_missing"
+msgstr "请求内容必须包含要操作的行 ID。"
+
+#: src/admin/components/ui/breadcrumb.tsx
+msgid "breadcrumb"
+msgstr "面包屑导航"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Building…"
+msgstr "正在生成…"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Built into this deployment: {builtIn}. Your content, its ids and every URL stay exactly as they are."
+msgstr "本次部署内置的主题：{builtIn}。切换主题后，内容、内容 ID 和所有 URL 都保持不变。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cache"
+msgstr "缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cache purge token"
+msgstr "缓存清除令牌"
+
+#: src/admin/form/controls.tsx
+msgid "Cancel"
+msgstr "取消"
+
+#: src/admin/pages/account.tsx
+msgid "Change password"
+msgstr "修改密码"
+
+#: src/admin/pages/account.tsx
+msgid "Changed"
+msgstr "已修改"
+
+#: src/admin/components/shell.tsx
+msgid "Changes reach visitors within {within}"
+msgstr "修改将在 {within}内对访客可见"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Changing anything else in the source tree"
+msgstr "修改源代码中的其他任何内容"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_endpoint"
+msgstr "修改默认语言会改写所有 URL，请使用 POST /_mallok/api/settings/default-locale。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Changing the theme takes a deploy"
+msgstr "更换主题需要重新部署"
+
+#: src/admin/pages/account.tsx
+msgid "Changing…"
+msgstr "正在修改…"
+
+#: src/admin/components/media-library.tsx
+msgid "checking"
+msgstr "正在检查"
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-email.tsx
+msgid "Checking…"
+msgstr "正在检测…"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose a file"
+msgstr "选择文件"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Choose a language…"
+msgstr "选择语言…"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose an image"
+msgstr "选择图片"
+
+#: src/admin/components/media-library.tsx
+msgid "Choose files, or drop them here"
+msgstr "选择文件，或拖放到这里"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.currency"
+msgstr "请从列出的币种中选择一个。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.choice"
+msgstr "请从列出的选项中选择一个。"
+
+#: src/admin/form/types.ts
+msgid "Choose one of the listed values."
+msgstr "请从列出的选项中选择一个。"
+
+#: src/admin/form/controls.tsx
+msgid "Choose…"
+msgstr "选择…"
+
+#: src/admin/form/controls.tsx
+msgid "Clear"
+msgstr "清除"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clear cached pages"
+msgstr "清除页面缓存"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Clear filters"
+msgstr "清除筛选"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cleared the fragment cache."
+msgstr "已清除片段缓存。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Cleared the page cache."
+msgstr "已清除页面缓存。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clearing caches"
+msgstr "清除缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "clearing the fragment cache"
+msgstr "清除片段缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Clearing…"
+msgstr "正在清除…"
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
+msgid "Client JavaScript"
+msgstr "前台 JavaScript"
+
+#: src/admin/components/ui/dialog.tsx
+#: src/admin/components/ui/sheet.tsx
+msgid "Close"
+msgstr "关闭"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_failed"
+msgstr "Cloudflare 未能清除缓存{status, select, none {} other {（HTTP {status}）}}。请检查缓存清除令牌是否仍然有效，并且有权清除这个区域的缓存。{detail}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_limited"
+msgstr "Cloudflare 未能清除缓存{status, select, none {} other {（HTTP {status}）}}。Cloudflare 正在限制这个账号的清除请求；在此期间页面会按缓存有效期自行过期。{detail}"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.cache.purge_refused"
+msgstr "Cloudflare 未能清除缓存{status, select, none {} other {（HTTP {status}）}}。缓存清除令牌被拒绝：它需要这个区域的 Zone → Cache Purge → Purge 权限（不是 Cache Rules，那个权限清除不了任何缓存），并且 CF_ZONE_ID 必须是这个区域的 ID。{detail}"
+
+#: src/admin/components/account-menu.tsx
+msgid "Colour scheme"
+msgstr "配色"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Configured"
+msgstr "已配置"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Content"
+msgstr "内容"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Content items"
+msgstr "内容条目"
+
+#: src/admin/components/content-language.tsx
+#: src/admin/pages/editor.tsx
+msgid "Content language"
+msgstr "内容语言"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Content types"
+msgstr "内容类型"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Content: create, edit, publish, delete"
+msgstr "内容：新建、编辑、发布、删除"
+
+#: src/admin/pages/setup.tsx
+msgid "Continue"
+msgstr "继续"
+
+#: src/admin/components/media-library.tsx
+msgid "converting"
+msgstr "正在转换"
+
+#: src/admin/pages/account.tsx
+msgid "Copy"
+msgstr "复制"
+
+#: src/admin/pages/account.tsx
+msgid "Could not change the password."
+msgstr "密码修改失败。"
+
+#: src/admin/pages/plugins.tsx
+msgid "Could not change."
+msgstr "修改失败。"
+
+#: src/admin/pages/account.tsx
+msgid "Could not create."
+msgstr "创建失败。"
+
+#: src/admin/components/media-library.tsx
+#: src/admin/components/record-editor.tsx
+msgid "Could not delete."
+msgstr "删除失败。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.slug_underivable"
+msgstr "无法自动生成 slug，请手动填写。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Could not load content."
+msgstr "无法加载内容。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Could not load diagnostics."
+msgstr "无法加载诊断信息。"
+
+#: src/admin/components/media-library.tsx
+msgid "Could not load media."
+msgstr "无法加载媒体。"
+
+#: src/admin/pages/plugin-panel.tsx
+#: src/admin/pages/plugins.tsx
+msgid "Could not load plugins."
+msgstr "无法加载插件。"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Could not load rows."
+msgstr "无法加载数据。"
+
+#: src/admin/components/record-editor.tsx
+msgid "Could not load the record."
+msgstr "无法加载这条记录。"
+
+#: src/admin/pages/account.tsx
+msgid "Could not load tokens."
+msgstr "无法加载令牌。"
+
+#: src/admin/components/related-rows.tsx
+#: src/admin/pages/editor.tsx
+msgid "Could not load."
+msgstr "加载失败。"
+
+#: src/admin/tokens.ts
+msgid "Could not revoke the token."
+msgstr "无法撤销令牌。"
+
+#: src/admin/components/media-library.tsx
+#: src/admin/components/record-editor.tsx
+#: src/admin/pages/editor.tsx
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-appearance.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Could not save."
+msgstr "保存失败。"
+
+#: src/admin/pages/setup.tsx
+msgid "Could not start setup."
+msgstr "无法开始初始设置。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Could not switch."
+msgstr "切换失败。"
+
+#: src/admin/pages/editor.tsx
+msgid "Create {slotLanguage}"
+msgstr "创建{slotLanguage}版本"
+
+#: src/admin/pages/setup.tsx
+msgid "Create the administrator"
+msgstr "创建管理员"
+
+#: src/admin/pages/content-list.tsx
+msgid "Create the first page"
+msgstr "创建第一个页面"
+
+#: src/admin/pages/account.tsx
+msgid "Create token"
+msgstr "创建令牌"
+
+#: src/admin/pages/setup.tsx
+msgid "Creating…"
+msgstr "正在创建…"
+
+#: src/admin/pages/account.tsx
+msgid "Current password"
+msgstr "当前密码"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Custom domain"
+msgstr "自定义域名"
+
+#: src/admin/components/account-menu.tsx
+msgid "Dark"
+msgstr "深色"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Database read and write quotas are shown in the Cloudflare dashboard, not here."
+msgstr "数据库的读写配额请在 Cloudflare 控制台查看，这里不显示。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Default"
+msgstr "默认"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Default language is now {language}. {moved, plural, one {# URL moved, with a redirect.} other {# URLs moved, each with a redirect.}}"
+msgstr "默认语言已改为{language}。{moved, plural, other {已迁移 # 个 URL，均已设置重定向。}}"
+
+#: src/admin/components/media-library.tsx
+msgid "Delete"
+msgstr "删除"
+
+#: src/admin/components/record-editor.tsx
+msgid "Delete it"
+msgstr "确认删除"
+
+#: src/admin/components/media-library.tsx
+msgid "Delete permanently"
+msgstr "永久删除"
+
+#: src/admin/components/record-editor.tsx
+msgid "Delete…"
+msgstr "删除…"
+
+#: src/admin/pages/editor.tsx
+msgid "derived from the title"
+msgstr "由标题自动生成"
+
+#: src/admin/components/media-library.tsx
+msgid "Describe the image"
+msgstr "描述这张图片"
+
+#: src/admin/pages/editor.tsx
+msgid "Description"
+msgstr "描述"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Details"
+msgstr "详情"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Diagnostics"
+msgstr "诊断"
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Displays the mobile sidebar."
+msgstr "显示移动端侧栏。"
+
+#: src/admin/pages/setup.tsx
+msgid "Domain"
+msgstr "域名"
+
+#: src/admin/components/media-library.tsx
+msgid "done"
+msgstr "完成"
+
+#: src/admin/pages/account.tsx
+msgid "Done"
+msgstr "完成"
+
+#: src/admin/components/content-status.tsx
+msgid "Draft"
+msgstr "草稿"
+
+#: src/admin/components/media-library.tsx
+msgid "Drop to upload"
+msgstr "松开即可上传"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Each further language can have its own tagline. What you type is kept while you switch; Save stores them all."
+msgstr "其他每种语言都可以有自己的标语。切换语言时已输入的内容会保留，点“保存”时一并保存。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Edge cache"
+msgstr "边缘缓存"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Edge cache lifetime (seconds)"
+msgstr "边缘缓存有效期（秒）"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/components/shell.tsx
+msgid "Edit"
+msgstr "编辑"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Edit {rowName}"
+msgstr "编辑 {rowName}"
+
+#: src/admin/components/record-editor.tsx
+msgid "Edit: {panelLabel}"
+msgstr "编辑：{panelLabel}"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/login.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/setup.tsx
+msgid "Email"
+msgstr "邮箱"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Email (Resend)"
+msgstr "邮件（Resend）"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.color"
+msgstr "请按 #rrggbb 格式输入颜色。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.date"
+msgstr "请按 YYYY-MM-DD 格式输入日期。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.number"
+msgstr "请输入数字。"
+
+#: src/admin/form/types.ts
+msgid "Enter a number."
+msgstr "请输入数字。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount"
+msgstr "请输入金额。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Every language is served under <0>/<locale>/</0>, the default one too; the site's root redirects to <1>/{prefix}</1>."
+msgstr "所有语言（包括默认语言）都在 <0>/<locale>/</0> 下提供；站点根路径会重定向到 <1>/{prefix}</1>。"
+
+#: src/admin/pages/setup.tsx
+msgid "Everything the wizard set can be changed later in Settings."
+msgstr "向导中的所有设置之后都可以在“设置”中修改。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Export everything"
+msgstr "全部导出"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Failed background jobs"
+msgstr "失败的后台任务"
+
+#: src/admin/pages/editor.tsx
+msgid "Fields"
+msgstr "字段"
+
+#: src/admin/pages/editor.tsx
+msgid "Fields, Markdown and preview"
+msgstr "字段、Markdown 与预览"
+
+#: src/admin/pages/media.tsx
+msgid "Files are stored by the hash of the original, so uploading the same image twice costs nothing and never creates a duplicate."
+msgstr "文件按原图的哈希值存储，同一张图片上传两次不会产生额外开销，也不会出现重复。"
+
+#: src/admin/pages/setup.tsx
+msgid "Finish setup"
+msgstr "完成设置"
+
+#: src/admin/pages/setup.tsx
+msgid "For a language not listed, comma separated. Languages can also be added later."
+msgstr "用于上面没有列出的语言，以逗号分隔。之后也可以再添加语言。"
+
+#: src/admin/pages/settings-email.tsx
+msgid "From address"
+msgstr "发件地址"
+
+#: src/admin/pages/plugin-panel.tsx
+msgid "From the {pluginName} plugin."
+msgstr "来自 {pluginName} 插件。"
+
+#: src/admin/pages/editor.tsx
+msgid "From the {pluginName} plugin. Shared by every language of this item, and saved on its own — not with Publish."
+msgstr "来自 {pluginName} 插件。这条内容的所有语言版本共用这些数据，它们单独保存——不随“发布”一起保存。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.title_missing"
+msgstr "Front matter 必须包含非空的 “title”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.ui_locale_invalid"
+msgstr "界面语言需要是 “zh-CN” 这样的语言标签，或者为 null。"
+
+#: src/admin/components/media-library.tsx
+msgid "hashing"
+msgstr "正在计算哈希"
+
+#: src/admin/pages/editor.tsx
+msgid "Hide fields"
+msgstr "收起字段"
+
+#: src/admin/pages/plugins.tsx
+msgid "Hooks"
+msgstr "钩子"
+
+#: src/admin/components/media-library.tsx
+msgid "Images are converted to WebP in your browser and uploaded at {widths} pixels wide. SVG is not accepted — it can carry script."
+msgstr "图片会在浏览器中转换为 WebP，并按 {widths} 像素宽度上传。不支持 SVG——它可能携带脚本。"
+
+#: src/admin/components/media-library.tsx
+msgid "In use. Remove the references first."
+msgstr "正在使用中，请先移除引用。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Inactive — a workers.dev URL is a preview, not a site"
+msgstr "未生效 — workers.dev 地址只是预览，不是正式站点"
+
+#: src/admin/pages/setup.tsx
+msgid "Install"
+msgstr "安装"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Installing, updating or removing a plugin"
+msgstr "安装、更新或移除插件"
+
+#: src/admin/pages/setup.tsx
+msgid "Installing…"
+msgstr "正在安装…"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Instant"
+msgstr "立即生效"
+
+#: src/admin/components/account-menu.tsx
+#: src/admin/components/language-picker.tsx
+msgid "Interface language"
+msgstr "界面语言"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.internal_error"
+msgstr "服务器内部错误。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.asset_path_invalid"
+msgstr "资源路径“{path}”无效。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.invalid_credentials"
+msgstr "邮箱或密码不正确。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_invalid_at"
+msgstr "设置项“{field}”无效：{reason}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.settings_invalid"
+msgstr "设置无效：{reason}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.invalid"
+msgstr "设置无效。"
+
+#: src/admin/pages/setup.tsx
+msgid "Its email and password can be changed later in Account."
+msgstr "邮箱和密码之后可以在“账号”中修改。"
+
+#: src/admin/pages/setup.tsx
+msgid "Its pages have no URL prefix; every other language's do."
+msgstr "主语言的页面网址不带语言前缀，其他语言都带。"
+
+#: src/admin/pages/setup.tsx
+msgid "Its pages have no URL prefix; every other language's do. The theme's own wording, such as its buttons, comes in {themeLanguages}."
+msgstr "主语言的页面网址不带语言前缀，其他语言都带。主题自带的文字（例如按钮）提供以下语言：{themeLanguages}。"
+
+#: src/admin/pages/plugin-panel.tsx
+msgid "Its settings"
+msgstr "插件设置"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Keep a backup of your site. Everything after it is a platform detail you do not need to run the site."
+msgstr "请保留站点的备份。备份之后的内容都是平台细节，日常运营站点用不到。"
+
+#: src/admin/components/record-editor.tsx
+msgid "Keep it"
+msgstr "保留"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Key set, no site sender — only plugins with their own send"
+msgstr "已设置密钥，但没有站点发件地址 — 只有自带发件地址的插件能发送"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.kind_disabled"
+msgstr "本站点未启用内容类型“{kind}”。"
+
+#: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
+msgid "Language code"
+msgstr "语言代码"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Language to add"
+msgstr "要添加的语言"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Languages"
+msgstr "语言"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Last failed purge"
+msgstr "最近一次清除失败"
+
+#: src/admin/tokens.ts
+msgid "Last used {lastUsed}"
+msgstr "最近使用于 {lastUsed}"
+
+#: src/admin/components/account-menu.tsx
+msgid "Light"
+msgstr "浅色"
+
+#: src/admin/components/media-library.tsx
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/components/record-editor.tsx
+#: src/admin/components/related-rows.tsx
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
+#: src/admin/pages/plugin-panel.tsx
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/setup.tsx
+msgid "Loading…"
+msgstr "正在加载…"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.locale_disabled"
+msgstr "本站点未启用语言“{locale}”。"
+
+#: src/admin/pages/setup.tsx
+msgid "Main language"
+msgstr "主语言"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Make {language} the default language?\n"
+"\n"
+"Every public URL is rewritten and the old URLs are redirected. This cannot be undone automatically."
+msgstr "将{language}设为默认语言？\n"
+"\n"
+"所有公开 URL 都会改写，旧 URL 会重定向到新地址。此操作无法自动撤销。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Make default"
+msgstr "设为默认"
+
+#: src/admin/pages/editor.tsx
+msgid "Markdown"
+msgstr "Markdown"
+
+#: src/admin/components/markdown-editor.tsx
+msgid "Markdown source"
+msgstr "Markdown 源文本"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/media.tsx
+msgid "Media"
+msgstr "媒体"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Media domain"
+msgstr "媒体域名"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Media files"
+msgstr "媒体文件"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.too_large"
+msgstr "媒体文件不能超过 {max} 字节。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.method_not_allowed"
+msgstr "不允许使用该请求方法。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.csrf_invalid"
+msgstr "CSRF 令牌缺失或无效，请刷新页面后重试。"
+
+#: src/admin/components/ui/breadcrumb.tsx
+msgid "More"
+msgstr "更多"
+
+#: src/admin/pages/setup.tsx
+msgid "More language codes"
+msgstr "更多语言代码"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.rows_list"
+msgstr "必须是行的列表。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.text_list"
+msgstr "必须是文本列表。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.pairs"
+msgstr "必须是一组名称与值。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.min"
+msgstr "不能小于 {min}。"
+
+#: src/admin/form/types.ts
+msgid "Must be at least {min}."
+msgstr "不能小于 {min}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max_length"
+msgstr "不能超过 {max} 个字符。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.max"
+msgstr "不能大于 {max}。"
+
+#: src/admin/form/types.ts
+msgid "Must be at most {max}."
+msgstr "不能大于 {max}。"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Must be on a domain you have verified in Resend. A plugin may set its own sender; this one is used whenever it does not."
+msgstr "必须是已在 Resend 验证过的域名。插件可以设置自己的发件地址；没有设置时使用这里的地址。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.text"
+msgstr "必须是文本。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.boolean"
+msgstr "必须是“是”或“否”。"
+
+#: src/admin/form/controls.tsx
+msgid "Name"
+msgstr "名称"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_missing"
+msgstr "请选择要安装的示例内容。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.related_parent_missing"
+msgstr "请用 ?parent=<id> 指定行。"
+
+#: src/admin/pages/setup.tsx
+msgid "Name your site"
+msgstr "为站点命名"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Needs a rebuild and deploy"
+msgstr "需要重新构建并部署"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Neither of these loses anything. Cached pages and fragments are both derived from your content and are rebuilt on the next request — the only cost is that the next visitor waits for a render."
+msgstr "两者都不会丢失任何数据。页面缓存和片段缓存都由内容生成，下一次请求时会重新生成——唯一的代价是下一位访客需要等待一次渲染。"
+
+#: src/admin/tokens.ts
+msgid "Never used"
+msgstr "从未使用"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "New"
+msgstr "新建"
+
+#: src/admin/pages/content-list.tsx
+msgid "New {filteredKind}"
+msgstr "新建{filteredKind}"
+
+#: src/admin/pages/content-list.tsx
+msgid "New content"
+msgstr "新建内容"
+
+#: src/admin/components/shell.tsx
+msgid "New item"
+msgstr "新建"
+
+#: src/admin/pages/account.tsx
+msgid "New password"
+msgstr "新密码"
+
+#: src/admin/pages/account.tsx
+msgid "New token name"
+msgstr "新令牌名称"
+
+#: src/admin/components/record-editor.tsx
+msgid "New: {panelLabel}"
+msgstr "新建：{panelLabel}"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Next"
+msgstr "下一页"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.attached_owner_missing"
+msgstr "不存在属于该翻译组的 {kind}。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No cache-purge token is configured, so a saved change reaches visitors only after the cached page expires. This is a working site, not a broken one — add <0>CF_API_TOKEN</0> and <1>CF_ZONE_ID</1> as Worker secrets to get instant publishing."
+msgstr "尚未配置缓存清除令牌，保存的修改要等页面缓存过期后访客才能看到。站点运行正常，并没有出错——将 <0>CF_API_TOKEN</0> 和 <1>CF_ZONE_ID</1> 添加为 Worker 密钥即可即时发布。"
+
+#: src/admin/pages/setup.tsx
+msgid "No cache-purge token is configured, so edits reach visitors within a minute instead of immediately. This is a working configuration, not a broken one; Settings → Advanced says how to make publishing instant."
+msgstr "未配置缓存清除令牌，因此修改会在 1 分钟内对访客可见，而不是立即可见。这是可以正常使用的配置，并非故障；如何让发布立即生效，见“设置 → 高级”。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No cache-purge token is configured, so nothing was purged. Cached pages expire on their own."
+msgstr "未配置缓存清除令牌，因此没有清除任何缓存。已缓存的页面会自行过期。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No error was recorded."
+msgstr "没有记录到错误信息。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "No key — no email is sent"
+msgstr "未设置密钥 — 不会发送任何邮件"
+
+#: src/admin/pages/plugin-panel.tsx
+msgid "No plugin in this build has a list at this address."
+msgstr "此构建中没有插件在这个地址提供列表。"
+
+#: src/admin/pages/plugins.tsx
+msgid "No plugins are compiled into this build."
+msgstr "本次构建没有编译进任何插件。"
+
+#: src/admin/components/record-editor.tsx
+msgid "No rows yet."
+msgstr "还没有任何行。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_unknown"
+msgstr "没有名为“{starter}”的示例内容。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.action_unknown"
+msgstr "面板没有这个操作。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.panel_unknown"
+msgstr "没有这个面板。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.unknown"
+msgstr "本次构建中没有编译进这个插件。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_unknown"
+msgstr "没有这条记录。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.records_panel_unknown"
+msgstr "没有这个记录面板。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.related_unknown"
+msgstr "没有这个关联表。"
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-appearance.tsx
+msgid "None"
+msgstr "无"
+
+#: src/admin/components/related-rows.tsx
+msgid "None."
+msgstr "无。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Not bound"
+msgstr "未绑定"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Not configured — edits go live after the cache expires"
+msgstr "未配置 — 修改要等缓存过期后才生效"
+
+#: src/admin/app.tsx
+#: src/admin/components/shell.tsx
+#: src/admin/pages/plugin-panel.tsx
+msgid "Not found"
+msgstr "未找到"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.not_found"
+msgstr "未找到。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Not in theme"
+msgstr "主题未声明"
+
+#: src/admin/pages/editor.tsx
+msgid "Not saved yet"
+msgstr "尚未保存"
+
+#: src/admin/components/media-library.tsx
+msgid "Nothing has been uploaded yet."
+msgstr "还没有上传任何文件。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Nothing has been written in {language} yet."
+msgstr "还没有{language}的内容。"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Nothing here yet."
+msgstr "这里还没有内容。"
+
+#: src/admin/pages/content-list.tsx
+msgid "Nothing in {language} matches these filters."
+msgstr "{language}内容中没有符合筛选条件的项。"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Nothing matches these filters."
+msgstr "没有符合这些筛选条件的内容。"
+
+#: src/admin/components/toast-host.tsx
+msgid "Notifications"
+msgstr "通知"
+
+#: src/admin/pages/plugins.tsx
+msgid "Off"
+msgstr "关"
+
+#: src/admin/pages/plugins.tsx
+msgid "Official"
+msgstr "官方"
+
+#: src/admin/pages/plugins.tsx
+msgid "On"
+msgstr "开"
+
+#: src/admin/pages/settings-email.tsx
+msgid "One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy."
+msgstr "整个站点共用一个 Resend 密钥和一个发件地址。所有发送邮件的插件都使用它们，修改后对下一封邮件生效——无需重新构建或部署。"
+
+#: src/admin/pages/plugins.tsx
+msgid "Only at request time"
+msgstr "仅在请求时"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_not_image"
+msgstr "只有图片才有缩略图。"
+
+#: src/admin/components/related-rows.tsx
+msgid "Only the first rows are shown."
+msgstr "只显示了前面的部分行。"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Open"
+msgstr "打开"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Open {id}"
+msgstr "打开 {id}"
+
+#: src/admin/pages/setup.tsx
+msgid "Open the admin"
+msgstr "进入后台"
+
+#: src/admin/pages/setup.tsx
+msgid "Other languages"
+msgstr "其他语言"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Pages it named may still be served from the cache until they expire."
+msgstr "涉及的页面在缓存过期前，可能仍会显示旧内容。"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Pagination"
+msgstr "分页"
+
+#: src/admin/pages/editor.tsx
+msgid "Pane shown"
+msgstr "显示的窗格"
+
+#: src/admin/pages/account.tsx
+#: src/admin/pages/login.tsx
+#: src/admin/pages/setup.tsx
+msgid "Password"
+msgstr "密码"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.session_required_password"
+msgstr "修改密码需要通过浏览器登录。"
+
+#: src/admin/pages/account.tsx
+msgid "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Current guidance is {recommended}, but a sign-in has to finish inside the Cloudflare Free plan's 10 ms CPU budget, so the cost is capped."
+msgstr "密码使用 PBKDF2-SHA256 哈希，迭代 {iterations} 次。目前的推荐值是 {recommended} 次，但登录必须在 Cloudflare 免费计划 10 毫秒的 CPU 预算内完成，所以迭代次数设了上限。"
+
+#: src/admin/form/controls.tsx
+msgid "Paste the value"
+msgstr "粘贴密钥值"
+
+#: src/admin/pages/content-list.tsx
+msgid "Path"
+msgstr "路径"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Plugin on/off switches, settings and secrets"
+msgstr "插件的启用开关、设置和密钥"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.state_missing"
+msgstr "缺少插件的状态记录。"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/plugins.tsx
+msgid "Plugins"
+msgstr "插件"
+
+#: src/admin/pages/plugins.tsx
+msgid "Plugins ship with your source, not through this page"
+msgstr "插件随源代码发布，而不是通过这个页面安装"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Prefix the default language too (<0>/{prefix}/…</0>)"
+msgstr "默认语言也加前缀（<0>/{prefix}/…</0>）"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.locale_prefix_endpoint"
+msgstr "给默认语言加前缀会改写所有 URL，请使用 POST /_mallok/api/settings/locale-prefix。"
+
+#: src/admin/pages/editor.tsx
+msgid "Preview"
+msgstr "预览"
+
+#: src/admin/pages/editor.tsx
+msgid "Preview failed: {reason}"
+msgstr "预览失败：{reason}"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/pages/content-list.tsx
+msgid "Previous"
+msgstr "上一页"
+
+#: src/admin/pages/setup.tsx
+msgid "Printed once by <0>mallok create</0>. It proves this site is yours: without it, whoever found the address first could claim it. It stops working the moment setup succeeds."
+msgstr "由 <0>mallok create</0> 输出，只显示一次。它用来证明这个站点属于你：没有它，最先发现这个地址的人就能抢先认领。设置成功后它立即失效。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.locale_prefix_confirm"
+msgstr "请提供 \"enabled\": true 或 false，以及 \"confirm\": true；此操作会改写所有 URL。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.hashes_missing"
+msgstr "请提供 sha256 哈希值列表。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.tokens.incomplete"
+msgstr "请填写名称，并至少选择一个权限范围。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.site_incomplete"
+msgstr "请填写站点名称、默认语言和语言列表。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.alt_invalid"
+msgstr "替代文本必须是字符串或 null。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.credentials_incomplete"
+msgstr "请填写邮箱，以及至少 {min} 个字符的密码。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_confirm"
+msgstr "请提供目标语言以及 \"confirm\": true；此操作会改写所有 URL。"
+
+#: src/admin/pages/editor.tsx
+msgid "Publish"
+msgstr "发布"
+
+#: src/admin/components/content-status.tsx
+#: src/admin/pages/settings-advanced.tsx
+msgid "Published"
+msgstr "已发布"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Rebuild all pages"
+msgstr "重新生成所有页面"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.record_not_removable"
+msgstr "这个面板的记录不能在这里删除。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Redirects"
+msgstr "重定向"
+
+#: src/admin/form/controls.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Remove"
+msgstr "移除"
+
+#: src/admin/components/record-editor.tsx
+msgid "Remove {item} {number}"
+msgstr "移除{item} {number}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Render pipeline"
+msgstr "渲染管线"
+
+#: src/admin/pages/editor.tsx
+msgid "Rendered by the same code the site runs — {previewPath}"
+msgstr "与线上站点使用同一套代码渲染 — {previewPath}"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Rendered fragments"
+msgstr "已渲染片段"
+
+#: src/admin/form/controls.tsx
+msgid "Replace"
+msgstr "替换"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Resend API key"
+msgstr "Resend API 密钥"
+
+#: src/admin/pages/account.tsx
+msgid "Revoke"
+msgstr "撤销"
+
+#: src/admin/tokens.ts
+msgid "Revoked {revoked} · last used {lastUsed}"
+msgstr "已于 {revoked} 撤销 · 最近使用于 {lastUsed}"
+
+#: src/admin/tokens.ts
+msgid "Revoked {revoked} · never used"
+msgstr "已于 {revoked} 撤销 · 从未使用"
+
+#: src/admin/components/account-menu.tsx
+msgid "Same as the system"
+msgstr "跟随系统"
+
+#: src/admin/components/media-library.tsx
+#: src/admin/components/record-editor.tsx
+#: src/admin/form/controls.tsx
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Save"
+msgstr "保存"
+
+#: src/admin/pages/editor.tsx
+msgid "Save draft"
+msgstr "保存草稿"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Save options"
+msgstr "保存选项"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Save sender"
+msgstr "保存发件人"
+
+#: src/admin/pages/plugins.tsx
+msgid "Save settings"
+msgstr "保存设置"
+
+#: src/admin/components/saved-note.tsx
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-email.tsx
+msgid "Saved"
+msgstr "已保存"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.saved_unrendered"
+msgstr "已存为草稿，未渲染：这篇内容的正文超过 {limitKb} KB，渲染它可能超出免费套餐的 CPU 限制。内容没有丢失，缩短后再保存即可发布。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Saving content purges the pages it affects, so this is a ceiling for pages nothing touched — not the delay before an edit appears."
+msgstr "保存内容时会清除受影响页面的缓存，所以这是未被修改页面的缓存上限，而不是修改生效前的等待时间。"
+
+#: src/admin/components/record-editor.tsx
+#: src/admin/pages/editor.tsx
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/settings-appearance.tsx
+#: src/admin/pages/settings-email.tsx
+#: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
+msgid "Saving…"
+msgstr "正在保存…"
+
+#: src/admin/components/content-status.tsx
+msgid "Scheduled"
+msgstr "定时发布"
+
+#: src/admin/pages/account.tsx
+msgid "Scopes"
+msgstr "权限范围"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Search"
+msgstr "搜索"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_not_string"
+msgstr "密钥“{name}”必须是字符串或 null。"
+
+#: src/admin/pages/plugins.tsx
+msgid "Secrets"
+msgstr "密钥"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_no_latin"
+msgstr "第 {position} 段（“{segment}”）里没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
+
+#: src/admin/slug.ts
+msgid "Segment {position} (\"{segment}\") has no Latin letters or digits to build a folder name from. Write it in Latin characters."
+msgstr "第 {position} 段（“{segment}”）里没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_no_latin_use"
+msgstr "第 {position} 段（“{segment}”）里没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。可改用“{use}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_not_canonical"
+msgstr "第 {position} 段（“{segment}”）只能使用小写拉丁字母、数字和单个连字符。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.segment_not_canonical_use"
+msgstr "第 {position} 段（“{segment}”）只能使用小写拉丁字母、数字和单个连字符。可改用“{use}”。"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Select"
+msgstr "选择"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Select {id}"
+msgstr "选择 {id}"
+
+#: src/admin/components/plugin-panel.tsx
+msgid "Select at least one row first."
+msgstr "请先至少选择一行。"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Sender"
+msgstr "发件人"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Serve \"{prefix}\" at the root again?\n"
+"\n"
+"Every URL of the default language moves (/{prefix}/about becomes /about) and each old URL, lists, tags and /{prefix} included, redirects to its new one. The navigation's links to this site are rewritten to match."
+msgstr "让“{prefix}”重新在根路径下提供？\n"
+"\n"
+"默认语言的所有 URL 都会迁移（/{prefix}/about 变为 /about），每个旧 URL（包括列表页、标签页和 /{prefix}）都会重定向到新地址。导航中指向本站的链接会同步改写。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Serve \"{prefix}\" under /{prefix}/ too?\n"
+"\n"
+"Every URL of the default language moves (/about becomes /{prefix}/about) and each old URL, lists and tags included, redirects to its new one. The navigation's links to this site are rewritten to match. The site's root then only redirects to /{prefix}."
+msgstr "让“{prefix}”也在 /{prefix}/ 下提供？\n"
+"\n"
+"默认语言的所有 URL 都会迁移（/about 变为 /{prefix}/about），每个旧 URL（包括列表页和标签页）都会重定向到新地址。导航中指向本站的链接会同步改写。之后站点根路径只会重定向到 /{prefix}。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Served through the Worker"
+msgstr "由 Worker 提供"
+
+#: src/admin/pages/setup.tsx
+msgid "Serving <0>{customDomain}</0>. The edge cache is active."
+msgstr "正在通过 <0>{customDomain}</0> 提供服务，边缘缓存已生效。"
+
+#: src/admin/form/controls.tsx
+msgid "Set"
+msgstr "已设置"
+
+#: src/admin/pages/setup.tsx
+msgid "Set up your site"
+msgstr "设置你的站点"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/plugins.tsx
+msgid "Settings"
+msgstr "设置"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "setup"
+msgstr "初始设置"
+
+#: src/admin/pages/setup.tsx
+msgid "Setup is finished"
+msgstr "初始设置已完成"
+
+#: src/admin/pages/setup.tsx
+msgid "Setup key"
+msgstr "设置密钥"
+
+#: src/admin/pages/editor.tsx
+msgid "Show fields"
+msgstr "展开字段"
+
+#: src/admin/components/password-input.tsx
+msgid "Show password"
+msgstr "显示密码"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Shown by most themes under the site name, and as the home page description."
+msgstr "大多数主题会显示在站点名称下方，并用作首页描述。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Shown on pages in {taglineLanguage}. Empty uses the tagline above."
+msgstr "显示在{taglineLanguage}页面上。留空则使用上面的标语。"
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Sidebar"
+msgstr "侧栏"
+
+#: src/admin/pages/login.tsx
+msgid "Sign in"
+msgstr "登录"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.sign_in_required"
+msgstr "请以管理员身份登录后继续。"
+
+#: src/admin/components/account-menu.tsx
+msgid "Sign out"
+msgstr "退出登录"
+
+#: src/admin/pages/login.tsx
+msgid "Sign-in failed."
+msgstr "登录失败。"
+
+#: src/admin/pages/login.tsx
+msgid "Signing in…"
+msgstr "正在登录…"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/settings-site.tsx
+msgid "Site"
+msgstr "站点"
+
+#: src/admin/pages/setup.tsx
+msgid "Site and languages"
+msgstr "站点与语言"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.not_initialized"
+msgstr "站点尚未初始化。"
+
+#: src/admin/pages/settings-site.tsx
+#: src/admin/pages/setup.tsx
+msgid "Site name"
+msgstr "站点名称"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Site settings, languages, navigation"
+msgstr "站点设置、语言、导航"
+
+#: src/admin/pages/setup.tsx
+msgid "Skip"
+msgstr "跳过"
+
+#: src/admin/pages/editor.tsx
+msgid "Slug"
+msgstr "Slug"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.fields_invalid"
+msgstr "有些字段需要修改。"
+
+#: src/admin/pages/setup.tsx
+msgid "Start with example content?"
+msgstr "要从示例内容开始吗？"
+
+#: src/admin/pages/setup.tsx
+msgid "Starting content"
+msgstr "初始内容"
+
+#: src/admin/pages/content-list.tsx
+msgid "Status"
+msgstr "状态"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Storage"
+msgstr "存储"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Stored encrypted. It is never shown again, here or anywhere else."
+msgstr "加密保存。之后在这里或任何地方都不会再显示。"
+
+#: src/admin/pages/plugins.tsx
+msgid "Stored encrypted. They are never shown again, here or anywhere else."
+msgstr "加密保存。之后在这里或任何地方都不会再显示。"
+
+#: src/admin/media.ts
+msgid "SVG is not accepted: it can carry script. Export a PNG or WebP instead."
+msgstr "不支持 SVG：它可能携带脚本。请导出为 PNG 或 WebP。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Switching to a different theme"
+msgstr "更换为其他主题"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Tagline"
+msgstr "标语"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Tagline in {taglineLanguage}"
+msgstr "{taglineLanguage}标语"
+
+#: src/admin/pages/plugins.tsx
+msgid "Technical details"
+msgstr "技术细节"
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-email.tsx
+msgid "Test"
+msgstr "检测"
+
+#: src/admin/pages/settings-advanced.tsx
+#: src/admin/pages/setup.tsx
+msgid "That did not work."
+msgstr "操作未成功。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_wrong"
+msgstr "设置密钥不正确。它由 `mallok create` 输出，只显示过一次。"
+
+#: src/admin/tokens.ts
+msgid "That token was already revoked."
+msgstr "该令牌已被撤销。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "the {plugin} plugin"
+msgstr "{plugin} 插件"
+
+#: src/admin/pages/plugin-panel.tsx
+msgid "The {pluginName} plugin is off, so nothing new arrives here. What it already stored is listed below."
+msgstr "{pluginName} 插件已关闭，这里不会再有新内容。之前存下的内容仍列在下面。"
+
+#: src/admin/components/plugin-panel.tsx
+#: src/admin/components/record-editor.tsx
+msgid "The action failed."
+msgstr "操作失败。"
+
+#: src/admin/pages/content-list.tsx
+msgid "The active theme does not declare this type, so it renders with the page layout. The content and its URL are untouched."
+msgstr "当前主题没有声明这个类型，所以按普通页面的布局渲染。内容和 URL 都不受影响。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly."
+msgstr "访客访问站点用的地址，例如 www.example.com。设置之前，搜索引擎会被告知不要收录本站，页面也不会被缓存，因此加载较慢。"
+
+#: src/admin/pages/setup.tsx
+msgid "The administrator account is created."
+msgstr "管理员账号已创建。"
+
+#: src/admin/pages/setup.tsx
+msgid "The administrator account, <0>{email}</0>, is created."
+msgstr "管理员账号 <0>{email}</0> 已创建。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount_high"
+msgstr "金额过高。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.amount_low"
+msgstr "金额过低。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.hash_mismatch"
+msgstr "上传的内容与路径中的 sha256 不一致。"
+
+#: src/admin/pages/plugins.tsx
+#: src/admin/pages/settings-email.tsx
+msgid "The check failed."
+msgstr "检测失败。"
+
+#: src/admin/pages/account.tsx
+msgid "The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
+msgstr "CLI 和各种脚本都通过令牌访问。令牌只显示一次——请立即复制，之后无法再次查看。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.current_password_wrong"
+msgstr "当前密码不正确。"
+
+#: src/admin/pages/plugins.tsx
+msgid "The current theme has no layout for {layouts}. Those pages are shown in a plain built-in layout, without the site’s design. Adding the layouts to the theme needs a new build and deploy."
+msgstr "当前主题没有 {layouts} 的布局。这些页面会以内置的简单布局显示，不带站点的设计。为主题添加这些布局需要重新构建并部署。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "The default language has no URL prefix; every other language is served under <0>/<locale>/</0>."
+msgstr "默认语言不带 URL 前缀；其他语言都在 <0>/<locale>/</0> 下提供。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.settings.default_locale_unlisted"
+msgstr "启用的语言必须包含默认语言“{locale}”。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "The export failed."
+msgstr "导出失败。"
+
+#: src/admin/components/account-menu.tsx
+msgid "The language applies in this browser, but your account could not remember it."
+msgstr "界面语言已在当前浏览器生效，但没能保存到你的账号。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.default_locale_unlisted"
+msgstr "语言列表必须包含默认语言。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.id_invalid"
+msgstr "媒体 ID 必须是十六进制的 sha256 摘要。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.account.password_short"
+msgstr "新密码至少需要 {min} 个字符。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code."
+msgstr "以下选项是运行时设置：保存后立即生效，无需重新构建。主题本身属于源代码。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.body_empty"
+msgstr "请求内容为空。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.email.sender_invalid"
+msgstr "发件人必须是 “hello@example.com” 或 “Acme <hello@example.com>” 这样的地址。"
+
+#: src/admin/api.ts
+msgid "The server could not be reached. Nothing was saved."
+msgstr "无法连接服务器，没有保存任何内容。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_used"
+msgstr "设置密钥已经用过。如需重新进行初始设置，请用 `wrangler secret put MALLOK_SETUP_KEY` 部署一个新密钥。"
+
+#: src/admin/pages/setup.tsx
+msgid "The site is empty and waiting for its first page."
+msgstr "站点目前是空的，等待第一个页面。"
+
+#: src/admin/pages/login.tsx
+msgid "The site's admin"
+msgstr "站点后台"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.no_latin"
+msgstr "slug“{slug}”中没有拉丁字母或数字，无法生成目录名。请用拉丁字符填写。"
+
+#: src/admin/slug.ts
+msgid "The slug became \"{normalized}\", because a slug is also a folder name in an export."
+msgstr "slug 已改为“{normalized}”，因为导出时 slug 也是目录名。"
+
+#: src/admin/slug.ts
+msgid "The slug became \"{normalized}\": a slug has at most {MAX_SLUG_SEGMENTS} segments."
+msgstr "slug 已改为“{normalized}”：slug 最多 {MAX_SLUG_SEGMENTS} 段。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_many_segments"
+msgstr "slug 有 {count} 段，最多允许 {max} 段。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_many_segments_use"
+msgstr "slug 有 {count} 段，最多允许 {max} 段。可改用“{use}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_segment"
+msgstr "slug 中有空段：以“/”开头或结尾，或者包含“//”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_segment_use"
+msgstr "slug 中有空段：以“/”开头或结尾，或者包含“//”。可改用“{use}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty"
+msgstr "slug 为空。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.empty_use"
+msgstr "slug 为空。可改用“{use}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.too_long"
+msgstr "slug 超过了 {max} 个字符。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.slug.not_canonical_use"
+msgstr "slug 只能使用小写拉丁字母、数字和单个连字符。可改用“{use}”。"
+
+#: src/admin/pages/setup.tsx
+msgid "The starter is installed. Its pages can be edited or deleted like any other."
+msgstr "示例内容已安装，其中的页面可以像其他页面一样编辑或删除。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.starter_prefix_clash"
+msgstr "该示例内容会给默认语言加上前缀，但“{from}”会移到“{to}”，而这个地址已被其他内容占用。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.export.unsafe"
+msgstr "存储的内容无法安全导出：{reason}。"
+
+#: src/admin/components/media-library.tsx
+#: src/admin/media.ts
+msgid "The upload failed."
+msgstr "上传失败。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Theme"
+msgstr "主题"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Theme options"
+msgstr "主题选项"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Theme options this theme declares"
+msgstr "当前主题提供的主题选项"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
+msgstr "主题位于源代码中，而不在数据库里——它们会被编译进 Worker。要更换主题，请修改 <1>src/themes/index.ts</1> 中的 <0>ACTIVE_THEME</0>，然后重新构建并部署。"
+
+#: src/admin/app.tsx
+msgid "There is no page at this address in the admin."
+msgstr "后台中没有这个地址对应的页面。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "These are stored the moment you save — no rebuild, no deploy."
+msgstr "点击保存即生效——无需重新构建或部署。"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "These values apply to every language unless a language overrides them below."
+msgstr "这些值适用于所有语言，除非某个语言在下面单独设置。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.field.required"
+msgstr "此项为必填项。"
+
+#: src/admin/form/types.ts
+msgid "This field is required."
+msgstr "此项为必填项。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.in_use"
+msgstr "这个文件正在使用中。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.in_use_count"
+msgstr "这个文件正被 {count} 项内容引用，请先移除这些引用。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.operation_scope"
+msgstr "此操作需要“{scope}”权限范围。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.attached_to_missing"
+msgstr "这个面板属于某条内容：请把它的翻译组作为 “attachedTo” 发送。"
+
+#: src/admin/pages/plugins.tsx
+msgid "This plugin runs on <0>every visitor request</0>, including ones the cache would otherwise answer for free."
+msgstr "这个插件会在<0>每一次访客请求</0>时运行，包括本来可以直接由缓存免费响应的请求。"
+
+#: src/admin/pages/setup.tsx
+msgid "This site has already been set up. Everything the wizard did can be changed in <0>Settings</0>."
+msgstr "这个站点已经完成初始设置。向导中的所有设置都可以在<0>设置</0>中修改。"
+
+#: src/admin/pages/content-list.tsx
+msgid "This site has no content yet."
+msgstr "这个站点还没有内容。"
+
+#: src/admin/pages/setup.tsx
+msgid "This site has no custom domain yet, so it is running on a <0>.workers.dev</0> address. That address is a preview: <1>Cloudflare's edge cache does not apply to it</1>, so pages are rendered on every request and will feel slower than the real site."
+msgstr "这个站点还没有自定义域名，目前运行在 <0>.workers.dev</0> 地址上。这个地址只是预览：<1>Cloudflare 的边缘缓存对它不生效</1>，每次请求都会重新渲染页面，速度会比正式站点慢。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.setup.key_unconfigured"
+msgstr "这个站点没有设置密钥，因此不会创建管理员。请在项目目录中运行 `mallok create .` 完成配置，或运行 `mallok setup-key` 生成一个。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.token_scope"
+msgstr "这个令牌缺少“{scope}”权限范围。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.translation_exists"
+msgstr "这组翻译在 {locale} 中已有内容：位于 {path} 的 {kind}“{slug}”（ID {id}）。请直接编辑那一项。"
+
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
+msgid "Title"
+msgstr "标题"
+
+#: src/admin/pages/plugins.tsx
+msgid "To add one, put its folder in <0>src/plugins/</0>, list it in <1>src/plugins/index.ts</1>, then build and deploy. Removing one is the reverse. There is no upload here because there is no way to make an upload take effect without a new build."
+msgstr "要添加插件，请把它的目录放进 <0>src/plugins/</0>，在 <1>src/plugins/index.ts</1> 中登记，然后重新构建并部署。移除插件则反过来操作。这里没有上传入口，因为上传的插件不重新构建就无法生效。"
+
+#: src/admin/components/ui/sidebar.tsx
+msgid "Toggle Sidebar"
+msgstr "展开或收起侧栏"
+
+#: src/admin/pages/setup.tsx
+msgid "Translated by the theme"
+msgstr "主题已翻译"
+
+#: src/admin/pages/editor.tsx
+msgid "Translations"
+msgstr "翻译版本"
+
+#: src/admin/pages/content-list.tsx
+#: src/admin/pages/editor.tsx
+msgid "Type"
+msgstr "类型"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.auth.unauthorized"
+msgstr "未登录或登录已过期。"
+
+#: src/admin/pages/editor.tsx
+msgid "unknown error"
+msgstr "未知错误"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.kind_filter_unknown"
+msgstr "未知的类型筛选条件。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.tokens.scope_unknown"
+msgstr "未知的权限范围：{scopes}。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.plugins.secret_unknown"
+msgstr "未知的密钥“{name}”。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.content.status_filter_unknown"
+msgstr "未知的状态筛选条件。"
+
+#: src/admin/media.ts
+msgid "unknown type"
+msgstr "未知类型"
+
+#: src/admin/pages/editor.tsx
+msgid "Unsaved"
+msgstr "未保存"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.type_unsupported"
+msgstr "不支持的文件类型。支持：jpg、png、gif、webp、avif、pdf、xlsx、docx、zip。"
+
+#: src/admin/components/media-library.tsx
+msgid "unused"
+msgstr "未使用"
+
+#: src/admin/pages/content-list.tsx
+msgid "Updated"
+msgstr "更新时间"
+
+#: src/admin/pages/editor.tsx
+msgid "Updated <0>{updated}</0>"
+msgstr "更新于 <0>{updated}</0>"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Upgrading Mallok itself"
+msgstr "升级 Mallok 本身"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.original_missing"
+msgstr "请先上传原图，再上传它的缩略图。"
+
+#: src/admin/components/media-library.tsx
+msgid "uploading"
+msgstr "正在上传"
+
+#: src/admin/components/media-library.tsx
+msgid "Use"
+msgstr "使用"
+
+#: src/admin/pages/account.tsx
+msgid "Use a long, unique password. For stronger protection, put Cloudflare Access in front of <0>/_mallok/</0>."
+msgstr "请使用足够长且不与其他地方重复的密码。如需更强的保护，可以在 <0>/_mallok/</0> 前面加上 Cloudflare Access。"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Use an address such as hello@example.com or Acme <hello@example.com>."
+msgstr "请使用 hello@example.com 或 Acme <hello@example.com> 这样的地址。"
+
+#. placeholder {0}: item.refCount
+#: src/admin/components/media-library.tsx
+msgid "used {0}×"
+msgstr "已引用 {0} 次"
+
+#: src/admin/pages/editor.tsx
+msgid "Used as the meta description and in listings. Derived from the body when empty."
+msgstr "用作 meta 描述，也显示在列表中。留空则从正文中提取。"
+
+#: src/admin/form/controls.tsx
+msgid "Value"
+msgstr "值"
+
+#: src/admin/pages/settings-appearance.tsx
+msgid "Values you change here apply only to {editingLanguage}. Anything you leave alone follows the {defaultLanguage} value."
+msgstr "这里修改的值只对{editingLanguage}生效。没有改动的选项沿用{defaultLanguage}的值。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_width"
+msgstr "缩略图宽度必须在 1 到 {max} 之间。"
+
+#. js-lingui-explicit-id
+#: src/admin/server-messages.catalog.ts
+msgid "server.media.variant_not_webp"
+msgstr "缩略图必须是 WebP 格式。"
+
+#: src/admin/pages/editor.tsx
+msgid "View on site"
+msgstr "在站点上查看"
+
+#: src/admin/components/shell.tsx
+msgid "View site"
+msgstr "查看站点"
+
+#: src/admin/pages/setup.tsx
+msgid "View the site"
+msgstr "查看站点"
+
+#: src/admin/components/saved-note.tsx
+msgid "Visitors see it now."
+msgstr "访客现在就能看到。"
+
+#: src/admin/components/saved-note.tsx
+msgid "Visitors see it within {within}."
+msgstr "访客将在 {within}内看到。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "What is instant, and what needs a deploy"
+msgstr "哪些立即生效，哪些需要部署"
+
+#: src/admin/pages/plugins.tsx
+msgid "What you can change here — the switch below, settings and secrets — is stored in the database and applies to the very next request."
+msgstr "这里能修改的内容——下面的开关、设置和密钥——都保存在数据库中，从下一次请求起生效。"
+
+#: src/admin/pages/settings-site.tsx
+msgid "Where images are served from, such as https://media.example.com. Empty serves them from this site."
+msgstr "图片从哪个地址提供，例如 https://media.example.com。留空则由本站直接提供。"
+
+#: src/admin/components/shell.tsx
+msgid "Why?"
+msgstr "为什么？"
+
+#: src/admin/pages/settings-email.tsx
+msgid "Without a key no email is sent. A message queued meanwhile is retried for about 30 minutes and then marked failed."
+msgstr "没有密钥时不会发送任何邮件。期间排队的邮件会重试约 30 分钟，之后标记为失败。"
+
+#: src/admin/pages/settings-advanced.tsx
+msgid "Work that was retried and gave up — an email that could not be sent, a plugin's job that kept failing. Nothing here is retried again by itself."
+msgstr "重试后已放弃的任务——例如发不出去的邮件、反复失败的插件任务。这里的任务不会再自动重试。"
+
+#: src/admin/components/record-editor.tsx
+msgid "Working…"
+msgstr "正在执行…"
+
+#: src/admin/pages/editor.tsx
+msgid "Write"
+msgstr "编写"
+
+#: src/admin/pages/setup.tsx
+msgid "written for the \"{starterTheme}\" theme, but this build runs \"{activeTheme}\", so some pages will use the plain page layout"
+msgstr "为“{starterTheme}”主题编写，但当前构建使用的是“{activeTheme}”，部分页面会使用普通页面布局"
+
+#: src/admin/pages/plugins.tsx
+msgid "Yes"
+msgstr "是"
+
+#: src/admin/pages/setup.tsx
+msgid "Your domain"
+msgstr "你的域名"
+
+#: src/admin/pages/setup.tsx
+msgid "Your site is ready"
+msgstr "站点已就绪"

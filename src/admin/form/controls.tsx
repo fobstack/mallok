@@ -6,6 +6,7 @@
  * write back a **slug**, and secrets never show their value.
  */
 
+import { Trans, useLingui } from '@lingui/react/macro';
 import type { JSX } from 'react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -192,7 +193,7 @@ export function StringListControl({
             variant="outline"
             onClick={() => update(entries.filter((_, i) => i !== index))}
           >
-            Remove
+            <Trans>Remove</Trans>
           </Button>
         </div>
       ))}
@@ -201,7 +202,7 @@ export function StringListControl({
         variant="outline"
         onClick={() => onChange([...entries, ''])}
       >
-        Add entry
+        <Trans>Add entry</Trans>
       </Button>
     </div>
   );
@@ -213,6 +214,7 @@ export function KeyValueControl({
   onChange,
   id,
 }: ControlProps): JSX.Element {
+  const { t } = useLingui();
   const pairs: [string, string][] =
     value !== null && typeof value === 'object' && !Array.isArray(value)
       ? Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
@@ -235,8 +237,8 @@ export function KeyValueControl({
         // biome-ignore lint/suspicious/noArrayIndexKey: entries are plain strings edited in place by position, with no other identity.
         <div className={ROW} key={index}>
           <Input
-            aria-label="Name"
-            placeholder="Name"
+            aria-label={t`Name`}
+            placeholder={t`Name`}
             value={key}
             onInput={(event) => {
               const next: [string, string][] = [...pairs];
@@ -245,8 +247,8 @@ export function KeyValueControl({
             }}
           />
           <Input
-            aria-label="Value"
-            placeholder="Value"
+            aria-label={t`Value`}
+            placeholder={t`Value`}
             value={entry}
             onInput={(event) => {
               const next: [string, string][] = [...pairs];
@@ -259,7 +261,7 @@ export function KeyValueControl({
             variant="outline"
             onClick={() => write(pairs.filter((_, i) => i !== index))}
           >
-            Remove
+            <Trans>Remove</Trans>
           </Button>
         </div>
       ))}
@@ -268,7 +270,7 @@ export function KeyValueControl({
         variant="outline"
         onClick={() => write([...pairs, ['', '']])}
       >
-        Add row
+        <Trans>Add row</Trans>
       </Button>
     </div>
   );
@@ -320,12 +322,12 @@ export function MediaControl(props: PickerProps): JSX.Element {
             }
           }}
         >
-          Choose…
+          <Trans>Choose…</Trans>
         </Button>
       )}
       {current === '' ? null : (
         <Button type="button" variant="outline" onClick={() => onChange('')}>
-          Clear
+          <Trans>Clear</Trans>
         </Button>
       )}
     </div>
@@ -363,7 +365,7 @@ export function MediaListControl(props: PickerProps): JSX.Element {
               variant="outline"
               onClick={() => onChange(entries.filter((_, i) => i !== index))}
             >
-              Remove
+              <Trans>Remove</Trans>
             </Button>
           </div>
         );
@@ -379,7 +381,7 @@ export function MediaListControl(props: PickerProps): JSX.Element {
             }
           }}
         >
-          Add image…
+          <Trans>Add image…</Trans>
         </Button>
       )}
     </div>
@@ -390,12 +392,13 @@ export function MediaListControl(props: PickerProps): JSX.Element {
 export function ReferenceControl(props: PickerProps): JSX.Element {
   const { spec, value, onChange, id, pickContent } = props;
   const target = spec.field.kind ?? '';
+  const { t } = useLingui();
   return (
     <div className={ROW} id={id}>
       <Input
         className="font-mono"
         value={asString(value)}
-        placeholder={`${target} slug`}
+        placeholder={t`${target} slug`}
         onInput={(event) => onChange(event.currentTarget.value)}
       />
       {pickContent === undefined ? null : (
@@ -409,7 +412,7 @@ export function ReferenceControl(props: PickerProps): JSX.Element {
             }
           }}
         >
-          Choose…
+          <Trans>Choose…</Trans>
         </Button>
       )}
     </div>
@@ -437,6 +440,7 @@ export function SecretControl({
   // Only "the operator asked to replace it" is state. Whether a value is
   // stored comes from the server through `configured` on every render;
   // mirroring it here once left "Set" on screen after a removal.
+  const { t } = useLingui();
   const [replacing, setReplacing] = useState(false);
   const [draft, setDraft] = useState('');
   if (configured && !replacing) {
@@ -446,16 +450,18 @@ export function SecretControl({
         id={id}
         aria-label={label}
       >
-        <StatusBadge tone="ok">Set</StatusBadge>
+        <StatusBadge tone="ok">
+          <Trans>Set</Trans>
+        </StatusBadge>
         <Button
           type="button"
           variant="outline"
           onClick={() => setReplacing(true)}
         >
-          Replace
+          <Trans>Replace</Trans>
         </Button>
         <Button type="button" variant="outline" onClick={onClear}>
-          Remove
+          <Trans>Remove</Trans>
         </Button>
       </fieldset>
     );
@@ -472,7 +478,7 @@ export function SecretControl({
         autoComplete="off"
         aria-label={label}
         value={draft}
-        placeholder="Paste the value"
+        placeholder={t`Paste the value`}
         onInput={(event) => setDraft(event.currentTarget.value)}
       />
       <Button
@@ -485,7 +491,7 @@ export function SecretControl({
         }}
         disabled={draft === ''}
       >
-        Save
+        <Trans>Save</Trans>
       </Button>
       {configured ? (
         <Button
@@ -496,7 +502,7 @@ export function SecretControl({
             setReplacing(false);
           }}
         >
-          Cancel
+          <Trans>Cancel</Trans>
         </Button>
       ) : null}
     </fieldset>

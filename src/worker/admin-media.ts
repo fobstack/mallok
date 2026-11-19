@@ -61,7 +61,11 @@ export async function checkMedia(
 ): Promise<Response> {
   const parsed = checkSchema.safeParse(await readJson(request));
   if (!parsed.success) {
-    return problem(400, 'Provide a list of sha256 hashes.');
+    return problem(
+      400,
+      'Provide a list of sha256 hashes.',
+      'media.hashes_missing',
+    );
   }
   const existing = await existingMedia(env.DB, parsed.data.hashes);
   return json({ existing });
@@ -81,22 +85,32 @@ export async function putMedia(
   now: Date,
 ): Promise<Response> {
   if (!SHA_PATTERN.test(sha256)) {
-    return problem(400, 'The media id must be a sha256 hex digest.');
+    return problem(
+      400,
+      'The media id must be a sha256 hex digest.',
+      'media.id_invalid',
+    );
   }
   const body = await readBody(request);
   if (body === null) {
     return problem(
       413,
       `Media objects are limited to ${MAX_MEDIA_BYTES} bytes.`,
+      'media.too_large',
+      { max: MAX_MEDIA_BYTES },
     );
   }
   if (body.byteLength === 0) {
-    return problem(400, 'The request body is empty.');
+    return problem(400, 'The request body is empty.', 'media.body_empty');
   }
 
   const actual = await sha256HexOfBytes(body);
   if (actual !== sha256) {
-    return problem(400, 'The body does not match the sha256 in the path.');
+    return problem(
+      400,
+      'The body does not match the sha256 in the path.',
+      'media.hash_mismatch',
+    );
   }
 
   const filename = decodeHeader(request, 'x-mallok-filename') ?? 'upload';
@@ -106,6 +120,7 @@ export async function putMedia(
     return problem(
       415,
       'Unsupported file type. Accepted: jpg, png, gif, webp, avif, pdf, xlsx, docx, zip.',
+      'media.type_unsupported',
     );
   }
 
@@ -151,17 +166,34 @@ export async function putVariant(
   width: number,
 ): Promise<Response> {
   if (!SHA_PATTERN.test(sha256)) {
-    return problem(400, 'The media id must be a sha256 hex digest.');
+    return problem(
+      400,
+      'The media id must be a sha256 hex digest.',
+      'media.id_invalid',
+    );
   }
   if (!Number.isInteger(width) || width < 1 || width > MAX_VARIANT_WIDTH) {
-    return problem(400, `Variant width must be 1..${MAX_VARIANT_WIDTH}.`);
+    return problem(
+      400,
+      `Variant width must be 1..${MAX_VARIANT_WIDTH}.`,
+      'media.variant_width',
+      { max: MAX_VARIANT_WIDTH },
+    );
   }
   const parent = await findMedia(env.DB, sha256);
   if (parent === null) {
-    return problem(404, 'Upload the original before its variants.');
+    return problem(
+      404,
+      'Upload the original before its variants.',
+      'media.original_missing',
+    );
   }
   if (parent.kind !== 'image') {
-    return problem(400, 'Only images have variants.');
+    return problem(
+      400,
+      'Only images have variants.',
+      'media.variant_not_image',
+    );
   }
 
   const body = await readBody(request);
@@ -169,11 +201,13 @@ export async function putVariant(
     return problem(
       413,
       `Media objects are limited to ${MAX_MEDIA_BYTES} bytes.`,
+      'media.too_large',
+      { max: MAX_MEDIA_BYTES },
     );
   }
   const type = sniffMediaType(body);
   if (type === null || type.ext !== 'webp') {
-    return problem(415, 'Variants must be WebP.');
+    return problem(415, 'Variants must be WebP.', 'media.variant_not_webp');
   }
 
   const webp = findType('webp');
@@ -199,7 +233,7 @@ export async function putVariant(
 export async function getMediaList(env: Env, url: URL): Promise<Response> {
   const kind = url.searchParams.get('kind');
   if (kind !== null && kind !== 'image' && kind !== 'file') {
-    return problem(400, 'Unknown kind filter.');
+    return problem(400, 'Unknown kind filter.', 'media.kind_filter_unknown');
   }
   const limit = clamp(
     Number(url.searchParams.get('limit') ?? DEFAULT_PAGE_SIZE),
@@ -231,7 +265,7 @@ export async function getMediaItem(
 ): Promise<Response> {
   const row = await findMedia(env.DB, sha256);
   if (row === null) {
-    return problem(404, 'Not found.');
+    return problem(404, 'Not found.', 'not_found');
   }
   return json(describe(row, await mediaBase(env)));
 }
@@ -244,11 +278,15 @@ export async function patchMedia(
 ): Promise<Response> {
   const parsed = altSchema.safeParse(await readJson(request));
   if (!parsed.success) {
-    return problem(400, 'Provide an "alt" string or null.');
+    return problem(
+      400,
+      'Provide an "alt" string or null.',
+      'media.alt_invalid',
+    );
   }
   const updated = await setMediaAlt(env.DB, sha256, parsed.data.alt);
   if (!updated) {
-    return problem(404, 'Not found.');
+    return problem(404, 'Not found.', 'not_found');
   }
   return getMediaItem(env, sha256);
 }
@@ -261,17 +299,19 @@ export async function patchMedia(
 export async function removeMedia(env: Env, sha256: string): Promise<Response> {
   const row = await findMedia(env.DB, sha256);
   if (row === null) {
-    return problem(404, 'Not found.');
+    return problem(404, 'Not found.', 'not_found');
   }
   if (row.ref_count > 0) {
     return problem(
       409,
       `This file is used by ${row.ref_count} item(s). Remove those references first.`,
+      'media.in_use_count',
+      { count: row.ref_count },
     );
   }
   const deleted = await deleteUnreferencedMedia(env.DB, sha256);
   if (!deleted) {
-    return problem(409, 'This file is in use.');
+    return problem(409, 'This file is in use.', 'media.in_use');
   }
   await deleteObjects(env, row.sha256, row.ext, parseWidths(row.variants));
   return json({ ok: true, sha256 });

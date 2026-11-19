@@ -1,0 +1,7 @@
+{
+  "description": "安静简洁、不含任何 JavaScript 的文章和页面主题。",
+  "kinds.page.label": "页面",
+  "kinds.article.label": "文章",
+  "options.accent.label": "强调色",
+  "options.show_reading_time.label": "在文章中显示阅读时长"
+}

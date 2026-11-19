@@ -19,6 +19,7 @@ import {
   listApiTokens,
   revokeApiToken,
   updateAdminPassword,
+  updateAdminUiLocale,
 } from '../db/auth.js';
 import { loadSite } from '../db/queries.js';
 import {
@@ -45,11 +46,27 @@ import { json, problem, readJson } from './http.js';
 
 const MIN_PASSWORD_LENGTH = 12;
 
+/**
+ * An interface language as the admin names it: a BCP 47 tag such as `en` or
+ * `zh-CN`. The Worker keeps it, not judges it — which languages have a
+ * catalog is the admin's business, and an unknown tag simply matches none.
+ */
+const uiLocaleSchema = z
+  .string()
+  .max(35)
+  .regex(/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/);
+
 const credentialsSchema = z.object({
   email: z.string().email().max(254),
   password: z.string().min(MIN_PASSWORD_LENGTH).max(1024),
   /** The one-time key `mallok create` printed; see {@link checkSetupKey}. */
   setupKey: z.string().min(1).max(512).optional(),
+  /** The wizard's interface language, carried into the account (D2). */
+  uiLocale: uiLocaleSchema.optional(),
+});
+
+const accountPatchSchema = z.object({
+  uiLocale: uiLocaleSchema.nullable(),
 });
 
 /**
@@ -142,6 +159,7 @@ async function checkSetupKey(
         'This site has no setup key, so it will not create an administrator. ' +
           'Run `mallok create .` in the project directory to finish ' +
           'provisioning it, or `mallok setup-key` to issue one.',
+        'setup.key_unconfigured',
       ),
     };
   }
@@ -153,6 +171,7 @@ async function checkSetupKey(
         409,
         'The setup key has already been used. Deploy a new key with ' +
           '`wrangler secret put MALLOK_SETUP_KEY` if you need to run setup again.',
+        'setup.key_used',
       ),
     };
   }
@@ -161,6 +180,7 @@ async function checkSetupKey(
       refusal: problem(
         403,
         'That setup key is not correct. It was printed once, by `mallok create`.',
+        'setup.key_wrong',
       ),
     };
   }
@@ -187,13 +207,19 @@ export async function bootstrapAdmin(
   now: Date,
 ): Promise<Response> {
   if ((await countAdminUsers(env.DB)) > 0) {
-    return problem(409, 'An administrator already exists.');
+    return problem(
+      409,
+      'An administrator already exists.',
+      'setup.admin_exists',
+    );
   }
   const parsed = credentialsSchema.safeParse(await readJson(request));
   if (!parsed.success) {
     return problem(
       400,
       `Provide an email and a password of at least ${MIN_PASSWORD_LENGTH} characters.`,
+      'setup.credentials_incomplete',
+      { min: MIN_PASSWORD_LENGTH },
     );
   }
   // Checked after the payload parses and before any work is done, so a bad
@@ -220,11 +246,16 @@ export async function bootstrapAdmin(
       passwordHash: derived.hash,
       passwordParams: JSON.stringify(derived.params),
       now: now.toISOString(),
+      uiLocale: parsed.data.uiLocale ?? null,
     },
     check.keyUsed,
   );
   if (!claimed) {
-    return problem(409, 'An administrator already exists.');
+    return problem(
+      409,
+      'An administrator already exists.',
+      'setup.admin_exists',
+    );
   }
   return json({ ok: true }, { status: 201 });
 }
@@ -237,7 +268,11 @@ export async function login(
 ): Promise<Response> {
   const parsed = credentialsSchema.safeParse(await readJson(request));
   if (!parsed.success) {
-    return problem(400, 'Invalid email or password.');
+    return problem(
+      400,
+      'Invalid email or password.',
+      'auth.invalid_credentials',
+    );
   }
   const email = parsed.data.email.toLowerCase();
   const user = await findAdminUserByEmail(env.DB, email);
@@ -246,12 +281,20 @@ export async function login(
     // Derive anyway so a missing account cannot be told apart from a wrong
     // password by timing alone.
     await hashPassword(parsed.data.password);
-    return problem(401, 'Invalid email or password.');
+    return problem(
+      401,
+      'Invalid email or password.',
+      'auth.invalid_credentials',
+    );
   }
 
   const params = parsePasswordParams(user.password_params);
   if (params === null) {
-    return problem(401, 'Invalid email or password.');
+    return problem(
+      401,
+      'Invalid email or password.',
+      'auth.invalid_credentials',
+    );
   }
   const ok = await verifyPassword(
     parsed.data.password,
@@ -259,7 +302,11 @@ export async function login(
     params,
   );
   if (!ok) {
-    return problem(401, 'Invalid email or password.');
+    return problem(
+      401,
+      'Invalid email or password.',
+      'auth.invalid_credentials',
+    );
   }
 
   // Opportunistically re-derive when the stored cost is below the current
@@ -285,7 +332,12 @@ export async function login(
     now: now.toISOString(),
   });
   return json(
-    { email: user.email, csrf, expiresAt: expiresAt.toISOString() },
+    {
+      email: user.email,
+      csrf,
+      expiresAt: expiresAt.toISOString(),
+      uiLocale: user.ui_locale,
+    },
     { headers: { 'set-cookie': sessionCookie(token.plaintext, expiresAt) } },
   );
 }
@@ -321,11 +373,41 @@ export async function whoami(
     kind: 'session',
     email: user?.email ?? null,
     csrf: principal.csrf,
+    // The interface language this person chose, on any browser (D2).
+    uiLocale: user?.ui_locale ?? null,
     passwordIterations: PBKDF2_ITERATIONS,
     // Surfaced so the admin UI can tell the truth about password strength
     // rather than implying it meets current guidance.
     passwordRecommendedIterations: PBKDF2_RECOMMENDED_ITERATIONS,
   });
+}
+
+/**
+ * Changes what the signed-in administrator's account remembers: today, only
+ * the interface language. A token has no account to change.
+ */
+export async function updateMe(
+  request: Request,
+  env: Env,
+  principal: Principal,
+): Promise<Response> {
+  if (principal.kind !== 'session') {
+    return problem(
+      403,
+      'Account changes require a browser session.',
+      'auth.session_required',
+    );
+  }
+  const parsed = accountPatchSchema.safeParse(await readJson(request));
+  if (!parsed.success) {
+    return problem(
+      400,
+      'Give the interface language as a language tag such as "zh-CN", or null.',
+      'account.ui_locale_invalid',
+    );
+  }
+  await updateAdminUiLocale(env.DB, principal.userId, parsed.data.uiLocale);
+  return json({ uiLocale: parsed.data.uiLocale });
 }
 
 /** Changes the administrator's password and invalidates other sessions. */
@@ -335,18 +417,24 @@ export async function changePassword(
   principal: Principal,
 ): Promise<Response> {
   if (principal.kind !== 'session') {
-    return problem(403, 'Password changes require a browser session.');
+    return problem(
+      403,
+      'Password changes require a browser session.',
+      'auth.session_required_password',
+    );
   }
   const parsed = passwordChangeSchema.safeParse(await readJson(request));
   if (!parsed.success) {
     return problem(
       400,
       `The new password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+      'account.password_short',
+      { min: MIN_PASSWORD_LENGTH },
     );
   }
   const user = await findAdminUserById(env.DB, principal.userId);
   if (user === null) {
-    return problem(401, 'Unauthorized.');
+    return problem(401, 'Unauthorized.', 'auth.unauthorized');
   }
   const params = parsePasswordParams(user.password_params);
   if (
@@ -357,7 +445,11 @@ export async function changePassword(
       params,
     ))
   ) {
-    return problem(403, 'The current password is not correct.');
+    return problem(
+      403,
+      'The current password is not correct.',
+      'account.current_password_wrong',
+    );
   }
   const derived = await hashPassword(parsed.data.newPassword);
   await updateAdminPassword(
@@ -397,11 +489,22 @@ export async function postToken(
 ): Promise<Response> {
   const parsed = tokenCreateSchema.safeParse(await readJson(request));
   if (!parsed.success) {
-    return problem(400, 'Provide a name and at least one scope.');
+    return problem(
+      400,
+      'Provide a name and at least one scope.',
+      'tokens.incomplete',
+    );
   }
   const unknown = parsed.data.scopes.filter((scope) => !isScope(scope));
   if (unknown.length > 0) {
-    return problem(400, `Unknown scope: ${unknown.join(', ')}.`);
+    return problem(
+      400,
+      `Unknown scope: ${unknown.join(', ')}.`,
+      'tokens.scope_unknown',
+      {
+        scopes: unknown.join(', '),
+      },
+    );
   }
   const scopes = parsed.data.scopes.filter((scope): scope is Scope =>
     isScope(scope),
@@ -433,7 +536,7 @@ export async function revokeToken(
 ): Promise<Response> {
   const revoked = await revokeApiToken(env.DB, id, now.toISOString());
   if (!revoked) {
-    return problem(404, 'Not found.');
+    return problem(404, 'Not found.', 'not_found');
   }
   return json({ ok: true });
 }

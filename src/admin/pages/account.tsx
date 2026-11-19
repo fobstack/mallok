@@ -6,11 +6,12 @@
  */
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from 'cn';
 import { Info, KeyRound } from 'lucide-react';
 import type { JSX } from 'react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -34,7 +35,8 @@ import {
   StatusBadge,
 } from '../components/page.js';
 import { invalid, showServerErrors } from '../form/form.js';
-import { REQUIRED_MESSAGE } from '../form/types.js';
+import { requiredMessage } from '../form/types.js';
+import { formatNumber } from '../format.js';
 import { notify, useReportError } from '../notice.js';
 import { keys, useSession } from '../queries.js';
 import {
@@ -52,20 +54,24 @@ const SCOPES = [
 
 /** A token needs a name; which scopes it may have is the server's rule. */
 const tokenSchema = z.object({
-  name: z.string().trim().min(1, REQUIRED_MESSAGE),
+  name: z.string().trim().min(1, { error: requiredMessage }),
   scopes: z.array(z.string()),
 });
 
 /**
  * The new password's length is checked here too, so the rule is read before
- * the round trip; the server enforces it either way.
+ * the round trip; the server enforces it either way. The message is passed in
+ * so it is in the interface language.
  */
-const passwordSchema = z.object({
-  currentPassword: z.string().min(1, REQUIRED_MESSAGE),
-  newPassword: z.string().min(12, 'At least 12 characters.'),
-});
+function passwordSchema(tooShort: string) {
+  return z.object({
+    currentPassword: z.string().min(1, { error: requiredMessage }),
+    newPassword: z.string().min(12, tooShort),
+  });
+}
 
 export function AccountPage(): JSX.Element {
+  const { t } = useLingui();
   const activeSession = useSession();
   const client = useQueryClient();
   const [minted, setMinted] = useState('');
@@ -80,7 +86,7 @@ export function AccountPage(): JSX.Element {
     queryKey: keys.tokens,
     queryFn: () => api<{ tokens: TokenSummary[] }>('/tokens'),
   });
-  useReportError(listed.error, 'Could not load tokens.');
+  useReportError(listed.error, t`Could not load tokens.`);
   const tokens = listed.data?.tokens ?? [];
   const reload = (): Promise<void> =>
     client.invalidateQueries({ queryKey: keys.tokens });
@@ -97,7 +103,9 @@ export function AccountPage(): JSX.Element {
       await reload();
     } catch (caught) {
       showServerErrors(tokenForm.setError, caught);
-      notify(caught instanceof ApiError ? caught.message : 'Could not create.');
+      notify(
+        caught instanceof ApiError ? caught.message : t`Could not create.`,
+      );
     }
   });
 
@@ -111,13 +119,15 @@ export function AccountPage(): JSX.Element {
     await reload();
   };
 
+  const iterations = formatNumber(activeSession.passwordIterations);
+  const recommended = formatNumber(activeSession.passwordRecommendedIterations);
   const weakPassword =
     activeSession.passwordIterations <
     activeSession.passwordRecommendedIterations;
 
   return (
     <Page>
-      <PageHeader title="Account" />
+      <PageHeader title={t`Account`} />
 
       <PasswordSection />
 
@@ -125,28 +135,30 @@ export function AccountPage(): JSX.Element {
         <Alert role="note">
           <Info />
           <AlertTitle role="heading" aria-level={2}>
-            About password hashing
+            <Trans>About password hashing</Trans>
           </AlertTitle>
           <AlertDescription>
             <p>
-              Passwords are hashed with PBKDF2-SHA256 at{' '}
-              {activeSession.passwordIterations.toLocaleString()} iterations.
-              Current guidance is{' '}
-              {activeSession.passwordRecommendedIterations.toLocaleString()},
-              but a sign-in has to finish inside the Cloudflare Free plan's 10
-              ms CPU budget, so the cost is capped.
+              <Trans>
+                Passwords are hashed with PBKDF2-SHA256 at {iterations}{' '}
+                iterations. Current guidance is {recommended}, but a sign-in has
+                to finish inside the Cloudflare Free plan's 10 ms CPU budget, so
+                the cost is capped.
+              </Trans>
             </p>
             <p>
-              Use a long, unique password. For stronger protection, put
-              Cloudflare Access in front of <Code>/_mallok/</Code>.
+              <Trans>
+                Use a long, unique password. For stronger protection, put
+                Cloudflare Access in front of <Code>/_mallok/</Code>.
+              </Trans>
             </p>
           </AlertDescription>
         </Alert>
       ) : null}
 
       <Section
-        title="API tokens"
-        description="The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later."
+        title={t`API tokens`}
+        description={t`The CLI and any script use these. A token is shown once — copy it now, it cannot be retrieved later.`}
       >
         {minted === '' ? null : (
           // A real alert: the token is on screen this once, and never again.
@@ -164,7 +176,7 @@ export function AccountPage(): JSX.Element {
                   void navigator.clipboard?.writeText(minted);
                 }}
               >
-                Copy
+                <Trans>Copy</Trans>
               </Button>
               <Button
                 type="button"
@@ -172,7 +184,7 @@ export function AccountPage(): JSX.Element {
                 size="sm"
                 onClick={() => setMinted('')}
               >
-                Done
+                <Trans>Done</Trans>
               </Button>
             </AlertDescription>
           </Alert>
@@ -223,7 +235,7 @@ export function AccountPage(): JSX.Element {
                         void revoke(token.id);
                       }}
                     >
-                      Revoke
+                      <Trans>Revoke</Trans>
                     </Button>
                   ) : null}
                 </li>
@@ -237,7 +249,9 @@ export function AccountPage(): JSX.Element {
           onSubmit={(event) => void create(event)}
         >
           <Field data-invalid={nameError !== undefined}>
-            <FieldLabel htmlFor="token-name">New token name</FieldLabel>
+            <FieldLabel htmlFor="token-name">
+              <Trans>New token name</Trans>
+            </FieldLabel>
             <Input
               id="token-name"
               className="max-w-sm"
@@ -247,7 +261,9 @@ export function AccountPage(): JSX.Element {
             <FieldError id="token-name-error">{nameError}</FieldError>
           </Field>
           <FieldSet>
-            <FieldLegend variant="label">Scopes</FieldLegend>
+            <FieldLegend variant="label">
+              <Trans>Scopes</Trans>
+            </FieldLegend>
             <Controller
               control={tokenForm.control}
               name="scopes"
@@ -284,7 +300,7 @@ export function AccountPage(): JSX.Element {
           </FieldSet>
           <div>
             <Button type="submit" disabled={busy}>
-              Create token
+              <Trans>Create token</Trans>
             </Button>
           </div>
         </form>
@@ -294,8 +310,10 @@ export function AccountPage(): JSX.Element {
 }
 
 function PasswordSection(): JSX.Element {
+  const { t } = useLingui();
+  const schema = useMemo(() => passwordSchema(t`At least 12 characters.`), [t]);
   const form = useForm({
-    resolver: zodResolver(passwordSchema),
+    resolver: zodResolver(schema),
     defaultValues: { currentPassword: '', newPassword: '' },
   });
   const [done, setDone] = useState(false);
@@ -313,7 +331,7 @@ function PasswordSection(): JSX.Element {
       notify(
         caught instanceof ApiError
           ? caught.message
-          : 'Could not change the password.',
+          : t`Could not change the password.`,
       );
     }
   });
@@ -321,19 +339,25 @@ function PasswordSection(): JSX.Element {
   return (
     <Section
       as="form"
-      title="Password"
+      title={t`Password`}
       onSubmit={(event) => void submit(event)}
       footer={
         <>
           <Button type="submit" disabled={busy}>
-            {busy ? 'Changing…' : 'Change password'}
+            {busy ? t`Changing…` : t`Change password`}
           </Button>
-          {done ? <StatusBadge tone="ok">Changed</StatusBadge> : null}
+          {done ? (
+            <StatusBadge tone="ok">
+              <Trans>Changed</Trans>
+            </StatusBadge>
+          ) : null}
         </>
       }
     >
       <Field data-invalid={errors.currentPassword !== undefined}>
-        <FieldLabel htmlFor="pw-current">Current password</FieldLabel>
+        <FieldLabel htmlFor="pw-current">
+          <Trans>Current password</Trans>
+        </FieldLabel>
         <Input
           id="pw-current"
           type="password"
@@ -346,7 +370,9 @@ function PasswordSection(): JSX.Element {
         </FieldError>
       </Field>
       <Field data-invalid={errors.newPassword !== undefined}>
-        <FieldLabel htmlFor="pw-next">New password</FieldLabel>
+        <FieldLabel htmlFor="pw-next">
+          <Trans>New password</Trans>
+        </FieldLabel>
         <Input
           id="pw-next"
           type="password"

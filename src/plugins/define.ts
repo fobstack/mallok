@@ -28,7 +28,13 @@
  * are worth failing a build over.
  */
 
-import { PLUGIN_HOOKS, parsePluginManifest } from '../core/index.js';
+import {
+  catalogObjectProblem,
+  isCatalogLanguage,
+  PLUGIN_HOOKS,
+  parsePluginManifest,
+  pluginCatalogAllows,
+} from '../core/index.js';
 import type { MallokPlugin, PluginInput } from './types.js';
 
 export type { PluginInput } from './types.js';
@@ -286,6 +292,40 @@ export function definePlugin(input: PluginInput): MallokPlugin {
   }
 
   validateMigrations(id, input.migrations);
+
+  // ---- admin catalogs: the declarations in other interface languages ------
+  if (input.adminCatalogs !== undefined) {
+    if (
+      input.adminCatalogs === null ||
+      typeof input.adminCatalogs !== 'object'
+    ) {
+      refuse(
+        id,
+        'adminCatalogs is not an object.',
+        'Key each catalog by its interface language: { "zh-CN": catalog } ' +
+          '(docs/PLUGIN_API.md §7.8).',
+      );
+    }
+    const allows = pluginCatalogAllows(manifest);
+    for (const [language, catalog] of Object.entries(input.adminCatalogs)) {
+      if (!isCatalogLanguage(language)) {
+        refuse(
+          id,
+          `"${language}" is not an interface language tag.`,
+          'Use a tag such as "zh-CN" (docs/PLUGIN_API.md §7.8).',
+        );
+      }
+      const problem = catalogObjectProblem(catalog, allows);
+      if (problem !== null) {
+        refuse(
+          id,
+          `its "${language}" admin catalog ${problem}.`,
+          'Every key names something plugin.json declares; see ' +
+            'docs/PLUGIN_API.md §7.8 for the keys.',
+        );
+      }
+    }
+  }
 
   if (
     input.exportFiles !== undefined &&

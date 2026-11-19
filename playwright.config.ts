@@ -26,6 +26,11 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: {
     baseURL: 'http://127.0.0.1:8788',
+    // The specs find controls by their English names. The admin picks its
+    // interface language from the browser's when nothing is stored, so the
+    // browser's language is stated here rather than left to the machine's
+    // (docs/ADMIN_I18N_AND_UI.md §4).
+    locale: 'en-US',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

@@ -61,8 +61,16 @@ describe('the stored slug contract', () => {
   it('names the slug it would have accepted', async () => {
     const response = await save('ASTM B265');
     expect(response.status).toBe(400);
-    const { error } = (await response.json()) as { error: string };
-    expect(error).toContain('astm-b265');
+    const body = (await response.json()) as {
+      error: string;
+      code: string;
+      params: Record<string, unknown>;
+    };
+    expect(body.error).toContain('astm-b265');
+    // Named, with the suggestion as a parameter, so the admin can say it in
+    // the operator's language (docs/ADMIN_I18N_AND_UI.md, D3).
+    expect(body.code).toBe('slug.not_canonical_use');
+    expect(body.params).toEqual({ use: 'astm-b265' });
   });
 
   it('says what to do when nothing usable can be derived', async () => {
