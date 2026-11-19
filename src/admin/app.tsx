@@ -68,7 +68,7 @@ function page(load: () => Promise<ComponentType>): JSX.Element {
  */
 function PageLoading(): JSX.Element {
   return (
-    <div className="mx-auto w-full max-w-4xl" aria-busy="true">
+    <div className="w-full max-w-4xl" aria-busy="true">
       <span className="sr-only">Loading…</span>
       <div className="h-8 w-48 rounded-md bg-muted" />
       <div className="mt-6 h-40 w-full rounded-md bg-muted" />
@@ -248,7 +248,7 @@ function Booting(): JSX.Element {
 function NotFound(): JSX.Element {
   return (
     <div className="w-full">
-      <Card className="mx-auto mt-8 max-w-md">
+      <Card className="mt-8 max-w-md">
         <CardHeader>
           <CardTitle>
             <h1>
@@ -283,7 +283,7 @@ function RouteError(): JSX.Element {
       ? error.message
       : '';
   return (
-    <div className="mx-auto w-full max-w-4xl p-6">
+    <div className="w-full max-w-4xl p-6">
       <p className="text-sm text-destructive" role="alert">
         This part of the admin could not be loaded. Check your connection and
         reload.

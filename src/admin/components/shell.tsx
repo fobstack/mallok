@@ -423,10 +423,10 @@ export function Shell({
             <PageBreadcrumb path={path} plugins={plugins} />
           </header>
           {/* The notice inside the column, not across the window: it, the
-              page header and the page share one left edge (U2). A page that
-              asks for the full width (`Page width="full"`) widens the whole
-              column, the notice with it, so the edge stays shared. */}
-          <div className="mx-auto flex w-full max-w-[68rem] flex-col gap-6 p-[clamp(1.2rem,3vw,2.2rem)] has-[[data-page-width=full]]:max-w-none">
+              page header and the page share one left edge (U2). The column
+              starts beside the sidebar, never centred, and the page says how
+              far it reaches (`Page width`, D7), the notice with it. */}
+          <div className="flex w-full max-w-[56rem] flex-col gap-6 p-[clamp(1.2rem,3vw,2.2rem)] has-[[data-page-width=list]]:max-w-[90rem] has-[[data-page-width=home]]:max-w-[68rem] has-[[data-page-width=full]]:max-w-none">
             <PurgeNotice />
             {children}
           </div>

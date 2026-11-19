@@ -129,7 +129,7 @@ export function ContentListPage(): JSX.Element {
   const language = nameOf(locale);
 
   return (
-    <Page>
+    <Page width="list">
       <PageHeader
         title={t`Content`}
         // No "Media" here: the sidebar has it one link away (U5).

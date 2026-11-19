@@ -44,7 +44,8 @@ test('on a wide screen the editor fills the window and its fields fold', async (
   await signIn(page);
   await openPublished(page);
 
-  // Wider than the 68 rem column every other page keeps (U7).
+  // Wider than any other page's column, which stops at 90 rem at most
+  // (U7, docs/ADMIN_SIMPLE.md D7).
   const panes = page.getByRole('region', {
     name: 'Fields, Markdown and preview',
   });

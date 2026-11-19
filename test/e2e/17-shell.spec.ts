@@ -135,3 +135,35 @@ test('the account menu opens from the keyboard and offers the account page', asy
   await menu.getByRole('menuitem', { name: 'Account and API tokens' }).click();
   await expect(page).toHaveURL('/_mallok/app/account');
 });
+
+test('every page starts beside the sidebar, and only a list reaches further', async ({
+  page,
+}) => {
+  // A centred column left a band beside the sidebar on a wide window, and
+  // moved the page's left edge from one page to the next
+  // (docs/ADMIN_SIMPLE.md, D7).
+  await page.setViewportSize({ width: 1920, height: 900 });
+  await signIn(page);
+  const edges: Record<string, { left: number; width: number }> = {};
+  for (const [name, path] of [
+    ['form', '/_mallok/app/settings'],
+    ['list', '/_mallok/app/media'],
+  ] as const) {
+    await page.goto(path);
+    const heading = page.getByRole('heading', { level: 1 }).first();
+    await heading.waitFor();
+    const column = page.locator('[data-page-width]').first();
+    const box = await column.boundingBox();
+    edges[name] = { left: box?.x ?? -1, width: box?.width ?? -1 };
+  }
+  const sidebar = await page
+    .locator('[data-slot="sidebar-container"]')
+    .first()
+    .boundingBox();
+  expect(edges.form?.left).toBe(edges.list?.left);
+  // Beside the sidebar: its width plus the column's padding, nothing more.
+  expect((edges.form?.left ?? 0) - (sidebar?.width ?? 0)).toBeLessThan(48);
+  // A form stops at 56 rem, a list at 90; neither spans a 1920 px window.
+  expect(edges.form?.width).toBeLessThan(edges.list?.width ?? 0);
+  expect(edges.list?.width).toBeLessThanOrEqual(1440);
+});
