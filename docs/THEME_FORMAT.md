@@ -292,8 +292,16 @@ fallback path lands on.
 }
 ```
 
-Types: `string`, `text`, `number`, `boolean`, `color`, `select` — matching
-`themeOptionSchema` in `src/core/theme.ts`. `select` requires `choices`. An
+Types: `string`, `text`, `number`, `boolean`, `color`, `select`,
+`string[]` and `keyvalue` — matching `themeOptionSchema` in
+`src/core/theme.ts`. `select` requires `choices`. The two list types take a
+list as the operator sees it, with the controls content fields have, rather
+than a syntax typed into one string; a template iterates them as it does
+those fields (`{% for pair in theme.options.x %}{{ pair[0] }}`). A site
+that saved a string for an option that is now a list keeps it: a
+`string[]` option reads `a, b, c` as three items and a `keyvalue` option
+reads `key|value ;; key|value` as pairs (`src/core/theme-options.ts`), so
+the page renders as it did (`ADMIN_SIMPLE.md`, D10a). An
 option may carry `"advanced": true`, as a field may (§5.2), to sit in the
 closed "More options" block of the Appearance page.
 

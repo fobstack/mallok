@@ -170,8 +170,13 @@ export function StringListControl({
   value,
   onChange,
   id,
+  spec,
 }: ControlProps): JSX.Element {
+  const { t } = useLingui();
   const entries = asList(value);
+  // Each row is its own input, so each needs its own name for a screen
+  // reader: the field's label and the row's place in the list.
+  const fieldName = spec.field.label ?? spec.name;
   const update = (next: string[]): void => {
     onChange(next.filter((entry) => entry.trim() !== ''));
   };
@@ -181,6 +186,7 @@ export function StringListControl({
         // biome-ignore lint/suspicious/noArrayIndexKey: entries are plain strings edited in place by position, with no other identity.
         <div className={ROW} key={index}>
           <Input
+            aria-label={t`${fieldName}, item ${index + 1}`}
             value={entry}
             onInput={(event) => {
               const next = [...entries];

@@ -166,14 +166,18 @@
       "default": "Titanium for considered engineering"
     },
     "stats": {
-      "type": "text",
-      "label": "Stats (value|label ;; value|label)",
-      "default": "Bar|Precision stock ;; Plate|Versatile formats ;; Tube|Hollow sections"
+      "type": "keyvalue",
+      "label": "Stats",
+      "default": {
+        "Bar": "Precision stock",
+        "Plate": "Versatile formats",
+        "Tube": "Hollow sections"
+      }
     },
     "certifications": {
-      "type": "string",
-      "label": "Certifications (comma-separated)",
-      "default": "Bar & rod, Plate & sheet, Seamless tube"
+      "type": "string[]",
+      "label": "Certifications",
+      "default": ["Bar & rod", "Plate & sheet", "Seamless tube"]
     },
     "band_title": {
       "type": "string",
@@ -186,9 +190,13 @@
       "default": "From the first specification to the final application, make your requirements clear. Explore the material, ask the right questions and build a better brief."
     },
     "band_features": {
-      "type": "text",
-      "label": "Capability features (Title|text ;; Title|text)",
-      "default": "Choose the right form|Compare bar, plate and tube for your application. ;; Define the specification|Share the grade, dimensions and documentation needed. ;; Plan the next step|Discuss quantities, processing and delivery requirements."
+      "type": "keyvalue",
+      "label": "Capability features",
+      "default": {
+        "Choose the right form": "Compare bar, plate and tube for your application.",
+        "Define the specification": "Share the grade, dimensions and documentation needed.",
+        "Plan the next step": "Discuss quantities, processing and delivery requirements."
+      }
     },
     "cta_title": {
       "type": "string",
