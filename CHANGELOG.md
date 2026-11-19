@@ -8,12 +8,38 @@ Notable changes to Mallok. The format follows
 
 The admin speaks Simplified Chinese as well as English, and its pages were
 reviewed and reworked for the operator who uses them every day
-(`docs/ADMIN_I18N_AND_UI.md`). One schema migration runs on the first request
+(`docs/ADMIN_I18N_AND_UI.md`). It then became an admin that reads like a
+mainstream CMS — an overview first, a list per content type, a
+writing-first editor — for an operator who is not a developer
+(`docs/ADMIN_SIMPLE.md`). One schema migration runs on the first request
 after deploying. Every API change is an addition: an `error` that was English
 stays English, so the CLI and scripts read what they always did.
 
 ### Added
 
+- **Overview**, the first screen after sign-in: what is left to set up
+  (an inquiry form with no recipient, a domain, email sending, the
+  example pages), each plugin list's newest rows, and what was edited last
+  (`docs/ADMIN.md §4.4`).
+- **A list per content type** in the sidebar — Pages, Products, News —
+  with status and language as tabs, a search by title
+  (`GET /_mallok/api/content?q=`), and a menu on each row: Edit, View on
+  site, Copy address, Unpublish, Delete.
+- **A writing-first editor**: the title, the text with a formatting
+  toolbar, and the type's fields as a card; a panel beside it for summary,
+  publish date, cover image, tags and the address. Images go into the
+  text from the media picker or by dropping or pasting a file. "Edit
+  source (Markdown)" still shows the whole document, and an item opened
+  and saved without a field edit is byte-identical.
+- **Delete** in the admin, from the editor or a row's menu, after a
+  question that says what goes and what stays.
+- `"advanced": true` on a theme field, a theme option or a plugin setting
+  puts it in a closed "More options" block (`docs/THEME_FORMAT.md §5.2`,
+  `docs/PLUGIN_API.md §4`); `panels.<id>.empty` in a plugin catalog says
+  what an empty list is waiting for (§7.8).
+- Theme options may be `string[]` or `keyvalue`; Atelier's certifications,
+  stats and capability features are lists now, and a site's saved strings
+  still render as before (`docs/THEME_FORMAT.md §6`).
 - **Interface languages: English and 简体中文** (`docs/ADMIN.md §4.3`). The
   admin, the sign-in page and the setup wizard are translated, dates and
   numbers follow the language, and it is chosen in the account menu, on the
@@ -48,6 +74,17 @@ stays English, so the CLI and scripts read what they always did.
 
 ### Changed
 
+- Every page starts beside the sidebar; a form stops at 56 rem, a list at
+  90 rem, and the leftover space is on the right.
+- Plain words: "URL slug" (URL 别名), "Summary", "General", "Your domain",
+  "Address for images"; Media, Plugins, Appearance and Account say what
+  they are for, and source paths, hashes and PBKDF2 figures are one click
+  away. API tokens moved to Advanced, Plugins under Settings.
+- Content languages are named without their code in daily screens.
+- Inquiries read like an inbox: the message in the row, New / Replied /
+  Spam as tabs, actions once a row is selected.
+- The setup wizard starts the site's main language as the theme's first
+  language, not the language the wizard is read in.
 - **"Saved" means saved.** A successful save is always the green "Saved",
   followed by when visitors see it. Without a purge token it was an orange
   badge that read as a problem; a draft no longer claims visitors will see
@@ -82,6 +119,11 @@ stays English, so the CLI and scripts read what they always did.
 
 ### Fixed
 
+- **"Save draft" on a published page took it off the site** without a
+  word. A live item now has "Update", and "Unpublish" asks first.
+- The editor's More menu took focus back after closing, so keystrokes typed
+  into "Edit source" right after choosing it went to the button.
+- Each row of a list control has a name for screen readers.
 - **Plurals**: "1 pages · 1 sample records" in the wizard, "used by 1
   items", "1 image(s) missing" and their like now agree with their number.
 - A list of numbers in Chinese is separated (`Intl.ListFormat` with
