@@ -108,6 +108,11 @@ msgstr "{count, plural, one {Applies to # selected row.} other {Applies to # sel
 msgid "{done} of {total} done"
 msgstr "{done} of {total} done"
 
+#. placeholder {0}: index + 1
+#: src/admin/form/controls.tsx
+msgid "{fieldName}, item {0}"
+msgstr "{fieldName}, item {0}"
+
 #: src/admin/pages/setup.tsx
 msgid "{installed, plural, one {# page was installed.} other {# pages were installed.}}"
 msgstr "{installed, plural, one {# page was installed.} other {# pages were installed.}}"

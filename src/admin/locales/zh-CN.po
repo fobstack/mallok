@@ -108,6 +108,11 @@ msgstr "{count, plural, other {将应用于已选的 # 行。}}"
 msgid "{done} of {total} done"
 msgstr "已完成 {done}/{total}"
 
+#. placeholder {0}: index + 1
+#: src/admin/form/controls.tsx
+msgid "{fieldName}, item {0}"
+msgstr "{fieldName}，第 {0} 项"
+
 #: src/admin/pages/setup.tsx
 msgid "{installed, plural, one {# page was installed.} other {# pages were installed.}}"
 msgstr "{installed, plural, other {已安装 # 个页面。}}"

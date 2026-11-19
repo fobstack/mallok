@@ -11,8 +11,7 @@
       </nav>
       <div class="footer-col">
         <span class="footer-h">{{ t.trust }}</span>
-        {% assign certs = theme.options.certifications | split: "," %}
-        {% for cert in certs %}<span>{{ cert | strip }}</span>{% endfor %}
+        {% for cert in theme.options.certifications %}<span>{{ cert }}</span>{% endfor %}
       </div>
     </div>
     <div class="footer-base"><span>© {{ site.name }}</span><span>{{ t.powered_by }} Mallok</span></div>

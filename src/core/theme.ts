@@ -114,9 +114,29 @@ export const themeKindSchema = z.object({
 
 /** Schema for a theme option exposed in the admin. */
 export const themeOptionSchema = z.object({
-  type: z.enum(['string', 'text', 'number', 'boolean', 'color', 'select']),
+  /**
+   * `string[]` and `keyvalue` hold lists, with the controls content fields
+   * have, so a theme no longer asks for a syntax typed into one string
+   * (docs/ADMIN_SIMPLE.md, D10a).
+   */
+  type: z.enum([
+    'string',
+    'text',
+    'number',
+    'boolean',
+    'color',
+    'select',
+    'string[]',
+    'keyvalue',
+  ]),
   label: z.string(),
-  default: z.union([z.string(), z.number(), z.boolean()]),
+  default: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.record(z.string(), z.string()),
+  ]),
   choices: z.array(z.string()).optional(),
   /** Drawn in the closed "More options" block (docs/ADMIN_SIMPLE.md, D9). */
   advanced: z.boolean().optional(),

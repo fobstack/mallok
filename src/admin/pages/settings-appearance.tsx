@@ -15,6 +15,7 @@ import { type FieldValues, useForm } from 'react-hook-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { LOCALE_OPTIONS_KEY } from '../../core/constants.js';
+import { readOptionValue } from '../../core/theme-options.js';
 import { ApiError } from '../api.js';
 import {
   ContentLanguageSelect,
@@ -52,11 +53,16 @@ export function AppearancePage(): JSX.Element {
   const editingDefault = editingLocale === current.defaultLocale;
   const resolved: FieldValues = {};
   for (const spec of specs) {
-    resolved[spec.name] = editingDefault
-      ? (current.themeOptions[spec.name] ?? spec.field.default)
-      : (overrides[editingLocale]?.[spec.name] ??
-        current.themeOptions[spec.name] ??
-        spec.field.default);
+    // A list saved as one string, before options could be lists, is shown
+    // as the list it meant (docs/ADMIN_SIMPLE.md, D10a).
+    resolved[spec.name] = readOptionValue(
+      spec.field.type,
+      editingDefault
+        ? (current.themeOptions[spec.name] ?? spec.field.default)
+        : (overrides[editingLocale]?.[spec.name] ??
+            current.themeOptions[spec.name] ??
+            spec.field.default),
+    );
   }
   // `values`, not `defaultValues`: switching the language being edited, or
   // a save coming back, resets the form to what is now stored.
