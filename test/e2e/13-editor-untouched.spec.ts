@@ -19,7 +19,11 @@ const CRLF =
 
 /** Opens an item from inside the app, as a click in the list would. */
 async function openInSession(page: Page, id: string): Promise<void> {
-  await page.getByRole('link', { name: 'Content' }).first().click();
+  // A type's list, from its sidebar entry (docs/ADMIN_SIMPLE.md, D2).
+  await page
+    .locator('[data-sidebar="sidebar"]')
+    .getByRole('link', { name: 'Page', exact: true })
+    .click();
   await expect(
     page.locator('a[href^="/_mallok/app/content/"]').first(),
   ).toBeVisible();

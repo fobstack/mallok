@@ -173,10 +173,6 @@ msgstr "{when} — after {cause}, Cloudflare answered HTTP {status}"
 msgid "{when} — after {cause}, Cloudflare could not be reached"
 msgstr "{when} — after {cause}, Cloudflare could not be reached"
 
-#: src/admin/pages/editor.tsx
-msgid "← All content"
-msgstr "← All content"
-
 #: src/admin/pages/plugins.tsx
 msgid "<0>{panelLabel}</0> is edited where it belongs: open any <1>{kind}</1> in Content, and it is under the editor."
 msgstr "<0>{panelLabel}</0> is edited where it belongs: open any <1>{kind}</1> in Content, and it is under the editor."
@@ -259,9 +255,22 @@ msgstr "Account changes require a browser session."
 msgid "Account menu"
 msgstr "Account menu"
 
+#: src/admin/pages/content-list.tsx
+msgid "Actions"
+msgstr "Actions"
+
+#. placeholder {0}: item.title
+#: src/admin/pages/content-list.tsx
+msgid "Actions for {0}"
+msgstr "Actions for {0}"
+
 #: src/admin/pages/settings-advanced.tsx
 msgid "Active"
 msgstr "Active"
+
+#: src/admin/pages/content-list.tsx
+msgid "Add {typeName}"
+msgstr "Add {typeName}"
 
 #: src/admin/components/record-editor.tsx
 msgid "Add a row"
@@ -275,6 +284,10 @@ msgstr "Add alt text"
 #: src/admin/server-messages.catalog.ts
 msgid "server.field.rows_required"
 msgstr "Add at least one row."
+
+#: src/admin/pages/content-list.tsx
+msgid "Add content"
+msgstr "Add content"
 
 #: src/admin/form/controls.tsx
 msgid "Add entry"
@@ -291,6 +304,10 @@ msgstr "Add language"
 #: src/admin/form/controls.tsx
 msgid "Add row"
 msgstr "Add row"
+
+#: src/admin/pages/content-list.tsx
+msgid "Add the first {typeName}"
+msgstr "Add the first {typeName}"
 
 #: src/admin/components/plugin-panel.tsx
 msgid "Add the first one"
@@ -317,6 +334,11 @@ msgstr "Affects cached pages"
 #: src/admin/pages/content-list.tsx
 msgid "All"
 msgstr "All"
+
+#: src/admin/components/shell.tsx
+#: src/admin/pages/content-list.tsx
+msgid "All content"
+msgstr "All content"
 
 #: src/admin/components/media-library.tsx
 msgid "already stored, skipped"
@@ -602,7 +624,6 @@ msgid "Configured"
 msgstr "Configured"
 
 #: src/admin/components/shell.tsx
-#: src/admin/pages/content-list.tsx
 msgid "Content"
 msgstr "Content"
 
@@ -631,9 +652,17 @@ msgstr "Continue"
 msgid "converting"
 msgstr "converting"
 
+#: src/admin/pages/content-list.tsx
+msgid "Copied {address}"
+msgstr "Copied {address}"
+
 #: src/admin/pages/account.tsx
 msgid "Copy"
 msgstr "Copy"
+
+#: src/admin/pages/content-list.tsx
+msgid "Copy address"
+msgstr "Copy address"
 
 #: src/admin/pages/account.tsx
 msgid "Could not change the password."
@@ -642,6 +671,10 @@ msgstr "Could not change the password."
 #: src/admin/pages/plugins.tsx
 msgid "Could not change."
 msgstr "Could not change."
+
+#: src/admin/pages/content-list.tsx
+msgid "Could not copy. The address is {address}"
+msgstr "Could not copy. The address is {address}"
 
 #: src/admin/pages/account.tsx
 msgid "Could not create."
@@ -828,6 +861,7 @@ msgstr "Edge cache lifetime (seconds)"
 
 #: src/admin/components/plugin-panel.tsx
 #: src/admin/components/shell.tsx
+#: src/admin/pages/content-list.tsx
 msgid "Edit"
 msgstr "Edit"
 
@@ -1045,6 +1079,10 @@ msgstr "Key set, no site sender — only plugins with their own send"
 msgid "server.content.kind_disabled"
 msgstr "Kind \"{kind}\" is not enabled on this site."
 
+#: src/admin/pages/content-list.tsx
+msgid "Language"
+msgstr "Language"
+
 #: src/admin/pages/settings-site.tsx
 #: src/admin/pages/setup.tsx
 msgid "Language code"
@@ -1057,6 +1095,10 @@ msgstr "Language to add"
 #: src/admin/pages/settings-site.tsx
 msgid "Languages"
 msgstr "Languages"
+
+#: src/admin/pages/content-list.tsx
+msgid "Last edited"
+msgstr "Last edited"
 
 #: src/admin/pages/settings-advanced.tsx
 msgid "Last failed purge"
@@ -1233,14 +1275,6 @@ msgstr "Never used"
 #: src/admin/components/plugin-panel.tsx
 msgid "New"
 msgstr "New"
-
-#: src/admin/pages/content-list.tsx
-msgid "New {filteredKind}"
-msgstr "New {filteredKind}"
-
-#: src/admin/pages/content-list.tsx
-msgid "New content"
-msgstr "New content"
 
 #: src/admin/components/shell.tsx
 msgid "New item"
@@ -1468,10 +1502,6 @@ msgstr "Passwords are hashed with PBKDF2-SHA256 at {iterations} iterations. Curr
 msgid "Paste the value"
 msgstr "Paste the value"
 
-#: src/admin/pages/content-list.tsx
-msgid "Path"
-msgstr "Path"
-
 #: src/admin/pages/media.tsx
 msgid "Photos and files used on your site."
 msgstr "Photos and files used on your site."
@@ -1683,6 +1713,18 @@ msgstr "Scopes"
 msgid "Search"
 msgstr "Search"
 
+#: src/admin/pages/content-list.tsx
+msgid "Search {typeName}…"
+msgstr "Search {typeName}…"
+
+#: src/admin/pages/content-list.tsx
+msgid "Search by title"
+msgstr "Search by title"
+
+#: src/admin/pages/content-list.tsx
+msgid "Search…"
+msgstr "Search…"
+
 #. js-lingui-explicit-id
 #: src/admin/server-messages.catalog.ts
 msgid "server.plugins.secret_not_string"
@@ -1825,10 +1867,6 @@ msgstr "Sign-in failed."
 #: src/admin/pages/login.tsx
 msgid "Signing in…"
 msgstr "Signing in…"
-
-#: src/admin/components/shell.tsx
-msgid "Site"
-msgstr "Site"
 
 #: src/admin/pages/setup.tsx
 msgid "Site and languages"
@@ -2133,6 +2171,10 @@ msgstr "Theme options this theme declares"
 msgid "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
 msgstr "Themes live in the source tree, not the database — they are compiled into the Worker. To switch, edit <0>ACTIVE_THEME</0> in <1>src/themes/index.ts</1>, then build and deploy again."
 
+#: src/admin/pages/content-list.tsx
+msgid "There is no {typeName} yet."
+msgstr "There is no {typeName} yet."
+
 #: src/admin/app.tsx
 msgid "There is no page at this address in the admin."
 msgstr "There is no page at this address in the admin."
@@ -2281,10 +2323,6 @@ msgstr "unused"
 msgid "Update"
 msgstr "Update"
 
-#: src/admin/pages/content-list.tsx
-msgid "Updated"
-msgstr "Updated"
-
 #: src/admin/pages/editor.tsx
 msgid "Updated <0>{updated}</0>"
 msgstr "Updated <0>{updated}</0>"
@@ -2341,6 +2379,7 @@ msgstr "Variant width must be 1..{max}."
 msgid "server.media.variant_not_webp"
 msgstr "Variants must be WebP."
 
+#: src/admin/pages/content-list.tsx
 #: src/admin/pages/editor.tsx
 msgid "View on site"
 msgstr "View on site"

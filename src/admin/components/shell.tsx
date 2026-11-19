@@ -13,13 +13,18 @@ import { msg } from '@lingui/core/macro';
 import { Trans, useLingui } from '@lingui/react/macro';
 import { useQuery } from '@tanstack/react-query';
 import {
+  Briefcase,
   ChevronsUpDown,
+  CircleHelp,
   Clock,
   ExternalLink,
   FileText,
+  FolderTree,
   Image,
   List,
   Mail,
+  Newspaper,
+  Package,
   Palette,
   Plug,
   Settings2,
@@ -62,6 +67,7 @@ import {
   useLiveDelay,
   useSession,
   useSettings,
+  useTheme,
 } from '../queries.js';
 import type { PluginInfo } from '../types.js';
 
@@ -70,30 +76,33 @@ interface NavItem {
   readonly label: MessageDescriptor | string;
   readonly href: string;
   readonly icon: typeof FileText;
-  /** Whether the item is the current section for `path`. */
-  readonly active: (path: string) => boolean;
+  /**
+   * Whether the item is the current section for `path`, and for the
+   * content type the address names (`?kind=`), if any.
+   */
+  readonly active: (path: string, kind: string) => boolean;
 }
 
-const SITE: readonly NavItem[] = [
-  {
-    label: msg`Content`,
-    href: '/',
-    icon: FileText,
-    active: (path) => path === '/' || path.startsWith('/content'),
-  },
-  {
-    label: msg`Media`,
-    href: '/media',
-    icon: Image,
-    active: (path) => path === '/media',
-  },
-  {
-    label: msg`Plugins`,
-    href: '/plugins',
-    icon: Plug,
-    active: (path) => path === '/plugins',
-  },
-];
+const MEDIA: NavItem = {
+  label: msg`Media`,
+  href: '/media',
+  icon: Image,
+  active: (path) => path === '/media',
+};
+
+/**
+ * Icons for the content types themes commonly declare; any other type is a
+ * document. Only a picture: the type is named by the theme's own label.
+ */
+const KIND_ICONS: Readonly<Record<string, typeof FileText>> = {
+  product: Package,
+  article: Newspaper,
+  post: Newspaper,
+  news: Newspaper,
+  category: FolderTree,
+  case: Briefcase,
+  faq: CircleHelp,
+};
 
 const SETTINGS: readonly NavItem[] = [
   {
@@ -113,6 +122,14 @@ const SETTINGS: readonly NavItem[] = [
     href: '/settings/email',
     icon: Mail,
     active: (path) => path === '/settings/email',
+  },
+  {
+    // A switch and settings, not something the operator adds: installing
+    // a plugin is a deployment (docs/ADMIN_SIMPLE.md, D2).
+    label: msg`Plugins`,
+    href: '/plugins',
+    icon: Plug,
+    active: (path) => path === '/plugins',
   },
   {
     label: msg`Advanced`,
@@ -151,19 +168,23 @@ function NavGroup({
   label,
   items,
   path,
+  kind,
 }: {
-  readonly label: string;
+  readonly label?: string;
   readonly items: readonly NavItem[];
   readonly path: string;
+  readonly kind: string;
 }): JSX.Element {
   const { i18n } = useLingui();
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      {label === undefined ? null : (
+        <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      )}
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
-            const active = item.active(path);
+            const active = item.active(path, kind);
             const label =
               typeof item.label === 'string' ? item.label : i18n._(item.label);
             return (
@@ -241,17 +262,24 @@ let toastsWanted = false;
 /** Where the current page sits: a section, and the page within it. */
 function crumbsFor(
   path: string,
+  kind: string,
+  kindLabel: (id: string) => string,
   plugins: readonly PluginInfo[],
 ): readonly {
   readonly label: MessageDescriptor | string;
   readonly href?: string;
 }[] {
+  // A content type's list, or every type's when the address names none.
+  const list =
+    kind === ''
+      ? { label: msg`All content`, href: '/content' }
+      : { label: kindLabel(kind), href: `/content?kind=${kind}` };
   if (path === '/' || path === '/content') {
-    return [{ label: msg`Content` }];
+    return [{ label: list.label }];
   }
   if (path.startsWith('/content/')) {
     return [
-      { label: msg`Content`, href: '/' },
+      list,
       { label: path === '/content/new' ? msg`New item` : msg`Edit` },
     ];
   }
@@ -262,9 +290,8 @@ function crumbsFor(
       { label: setting.label },
     ];
   }
-  const area = SITE.find((item) => item.href === path);
-  if (area !== undefined) {
-    return [{ label: area.label }];
+  if (path === MEDIA.href) {
+    return [{ label: MEDIA.label }];
   }
   if (path === '/account') {
     return [{ label: msg`Account` }];
@@ -284,13 +311,17 @@ function crumbsFor(
 
 function PageBreadcrumb({
   path,
+  kind,
+  kindLabel,
   plugins,
 }: {
   readonly path: string;
+  readonly kind: string;
+  readonly kindLabel: (id: string) => string;
   readonly plugins: readonly PluginInfo[];
 }): JSX.Element {
   const { i18n } = useLingui();
-  const crumbs = crumbsFor(path, plugins).map((crumb) => ({
+  const crumbs = crumbsFor(path, kind, kindLabel, plugins).map((crumb) => ({
     ...crumb,
     label: typeof crumb.label === 'string' ? crumb.label : i18n._(crumb.label),
   }));
@@ -315,13 +346,13 @@ function PageBreadcrumb({
 }
 
 /**
- * The site's sections with each plugin panel between Media and Plugins: a
- * list that is opened every day is a section, not the foot of a settings
- * page (docs/ADMIN_I18N_AND_UI.md, U3). A panel attached to a content kind
- * is in that kind's editor and is not listed.
+ * Each plugin panel that is a list of its own — Inquiries — at the top of
+ * the sidebar: it is what is opened every day (docs/ADMIN_I18N_AND_UI.md,
+ * U3; docs/ADMIN_SIMPLE.md, D2). A panel attached to a content type is in
+ * that type's editor and is not listed.
  */
-function siteItems(plugins: readonly PluginInfo[]): readonly NavItem[] {
-  const panels: NavItem[] = plugins.flatMap((plugin) =>
+function panelItems(plugins: readonly PluginInfo[]): readonly NavItem[] {
+  return plugins.flatMap((plugin) =>
     plugin.panels
       .filter((panel) => panel.attachTo === undefined)
       .map((panel) => {
@@ -334,10 +365,29 @@ function siteItems(plugins: readonly PluginInfo[]): readonly NavItem[] {
         };
       }),
   );
-  const [content, media, ...rest] = SITE;
-  return content === undefined || media === undefined
-    ? SITE
-    : [content, media, ...panels, ...rest];
+}
+
+/**
+ * One entry per content type the site has, by the theme's label, then
+ * Media: an operator works on "products" and "news", not on one table of
+ * everything (docs/ADMIN_SIMPLE.md, D2). A type the theme does not declare
+ * keeps its name, so nothing the site holds is out of reach.
+ */
+function contentItems(
+  kinds: readonly string[],
+  kindLabel: (id: string) => string,
+): readonly NavItem[] {
+  return [
+    ...kinds.map((kind) => ({
+      label: kindLabel(kind),
+      href: `/content?kind=${kind}`,
+      icon: KIND_ICONS[kind] ?? FileText,
+      active: (path: string, current: string) =>
+        (path === '/content' || path.startsWith('/content/')) &&
+        current === kind,
+    })),
+    MEDIA,
+  ];
 }
 
 export function Shell({
@@ -346,12 +396,19 @@ export function Shell({
   readonly children: ReactNode;
 }): JSX.Element {
   // In-app, trailing slash or not: `/settings/` is the Site page too.
-  const path = useLocation().pathname.replace(/\/+$/, '') || '/';
+  const location = useLocation();
+  const path = location.pathname.replace(/\/+$/, '') || '/';
+  // The content type a list or an editor is about, carried in its address.
+  const kind = new URLSearchParams(location.search).get('kind') ?? '';
+  const site = useSettings();
+  const theme = useTheme();
+  const kindLabel = (id: string): string => theme.kinds[id]?.label ?? id;
   // A page reports a failure with `notify`; it is shown as a toast.
   const message = useNotice();
-  const siteName = useSettings().name;
+  const siteName = site.name;
   // Loaded with the shell (`loadShell`); empty only if that request failed.
   const plugins = useQuery(pluginsQuery).data?.plugins ?? [];
+  const panels = panelItems(plugins);
   const { t } = useLingui();
   if (message !== '') {
     toastsWanted = true;
@@ -397,8 +454,21 @@ export function Shell({
             </SidebarMenu>
           </SidebarHeader>
           <SidebarContent>
-            <NavGroup label={t`Site`} items={siteItems(plugins)} path={path} />
-            <NavGroup label={t`Settings`} items={SETTINGS} path={path} />
+            {panels.length === 0 ? null : (
+              <NavGroup items={panels} path={path} kind={kind} />
+            )}
+            <NavGroup
+              label={t`Content`}
+              items={contentItems(Object.keys(site.kinds), kindLabel)}
+              path={path}
+              kind={kind}
+            />
+            <NavGroup
+              label={t`Settings`}
+              items={SETTINGS}
+              path={path}
+              kind={kind}
+            />
           </SidebarContent>
           <SidebarFooter>
             <SidebarMenu>
@@ -418,7 +488,12 @@ export function Shell({
               orientation="vertical"
               className="mr-2 data-[orientation=vertical]:h-4"
             />
-            <PageBreadcrumb path={path} plugins={plugins} />
+            <PageBreadcrumb
+              path={path}
+              kind={kind}
+              kindLabel={kindLabel}
+              plugins={plugins}
+            />
           </header>
           {/* The notice inside the column, not across the window: it, the
               page header and the page share one left edge (U2). The column

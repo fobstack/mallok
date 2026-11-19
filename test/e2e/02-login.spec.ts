@@ -25,7 +25,10 @@ test('refuses the wrong password without saying which half was wrong', async ({
 test('signs in and reaches the content list', async ({ page }) => {
   await signIn(page);
 
-  await expect(page.getByRole('heading', { name: 'Content' })).toBeVisible();
+  // Every type's list, until Home exists (docs/ADMIN_SIMPLE.md, D1, D2).
+  await expect(
+    page.getByRole('heading', { name: 'All content' }),
+  ).toBeVisible();
   // The starter's pages are there, so this is the real list and not an empty
   // shell that happens to render.
   await expect(page.getByRole('row').first()).toBeVisible();

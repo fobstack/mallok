@@ -25,7 +25,9 @@ async function clean(page: Page, label: string): Promise<void> {
 }
 
 const SECTIONS = [
-  ['Content', '/_mallok/app/'],
+  // One entry per content type (docs/ADMIN_SIMPLE.md, D2).
+  ['Page', '/_mallok/app/content?kind=page'],
+  ['Product', '/_mallok/app/content?kind=product'],
   ['Media', '/_mallok/app/media'],
   ['Plugins', '/_mallok/app/plugins'],
   ['General', '/_mallok/app/settings'],
