@@ -26,18 +26,24 @@ import {
  * and one width (docs/ADMIN_I18N_AND_UI.md, U2); a form caps its own fields
  * instead (`Section`).
  *
- * The page, not the shell, says how wide that column is: `width="full"`
- * lets the shell's column span the window, for a page such as the editor
- * that needs the room (U7).
+ * The column starts beside the sidebar on every page and at every width;
+ * what is left over is on the right, where a page ends
+ * (docs/ADMIN_SIMPLE.md, D7). The page, not the shell, says how far it
+ * reaches: a `form` stops at 56 rem, a `list` — a table or a grid — at
+ * 90 rem so a row stays readable end to end, `home` at 68 rem, and `full`,
+ * the editor, takes the window.
  */
+/** How far a page's column reaches (D7). */
+export type PageWidth = 'form' | 'list' | 'home' | 'full';
+
 export function Page({
   children,
   className,
-  width = 'column',
+  width = 'form',
 }: {
   readonly children: ReactNode;
   readonly className?: string;
-  readonly width?: 'column' | 'full';
+  readonly width?: PageWidth;
 }): JSX.Element {
   return (
     <div

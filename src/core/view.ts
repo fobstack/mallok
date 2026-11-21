@@ -27,6 +27,7 @@ import type {
 } from './page.js';
 import { buildHomePath, linkForPrefix, localePrefix } from './paths.js';
 import type { ThemeManifest } from './theme.js';
+import { readOptionValue } from './theme-options.js';
 
 /** One navigation entry as configured for a locale. */
 export interface NavEntry {
@@ -330,8 +331,10 @@ export function buildThemeView(ctx: ViewContext): ThemeView {
   );
   const options: Record<string, unknown> = {};
   for (const [key, option] of Object.entries(ctx.manifest.options)) {
-    const value =
-      overrides[key] ?? ctx.settings.themeOptions[key] ?? option.default;
+    const value = readOptionValue(
+      option.type,
+      overrides[key] ?? ctx.settings.themeOptions[key] ?? option.default,
+    );
     // A one-line string option is where a theme takes a link (`quote_href`).
     options[key] =
       option.type === 'string' && typeof value === 'string'

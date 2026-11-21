@@ -21,6 +21,7 @@
     },
     "from_address": {
       "type": "string",
+      "advanced": true,
       "label": "From address for inquiry email",
       "help": "Empty uses the sender in Settings → Email."
     },
@@ -31,31 +32,37 @@
     },
     "turnstile_sitekey": {
       "type": "string",
+      "advanced": true,
       "label": "Turnstile site key",
       "help": "Empty turns the anti-spam widget off."
     },
     "thanks_path": {
       "type": "string",
+      "advanced": true,
       "label": "Thank-you page path",
       "default": "/thank-you"
     },
     "autoreply_subject": {
       "type": "string",
+      "advanced": true,
       "label": "Autoreply subject",
       "help": "Liquid. Empty uses the built-in template for each language."
     },
     "autoreply_body": {
       "type": "text",
+      "advanced": true,
       "label": "Autoreply body",
       "help": "Liquid. Variables: name, site_name, company, message."
     },
     "blocked_countries": {
       "type": "string[]",
+      "advanced": true,
       "label": "Blocked countries",
       "help": "Two-letter ISO 3166-1 codes. Their inquiries are stored as spam."
     },
     "blocked_keywords": {
       "type": "string[]",
+      "advanced": true,
       "label": "Blocked keywords",
       "help": "Inquiries that contain one are stored as spam."
     }
@@ -81,6 +88,10 @@
           "field": "email",
           "label": "Email",
           "type": "email"
+        },
+        {
+          "field": "message",
+          "label": "Message"
         },
         {
           "field": "country",

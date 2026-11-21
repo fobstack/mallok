@@ -122,7 +122,7 @@ export function EmailSettingsPage(): JSX.Element {
     <Page>
       <PageHeader
         title={t`Email`}
-        lede={t`One Resend key and one sender address for the whole site. Every plugin that sends email uses them, and a change applies to the next message — no rebuild, no deploy.`}
+        lede={t`Your site sends email through Resend, an email service; the key comes from your Resend account. Every plugin that sends email, inquiries included, uses this one sender and key.`}
       />
 
       <Section

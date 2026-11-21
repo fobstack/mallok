@@ -563,6 +563,12 @@ export interface ContentListFilter {
   /** Exact slug, for looking one item up by its natural key. */
   readonly slug?: string;
   readonly status?: ContentRow['status'];
+  /**
+   * Words the title contains, as typed: matched case-insensitively for
+   * Latin letters, with `%`, `_` and `\` taken literally. The title column
+   * only — a list never reads the body (docs/ADMIN_SIMPLE.md, G6).
+   */
+  readonly title?: string;
   readonly limit: number;
   readonly offset: number;
 }
@@ -593,6 +599,10 @@ export async function listContent(
   if (filter.slug !== undefined) {
     clauses.push('slug = ?');
     bindings.push(filter.slug);
+  }
+  if (filter.title !== undefined && filter.title !== '') {
+    clauses.push("title LIKE ? ESCAPE '\\'");
+    bindings.push(`%${filter.title.replace(/[\\%_]/g, '\\$&')}%`);
   }
   const where = clauses.length === 0 ? '' : `WHERE ${clauses.join(' AND ')}`;
   const rows = await db

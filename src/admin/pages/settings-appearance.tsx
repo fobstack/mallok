@@ -15,6 +15,7 @@ import { type FieldValues, useForm } from 'react-hook-form';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { LOCALE_OPTIONS_KEY } from '../../core/constants.js';
+import { readOptionValue } from '../../core/theme-options.js';
 import { ApiError } from '../api.js';
 import {
   ContentLanguageSelect,
@@ -52,11 +53,16 @@ export function AppearancePage(): JSX.Element {
   const editingDefault = editingLocale === current.defaultLocale;
   const resolved: FieldValues = {};
   for (const spec of specs) {
-    resolved[spec.name] = editingDefault
-      ? (current.themeOptions[spec.name] ?? spec.field.default)
-      : (overrides[editingLocale]?.[spec.name] ??
-        current.themeOptions[spec.name] ??
-        spec.field.default);
+    // A list saved as one string, before options could be lists, is shown
+    // as the list it meant (docs/ADMIN_SIMPLE.md, D10a).
+    resolved[spec.name] = readOptionValue(
+      spec.field.type,
+      editingDefault
+        ? (current.themeOptions[spec.name] ?? spec.field.default)
+        : (overrides[editingLocale]?.[spec.name] ??
+            current.themeOptions[spec.name] ??
+            spec.field.default),
+    );
   }
   // `values`, not `defaultValues`: switching the language being edited, or
   // a save coming back, resets the form to what is now stored.
@@ -105,7 +111,7 @@ export function AppearancePage(): JSX.Element {
     <Page>
       <PageHeader
         title={t`Appearance`}
-        lede={t`The options below are runtime settings: saving takes effect without a rebuild. The theme itself is source code.`}
+        lede={t`How your theme looks: these options change the site as soon as you save.`}
       />
 
       {specs.length === 0 ? null : (
@@ -173,28 +179,8 @@ export function AppearancePage(): JSX.Element {
                 </StatusBadge>
               ),
             ],
-            [t`Assets`, <Code key="assets">{active.assetBase}</Code>],
           ]}
         />
-        {active.clientScripts.length === 0 ? null : (
-          <ul className="flex flex-col divide-y rounded-lg border text-sm">
-            {active.clientScripts.map((script) => {
-              // A theme may list a script as a bare path or with a stated
-              // purpose; both are shown verbatim.
-              const path = typeof script === 'string' ? script : script.path;
-              const purpose = typeof script === 'string' ? '' : script.purpose;
-              return (
-                <li
-                  key={path}
-                  className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-3 py-2"
-                >
-                  <Code>{path}</Code>
-                  <span className="text-muted-foreground">{purpose}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
       </Section>
 
       <Alert role="note">
@@ -205,6 +191,22 @@ export function AppearancePage(): JSX.Element {
         <AlertDescription>
           <p>
             <Trans>
+              Whoever deploys the site changes its theme. Your content, its ids
+              and every address stay exactly as they are.
+            </Trans>
+          </p>
+        </AlertDescription>
+      </Alert>
+
+      {/* Paths and file names, for whoever builds the site; closed, so the
+          operator's page reads in their words (ADMIN_SIMPLE.md §6.5). */}
+      <details className="rounded-lg border">
+        <summary className="cursor-pointer px-3 py-2 text-sm font-medium select-none">
+          <Trans>For the person who deploys</Trans>
+        </summary>
+        <div className="flex flex-col gap-4 border-t px-3 py-3 text-sm">
+          <p>
+            <Trans>
               Themes live in the source tree, not the database — they are
               compiled into the Worker. To switch, edit{' '}
               <Code>ACTIVE_THEME</Code> in <Code>src/themes/index.ts</Code>,
@@ -212,13 +214,33 @@ export function AppearancePage(): JSX.Element {
             </Trans>
           </p>
           <p>
-            <Trans>
-              Built into this deployment: {builtIn}. Your content, its ids and
-              every URL stay exactly as they are.
-            </Trans>
+            <Trans>Built into this deployment: {builtIn}.</Trans>
           </p>
-        </AlertDescription>
-      </Alert>
+          <Facts
+            items={[[t`Assets`, <Code key="assets">{active.assetBase}</Code>]]}
+          />
+          {active.clientScripts.length === 0 ? null : (
+            <ul className="flex flex-col divide-y rounded-lg border text-sm">
+              {active.clientScripts.map((script) => {
+                // A theme may list a script as a bare path or with a stated
+                // purpose; both are shown verbatim.
+                const path = typeof script === 'string' ? script : script.path;
+                const purpose =
+                  typeof script === 'string' ? '' : script.purpose;
+                return (
+                  <li
+                    key={path}
+                    className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-3 py-2"
+                  >
+                    <Code>{path}</Code>
+                    <span className="text-muted-foreground">{purpose}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </details>
     </Page>
   );
 }

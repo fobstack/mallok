@@ -59,7 +59,7 @@ function useSiteFields(): readonly FieldSpec[] {
       name: 'domain',
       field: {
         type: 'string',
-        label: t`Custom domain`,
+        label: t`Your domain`,
         required: false,
         max: 253,
         help: t`The address visitors use, such as www.example.com. Until it is set, search engines are asked not to list the site, and pages are not cached, so they load more slowly.`,
@@ -69,8 +69,10 @@ function useSiteFields(): readonly FieldSpec[] {
       name: 'mediaBaseUrl',
       field: {
         type: 'string',
-        label: t`Media domain`,
+        label: t`Address for images`,
         required: false,
+        // Rarely set, and only with a domain for images (ADMIN_SIMPLE D9).
+        advanced: true,
         max: 512,
         help: t`Where images are served from, such as https://media.example.com. Empty serves them from this site.`,
       },
@@ -172,10 +174,9 @@ export function SiteSettingsPage(): JSX.Element {
 
   return (
     <Page>
-      <PageHeader
-        title={t`Site`}
-        lede={t`These are stored the moment you save — no rebuild, no deploy.`}
-      />
+      {/* What applies at once and what needs a deployment is said in one
+          place, Advanced (docs/ADMIN_SIMPLE.md §6.5), not on every page. */}
+      <PageHeader title={t`General`} />
       <Section
         as="form"
         onSubmit={(event) => void submit(event)}
@@ -320,37 +321,46 @@ function LocaleSection(): JSX.Element {
           <Trans>Applies immediately</Trans>
         </p>
       }
-      description={
-        current.prefixDefaultLocale ? (
-          <Trans>
-            Every language is served under <Code>/&lt;locale&gt;/</Code>, the
-            default one too; the site&apos;s root redirects to{' '}
-            <Code>/{prefix}</Code>.
-          </Trans>
-        ) : (
-          <Trans>
-            The default language has no URL prefix; every other language is
-            served under <Code>/&lt;locale&gt;/</Code>.
-          </Trans>
-        )
-      }
     >
-      <Field orientation="horizontal">
-        <Checkbox
-          id="site-prefix-default"
-          checked={current.prefixDefaultLocale}
-          disabled={busy}
-          onCheckedChange={(checked) => void setPrefix(checked === true)}
-        />
-        <FieldLabel htmlFor="site-prefix-default">
-          {/* One run of text: the label lays its children out with a gap. */}
-          <span>
-            <Trans>
-              Prefix the default language too (<Code>/{prefix}/…</Code>)
-            </Trans>
-          </span>
-        </FieldLabel>
-      </Field>
+      {/* How addresses carry the language, and the switch that moves every
+          one of them: rare, so closed (docs/ADMIN_SIMPLE.md, G16). */}
+      <details className="max-w-2xl rounded-lg border p-3">
+        <summary className="cursor-pointer text-sm font-medium">
+          <Trans>More options</Trans>
+        </summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <p className="text-sm text-muted-foreground">
+            {current.prefixDefaultLocale ? (
+              <Trans>
+                Every language is served under <Code>/&lt;locale&gt;/</Code>,
+                the default one too; the site&apos;s root redirects to{' '}
+                <Code>/{prefix}</Code>.
+              </Trans>
+            ) : (
+              <Trans>
+                The default language has no URL prefix; every other language is
+                served under <Code>/&lt;locale&gt;/</Code>.
+              </Trans>
+            )}
+          </p>
+          <Field orientation="horizontal">
+            <Checkbox
+              id="site-prefix-default"
+              checked={current.prefixDefaultLocale}
+              disabled={busy}
+              onCheckedChange={(checked) => void setPrefix(checked === true)}
+            />
+            <FieldLabel htmlFor="site-prefix-default">
+              {/* One run of text: the label lays its children out with a gap. */}
+              <span>
+                <Trans>
+                  Prefix the default language too (<Code>/{prefix}/…</Code>)
+                </Trans>
+              </span>
+            </FieldLabel>
+          </Field>
+        </div>
+      </details>
       {/* As wide as the fields above it: one right edge per card (U2). */}
       <ul className="flex max-w-2xl flex-col divide-y rounded-lg border">
         {current.locales.map((locale) => (

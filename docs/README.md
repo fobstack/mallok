@@ -37,6 +37,7 @@ rest are the contracts for individual subsystems.
 | [CLI.md](CLI.md) | Commands, arguments, authentication, idempotence rules, exit codes, error-message rules |
 | [SEO_PERFORMANCE.md](SEO_PERFORMANCE.md) | The SEO output built into the core, hreflang, structured data, the performance budget and how it is measured |
 | [ADMIN_I18N_AND_UI.md](ADMIN_I18N_AND_UI.md) | Proposal: a selectable interface language for the admin and the setup wizard (English and Simplified Chinese first), the measured cost of the candidate libraries, how theme, plugin and Worker strings are covered, and a page-by-page review of the admin's interface with the decisions left to the owner |
+| [ADMIN_SIMPLE.md](ADMIN_SIMPLE.md) | Plan: an admin that reads like a mainstream CMS for a non-technical operator — the findings ranked, how WordPress, Shopify and Ghost handle the same screens, the target layout and vocabulary, the owner's ten decisions and the phases |
 | [SECURITY.md](SECURITY.md) | Trust levels, credential handling and the encryption format, authentication, sanitisation, upload validation, error hygiene, and **what is deliberately not defended against** |
 
 ## Process documents

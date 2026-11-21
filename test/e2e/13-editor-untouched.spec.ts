@@ -19,7 +19,11 @@ const CRLF =
 
 /** Opens an item from inside the app, as a click in the list would. */
 async function openInSession(page: Page, id: string): Promise<void> {
-  await page.getByRole('link', { name: 'Content' }).first().click();
+  // A type's list, from its sidebar entry (docs/ADMIN_SIMPLE.md, D2).
+  await page
+    .locator('[data-sidebar="sidebar"]')
+    .getByRole('link', { name: 'Page', exact: true })
+    .click();
   await expect(
     page.locator('a[href^="/_mallok/app/content/"]').first(),
   ).toBeVisible();
@@ -43,7 +47,8 @@ test('an item that is opened and not edited is not unsaved, and saves as unchang
   await signIn(page);
 
   // A token, to create an item whose bytes the test controls exactly.
-  await page.goto('/_mallok/app/account');
+  // Tokens live under Advanced since ADMIN_SIMPLE G18.
+  await page.goto('/_mallok/app/settings/advanced');
   await page.getByLabel('New token name').fill(`e2e-untouched-${Date.now()}`);
   await page.getByRole('button', { name: 'Create token' }).click();
   const token = (
@@ -71,14 +76,15 @@ test('an item that is opened and not edited is not unsaved, and saves as unchang
     await expect(page.getByText('Unsaved', { exact: true })).toHaveCount(0);
   }
 
-  // Still on the CRLF item, untouched. Publishing it stores nothing new:
+  // Still on the CRLF item, untouched and live, so its button is "Update"
+  // (G1, D6). Updating it stores nothing new:
   // the server compares bytes, and they are the bytes it already has.
   const saved = page.waitForResponse(
     (response) =>
       response.url().endsWith('/_mallok/api/content') &&
       response.request().method() === 'POST',
   );
-  await page.getByRole('button', { name: 'Publish' }).click();
+  await page.getByRole('button', { name: 'Update' }).click();
   const answer = (await (await saved).json()) as { unchanged?: boolean };
   expect(answer.unchanged).toBe(true);
   const stored = await page.request.get(`/_mallok/api/content/${crlf}`, {

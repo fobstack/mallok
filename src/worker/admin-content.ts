@@ -105,6 +105,12 @@ export async function getContentList(env: Env, url: URL): Promise<Response> {
     ...optional('kind', url.searchParams.get('kind')),
     ...optional('locale', url.searchParams.get('locale')),
     ...optional('slug', url.searchParams.get('slug')),
+    // A search box's words, trimmed and kept to a sane length; the list
+    // stays one query with no count (docs/ADMIN_SIMPLE.md, G6).
+    ...optional(
+      'title',
+      url.searchParams.get('q')?.trim().slice(0, 200) ?? null,
+    ),
     ...(status === null ? {} : { status }),
     limit,
     offset,

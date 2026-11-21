@@ -69,25 +69,31 @@ export function PluginsPage(): JSX.Element {
       <Alert role="note">
         <Info />
         <AlertTitle role="heading" aria-level={2}>
-          <Trans>Plugins ship with your source, not through this page</Trans>
+          <Trans>Plugins are added by whoever deploys the site</Trans>
         </AlertTitle>
         <AlertDescription>
           <p>
             <Trans>
-              To add one, put its folder in <Code>src/plugins/</Code>, list it
-              in <Code>src/plugins/index.ts</Code>, then build and deploy.
-              Removing one is the reverse. There is no upload here because there
-              is no way to make an upload take effect without a new build.
-            </Trans>
-          </p>
-          <p>
-            <Trans>
-              What you can change here — the switch below, settings and secrets
-              — is stored in the database and applies to the very next request.
+              Here you switch them on and set them up; a change applies at once.
             </Trans>
           </p>
         </AlertDescription>
       </Alert>
+      {/* The how, for whoever builds the site; closed (ADMIN_SIMPLE.md
+          §6.5). Installing is never a button here: it is a deployment. */}
+      <details className="rounded-lg border">
+        <summary className="cursor-pointer px-3 py-2 text-sm font-medium select-none">
+          <Trans>For the person who deploys</Trans>
+        </summary>
+        <p className="border-t px-3 py-3 text-sm">
+          <Trans>
+            To add one, put its folder in <Code>src/plugins/</Code>, list it in{' '}
+            <Code>src/plugins/index.ts</Code>, then build and deploy. Removing
+            one is the reverse. There is no upload here because there is no way
+            to make an upload take effect without a new build.
+          </Trans>
+        </p>
+      </details>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">
@@ -210,6 +216,57 @@ function PluginCard({
     </span>
   ));
   const nameId = `plugin-${plugin.id}-name`;
+  const secretFields = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-1">
+        <h3 className="font-heading text-sm font-semibold">
+          <Trans>Secrets</Trans>
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          <Trans>
+            Stored encrypted. They are never shown again, here or anywhere else.
+          </Trans>
+        </p>
+      </div>
+      {plugin.secrets.map((secret) => (
+        <Field key={secret.name}>
+          <FieldLabel htmlFor={`secret-${plugin.id}-${secret.name}`}>
+            {secret.label}
+            {secret.required ? (
+              <span className="text-destructive" aria-hidden="true">
+                *
+              </span>
+            ) : null}
+          </FieldLabel>
+          <div className="flex flex-wrap items-center gap-2">
+            <SecretControl
+              id={`secret-${plugin.id}-${secret.name}`}
+              label={secret.label}
+              configured={secret.configured}
+              onSet={(value) => void writeSecret(secret.name, value)}
+              onClear={() => void writeSecret(secret.name, null)}
+            />
+            {secret.checkable && secret.configured ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={checking !== ''}
+                onClick={() => void checkSecret(secret.name)}
+              >
+                {checking === secret.name ? t`Checking…` : t`Test`}
+              </Button>
+            ) : null}
+            {checkResult[secret.name] === undefined ? null : (
+              <StatusBadge tone={checkResult[secret.name]?.ok ? 'ok' : 'warn'}>
+                {checkResult[secret.name]?.message}
+              </StatusBadge>
+            )}
+          </div>
+        </Field>
+      ))}
+    </div>
+  );
+
   return (
     <section
       id={`plugin-${plugin.id}`}
@@ -337,65 +394,26 @@ function PluginCard({
             </form>
           )}
 
-          {plugin.secrets.length === 0 ? null : (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1">
-                <h3 className="font-heading text-sm font-semibold">
-                  <Trans>Secrets</Trans>
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  <Trans>
-                    Stored encrypted. They are never shown again, here or
-                    anywhere else.
-                  </Trans>
-                </p>
-              </div>
-              {plugin.secrets.map((secret) => (
-                <Field key={secret.name}>
-                  <FieldLabel htmlFor={`secret-${plugin.id}-${secret.name}`}>
-                    {secret.label}
-                    {secret.required ? (
-                      <span className="text-destructive" aria-hidden="true">
-                        *
-                      </span>
-                    ) : null}
-                  </FieldLabel>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <SecretControl
-                      id={`secret-${plugin.id}-${secret.name}`}
-                      label={secret.label}
-                      configured={secret.configured}
-                      onSet={(value) => void writeSecret(secret.name, value)}
-                      onClear={() => void writeSecret(secret.name, null)}
-                    />
-                    {secret.checkable && secret.configured ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={checking !== ''}
-                        onClick={() => void checkSecret(secret.name)}
-                      >
-                        {checking === secret.name ? t`Checking…` : t`Test`}
-                      </Button>
-                    ) : null}
-                    {checkResult[secret.name] === undefined ? null : (
-                      <StatusBadge
-                        tone={checkResult[secret.name]?.ok ? 'ok' : 'warn'}
-                      >
-                        {checkResult[secret.name]?.message}
-                      </StatusBadge>
-                    )}
-                  </div>
-                </Field>
-              ))}
-            </div>
+          {plugin.secrets.length === 0 ? null : plugin.secrets.some(
+              (secret) => secret.required,
+            ) ? (
+            secretFields
+          ) : (
+            // Every secret optional — a spam check's key, say — so closed
+            // until wanted, beside the settings' own "More options" (D9).
+            <details className="rounded-lg border p-3">
+              <summary className="cursor-pointer text-sm font-medium">
+                <Trans>Optional keys</Trans>
+              </summary>
+              <div className="mt-4">{secretFields}</div>
+            </details>
           )}
 
           {/* What the plugin does to the site, which ADMIN.md §10 requires
               to be shown; closed, because it is read once, not operated. */}
           <details className="rounded-lg border">
             <summary className="cursor-pointer px-3 py-2 text-sm font-medium select-none">
-              <Trans>Technical details</Trans>
+              <Trans>For the person who deploys</Trans>
             </summary>
             <div className="flex flex-col gap-4 border-t px-3 py-3">
               <Facts

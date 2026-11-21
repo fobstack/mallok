@@ -17,6 +17,7 @@ import { Field, FieldDescription, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { ApiError, api } from '../api.js';
+import { ApiTokensSection } from '../components/api-tokens.js';
 import {
   Code,
   Facts,
@@ -488,6 +489,9 @@ export function AdvancedPage(): JSX.Element {
           </div>
         </div>
       </Section>
+
+      {/* For the CLI and scripts; moved here from Account (G18). */}
+      <ApiTokensSection />
     </Page>
   );
 }
