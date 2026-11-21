@@ -39,5 +39,7 @@
   "panels.inquiries.values.status.spam": "垃圾信息",
   "panels.inquiries.actions.mark_replied.label": "标记为已回复",
   "panels.inquiries.actions.mark_spam.label": "标记为垃圾信息",
-  "panels.inquiries.actions.export_csv.label": "导出 CSV"
+  "panels.inquiries.actions.export_csv.label": "导出 CSV",
+  "panels.inquiries.empty": "还没有收到询盘。访客在联系页提交表单后，会显示在这里。",
+  "panels.inquiries.columns.message": "留言"
 }

@@ -32,7 +32,7 @@ export function PluginPanelPage(): JSX.Element {
 
   if (listed.isPending) {
     return (
-      <Page>
+      <Page width="list">
         <p className="text-sm text-muted-foreground">
           <Trans>Loading…</Trans>
         </p>
@@ -41,7 +41,7 @@ export function PluginPanelPage(): JSX.Element {
   }
   if (plugin === undefined || panel === undefined) {
     return (
-      <Page>
+      <Page width="list">
         <PageHeader title={t`Not found`} />
         <EmptyState>
           <Trans>No plugin in this build has a list at this address.</Trans>
@@ -52,7 +52,7 @@ export function PluginPanelPage(): JSX.Element {
 
   const pluginName = plugin.name;
   return (
-    <Page>
+    <Page width="list">
       <PageHeader
         title={panel.label}
         lede={

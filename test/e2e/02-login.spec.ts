@@ -22,13 +22,19 @@ test('refuses the wrong password without saying which half was wrong', async ({
   await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
 });
 
-test('signs in and reaches the content list', async ({ page }) => {
+test('signs in and reaches the overview', async ({ page }) => {
   await signIn(page);
 
-  await expect(page.getByRole('heading', { name: 'Content' })).toBeVisible();
-  // The starter's pages are there, so this is the real list and not an empty
-  // shell that happens to render.
-  await expect(page.getByRole('row').first()).toBeVisible();
+  // Overview, the first screen (docs/ADMIN_SIMPLE.md, D1).
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  // The starter's pages are there, so this is the real list of recent work
+  // and not an empty shell that happens to render.
+  await expect(
+    page
+      .getByRole('region', { name: 'Recently edited' })
+      .getByRole('listitem')
+      .first(),
+  ).toBeVisible();
 });
 
 test('keeps the admin behind the session, not behind the interface', async ({

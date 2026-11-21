@@ -170,4 +170,15 @@ describe('panelWords', () => {
       values: { status: { new: '新询盘', shipped: '已发货' } },
     });
   });
+
+  it("carries the panel's empty sentence, which the catalog may name", () => {
+    expect(pluginCatalogAllows(manifest)('panels.orders.empty')).toBe(true);
+    expect(pluginCatalogAllows(manifest)('panels.missing.empty')).toBe(false);
+    expect(
+      panelWords('orders', { 'panels.orders.empty': '还没有订单。' }).empty,
+    ).toBe('还没有订单。');
+    expect(
+      panelWords('orders', { 'panels.orders.empty': '' }),
+    ).not.toHaveProperty('empty');
+  });
 });

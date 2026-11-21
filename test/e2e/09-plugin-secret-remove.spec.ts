@@ -16,6 +16,8 @@ test('a removed plugin secret is shown as not set without a reload', async ({
 }) => {
   await signIn(page);
   await page.goto('/_mallok/app/plugins');
+  // Every inquiry secret is optional, so they start closed (ADMIN_SIMPLE D9).
+  await page.locator('#plugin-inquiry').getByText('Optional keys').click();
 
   const control = page.getByRole('group', { name: 'Turnstile secret key' });
   await control.getByLabel('Turnstile secret key').fill(VALUE);

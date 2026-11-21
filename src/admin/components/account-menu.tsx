@@ -66,7 +66,7 @@ export function AccountMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent side="top" align="start" className="min-w-56">
         <DropdownMenuItem onSelect={() => navigate('/account')}>
-          <Trans>Account and API tokens</Trans>
+          <Trans>Account</Trans>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel id={schemeLabel}>

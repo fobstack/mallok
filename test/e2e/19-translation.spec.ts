@@ -20,7 +20,7 @@ async function read(page: Page, id: string): Promise<Stored> {
 /**
  * Creating a translation from the editor's language bar (docs/ADMIN.md §6).
  *
- * "Create Chinese (zh)" opens a new item in that language and the original's
+ * "+ Chinese" ("Add the Chinese version") opens a new item in that language and the original's
  * translation group, carried in the address. The editor used to take the
  * query for part of the item id: it never opened a new item, and Publish
  * saved in the original's language, over the original.
@@ -32,21 +32,24 @@ test('a translation made from the language bar joins the original', async ({
   // An English page of its own: the starter's pages already have their
   // Chinese versions.
   const stamp = Date.now();
-  await page.getByRole('button', { name: 'New' }).click();
+  // From the list of every type; Overview has an Add menu instead (D1).
+  await page.goto('/_mallok/app/content');
+  await page.getByRole('button', { name: 'Add content' }).click();
   await page.getByRole('combobox', { name: /^Type/ }).selectOption('page');
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('Our mill');
-  await page.getByLabel('Slug', { exact: true }).fill(`our-mill-${stamp}`);
+  await page.getByLabel('URL slug', { exact: true }).fill(`our-mill-${stamp}`);
   await page.getByRole('button', { name: 'Publish' }).click();
-  await expect(page).toHaveURL(/\/content\/(?!new)[^/?]+$/);
-  const original = page.url().split('/content/')[1] ?? '';
+  // The editor's address carries its type, for the sidebar (D2).
+  await expect(page).toHaveURL(/\/content\/(?!new)[^/?]+\?kind=page$/);
+  const original = page.url().split('/content/')[1]?.split('?')[0] ?? '';
   const stored = await read(page, original);
 
   await page
     .getByRole('navigation', { name: 'Translations' })
     // Named, with the code, since U10.
-    .getByRole('button', { name: 'Create Chinese (zh)' })
+    .getByRole('button', { name: 'Add the Chinese version' })
     .click();
   await expect(page).toHaveURL(/\/content\/new\?locale=zh&/);
   await expect(page.locator('.cm-content')).toBeVisible();
@@ -58,7 +61,7 @@ test('a translation made from the language bar joins the original', async ({
   await page
     .getByRole('textbox', { name: 'Title', exact: true })
     .fill('关于工厂');
-  await page.getByLabel('Slug', { exact: true }).fill(slug);
+  await page.getByLabel('URL slug', { exact: true }).fill(slug);
   const saved = page.waitForResponse(
     (response) =>
       response.url().endsWith('/_mallok/api/content') &&
@@ -74,10 +77,12 @@ test('a translation made from the language bar joins the original', async ({
   expect(translation.translationGroup).toBe(stored.translationGroup);
 
   // The editor is now on the new item, and its bar leads back.
-  await expect(page).toHaveURL(new RegExp(`/content/${created.id}$`));
+  await expect(page).toHaveURL(
+    new RegExp(`/content/${created.id}\\?kind=page$`),
+  );
   await expect(
     page
       .getByRole('navigation', { name: 'Translations' })
-      .getByRole('button', { name: 'English (en)' }),
+      .getByRole('button', { name: 'English', exact: true }),
   ).toBeVisible();
 });

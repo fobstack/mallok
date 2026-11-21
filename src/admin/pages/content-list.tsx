@@ -1,27 +1,34 @@
 /**
- * All content, filterable by kind, locale and status (docs/ADMIN.md §4).
+ * A content type's list — Products, Pages, News — or, with no type in the
+ * address, every type's (docs/ADMIN.md §4, docs/ADMIN_SIMPLE.md §6.3).
+ *
+ * It reads like the lists of mainstream admins: the type is the sidebar
+ * entry the operator chose, status and language are tabs above the table,
+ * there is a search box, and a row's address is one "Copy address" away in
+ * its menu instead of being the widest column (D2, D3, D8; G6, G8, G9).
  *
  * Kinds a theme does not declare are marked rather than hidden: the content
  * and its URL survive a theme change, and the list has to say so
- * (docs/THEME_FORMAT.md §5.3).
- *
- * Every value is shown as an operator reads it — a kind by the theme's
- * label, a status by name, a date in the interface language — and a phone
- * gets one row per item rather than a table that scrolls sideways
- * (docs/ADMIN_I18N_AND_UI.md, U4–U6).
+ * (docs/THEME_FORMAT.md §5.3). A phone gets one row per item rather than a
+ * table that scrolls sideways (docs/ADMIN_I18N_AND_UI.md, U6).
  */
 
 import { i18n } from '@lingui/core';
 import { Trans, useLingui } from '@lingui/react/macro';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { MoreHorizontal, Search } from 'lucide-react';
 import type { JSX } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { Field, FieldLabel } from '@/components/ui/field';
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -30,23 +37,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { api } from '../api.js';
-import {
-  ContentLanguageSelect,
-  useContentLanguageName,
-} from '../components/content-language.js';
+import { ApiError, api } from '../api.js';
+import { useShortLanguageNames } from '../components/content-language.js';
 import {
   ContentStatusBadge,
   STATUS_LABELS,
 } from '../components/content-status.js';
 import { EmptyState } from '../components/empty-state.js';
+import { FilterTabs } from '../components/filter-tabs.js';
 import { Page, PageHeader, StatusBadge } from '../components/page.js';
-import { formatDate } from '../format.js';
-import { useReportError } from '../notice.js';
+import { formatLastEdited } from '../format-relative.js';
+import { notify, useReportError } from '../notice.js';
 import { keys, useSettings, useTheme } from '../queries.js';
 import type { ContentListItem } from '../types.js';
 
 const PAGE = 25;
+
+/** How long the search box waits after the last keystroke. */
+const SEARCH_DELAY_MS = 300;
 
 export function ContentListPage(): JSX.Element {
   const { t } = useLingui();
@@ -58,21 +66,26 @@ export function ContentListPage(): JSX.Element {
   const [search, setSearch] = useSearchParams();
   const kind = search.get('kind') ?? '';
   const status = search.get('status') ?? '';
+  const words = search.get('q') ?? '';
   const locale = search.get('locale') ?? site.defaultLocale;
   const offset = Number(search.get('offset') ?? 0) || 0;
 
   /** Changes one filter and goes back to the first page. */
   const filter = (name: string, value: string): void => {
-    setSearch((previous) => {
-      const next = new URLSearchParams(previous);
-      if (value === '') {
-        next.delete(name);
-      } else {
-        next.set(name, value);
-      }
-      next.delete('offset');
-      return next;
-    });
+    setSearch(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        if (value === '') {
+          next.delete(name);
+        } else {
+          next.set(name, value);
+        }
+        next.delete('offset');
+        return next;
+      },
+      // Typing in the search box is not a page to go Back to.
+      { replace: name === 'q' },
+    );
   };
   const page = (to: number): void => {
     setSearch((previous) => {
@@ -86,6 +99,21 @@ export function ContentListPage(): JSX.Element {
     });
   };
 
+  // The box shows what is typed at once; the list follows a moment later.
+  const [typed, setTyped] = useState(words);
+  useEffect(() => {
+    setTyped(words);
+  }, [words]);
+  // `filter` is a fresh closure each render; the words are what matter.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see above
+  useEffect(() => {
+    if (typed.trim() === words) {
+      return;
+    }
+    const timer = setTimeout(() => filter('q', typed.trim()), SEARCH_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [typed, words]);
+
   const query = new URLSearchParams({
     limit: String(PAGE),
     offset: String(offset),
@@ -96,6 +124,9 @@ export function ContentListPage(): JSX.Element {
   }
   if (status !== '') {
     query.set('status', status);
+  }
+  if (words !== '') {
+    query.set('q', words);
   }
   const listed = useQuery({
     queryKey: [...keys.content, 'list', query.toString()],
@@ -109,14 +140,14 @@ export function ContentListPage(): JSX.Element {
   const hasNext = listed.data?.hasNext ?? false;
   const loading = listed.isPending;
 
-  const kinds = Object.keys(site.kinds);
-  const nameOf = useContentLanguageName();
   /** A kind by the theme's label; one the theme lacks keeps its id. */
   const kindLabel = (id: string): string => active.kinds[id]?.label ?? id;
-  const filtered = kind !== '' || status !== '';
+  const typeName = kind === '' ? '' : kindLabel(kind);
+  const languageName = useShortLanguageNames(site.locales);
+  const filtered = status !== '' || words !== '';
 
-  // "New" says what it makes: the filtered kind when there is one. The
-  // editor opens in the list's language and, when filtered, that kind.
+  // "Add" says what it makes: this list's type when it has one. The editor
+  // opens in the list's language and type.
   const newQuery = new URLSearchParams({ locale });
   if (kind !== '') {
     newQuery.set('kind', kind);
@@ -124,65 +155,143 @@ export function ContentListPage(): JSX.Element {
   const createNew = (): void => {
     void navigate(`/content/new?${newQuery.toString()}`);
   };
-  const filteredKind = kind === '' ? '' : kindLabel(kind);
-  const newLabel = kind === '' ? t`New content` : t`New ${filteredKind}`;
-  const language = nameOf(locale);
+  const addLabel = kind === '' ? t`Add content` : t`Add ${typeName}`;
+  const language = languageName(locale);
+
+  // Unpublish and Delete ask first and say what a visitor will see, as
+  // the editor does (docs/ADMIN_SIMPLE.md, D6).
+  const client = useQueryClient();
+  const unpublish = async (item: ContentListItem): Promise<void> => {
+    if (
+      !window.confirm(
+        t`Take this off the site? It stays here as a draft, and visitors no longer see it.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      // A save needs the whole stored item; the list holds a summary.
+      const stored = await api<{
+        id: string;
+        kind: string;
+        locale: string;
+        slug: string;
+        markdown: string;
+        assets: Record<string, string>;
+      }>(`/content/${item.id}`);
+      await api('/content', {
+        method: 'POST',
+        body: {
+          id: stored.id,
+          kind: stored.kind,
+          locale: stored.locale,
+          slug: stored.slug,
+          markdown: stored.markdown,
+          assets: stored.assets,
+          status: 'draft',
+        },
+      });
+    } catch (caught) {
+      notify(caught instanceof ApiError ? caught.message : t`Could not save.`);
+    }
+    await client.invalidateQueries({ queryKey: keys.content });
+  };
+  const remove = async (item: ContentListItem): Promise<void> => {
+    const title = item.title;
+    if (
+      !window.confirm(
+        t`Delete "${title}"? Visitors get "page not found" at its address. Its other language versions and its images stay. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await api(`/content/${item.id}`, { method: 'DELETE' });
+    } catch (caught) {
+      notify(
+        caught instanceof ApiError ? caught.message : t`Could not delete.`,
+      );
+    }
+    await client.invalidateQueries({ queryKey: keys.content });
+  };
+
+  // "Copy address" says it worked, or why not, where the operator is.
+  const [copied, setCopied] = useState('');
+  const copyAddress = (item: ContentListItem): void => {
+    const address = new URL(item.path, window.location.origin).toString();
+    void navigator.clipboard.writeText(address).then(
+      () => setCopied(t`Copied ${address}`),
+      () => setCopied(t`Could not copy. The address is ${address}`),
+    );
+  };
+
+  const statusTabs = [
+    { value: '', label: t`All` },
+    ...Object.entries(STATUS_LABELS).map(([value, label]) => ({
+      value,
+      label: i18n._(label),
+    })),
+  ];
+  // The main language first, unmarked; no tabs at all for one language.
+  const languages = [
+    site.defaultLocale,
+    ...site.locales.filter((code) => code !== site.defaultLocale),
+  ];
 
   return (
-    <Page>
+    <Page width="list">
       <PageHeader
-        title={t`Content`}
-        // No "Media" here: the sidebar has it one link away (U5).
+        title={kind === '' ? t`All content` : typeName}
         actions={
           <Button type="button" onClick={createNew}>
-            {newLabel}
+            {addLabel}
           </Button>
         }
       />
 
-      <div className="flex flex-wrap gap-4">
-        <Field className="w-auto">
-          <FieldLabel htmlFor="filter-kind">
-            <Trans>Type</Trans>
-          </FieldLabel>
-          <NativeSelect
-            id="filter-kind"
-            value={kind}
-            onChange={(event) => filter('kind', event.currentTarget.value)}
-          >
-            <NativeSelectOption value="">{t`All`}</NativeSelectOption>
-            {kinds.map((entry) => (
-              <NativeSelectOption key={entry} value={entry}>
-                {active.kinds[entry]?.label ?? entry}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Field>
-        <ContentLanguageSelect
-          id="filter-locale"
-          value={locale}
-          onChange={(value) => filter('locale', value)}
-          locales={site.locales}
-          defaultLocale={site.defaultLocale}
-        />
-        <Field className="w-auto">
-          <FieldLabel htmlFor="filter-status">
-            <Trans>Status</Trans>
-          </FieldLabel>
-          <NativeSelect
-            id="filter-status"
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <FilterTabs
+            label={t`Status`}
+            tabs={statusTabs}
             value={status}
-            onChange={(event) => filter('status', event.currentTarget.value)}
-          >
-            <NativeSelectOption value="">{t`All`}</NativeSelectOption>
-            {Object.entries(STATUS_LABELS).map(([value, label]) => (
-              <NativeSelectOption key={value} value={value}>
-                {i18n._(label)}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </Field>
+            onChange={(value) => filter('status', value)}
+          />
+          <div className="relative ml-auto w-full sm:w-64">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              type="search"
+              value={typed}
+              onChange={(event) => setTyped(event.currentTarget.value)}
+              aria-label={t`Search by title`}
+              placeholder={kind === '' ? t`Search…` : t`Search ${typeName}…`}
+              className="pl-8"
+            />
+          </div>
+        </div>
+        {languages.length < 2 ? null : (
+          <FilterTabs
+            label={t`Language`}
+            tabs={languages.map((code) => ({
+              value: code,
+              label: languageName(code),
+            }))}
+            value={locale}
+            onChange={(value) =>
+              filter('locale', value === site.defaultLocale ? '' : value)
+            }
+          />
+        )}
       </div>
+
+      {copied === '' ? null : (
+        <p className="text-sm text-muted-foreground" role="status">
+          {copied}
+        </p>
+      )}
 
       {loading ? (
         <p className="text-sm text-muted-foreground">
@@ -195,13 +304,16 @@ export function ContentListPage(): JSX.Element {
             <Button
               type="button"
               variant="outline"
-              onClick={() =>
-                setSearch(
-                  search.get('locale') === null
-                    ? {}
-                    : { locale: search.get('locale') ?? '' },
-                )
-              }
+              onClick={() => {
+                const next = new URLSearchParams();
+                for (const keep of ['kind', 'locale']) {
+                  const value = search.get(keep);
+                  if (value !== null) {
+                    next.set(keep, value);
+                  }
+                }
+                setSearch(next);
+              }}
             >
               <Trans>Clear filters</Trans>
             </Button>
@@ -213,14 +325,20 @@ export function ContentListPage(): JSX.Element {
         <EmptyState
           action={
             <Button type="button" onClick={createNew}>
-              <Trans>Create the first page</Trans>
+              {kind === '' ? (
+                <Trans>Create the first page</Trans>
+              ) : (
+                <Trans>Add the first {typeName}</Trans>
+              )}
             </Button>
           }
         >
-          {locale === site.defaultLocale ? (
+          {locale !== site.defaultLocale ? (
+            <Trans>Nothing has been written in {language} yet.</Trans>
+          ) : kind === '' ? (
             <Trans>This site has no content yet.</Trans>
           ) : (
-            <Trans>Nothing has been written in {language} yet.</Trans>
+            <Trans>There is no {typeName} yet.</Trans>
           )}
         </EmptyState>
       ) : (
@@ -231,19 +349,23 @@ export function ContentListPage(): JSX.Element {
                 <TableHead scope="col" className="pl-3">
                   <Trans>Title</Trans>
                 </TableHead>
-                {/* Below `md` a row is the title with its type and status
-                    under it; Path and Updated are left out on purpose (U6). */}
-                <TableHead scope="col" className="hidden md:table-cell">
-                  <Trans>Type</Trans>
-                </TableHead>
+                {/* Only where types are mixed: inside a type's own list
+                    the sidebar already says which it is. */}
+                {kind === '' ? (
+                  <TableHead scope="col" className="hidden md:table-cell">
+                    <Trans>Type</Trans>
+                  </TableHead>
+                ) : null}
                 <TableHead scope="col" className="hidden md:table-cell">
                   <Trans>Status</Trans>
                 </TableHead>
                 <TableHead scope="col" className="hidden md:table-cell">
-                  <Trans>Path</Trans>
+                  <Trans>Last edited</Trans>
                 </TableHead>
-                <TableHead scope="col" className="hidden pr-3 md:table-cell">
-                  <Trans>Updated</Trans>
+                <TableHead scope="col" className="w-10 pr-3">
+                  <span className="sr-only">
+                    <Trans>Actions</Trans>
+                  </span>
                 </TableHead>
               </TableRow>
             </TableHeader>
@@ -264,38 +386,86 @@ export function ContentListPage(): JSX.Element {
                   </span>
                 );
                 const statusBadge = <ContentStatusBadge status={item.status} />;
+                const edited = (
+                  <time dateTime={item.updatedAt}>
+                    {formatLastEdited(item.updatedAt)}
+                  </time>
+                );
+                const editHref = `/content/${item.id}?kind=${encodeURIComponent(item.kind)}`;
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="min-w-40 pl-3 whitespace-normal">
                       <Link
                         className="font-medium text-primary underline-offset-4 hover:underline"
-                        to={`/content/${item.id}`}
+                        to={editHref}
                       >
                         {item.title}
                       </Link>
                       <span className="mt-1 flex flex-wrap items-center gap-2 text-muted-foreground md:hidden">
-                        {typeCell}
+                        {kind === '' ? typeCell : null}
                         {statusBadge}
+                        {edited}
                       </span>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {typeCell}
-                    </TableCell>
+                    {kind === '' ? (
+                      <TableCell className="hidden md:table-cell">
+                        {typeCell}
+                      </TableCell>
+                    ) : null}
                     <TableCell className="hidden md:table-cell">
                       {statusBadge}
                     </TableCell>
-                    <TableCell className="hidden max-w-72 min-w-48 whitespace-normal md:table-cell">
-                      <a
-                        className="font-mono text-xs break-all text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                        href={item.path}
-                      >
-                        {item.path}
-                      </a>
+                    <TableCell className="hidden text-muted-foreground tabular-nums md:table-cell">
+                      {edited}
                     </TableCell>
-                    <TableCell className="hidden pr-3 text-muted-foreground tabular-nums md:table-cell">
-                      <time dateTime={item.updatedAt}>
-                        {formatDate(item.updatedAt)}
-                      </time>
+                    <TableCell className="pr-3 text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t`Actions for ${item.title}`}
+                          >
+                            <MoreHorizontal />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link to={editHref}>
+                              <Trans>Edit</Trans>
+                            </Link>
+                          </DropdownMenuItem>
+                          {item.status === 'published' ? (
+                            <DropdownMenuItem asChild>
+                              <a
+                                href={item.path}
+                                target="_blank"
+                                rel="noopener"
+                              >
+                                <Trans>View on site</Trans>
+                              </a>
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuItem onSelect={() => copyAddress(item)}>
+                            <Trans>Copy address</Trans>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {item.status === 'draft' ? null : (
+                            <DropdownMenuItem
+                              onSelect={() => void unpublish(item)}
+                            >
+                              <Trans>Unpublish</Trans>
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onSelect={() => void remove(item)}
+                          >
+                            <Trans>Delete</Trans>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );

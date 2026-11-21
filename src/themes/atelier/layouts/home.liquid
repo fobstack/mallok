@@ -39,11 +39,11 @@
 </section>
 <script src="{{ theme.asset_base }}/hero-carousel.js" defer></script>
 
-{% assign certs = theme.options.certifications | split: "," %}
+{% assign certs = theme.options.certifications %}
 {% if certs.size > 0 %}
 <section class="certs" aria-label="{{ t.trust }}">
   <span class="certs-label">{{ t.certified }}</span>
-  {% for cert in certs %}<span class="cert-pill">{{ cert | strip }}</span>{% endfor %}
+  {% for cert in certs %}<span class="cert-pill">{{ cert }}</span>{% endfor %}
 </section>
 {% endif %}
 
@@ -97,12 +97,10 @@
       <p class="band-lede">{{ theme.options.band_lede }}</p>
     </div>
     <div class="band-features">
-      {% assign features = theme.options.band_features | split: ";;" %}
-      {% for feature in features %}
-        {% assign bits = feature | split: "|" %}
+      {% for feature in theme.options.band_features %}
         <div class="feature">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.4-7 10-4-1.6-7-5.5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <div><strong>{{ bits[0] | strip }}</strong><span>{{ bits[1] | strip }}</span></div>
+          <div><strong>{{ feature[0] }}</strong><span>{{ feature[1] }}</span></div>
         </div>
       {% endfor %}
     </div>

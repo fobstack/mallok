@@ -42,6 +42,7 @@ export function optionSpecs(options: ThemeManifest['options']): FieldSpec[] {
       required: false,
       default: option.default,
       ...(option.choices === undefined ? {} : { choices: option.choices }),
+      ...(option.advanced === true ? { advanced: true } : {}),
     } as ThemeField,
   }));
 }

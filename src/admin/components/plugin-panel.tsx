@@ -8,7 +8,7 @@
  * boundary intact while still letting a plugin have a real interface.
  */
 
-import { Trans, useLingui } from '@lingui/react/macro';
+import { Plural, Trans, useLingui } from '@lingui/react/macro';
 import {
   keepPreviousData,
   useQuery,
@@ -44,6 +44,7 @@ import { notify, useReportError } from '../notice.js';
 import { panelKey } from '../queries.js';
 import type { PluginPanel } from '../types.js';
 import { EmptyState } from './empty-state.js';
+import { FilterTabs } from './filter-tabs.js';
 import { Facts } from './page.js';
 import { cell, RelatedRows } from './related-rows.js';
 
@@ -234,53 +235,78 @@ export function PluginPanelView({
         >
           {panel.label}
         </h3>
-        {panel.filters.map((field) => (
-          <Field key={field} className="w-40">
-            <FieldLabel
-              htmlFor={`${titleId}-filter-${field}`}
-              className={panel.names?.[field] === undefined ? 'capitalize' : ''}
-            >
-              {nameOf(field)}
-            </FieldLabel>
-            {/* A field whose values are named is a choice among them; any
-                other is typed (docs/ADMIN_I18N_AND_UI.md, U11). */}
-            {Object.keys(panel.values?.[field] ?? {}).length > 0 ? (
-              <NativeSelect
-                id={`${titleId}-filter-${field}`}
+        {panel.filters.map((field) => {
+          const named = Object.entries(panel.values?.[field] ?? {});
+          // A few named values read as tabs, as status does on the content
+          // list (docs/ADMIN_SIMPLE.md §6.3); more stay a select.
+          if (named.length > 0 && named.length <= 4) {
+            return (
+              <FilterTabs
+                key={field}
+                className="self-end"
+                label={nameOf(field)}
+                tabs={[
+                  { value: '', label: t`All` },
+                  ...named.map(([value, label]) => ({ value, label })),
+                ]}
                 value={filters[field] ?? ''}
-                onChange={(event) => {
+                onChange={(value) => {
                   setOffset(0);
-                  setFilters((previous) => ({
-                    ...previous,
-                    [field]: event.currentTarget.value,
-                  }));
-                }}
-              >
-                <NativeSelectOption value="">{t`Any`}</NativeSelectOption>
-                {Object.entries(panel.values?.[field] ?? {}).map(
-                  ([value, label]) => (
-                    <NativeSelectOption key={value} value={value}>
-                      {label}
-                    </NativeSelectOption>
-                  ),
-                )}
-              </NativeSelect>
-            ) : (
-              <Input
-                id={`${titleId}-filter-${field}`}
-                value={filters[field] ?? ''}
-                placeholder={t`any`}
-                onChange={(event) => {
-                  setOffset(0);
-                  setFilters((previous) => ({
-                    ...previous,
-                    [field]: event.currentTarget.value,
-                  }));
+                  setFilters((previous) => ({ ...previous, [field]: value }));
                 }}
               />
-            )}
-          </Field>
-        ))}
+            );
+          }
+          return (
+            <Field key={field} className="w-40">
+              <FieldLabel
+                htmlFor={`${titleId}-filter-${field}`}
+                className={
+                  panel.names?.[field] === undefined ? 'capitalize' : ''
+                }
+              >
+                {nameOf(field)}
+              </FieldLabel>
+              {/* A field whose values are named is a choice among them; any
+                other is typed (docs/ADMIN_I18N_AND_UI.md, U11). */}
+              {Object.keys(panel.values?.[field] ?? {}).length > 0 ? (
+                <NativeSelect
+                  id={`${titleId}-filter-${field}`}
+                  value={filters[field] ?? ''}
+                  onChange={(event) => {
+                    setOffset(0);
+                    setFilters((previous) => ({
+                      ...previous,
+                      [field]: event.currentTarget.value,
+                    }));
+                  }}
+                >
+                  <NativeSelectOption value="">{t`Any`}</NativeSelectOption>
+                  {Object.entries(panel.values?.[field] ?? {}).map(
+                    ([value, label]) => (
+                      <NativeSelectOption key={value} value={value}>
+                        {label}
+                      </NativeSelectOption>
+                    ),
+                  )}
+                </NativeSelect>
+              ) : (
+                <Input
+                  id={`${titleId}-filter-${field}`}
+                  value={filters[field] ?? ''}
+                  placeholder={t`any`}
+                  onChange={(event) => {
+                    setOffset(0);
+                    setFilters((previous) => ({
+                      ...previous,
+                      [field]: event.currentTarget.value,
+                    }));
+                  }}
+                />
+              )}
+            </Field>
+          );
+        })}
         {panel.search.length === 0 ? null : (
           <Field className="w-56">
             <FieldLabel htmlFor={`${titleId}-search`}>
@@ -303,19 +329,30 @@ export function PluginPanelView({
             <Trans>New</Trans>
           </Button>
         ) : null}
-        {panel.actions.map((action) => (
-          <Button
-            key={action.id}
-            type="button"
-            variant="outline"
-            // An action on rows waits for a row; a download takes them all
-            // when none is chosen.
-            disabled={action.type !== 'download' && selected.length === 0}
-            onClick={() => void runAction(action)}
-          >
-            {action.label}
-          </Button>
-        ))}
+        {/* An action on rows appears once a row is chosen, rather than
+            standing disabled; a download takes them all when none is
+            (docs/ADMIN_SIMPLE.md §6.3). */}
+        {selected.length === 0 ? null : (
+          <span className="self-center text-sm text-muted-foreground">
+            <Plural
+              value={selected.length}
+              one="# selected:"
+              other="# selected:"
+            />
+          </span>
+        )}
+        {panel.actions
+          .filter((action) => action.type === 'download' || selected.length > 0)
+          .map((action) => (
+            <Button
+              key={action.id}
+              type="button"
+              variant="outline"
+              onClick={() => void runAction(action)}
+            >
+              {action.label}
+            </Button>
+          ))}
       </div>
 
       {loading ? (
@@ -352,7 +389,9 @@ export function PluginPanelView({
               ) : undefined
             }
           >
-            <Trans>Nothing here yet.</Trans>
+            {/* The plugin's own sentence, when it says where rows come
+                from (docs/PLUGIN_API.md §7.8). */}
+            {panel.empty ?? <Trans>Nothing here yet.</Trans>}
           </EmptyState>
         )
       ) : (
@@ -445,7 +484,16 @@ export function PluginPanelView({
                       />
                     </TableCell>
                     {panel.columns.map((column) => (
-                      <TableCell key={column.field}>
+                      <TableCell
+                        key={column.field}
+                        // Long text — a message — is one line here; the
+                        // detail view has all of it.
+                        className={
+                          column.type === 'text'
+                            ? 'max-w-80 truncate'
+                            : undefined
+                        }
+                      >
                         {cell(
                           row[column.field],
                           column.type,
@@ -555,9 +603,13 @@ function RowDetail({
 }): JSX.Element {
   const { t } = useLingui();
   const panelLabel = panel.label;
+  // A field both shown in the row and listed for the detail — an
+  // inquiry's message — is shown once.
   const fields = [
-    ...panel.columns.map((column) => column.field),
-    ...panel.detail,
+    ...new Set([
+      ...panel.columns.map((column) => column.field),
+      ...panel.detail,
+    ]),
   ];
   return (
     <Sheet

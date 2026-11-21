@@ -70,6 +70,9 @@ export function pluginCatalogAllows(
   for (const panel of manifest.panels) {
     const p = `panels.${panel.id}`;
     keys.add(`${p}.label`);
+    // What the panel says while it has no rows: where they come from
+    // (docs/ADMIN_SIMPLE.md §6.3). Words only, so the catalog's alone.
+    keys.add(`${p}.empty`);
     for (const column of panel.columns) {
       keys.add(`${p}.columns.${column.field}`);
       if (column.type === 'badge') {
@@ -122,12 +125,14 @@ export function pluginCatalogAllows(
 
 /**
  * The words a panel shows that are not declared as labels at all: what a
- * filter, a detail row or a search field is called (`names`), and what a
- * badge value reads as (`values`). Empty maps when the catalog has none.
+ * filter, a detail row or a search field is called (`names`), what a badge
+ * value reads as (`values`), and what the panel says while it has no rows
+ * (`empty`). Empty maps, and no `empty`, when the catalog has none.
  */
 export interface PanelWords {
   readonly names: Readonly<Record<string, string>>;
   readonly values: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  readonly empty?: string;
 }
 
 /** {@link PanelWords} for one panel, out of a catalog. */
@@ -136,6 +141,7 @@ export function panelWords(panelId: string, catalog: AdminCatalog): PanelWords {
   const values: Record<string, Record<string, string>> = {};
   const namesPrefix = `panels.${panelId}.names.`;
   const valuesPrefix = `panels.${panelId}.values.`;
+  const empty = catalog[`panels.${panelId}.empty`];
   for (const [key, text] of Object.entries(catalog)) {
     if (text === '') {
       continue;
@@ -151,7 +157,11 @@ export function panelWords(panelId: string, catalog: AdminCatalog): PanelWords {
       }
     }
   }
-  return { names, values };
+  return {
+    names,
+    values,
+    ...(empty === undefined || empty === '' ? {} : { empty }),
+  };
 }
 
 /**

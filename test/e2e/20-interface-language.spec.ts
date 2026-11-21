@@ -111,6 +111,8 @@ test("a theme's declarations are in Chinese, and its preview is not", async ({
     await expect(page.getByText('规格', { exact: true })).toBeVisible();
     // …while the preview is the page a reader gets, in the content's
     // language, rendered from the declarations as the theme wrote them.
+    // The preview is a button away in the writing-first editor (D4).
+    await page.getByRole('button', { name: '预览' }).first().click();
     const preview = page.frameLocator('iframe[title="预览"]');
     await expect(
       preview.getByRole('heading', { name: 'Grade 5 titanium bar' }),
@@ -140,6 +142,9 @@ test("a plugin's declarations are in Chinese where it has a catalog", async ({
       .click();
     const panel = page.getByRole('region', { name: '目录条目' });
     await expect(panel).toBeVisible();
+    // An action on rows appears once a row is chosen (ADMIN_SIMPLE §6.3);
+    // 10-records-panel left two rows here.
+    await panel.locator('tbody tr').first().getByRole('checkbox').check();
     await expect(panel.getByRole('button', { name: '设置状态' })).toBeVisible();
     await expect(panel.getByPlaceholder('名称、代码')).toBeVisible();
     // …and what it leaves out stays as declared.

@@ -91,7 +91,10 @@ async function scan(
 
 /** Every screen of the admin, scanned in each interface language. */
 const ADMIN_SCREENS = [
-  ['content list', '/_mallok/app/'],
+  ['overview', '/_mallok/app/'],
+  ['content list', '/_mallok/app/content'],
+  // A type's own list: status and language tabs, search, row menus (D2).
+  ['product list', '/_mallok/app/content?kind=product'],
   ['media', '/_mallok/app/media'],
   ['plugins', '/_mallok/app/plugins'],
   ['plugin panel', '/_mallok/app/plugins/inquiry/inquiries'],
@@ -134,13 +137,17 @@ test.describe('the admin', () => {
     page,
   }) => {
     await signIn(page);
-    await page.getByRole('button', { name: 'New' }).click();
+    // From the list of every type; Overview has an Add menu instead (D1).
+    await page.goto('/_mallok/app/content');
+    await page.getByRole('button', { name: 'Add content' }).click();
     await expect(page.locator('#fm-title')).toBeVisible();
 
     // The form appears before the debounced preview is rendered. Scanning
     // immediately can inspect an empty document. Wait for this edit in the
     // real preview rather than sleeping.
     await page.locator('#fm-title').fill('Accessibility preview');
+    // The preview is a button away in the writing-first editor (D4).
+    await page.getByRole('button', { name: 'Preview' }).first().click();
     await expect(
       page.frameLocator('iframe[title="Preview"]').getByRole('heading', {
         name: 'Accessibility preview',

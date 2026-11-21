@@ -62,6 +62,15 @@ export const themeFieldSchema = z
     min: z.number().optional(),
     /** `file` only: accepted extensions. */
     accept: z.array(z.string()).optional(),
+    /**
+     * Drawn after the others, in a closed "More options" block: what a
+     * daily operator rarely needs (docs/ADMIN_SIMPLE.md, D9). A required
+     * field may not be marked.
+     */
+    advanced: z.boolean().optional(),
+  })
+  .refine((field) => !(field.required && field.advanced === true), {
+    message: 'A required field cannot be "advanced": it would be hidden.',
   })
   .refine(
     (field) => field.type !== 'select' || (field.choices?.length ?? 0) > 0,
@@ -105,10 +114,32 @@ export const themeKindSchema = z.object({
 
 /** Schema for a theme option exposed in the admin. */
 export const themeOptionSchema = z.object({
-  type: z.enum(['string', 'text', 'number', 'boolean', 'color', 'select']),
+  /**
+   * `string[]` and `keyvalue` hold lists, with the controls content fields
+   * have, so a theme no longer asks for a syntax typed into one string
+   * (docs/ADMIN_SIMPLE.md, D10a).
+   */
+  type: z.enum([
+    'string',
+    'text',
+    'number',
+    'boolean',
+    'color',
+    'select',
+    'string[]',
+    'keyvalue',
+  ]),
   label: z.string(),
-  default: z.union([z.string(), z.number(), z.boolean()]),
+  default: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.string()),
+    z.record(z.string(), z.string()),
+  ]),
   choices: z.array(z.string()).optional(),
+  /** Drawn in the closed "More options" block (docs/ADMIN_SIMPLE.md, D9). */
+  advanced: z.boolean().optional(),
 });
 
 /** Schema for `theme.json`. */
