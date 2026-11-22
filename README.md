@@ -1,10 +1,15 @@
-# Mallok
+<h1>
+  <a href="https://mallok.dev/"><picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://mallok.dev/assets/brand/gif/mallok-logo-dark.gif">
+    <img src="https://mallok.dev/assets/brand/gif/mallok-logo-light.gif" width="400" alt="Mallok">
+  </picture></a>
+</h1>
 
 **The Cloudflare-native CMS and website builder for multilingual B2B websites.** An open-source WordPress alternative with Markdown content, a web admin, Liquid themes, plugins, and inquiry forms, running on Cloudflare's free tier.
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-[Live demo](https://demo.mallok.dev/) · [Documentation](docs/README.md) · [npm](https://www.npmjs.com/package/mallok)
+[Website](https://mallok.dev/) · [Live demo](https://demo.mallok.dev/) · [Documentation](docs/README.md) · [npm](https://www.npmjs.com/package/mallok)
 
 [![Atelier — Mallok’s default theme](docs/images/atelier-desktop.jpg)](https://demo.mallok.dev/)
 
