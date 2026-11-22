@@ -1,10 +1,15 @@
-# Mallok
+<h1>
+  <a href="https://mallok.dev/"><picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://mallok.dev/assets/brand/gif/mallok-logo-dark.gif">
+    <img src="https://mallok.dev/assets/brand/gif/mallok-logo-light.gif" width="400" alt="Mallok">
+  </picture></a>
+</h1>
 
 **面向多语言 B2B 网站的 Cloudflare 原生 CMS 与建站工具。** 开源的 WordPress 替代方案，内置 Markdown 内容、网页后台、Liquid 主题、插件和询盘表单，直接跑在 Cloudflare 免费套餐上。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-[在线演示](https://demo.mallok.dev/) · [文档](docs/zh-CN/README.md) · [npm](https://www.npmjs.com/package/mallok)
+[官网](https://mallok.dev/zh-cn/) · [在线演示](https://demo.mallok.dev/) · [文档](docs/zh-CN/README.md) · [npm](https://www.npmjs.com/package/mallok)
 
 [![Atelier — Mallok 默认主题（英文界面）](docs/images/atelier-desktop.jpg)](https://demo.mallok.dev/)
 
